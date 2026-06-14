@@ -153,6 +153,18 @@ int main(int argc, char **argv) {
             throw std::runtime_error(manager.last_error());
         }
 
+        std::cout << clr::dim_() << "  legend:" << clr::r() << "\n"
+                  << "  " << clr::dim_() << "  mark: " << clr::r()
+                  << ". observe-only  " << clr::green_() << "+" << clr::r() << " applied  "
+                  << clr::yellow_() << "~" << clr::r() << " managed" << "\n"
+                  << "  " << clr::dim_() << "  class: " << clr::r()
+                  << clr::green_() << "L" << clr::r() << " latency  "
+                  << clr::red_() << "B" << clr::r() << " background  "
+                  << clr::yellow_() << "T" << clr::r() << " throughput  "
+                  << clr::dim_() << "UNKNOWN" << clr::r() << " unmanaged" << "\n"
+                  << "  " << clr::dim_() << "  cols:  name pid class action profile w:weight reason" << clr::r() << "\n"
+                  << clr::dim_() << "  " << bar() << clr::r() << "\n";
+
         std::cout << clr::cyan_() << "  --- observing ---" << clr::r() << "\n";
 
         auto decisions = eulerpilot::run_cycles(config);
