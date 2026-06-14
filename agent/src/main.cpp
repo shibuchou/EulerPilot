@@ -2,8 +2,107 @@
 #include "builtin_skills.hpp"
 #include "skill_manager.hpp"
 
+#include "color.hpp"
+
 #include <exception>
+#include <iomanip>
 #include <iostream>
+
+namespace clr = eulerpilot::color;
+
+namespace {
+
+std::string bar(std::size_t width = 50) {
+    return std::string(width, '-');
+}
+
+void print_banner(const eulerpilot::RuntimeConfig &config, const eulerpilot::EnvironmentStatus &env) {
+    std::cout << "\n"
+              << clr::cyan_() << clr::b() << "  * EulerPilot Agent " << clr::r() << "\n"
+              << clr::dim_() << "  " << bar() << clr::r() << "\n";
+
+    auto tick = [](bool ok) -> const char* {
+        return ok ? "ok" : "--";
+    };
+
+    std::cout << "  " << clr::dim_() << "config:     " << clr::r() << config.config_path << "\n"
+              << "  " << clr::dim_() << "interval:   " << clr::r() << config.interval_ms << "ms  "
+              << clr::dim_() << "duration:   " << clr::r() << config.duration_s << "s  "
+              << clr::dim_() << "warmup: " << clr::r() << config.warmup_cycles << "\n"
+              << "  " << clr::dim_() << "mode:       " << clr::r()
+              << (config.dry_run ? clr::yellow_() : clr::green_())
+              << (config.dry_run ? "dry-run" : "active") << clr::r() << "  "
+              << clr::dim_() << "backend:    " << clr::r()
+              << (config.preferred_backend == eulerpilot::ExecutorBackend::SchedExt ? clr::magenta_() : clr::blue_())
+              << eulerpilot::to_string(config.preferred_backend) << clr::r() << "\n"
+              << "  " << clr::dim_() << "gate:       " << clr::r()
+              << eulerpilot::to_string(config.gate_mode) << "\n"
+              << "  " << clr::dim_() << "env:        " << clr::r()
+              << " psi:"   << (env.psi_configured ? clr::green_() : clr::red_()) << tick(env.psi_configured) << clr::r()
+              << "  cg:" << (env.cgroup_v2_mounted ? clr::green_() : clr::red_()) << tick(env.cgroup_v2_mounted) << clr::r()
+              << "  scx:" << (env.sched_ext_available ? clr::green_() : clr::red_()) << tick(env.sched_ext_available) << clr::r()
+              << "\n";
+
+    std::cout << clr::dim_() << "  " << bar() << clr::r() << "\n\n";
+}
+
+void print_decision(const eulerpilot::WorkloadDecision &d) {
+    using eulerpilot::WorkloadClass;
+
+    const char *cc = clr::dim_();
+    const char *icon = " ";
+    switch (d.klass) {
+    case WorkloadClass::LatencySensitive:  cc = clr::green_();  icon = "L"; break;
+    case WorkloadClass::BackgroundNoisy:   cc = clr::red_();    icon = "B"; break;
+    case WorkloadClass::ThroughputBatch:   cc = clr::yellow_(); icon = "T"; break;
+    default: icon = "."; break;
+    }
+
+    const char *ac = clr::dim_();
+    const char *ai = "-";
+    if (d.action.applied) {
+        ac = clr::green_();
+        ai = "+";
+    } else if (d.managed_target) {
+        ac = clr::yellow_();
+        ai = "~";
+    }
+
+    std::cout << "  " << cc << icon << clr::r() << " "
+              << clr::b() << std::left << std::setw(18) << d.sample.comm.substr(0, 17) << clr::r()
+              << std::right << std::setw(6) << d.sample.pid
+              << " " << cc << std::left << std::setw(12) << eulerpilot::to_string(d.klass) << clr::r()
+              << " |" << ac << ai << clr::r()
+              << " " << std::left << std::setw(10) << d.action.target_profile
+              << clr::dim_() << " w:" << d.action.cpu_weight << clr::r()
+              << " " << clr::dim_() << d.action.reason << clr::r()
+              << "\n";
+}
+
+void print_summary(const std::vector<eulerpilot::WorkloadDecision> &decisions) {
+    int latency = 0, batch = 0, noisy = 0, unknown = 0, applied = 0;
+    for (const auto &d : decisions) {
+        if (d.action.applied) applied++;
+        switch (d.klass) {
+        case eulerpilot::WorkloadClass::LatencySensitive: latency++; break;
+        case eulerpilot::WorkloadClass::ThroughputBatch:  batch++;   break;
+        case eulerpilot::WorkloadClass::BackgroundNoisy:  noisy++;   break;
+        default: unknown++; break;
+        }
+    }
+
+    std::cout << clr::dim_() << "  " << bar() << clr::r() << "\n"
+              << "  " << clr::b() << "DONE" << clr::r()
+              << "  total=" << decisions.size()
+              << "  applied=" << clr::green_() << applied << clr::r()
+              << "  L=" << clr::green_() << latency << clr::r()
+              << "  T=" << clr::yellow_() << batch << clr::r()
+              << "  B=" << clr::red_() << noisy << clr::r()
+              << "  u=" << clr::dim_() << unknown << clr::r()
+              << "\n\n";
+}
+
+} // anonymous namespace
 
 int main(int argc, char **argv) {
     try {
@@ -14,7 +113,7 @@ int main(int argc, char **argv) {
 
         if (config.list_skills_only) {
             for (const auto &name : registry.list()) {
-                std::cout << name << "\n";
+                std::cout << clr::cyan_() << name << clr::r() << "\n";
             }
             return 0;
         }
@@ -26,30 +125,25 @@ int main(int argc, char **argv) {
                 return 1;
             }
             int exit_code = manager.doctor_enabled_skills();
+            std::cout << "\n" << clr::cyan_() << clr::b() << "  Skills Doctor" << clr::r() << "\n"
+                      << clr::dim_() << "  " << bar() << clr::r() << "\n";
             for (const auto &snapshot : manager.snapshots()) {
-                std::cout << snapshot.skill_name
-                          << " available=" << (snapshot.available ? "yes" : "no")
-                          << " running=" << (snapshot.running ? "yes" : "no")
-                          << " state=" << snapshot.state;
-                for (const auto &evidence : snapshot.evidence) {
-                    std::cout << " " << evidence.first << "=" << evidence.second;
+                const char *sc = snapshot.available ? clr::green_() : clr::red_();
+                const char *si = snapshot.available ? "+" : "x";
+                std::cout << "  " << sc << si << clr::r() << " "
+                          << clr::b() << std::left << std::setw(22) << snapshot.skill_name << clr::r()
+                          << " " << snapshot.state;
+                auto reason = snapshot.evidence.find("reason");
+                if (reason != snapshot.evidence.end() && reason->second != "ok") {
+                    std::cout << " " << clr::red_() << "[" << reason->second << "]" << clr::r();
                 }
                 std::cout << "\n";
             }
+            std::cout << clr::dim_() << "  " << bar() << clr::r() << "\n\n";
             return exit_code;
         }
 
-        std::cout << "EulerPilot Agent starting\n";
-        std::cout << "  config: " << config.config_path << "\n";
-        std::cout << "  interval_ms: " << config.interval_ms << "\n";
-        std::cout << "  duration_s: " << config.duration_s << "\n";
-        std::cout << "  warmup_cycles: " << config.warmup_cycles << "\n";
-        std::cout << "  mode: " << (config.dry_run ? "dry-run" : "active") << "\n";
-        std::cout << "  preferred_backend: " << eulerpilot::to_string(config.preferred_backend) << "\n";
-        std::cout << "  gate_mode: " << eulerpilot::to_string(config.gate_mode) << "\n";
-        std::cout << "  env.psi: " << (env.psi_configured ? "enabled" : "disabled") << "\n";
-        std::cout << "  env.cgroup_v2: " << (env.cgroup_v2_mounted ? "mounted" : "not-mounted") << "\n";
-        std::cout << "  env.sched_ext: " << (env.sched_ext_available ? "available" : "not-available") << "\n";
+        print_banner(config, env);
 
         eulerpilot::SkillManager manager;
         if (!manager.load_from_yaml(config, registry)) {
@@ -59,39 +153,18 @@ int main(int argc, char **argv) {
             throw std::runtime_error(manager.last_error());
         }
 
+        std::cout << clr::cyan_() << "  --- observing ---" << clr::r() << "\n";
+
         auto decisions = eulerpilot::run_cycles(config);
         for (const auto &decision : decisions) {
-            std::cout << "[Analyzer] " << decision.sample.comm
-                      << " pid=" << decision.sample.pid
-                      << " class=" << eulerpilot::to_string(decision.klass)
-                      << " latency_score=" << decision.latency_score
-                      << " batch_score=" << decision.batch_score
-                      << " interference_score=" << decision.interference_score
-                      << " managed_target=" << (decision.managed_target ? "yes" : "no")
-                      << " gate_relevant=" << (decision.gate_relevant ? "yes" : "no")
-                      << " gate_reason=" << decision.gate_reason
-                      << " latency_exists=" << (decision.latency_exists ? "yes" : "no")
-                      << " background_exists=" << (decision.background_exists ? "yes" : "no")
-                      << " cpu_psi_high=" << (decision.cpu_psi_high ? "yes" : "no")
-                      << " latency_wait_high=" << (decision.latency_wait_high ? "yes" : "no")
-                      << " background_runtime_high=" << (decision.background_runtime_high ? "yes" : "no")
-                      << " profile=" << decision.target_profile
-                      << " trigger_reason=" << decision.trigger_reason
-                      << " executor=" << decision.action.executor
-                      << " group=" << decision.action.target_group
-                      << " action_profile=" << decision.action.target_profile
-                      << " cpu_weight=" << decision.action.cpu_weight
-                      << " cpuset=" << decision.action.cpuset_cpus
-                      << " applied=" << (decision.action.applied ? "yes" : "no")
-                      << " reason=" << decision.action.reason
-                      << "\n";
+            print_decision(decision);
         }
 
         manager.stop_all();
-        std::cout << "EulerPilot Agent run finished. Next step is to improve workload targeting and metrics export.\n";
+        print_summary(decisions);
         return 0;
     } catch (const std::exception &ex) {
-        std::cerr << "EulerPilot error: " << ex.what() << "\n";
+        std::cerr << clr::red_() << "EulerPilot error: " << ex.what() << clr::r() << "\n";
         return 1;
     }
 }
