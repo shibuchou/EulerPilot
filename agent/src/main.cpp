@@ -46,8 +46,35 @@ void print_banner(const eulerpilot::RuntimeConfig &config, const eulerpilot::Env
     std::cout << clr::dim_() << "  " << bar() << clr::r() << "\n\n";
 }
 
-void print_decision(const eulerpilot::WorkloadDecision &d) {
+void print_decision(const eulerpilot::WorkloadDecision &d, bool verbose, bool jsonl) {
     using eulerpilot::WorkloadClass;
+
+    if (jsonl) {
+        std::cout << "{"
+                  << "\"comm\":\"" << d.sample.comm << "\""
+                  << ",\"pid\":" << d.sample.pid
+                  << ",\"class\":\"" << eulerpilot::to_string(d.klass) << "\""
+                  << ",\"latency_score\":" << d.latency_score
+                  << ",\"batch_score\":" << d.batch_score
+                  << ",\"interference_score\":" << d.interference_score
+                  << ",\"profile\":\"" << d.target_profile << "\""
+                  << ",\"cpu_weight\":" << d.action.cpu_weight
+                  << ",\"applied\":" << (d.action.applied ? "true" : "false")
+                  << ",\"reason\":\"" << d.action.reason << "\""
+                  << ",\"managed_target\":" << (d.managed_target ? "true" : "false")
+                  << ",\"gate_relevant\":" << (d.gate_relevant ? "true" : "false")
+                  << ",\"gate_reason\":\"" << d.gate_reason << "\""
+                  << ",\"latency_exists\":" << (d.latency_exists ? "true" : "false")
+                  << ",\"background_exists\":" << (d.background_exists ? "true" : "false")
+                  << ",\"cpu_psi_high\":" << (d.cpu_psi_high ? "true" : "false")
+                  << ",\"latency_wait_high\":" << (d.latency_wait_high ? "true" : "false")
+                  << ",\"background_runtime_high\":" << (d.background_runtime_high ? "true" : "false")
+                  << ",\"trigger_reason\":\"" << d.trigger_reason << "\""
+                  << ",\"executor\":\"" << d.action.executor << "\""
+                  << ",\"group\":\"" << d.action.target_group << "\""
+                  << "}\n";
+        return;
+    }
 
     const char *cc = clr::dim_();
     const char *icon = " ";
@@ -77,6 +104,25 @@ void print_decision(const eulerpilot::WorkloadDecision &d) {
               << clr::dim_() << " w:" << d.action.cpu_weight << clr::r()
               << " " << clr::dim_() << d.action.reason << clr::r()
               << "\n";
+
+    if (verbose) {
+        std::cout << clr::dim_()
+                  << "    scores: latency=" << d.latency_score
+                  << " batch=" << d.batch_score
+                  << " interference=" << d.interference_score << "\n"
+                  << "    gate: relevant=" << (d.gate_relevant ? "yes" : "no")
+                  << " reason=" << d.gate_reason << "\n"
+                  << "    evidence: latency_exists=" << (d.latency_exists ? "yes" : "no")
+                  << " background_exists=" << (d.background_exists ? "yes" : "no")
+                  << " cpu_psi_high=" << (d.cpu_psi_high ? "yes" : "no")
+                  << " latency_wait_high=" << (d.latency_wait_high ? "yes" : "no")
+                  << " background_runtime_high=" << (d.background_runtime_high ? "yes" : "no") << "\n"
+                  << "    action: executor=" << d.action.executor
+                  << " group=" << d.action.target_group
+                  << " applied=" << (d.action.applied ? "yes" : "no")
+                  << " cpuset=" << d.action.cpuset_cpus << "\n"
+                  << clr::r();
+    }
 }
 
 void print_summary(const std::vector<eulerpilot::WorkloadDecision> &decisions) {
@@ -143,7 +189,9 @@ int main(int argc, char **argv) {
             return exit_code;
         }
 
-        print_banner(config, env);
+        if (!config.jsonl) {
+            print_banner(config, env);
+        }
 
         eulerpilot::SkillManager manager;
         if (!manager.load_from_yaml(config, registry)) {
@@ -153,27 +201,25 @@ int main(int argc, char **argv) {
             throw std::runtime_error(manager.last_error());
         }
 
-        std::cout << clr::dim_() << "  legend:" << clr::r() << "\n"
-                  << "  " << clr::dim_() << "  mark: " << clr::r()
-                  << ". observe-only  " << clr::green_() << "+" << clr::r() << " applied  "
-                  << clr::yellow_() << "~" << clr::r() << " managed" << "\n"
-                  << "  " << clr::dim_() << "  class: " << clr::r()
-                  << clr::green_() << "L" << clr::r() << " latency  "
-                  << clr::red_() << "B" << clr::r() << " background  "
-                  << clr::yellow_() << "T" << clr::r() << " throughput  "
-                  << clr::dim_() << "UNKNOWN" << clr::r() << " unmanaged" << "\n"
-                  << "  " << clr::dim_() << "  cols:  name pid class action profile w:weight reason" << clr::r() << "\n"
-                  << clr::dim_() << "  " << bar() << clr::r() << "\n";
-
-        std::cout << clr::cyan_() << "  --- observing ---" << clr::r() << "\n";
+        if (!config.jsonl) {
+            std::cout << clr::cyan_() << "  --- observing ---" << clr::r() << "\n"
+                      << clr::dim_() << "  " << " mark name             pid  class        act profile     w:weight reason" << clr::r() << "\n"
+                      << "  " << clr::dim_() << " legend: " << clr::r()
+                      << ". observe  " << clr::green_() << "+ apply" << clr::r()
+                      << "  " << clr::green_() << "L" << clr::r() << " latency  "
+                      << clr::red_() << "B" << clr::r() << " bg  "
+                      << clr::yellow_() << "T" << clr::r() << " batch\n";
+        }
 
         auto decisions = eulerpilot::run_cycles(config);
         for (const auto &decision : decisions) {
-            print_decision(decision);
+            print_decision(decision, config.verbose, config.jsonl);
         }
 
         manager.stop_all();
-        print_summary(decisions);
+        if (!config.jsonl) {
+            print_summary(decisions);
+        }
         return 0;
     } catch (const std::exception &ex) {
         std::cerr << clr::red_() << "EulerPilot error: " << ex.what() << clr::r() << "\n";
