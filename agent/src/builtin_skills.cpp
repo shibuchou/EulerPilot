@@ -26,13 +26,6 @@ bool file_exists(const char *path) {
     return file.good();
 }
 
-std::string getenv_or(const char *name, const std::string &fallback) {
-    const char *value = std::getenv(name);
-    if (!value || !*value) {
-        return fallback;
-    }
-    return value;
-}
 
 bool ensure_cgroup(const fs::path &path) {
     if (!fs::exists("/sys/fs/cgroup") || access("/sys/fs/cgroup", W_OK) != 0) {

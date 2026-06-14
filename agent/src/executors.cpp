@@ -358,6 +358,7 @@ void close_scx_map(ScxSession &session) {
 }
 
 bool reconcile_scx_session(const RuntimeConfig &config, ControlMode mode, ScxSession &session, std::string &reason) {
+    (void)mode;
     append_scx_session_log("reconcile_scx_session: enter backend=" + std::string(config.preferred_backend == ExecutorBackend::SchedExt ? "sched_ext" : "other") +
                            " dry_run=" + std::string(config.dry_run ? "true" : "false"));
     if (config.preferred_backend != ExecutorBackend::SchedExt) {
