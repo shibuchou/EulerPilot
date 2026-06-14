@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="420">
+<style>text{font-family:Arial,Helvetica,sans-serif;font-size:12px;fill:#222}.title{font-size:18px;font-weight:bold}</style>
+<text class="title" x="550.0" y="28" text-anchor="middle">PsiGate 状态时间线</text>
+<line x1="80" y1="350.0" x2="1070" y2="350.0" stroke="#ddd"/>
+<text x="70" y="354.0" text-anchor="end">NORMAL</text>
+<line x1="80" y1="253.3" x2="1070" y2="253.3" stroke="#ddd"/>
+<text x="70" y="257.3" text-anchor="end">ARMED</text>
+<line x1="80" y1="156.7" x2="1070" y2="156.7" stroke="#ddd"/>
+<text x="70" y="160.7" text-anchor="end">ACTIVE</text>
+<line x1="80" y1="60.0" x2="1070" y2="60.0" stroke="#ddd"/>
+<text x="70" y="64.0" text-anchor="end">COOLDOWN</text>
+<circle cx="162.5" cy="253.3" r="6" fill="#ff7f0e"/>
+<text x="162.5" y="370" text-anchor="middle">g1</text>
+<line x1="162.5" y1="253.3" x2="327.5" y2="253.3" stroke="#555" stroke-width="2"/>
+<circle cx="327.5" cy="253.3" r="6" fill="#ff7f0e"/>
+<text x="327.5" y="370" text-anchor="middle">g2</text>
+<line x1="327.5" y1="253.3" x2="492.5" y2="156.7" stroke="#555" stroke-width="2"/>
+<circle cx="492.5" cy="156.7" r="6" fill="#d62728"/>
+<text x="492.5" y="370" text-anchor="middle">g3</text>
+<line x1="492.5" y1="156.7" x2="657.5" y2="156.7" stroke="#555" stroke-width="2"/>
+<circle cx="657.5" cy="156.7" r="6" fill="#d62728"/>
+<text x="657.5" y="370" text-anchor="middle">g4</text>
+<line x1="657.5" y1="156.7" x2="822.5" y2="156.7" stroke="#555" stroke-width="2"/>
+<circle cx="822.5" cy="156.7" r="6" fill="#d62728"/>
+<text x="822.5" y="370" text-anchor="middle">g5</text>
+<line x1="822.5" y1="156.7" x2="987.5" y2="156.7" stroke="#555" stroke-width="2"/>
+<circle cx="987.5" cy="156.7" r="6" fill="#d62728"/>
+<text x="987.5" y="370" text-anchor="middle">g6</text>
+</svg>

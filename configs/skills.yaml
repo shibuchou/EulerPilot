@@ -1,0 +1,25 @@
+schema_version: 1
+skills:
+- config: {}
+  enabled: true
+  kind: runtime
+  name: resource_control
+- config: {}
+  enabled: true
+  kind: runtime
+  name: psi_gate
+- config:
+    cgroup_path: /sys/fs/cgroup/eulerpilot/demo-net
+    dst_port: '18080'
+    hook: cgroup_connect4
+    mode: enforce
+  enabled: false
+  kind: runtime
+  name: network_policy_demo
+- config:
+    hook: lsm_file_open
+    mode: enforce
+    target_path: /root/EulerPilot/demo/security_policy_demo/secret.txt
+  enabled: false
+  kind: runtime
+  name: security_policy_demo

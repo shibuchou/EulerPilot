@@ -1,0 +1,18 @@
+enabled: true
+resource: cpu
+mode: some
+
+trigger:
+  stall_us: 100000
+  window_us: 1000000
+
+state_machine:
+  activation_windows: 2
+  recovery_windows: 3
+  cooldown_ms: 2000
+
+evidence:
+  require_count: 2
+  enable_cpu_psi: true
+  enable_latency_wait: true
+  enable_background_runtime: true

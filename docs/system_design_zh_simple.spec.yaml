@@ -1,0 +1,123 @@
+meta:
+  profile: academic-paper
+  figureType: architecture
+  theme: academic-color
+  source: generated
+  layout: horizontal
+  routing: orthogonal
+  title: EulerPilot 项目主架构图
+  description: 比赛项目的简化模块安排图
+  legend: 主链路从左到右；下方为扩展与验证能力。
+modules:
+  - id: mainline
+    label: 主功能链路
+  - id: extension
+    label: 扩展与交付
+nodes:
+  - id: workload
+    label: 业务负载
+    type: user
+    module: mainline
+    position:
+      x: 40
+      'y': 120
+  - id: observe
+    label: eBPF 观测层
+    type: process
+    module: mainline
+    position:
+      x: 210
+      'y': 120
+  - id: analyze
+    label: 负载分析
+    type: process
+    module: mainline
+    position:
+      x: 380
+      'y': 120
+  - id: policy
+    label: 策略决策
+    type: decision
+    module: mainline
+    position:
+      x: 550
+      'y': 120
+  - id: execute
+    label: 执行层
+    type: service
+    module: mainline
+    position:
+      x: 720
+      'y': 120
+  - id: result
+    label: 性能收益
+    type: document
+    module: mainline
+    position:
+      x: 890
+      'y': 120
+  - id: skills
+    label: Skills 插件层
+    type: service
+    module: extension
+    position:
+      x: 550
+      'y': 260
+  - id: benchmark
+    label: 实验验证与报告
+    type: document
+    module: extension
+    position:
+      x: 890
+      'y': 260
+  - id: execute_scx
+    label: scx 调度
+    type: process
+    module: extension
+    position:
+      x: 720
+      'y': 240
+  - id: execute_cgroup
+    label: cgroup 控制
+    type: process
+    module: extension
+    position:
+      x: 720
+      'y': 320
+edges:
+  - from: workload
+    to: observe
+    type: primary
+  - from: observe
+    to: analyze
+    type: primary
+  - from: analyze
+    to: policy
+    type: primary
+  - from: policy
+    to: execute
+    type: primary
+  - from: execute
+    to: result
+    type: primary
+  - from: policy
+    to: skills
+    type: data
+  - from: skills
+    to: execute_scx
+    type: primary
+  - from: skills
+    to: execute_cgroup
+    type: primary
+  - from: execute_scx
+    to: execute
+    type: data
+  - from: execute_cgroup
+    to: execute
+    type: data
+  - from: skills
+    to: benchmark
+    type: secondary
+  - from: result
+    to: benchmark
+    type: data

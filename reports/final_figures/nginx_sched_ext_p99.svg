@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="460">
+<style>text{font-family:Arial,Helvetica,sans-serif;font-size:12px;fill:#222}.title{font-size:18px;font-weight:bold}</style>
+<text class="title" x="550.0" y="28" text-anchor="middle">Nginx sched_ext 后端对照 P99</text>
+<line x1="90" y1="370" x2="1070" y2="370" stroke="#444"/>
+<line x1="90" y1="50" x2="90" y2="370" stroke="#444"/>
+<text x="20" y="70" transform="rotate(-90,20,70)">P99 (ms)</text>
+<text x="160.0" y="396" text-anchor="middle">quiet_default</text>
+<rect x="120.6" y="354.9" width="63.0" height="15.1" fill="#1f77b4"/>
+<text x="152.1" y="350.9" text-anchor="middle">1.21</text>
+<text x="300.0" y="396" text-anchor="middle">quiet_scx_normal</text>
+<rect x="260.6" y="332.4" width="63.0" height="37.6" fill="#1f77b4"/>
+<text x="292.1" y="328.4" text-anchor="middle">3.02</text>
+<text x="440.0" y="396" text-anchor="middle">noisy_default</text>
+<rect x="400.6" y="356.3" width="63.0" height="13.7" fill="#1f77b4"/>
+<text x="432.1" y="352.3" text-anchor="middle">1.10</text>
+<text x="580.0" y="396" text-anchor="middle">noisy_cgroup_v2</text>
+<rect x="540.6" y="356.3" width="63.0" height="13.7" fill="#1f77b4"/>
+<text x="572.1" y="352.3" text-anchor="middle">1.10</text>
+<text x="720.0" y="396" text-anchor="middle">noisy_scx_normal</text>
+<rect x="680.6" y="322.5" width="63.0" height="47.5" fill="#1f77b4"/>
+<text x="712.1" y="318.5" text-anchor="middle">3.82</text>
+<text x="860.0" y="396" text-anchor="middle">noisy_scx_always_active</text>
+<rect x="820.6" y="62.0" width="63.0" height="308.0" fill="#1f77b4"/>
+<text x="852.1" y="58.0" text-anchor="middle">24.74</text>
+<text x="1000.0" y="396" text-anchor="middle">noisy_scx_psi</text>
+<rect x="960.6" y="156.8" width="63.0" height="213.2" fill="#1f77b4"/>
+<text x="992.1" y="152.8" text-anchor="middle">17.13</text>
+<rect x="850" y="42" width="12" height="12" fill="#1f77b4"/>
+<text x="868" y="52">P99 (ms)</text>
+</svg>

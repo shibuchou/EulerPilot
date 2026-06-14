@@ -1,0 +1,290 @@
+meta:
+  profile: academic-paper
+  figureType: architecture
+  theme: academic-color
+  source: generated
+  layout: hierarchical
+  routing: orthogonal
+  title: EulerPilot 项目设计图
+  description: 面向 openEuler 的自适应资源管控 Agent 架构设计
+  legend: 实线表示主链路，虚线表示可选扩展能力。
+modules:
+  - id: workloads
+    label: 测试负载与业务目标
+  - id: kernel
+    label: openEuler 内核与系统能力
+  - id: observe
+    label: eBPF 观测层
+  - id: agent
+    label: 用户态 Agent 控制面
+  - id: skills
+    label: Skills 插件层
+  - id: execute
+    label: 执行层
+  - id: validate
+    label: 实验验证与交付
+nodes:
+  - id: redis
+    label: Redis / Nginx / Memcached
+    type: service
+    module: workloads
+  - id: batch
+    label: stress-ng / make -j / sysbench
+    type: process
+    module: workloads
+  - id: cgroup_target
+    label: 容器 / cgroup / 混合服务
+    type: cloud
+    module: workloads
+  - id: scheduler
+    label: Linux 调度器 / Runqueue
+    type: service
+    module: kernel
+  - id: hooks
+    label: BPF Hooks / Tracepoints
+    type: service
+    module: kernel
+  - id: cg2
+    label: cgroup v2
+    type: database
+    module: kernel
+  - id: scx
+    label: sched_ext / scx
+    type: service
+    module: kernel
+  - id: btf
+    label: BTF / 内核接口
+    type: document
+    module: kernel
+  - id: observer
+    label: workload_observer.bpf.c
+    type: process
+    module: observe
+  - id: trace
+    label: sched_wakeup / sched_switch / migrate
+    type: process
+    module: observe
+  - id: stats
+    label: task_stats_map / cgroup_stats_map / ringbuf
+    type: database
+    module: observe
+  - id: metrics
+    label: 等待时间 / 运行时间 / 唤醒频率 / 迁移次数
+    type: document
+    module: observe
+  - id: runtime
+    label: Agent 主循环
+    type: service
+    module: agent
+  - id: snapshot
+    label: 状态聚合 / Snapshot Builder
+    type: process
+    module: agent
+  - id: analyzer
+    label: 负载分析器
+    type: process
+    module: agent
+  - id: classify
+    label: 分类：延迟敏感 / 吞吐型 / 后台干扰 / 混合
+    type: decision
+    module: agent
+  - id: policy
+    label: 策略引擎
+    type: process
+    module: agent
+  - id: profiles
+    label: normal / latency / throughput / mixed
+    type: document
+    module: agent
+  - id: exporter
+    label: Exporter / API / Dashboard 输出
+    type: service
+    module: agent
+  - id: cpu_skill
+    label: cpu_schedule_skill
+    type: service
+    module: skills
+  - id: cgroup_skill
+    label: cgroup_control_skill
+    type: service
+    module: skills
+  - id: bench_skill
+    label: benchmark_skill
+    type: service
+    module: skills
+  - id: rollback_skill
+    label: rollback_skill
+    type: service
+    module: skills
+  - id: net_skill
+    label: network_policy_skill
+    type: service
+    module: skills
+  - id: sec_skill
+    label: security_policy_skill
+    type: service
+    module: skills
+  - id: scx_exec
+    label: scx_eulerpilot
+    type: process
+    module: execute
+  - id: classmap
+    label: class_map / 队列与优先级
+    type: database
+    module: execute
+  - id: cgroup_exec
+    label: cpu.weight / cpu.max / cpuset
+    type: process
+    module: execute
+  - id: net_exec
+    label: TC / XDP 演示路径
+    type: process
+    module: execute
+  - id: sec_exec
+    label: LSM / 安全事件演示路径
+    type: process
+    module: execute
+  - id: redis_bench
+    label: Redis Benchmark
+    type: document
+    module: validate
+  - id: nginx_bench
+    label: wrk / Nginx Test
+    type: document
+    module: validate
+  - id: mixed_bench
+    label: Mixed Workload Scenario
+    type: document
+    module: validate
+  - id: report
+    label: CSV / 图表 / 技术报告
+    type: document
+    module: validate
+  - id: demo
+    label: Grafana / Dashboard / 答辩演示
+    type: document
+    module: validate
+edges:
+  - from: redis
+    to: scheduler
+    type: primary
+  - from: batch
+    to: scheduler
+    type: primary
+  - from: cgroup_target
+    to: cg2
+    type: primary
+  - from: scheduler
+    to: hooks
+    type: primary
+  - from: hooks
+    to: observer
+    type: primary
+  - from: btf
+    to: observer
+    type: data
+  - from: observer
+    to: trace
+    type: primary
+  - from: trace
+    to: stats
+    type: primary
+  - from: stats
+    to: metrics
+    type: data
+  - from: metrics
+    to: runtime
+    type: primary
+  - from: runtime
+    to: snapshot
+    type: primary
+  - from: snapshot
+    to: analyzer
+    type: primary
+  - from: analyzer
+    to: classify
+    type: primary
+  - from: classify
+    to: policy
+    type: primary
+  - from: policy
+    to: profiles
+    type: data
+  - from: runtime
+    to: exporter
+    type: data
+  - from: policy
+    to: cpu_skill
+    type: primary
+  - from: policy
+    to: cgroup_skill
+    type: primary
+  - from: policy
+    to: bench_skill
+    type: primary
+  - from: policy
+    to: rollback_skill
+    type: primary
+  - from: policy
+    to: net_skill
+    type: secondary
+  - from: policy
+    to: sec_skill
+    type: secondary
+  - from: cpu_skill
+    to: scx_exec
+    type: primary
+  - from: cpu_skill
+    to: classmap
+    type: data
+  - from: cgroup_skill
+    to: cgroup_exec
+    type: primary
+  - from: net_skill
+    to: net_exec
+    type: secondary
+  - from: sec_skill
+    to: sec_exec
+    type: secondary
+  - from: rollback_skill
+    to: policy
+    type: secondary
+  - from: scx_exec
+    to: scx
+    type: primary
+  - from: classmap
+    to: scx
+    type: data
+  - from: cgroup_exec
+    to: cg2
+    type: primary
+  - from: net_exec
+    to: hooks
+    type: secondary
+  - from: sec_exec
+    to: hooks
+    type: secondary
+  - from: bench_skill
+    to: redis_bench
+    type: primary
+  - from: bench_skill
+    to: nginx_bench
+    type: primary
+  - from: bench_skill
+    to: mixed_bench
+    type: primary
+  - from: redis_bench
+    to: report
+    type: data
+  - from: nginx_bench
+    to: report
+    type: data
+  - from: mixed_bench
+    to: report
+    type: data
+  - from: report
+    to: demo
+    type: primary
+  - from: exporter
+    to: demo
+    type: data

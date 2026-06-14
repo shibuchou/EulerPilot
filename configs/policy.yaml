@@ -1,0 +1,25 @@
+profiles:
+  normal_profile:
+    description: low intervention monitoring mode
+
+  latency_profile:
+    target: tail_latency
+    latency_boost: true
+    background_throttle: true
+    max_wait_ns: 5000000
+
+  throughput_profile:
+    target: throughput
+    reduce_preemption: true
+    keep_cpu_locality: true
+
+  mixed_profile:
+    target: latency_first_with_fairness
+    latency_first: true
+    background_idle_only: true
+    starvation_protection: true
+
+classification:
+  latency_threshold: 0.75
+  batch_threshold: 0.75
+  interference_threshold: 0.70
