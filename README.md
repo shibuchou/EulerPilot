@@ -144,6 +144,68 @@ cat demo/security_policy_demo/secret.txt  # → "TOP SECRET"
 ```
 预期：Agent 运行时 cat 被拒绝，退出后恢复访问。
 
+## cgroup v2 资源管控（主执行后端）
+
+cgroup v2 是 EulerPilot 在 SP3 上的主执行路径。Agent 通过 `cpu.weight` 和 `cgroup.procs` 将 workload 分类结果转化为实际 CPU 资源分配。
+
+### cgroup 层级
+
+```
+/sys/fs/cgroup/eulerpilot/
+├── latency/      ← LATENCY_SENSITIVE 进程（redis-server, nginx）
+├── batch/        ← THROUGHPUT_BATCH 进程（make, sysbench）
+└── background/   ← BACKGROUND_NOISY 进程（stress-ng）
+```
+
+### cpu.weight 语义
+
+`cpu.weight` 是**同级 cgroup 之间的相对权重**，不是绝对 CPU 限额。默认值 100，有效范围 1-10000。
+
+| cgroup | cpu.weight | 含义 |
+|--------|-----------|------|
+| latency | 1000 | 高优先级，CPU 竞争时获得更多时间片 |
+| batch | 100 | 中等优先级（默认值） |
+| background | 20 | 低优先级，仅在 latency 空闲时使用 CPU |
+
+### 手动管理
+
+```bash
+# 初始化 cgroup 层级（仅在首次或 reset 后需要）
+./scripts/setup_cgroup_v2.sh
+
+# 手动分配进程到对应 cgroup
+./scripts/assign_cgroup.sh latency  <redis-pid>
+./scripts/assign_cgroup.sh background <stress-ng-pid>
+
+# 查看当前分配
+cat /sys/fs/cgroup/eulerpilot/latency/cgroup.procs
+
+# 回滚（删除所有 eulerpilot cgroup，进程移回根组）
+./scripts/rollback.sh
+```
+
+### Agent 自动管控
+
+Agent 运行时可以自动完成分类→分配：
+
+```bash
+# 1. 先创建 cgroup 层级
+./scripts/setup_cgroup_v2.sh
+
+# 2. 启动 Agent（--active 模式才写入 cgroup 文件）
+./build/eulerpilot-agent --config configs/agent.yaml --active
+```
+
+`--active` 模式会实际修改 `cpu.weight` 和 `cgroup.procs`；默认 `dry-run` 只观测不写入。Agent 仅在检测到 latency+background 同时存在（如 redis + stress-ng）时才会切换 profile 并调整权重；无干扰时保持 `normal_profile` 不做调整。
+
+### 当前推荐参数
+
+| 参数 | 值 | 环境变量 |
+|------|-----|----------|
+| latency cpu.weight | 1000 | `EULERPILOT_LATENCY_WEIGHT` |
+| batch cpu.weight | 100 | `EULERPILOT_BATCH_WEIGHT` |
+| background cpu.weight | 20 | `EULERPILOT_BACKGROUND_WEIGHT` |
+
 ## 配置文件说明
 
 | 文件 | 用途 |
