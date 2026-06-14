@@ -202,13 +202,15 @@ int main(int argc, char **argv) {
         }
 
         if (!config.jsonl) {
-            std::cout << clr::cyan_() << "  --- observing ---" << clr::r() << "\n"
-                      << clr::dim_() << "  " << " mark name             pid  class        act profile     w:weight reason" << clr::r() << "\n"
-                      << "  " << clr::dim_() << " legend: " << clr::r()
+            std::cout << "  " << clr::dim_() << "legend: " << clr::r()
                       << ". observe  " << clr::green_() << "+ apply" << clr::r()
+                      << "  " << clr::yellow_() << "~ manage   - none" << clr::r()
                       << "  " << clr::green_() << "L" << clr::r() << " latency  "
                       << clr::red_() << "B" << clr::r() << " bg  "
                       << clr::yellow_() << "T" << clr::r() << " batch\n";
+
+            std::cout << clr::cyan_() << "  --- observing ---" << clr::r() << "\n"
+                      << clr::dim_() << "  " << " mark name             pid  class        act profile     w:weight reason" << clr::r() << "\n";
         }
 
         auto decisions = eulerpilot::run_cycles(config);
