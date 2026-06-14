@@ -204,9 +204,9 @@ int main(int argc, char **argv) {
         if (!config.jsonl) {
             std::cout << clr::cyan_() << "  --- legend ---" << clr::r() << "\n"
                       << "  " << clr::dim_() << "mark: " << clr::r()
-                      << ". unknown  " << clr::green_() << "L" << clr::r() << " latency  "
-                      << clr::red_() << "B" << clr::r() << " bg  "
-                      << clr::yellow_() << "T" << clr::r() << " batch\n"
+                      << ". UNKNOWN  " << clr::green_() << "L" << clr::r() << " LATENCY_SENSITIVE  "
+                      << clr::red_() << "B" << clr::r() << " BACKGROUND_NOISY  "
+                      << clr::yellow_() << "T" << clr::r() << " THROUGHPUT_BATCH\n"
                       << "  " << clr::dim_() << "act:  " << clr::r()
                       << clr::green_() << "+" << clr::r() << " applied  "
                       << clr::yellow_() << "~" << clr::r() << " managed  "
