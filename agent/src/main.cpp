@@ -202,15 +202,20 @@ int main(int argc, char **argv) {
         }
 
         if (!config.jsonl) {
-            std::cout << "  " << clr::dim_() << "legend: " << clr::r()
-                      << ". observe  " << clr::green_() << "+ apply" << clr::r()
-                      << "  " << clr::yellow_() << "~ manage   - none" << clr::r()
-                      << "  " << clr::green_() << "L" << clr::r() << " latency  "
+            std::cout << clr::cyan_() << "  --- legend ---" << clr::r() << "\n"
+                      << "  " << clr::dim_() << "mark: " << clr::r()
+                      << ". unknown  " << clr::green_() << "L" << clr::r() << " latency  "
                       << clr::red_() << "B" << clr::r() << " bg  "
-                      << clr::yellow_() << "T" << clr::r() << " batch\n";
+                      << clr::yellow_() << "T" << clr::r() << " batch\n"
+                      << "  " << clr::dim_() << "act:  " << clr::r()
+                      << clr::green_() << "+" << clr::r() << " applied  "
+                      << clr::yellow_() << "~" << clr::r() << " managed  "
+                      << "- none\n";
 
             std::cout << clr::cyan_() << "  --- observing ---" << clr::r() << "\n"
-                      << clr::dim_() << "  " << " mark name             pid  class        act profile     w:weight reason" << clr::r() << "\n";
+                      << clr::dim_()
+                      << "  mark name             pid  class        act profile    w:weight reason"
+                      << clr::r() << "\n";
         }
 
         auto decisions = eulerpilot::run_cycles(config);
