@@ -75,12 +75,13 @@ void cleanup_cgroup(const fs::path &path) {
     fs::remove(path, ec);
 }
 
-class ResourceControlSkillAdapter final : public Skill {
+class ResourceControlSkillAdapter final : public Skill, public ResourceControlRuntimeOps {
 public:
     std::string name() const override { return "resource_control"; }
 
     bool configure(const RuntimeConfig &runtime_config, const SkillSpec &) override {
         backend_ = runtime_config.preferred_backend;
+        runtime_config_ = runtime_config;
         return true;
     }
 
@@ -103,9 +104,37 @@ public:
         std::string reason = "backend-not-sched-ext";
         ctx.scx_ready = reconcile_scx_session(runtime_config_, ControlMode::Normal, ctx.scx_session, reason);
         ctx.scx_reason = reason;
+        global_skill_runtime_context().resource_ops = this;
         running_ = true;
         state_ = "started";
         return true;
+    }
+
+    void apply_in_cycle(std::vector<WorkloadDecision> &decisions,
+                        const GateDecision &gate) override {
+        auto &ctx = global_skill_runtime_context();
+        bool scx_active = ctx.scx_ready;
+        std::string scx_reason = ctx.scx_reason;
+
+        if (backend_ == ExecutorBackend::SchedExt) {
+            if (scx_active) {
+                if (update_scx_gate_state(ctx.scx_session, gate.next_state, gate.generation,
+                                          gate.updated_at_ns, gate.evidence_mask, scx_reason)) {
+                    ctx.scx_reason = scx_reason;
+                }
+                std::string cm_reason = scx_reason;
+                if (update_scx_class_map(ctx.scx_session, decisions, cm_reason)) {
+                    ctx.scx_reason = cm_reason;
+                }
+            }
+            for (auto &d : decisions) {
+                d.action = apply_scx_assignment(runtime_config_, d, scx_active, scx_reason);
+            }
+        } else {
+            for (auto &d : decisions) {
+                d.action = apply_cgroup_assignment(runtime_config_, d);
+            }
+        }
     }
 
     SkillSnapshot snapshot() const override {
@@ -122,6 +151,7 @@ public:
 
     bool rollback() override {
         auto &ctx = global_skill_runtime_context();
+        if (ctx.resource_ops == this) ctx.resource_ops = nullptr;
         stop_scx_session(ctx.scx_session);
         close_scx_map(ctx.scx_session);
         ctx.scx_ready = false;
@@ -133,6 +163,7 @@ public:
 
     void stop() override {
         auto &ctx = global_skill_runtime_context();
+        if (ctx.resource_ops == this) ctx.resource_ops = nullptr;
         stop_scx_session(ctx.scx_session);
         close_scx_map(ctx.scx_session);
         ctx.scx_ready = false;
@@ -151,7 +182,7 @@ private:
     RuntimeConfig runtime_config_;
 };
 
-class PsiGateSkillAdapter final : public Skill {
+class PsiGateSkillAdapter final : public Skill, public PsiGateRuntimeOps {
 public:
     std::string name() const override { return "psi_gate"; }
 
@@ -190,9 +221,22 @@ public:
             last_error_ = ctx.psi_gate.last_error();
             return false;
         }
+        global_skill_runtime_context().psi_gate_ops = this;
         running_ = true;
         state_ = "started";
         return true;
+    }
+
+    GateDecision tick_gate(const TriggerContext &ctx) override {
+        auto &rc = global_skill_runtime_context();
+        if (rc.psi_gate_ready) {
+            return rc.psi_gate.tick(ctx);
+        }
+        GateDecision gd{};
+        gd.previous_state = GateState::Normal;
+        gd.next_state = GateState::Normal;
+        gd.profile = "sched_ext_normal";
+        return gd;
     }
 
     SkillSnapshot snapshot() const override {
@@ -210,6 +254,7 @@ public:
 
     bool rollback() override {
         auto &ctx = global_skill_runtime_context();
+        if (ctx.psi_gate_ops == this) ctx.psi_gate_ops = nullptr;
         ctx.psi_gate.shutdown();
         ctx.psi_gate_ready = false;
         running_ = false;
@@ -219,6 +264,7 @@ public:
 
     void stop() override {
         auto &ctx = global_skill_runtime_context();
+        if (ctx.psi_gate_ops == this) ctx.psi_gate_ops = nullptr;
         ctx.psi_gate.shutdown();
         ctx.psi_gate_ready = false;
         running_ = false;

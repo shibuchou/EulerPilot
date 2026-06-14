@@ -1,7 +1,5 @@
 #include "eulerpilot.hpp"
-#include "executors.hpp"
 #include "builtin_skills.hpp"
-#include "psi_gate.hpp"
 #include "skill_manager.hpp"
 #include "skill_runtime_context.hpp"
 
@@ -463,6 +461,10 @@ std::vector<WorkloadDecision> run_cycles(const RuntimeConfig &config) {
     ControlMode current_mode = ControlMode::Normal;
     auto &skill_context = global_skill_runtime_context();
 
+    if (!skill_context.resource_ops) {
+        throw std::runtime_error("resource_control skill not running; cannot apply decisions");
+    }
+
     struct workload_observer_bpf *skel = workload_observer_bpf__open();
     if (!skel) {
         throw std::runtime_error("failed to open workload observer skeleton");
@@ -487,24 +489,15 @@ std::vector<WorkloadDecision> run_cycles(const RuntimeConfig &config) {
         const PsiSnapshot psi = read_psi_snapshot();
         const double cpu_psi_threshold = get_env_double("EULERPILOT_CPU_PSI_THRESHOLD", 0.10);
         const bool cpu_psi_high = psi.cpu.some.avg10 >= cpu_psi_threshold;
-        bool scx_active = skill_context.scx_ready;
-        std::string scx_reason = skill_context.scx_reason;
 
         auto trigger_ctx = build_trigger_context(cycle_decisions, cpu_psi_high, false);
         GateDecision gate_decision;
-        if (skill_context.psi_gate_ready) {
-            gate_decision = skill_context.psi_gate.tick(trigger_ctx);
+        if (skill_context.psi_gate_ops) {
+            gate_decision = skill_context.psi_gate_ops->tick_gate(trigger_ctx);
         } else {
             gate_decision.previous_state = GateState::Normal;
             gate_decision.next_state = GateState::Normal;
             gate_decision.profile = "sched_ext_normal";
-        }
-        if (cycle_config.preferred_backend == ExecutorBackend::SchedExt && scx_active) {
-            std::string gate_reason = scx_reason;
-            if (update_scx_gate_state(skill_context.scx_session, gate_decision.next_state, gate_decision.generation,
-                                      gate_decision.updated_at_ns, gate_decision.evidence_mask, gate_reason)) {
-                scx_reason = gate_reason;
-            }
         }
 
         ControlMode desired_mode = ControlMode::Normal;
@@ -521,22 +514,8 @@ std::vector<WorkloadDecision> run_cycles(const RuntimeConfig &config) {
         }
         current_mode = update_mode_with_hysteresis(current_mode, desired_mode, latency_streak, mixed_streak, normal_streak);
         assign_profiles(cycle_decisions, current_mode);
-        if (cycle_config.preferred_backend == ExecutorBackend::SchedExt && scx_active) {
-            std::string class_map_reason = scx_reason;
-            if (update_scx_class_map(skill_context.scx_session, cycle_decisions, class_map_reason)) {
-                scx_reason = class_map_reason;
-            } else {
-                scx_reason = class_map_reason;
-            }
-        }
 
-        for (auto &decision : cycle_decisions) {
-            if (cycle_config.preferred_backend == ExecutorBackend::SchedExt) {
-                decision.action = apply_scx_assignment(cycle_config, decision, scx_active, scx_reason);
-            } else {
-                decision.action = apply_cgroup_assignment(cycle_config, decision);
-            }
-        }
+        skill_context.resource_ops->apply_in_cycle(cycle_decisions, gate_decision);
 
         merged.insert(merged.end(), cycle_decisions.begin(), cycle_decisions.end());
     }
