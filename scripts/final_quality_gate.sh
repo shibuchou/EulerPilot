@@ -173,7 +173,7 @@ echo "# optional checks"
 
 # P1-1: agent 10-round stress smoke
 STRESS_OK=true
-for i in $(seq 1 10); do
+for i in $(seq 1 100); do
     if ! timeout 25s "$AGENT_BIN" --config "$AGENT_YAML" --duration-s 5 --interval-ms 2000 > /tmp/eulerpilot-smoke-$i.log 2>&1; then
         echo "  FAIL round $i"
         STRESS_OK=false
@@ -181,9 +181,9 @@ for i in $(seq 1 10); do
     fi
 done
 if $STRESS_OK; then
-    echo "ok - agent 10-round stress smoke"
+    echo "ok - agent 100-round stress smoke"
 else
-    echo "not ok - agent 10-round stress smoke (see /tmp/eulerpilot-smoke-*.log)"
+    echo "not ok - agent 100-round stress smoke (see /tmp/eulerpilot-smoke-*.log)"
 fi
 
 # P1-2: doctor 5-round

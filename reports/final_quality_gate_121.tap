@@ -16,7 +16,7 @@ ok 11 - frozen result dirs exist (Redis=6, Nginx=3)
 ok 12 - no BPF/LSM residue
 
 # optional checks
-ok - agent 10-round stress smoke
+ok - agent 100-round stress smoke
 ok - doctor 5-round stable
 
 quality gate complete
