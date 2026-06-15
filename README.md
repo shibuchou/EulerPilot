@@ -260,6 +260,15 @@ EulerPilot/
 └── tools/              # 调试工具
 ```
 
+
+## 可视化
+
+| 入口 | 说明 |
+|------|------|
+| eports/dashboard/index.html | 静态 Dashboard，浏览器直接打开即可浏览全部项目成果 |
+| eports/final_figures/ | 7 张 SVG 图表（Redis/Nginx RPS/P99/overhead + PsiGate timeline） |
+| /metrics 端点 | Prometheus 格式运行时指标（默认关闭，启用后 curl 127.0.0.1:9108/metrics） |
+
 ## 文档导航
 
 | 需要什么 | 看这里 |

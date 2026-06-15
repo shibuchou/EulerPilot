@@ -167,6 +167,7 @@ cat demo/security_policy_demo/secret.txt  # -> Operation not permitted
 | 演示说明 | `docs/demo_runbook.md` |
 | 交接手册 | `docs/handover_manual.md`（502 行） |
 | 提交清单 | `docs/submission_checklist.md` |
+| 可视化 | `reports/dashboard/index.html` 静态 Dashboard + Agent `/metrics` 端点 |
 | 图表 | `reports/final_figures/`（7 张 SVG） |
 | 实验结果 | `results/final/`（9 个目录） |
 | 代码仓库 | `https://github.com/shibuchou/EulerPilot` |
