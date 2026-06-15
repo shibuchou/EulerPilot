@@ -50,13 +50,33 @@ else
 fi
 
 echo ""
-echo "[6/6] Figures & Manual Demos"
+echo "[6/6] Figures"
 FIGURES_DIR="reports/final_figures"
 if [ -d "$FIGURES_DIR" ]; then
     echo "  Figures: $FIGURES_DIR/ ($(find "$FIGURES_DIR" -maxdepth 1 -name '*.svg' 2>/dev/null | wc -l) SVG)"
 fi
+
+echo ""
+echo "[7/7] Dashboard"
+DASHBOARD="reports/dashboard/index.html"
+if [ -f "$DASHBOARD" ]; then
+    SIZE=$(wc -c < "$DASHBOARD")
+    echo "  File: $DASHBOARD (${SIZE} bytes)"
+    echo "  Open: reports/dashboard/index.html in browser"
+else
+    echo "  Not found. Run: python3 scripts/build_dashboard.py"
+fi
+
 echo ""
 echo "--- Manual Demo Commands (run on demand) ---"
+echo "  dashboard:"
+echo "    reports/dashboard/index.html  (open in browser, no server needed)"
+echo ""
+echo "  metrics (optional):"
+echo "    # enable exporter.prometheus.enabled=true in configs/agent.yaml"
+echo "    ./build/eulerpilot-agent --config configs/agent.yaml &"
+echo "    curl http://127.0.0.1:9108/metrics"
+echo ""
 echo "  network_policy_demo:"
 echo "    make network-policy-demo"
 echo "    # enable in configs/skills.yaml, then:"
