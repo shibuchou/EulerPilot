@@ -44,4 +44,12 @@ etwork_policy_demo eBPF cgroup/connect4 最小闭环
 
 ## 当前结论
 
-项目已进入代码冻结阶段。剩余工作为答辩排练和演示视频录制。
+项目已通过最终质量门禁（12/12 P0）和安全审计。剩余工作为答辩排练和演示视频录制。
+
+## 质量与安全审计
+
+- scripts/final_quality_gate.sh — TAP 风格 12 项质量门禁脚本
+- docs/final_security_audit.md — 最终安全与质量审计报告
+- docs/final_quality_gate.md — 质量门禁文档
+- eports/final_quality_gate_121.tap — 121 门禁通过记录
+- eports/valgrind_agent_short_summary.txt — Valgrind 兼容性记录
