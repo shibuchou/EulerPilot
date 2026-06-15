@@ -6,33 +6,33 @@
 <title>EulerPilot Release Dashboard</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; background: #1a1a2e; color: #e0e0e0; line-height: 1.6; max-width: 1200px; margin: 0 auto; padding: 20px; }
-h1 { color: #00bcd4; font-size: 2em; margin-bottom: 5px; }
-h2 { color: #00bcd4; border-bottom: 2px solid #333; padding-bottom: 5px; margin: 40px 0 15px; }
-h3 { color: #b0bec5; margin: 15px 0 8px; }
-h4 { color: #cfd8dc; margin: 10px 0 5px; }
-.subtitle { color: #78909c; font-size: 1em; margin-bottom: 20px; }
+body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; background: #ffffff; color: #333333; line-height: 1.6; max-width: 1200px; margin: 0 auto; padding: 20px; }
+h1 { color: #00838f; font-size: 2em; margin-bottom: 5px; }
+h2 { color: #00838f; border-bottom: 2px solid #e0e0e0; padding-bottom: 5px; margin: 40px 0 15px; }
+h3 { color: #555555; margin: 15px 0 8px; }
+h4 { color: #666666; margin: 10px 0 5px; }
+.subtitle { color: #999999; font-size: 1em; margin-bottom: 20px; }
 .meta { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 20px; }
-.meta-item { background: #16213e; padding: 8px 16px; border-radius: 6px; font-size: 0.9em; }
+.meta-item { background: #f5f5f5; padding: 8px 16px; border-radius: 6px; font-size: 0.9em; border: 1px solid #e0e0e0; }
 .skills { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px; margin: 10px 0; }
-.skill-card { background: #16213e; padding: 12px 16px; border-radius: 6px; display: flex; align-items: center; gap: 10px; }
+.skill-card { background: #f5f5f5; padding: 12px 16px; border-radius: 6px; display: flex; align-items: center; gap: 10px; border: 1px solid #e0e0e0; }
 .skill-icon { font-size: 1.2em; }
 .skill-status { margin-left: auto; font-size: 0.85em; }
 .result-table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 0.85em; }
-.result-table th { background: #0f3460; padding: 8px 6px; text-align: center; font-weight: 600; }
-.result-table td { background: #16213e; padding: 6px; text-align: center; border: 1px solid #1a1a2e; }
+.result-table th { background: #e8e8e8; padding: 8px 6px; text-align: center; font-weight: 600; color: #333; }
+.result-table td { background: #fafafa; padding: 6px; text-align: center; border: 1px solid #e0e0e0; color: #333; }
 .result-table .op-col { font-weight: 600; min-width: 70px; }
-.result-table .best { background: #1b3a2d; }
-.result-table .note { font-size: 0.8em; color: #78909c; max-width: 200px; text-align: left; }
+.result-table .best { background: #e8f5e9; font-weight: 600; }
+.result-table .note { font-size: 0.8em; color: #666666; max-width: 200px; text-align: left; }
 .chart { margin: 15px 0; text-align: center; }
 .chart img { max-width: 100%; height: auto; border-radius: 8px; }
-.demo-card { background: #0f1923; border: 1px solid #333; border-radius: 8px; padding: 15px; margin: 10px 0; }
-.demo-card h4 { color: #00bcd4; margin-bottom: 8px; }
+.demo-card { background: #f9f9f9; border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; margin: 10px 0; }
+.demo-card h4 { color: #00838f; margin-bottom: 8px; }
 .demo-step { display: flex; gap: 15px; flex-wrap: wrap; margin: 8px 0; }
-.demo-step div { background: #16213e; padding: 8px 14px; border-radius: 4px; font-family: monospace; font-size: 0.9em; }
+.demo-step div { background: #f0f0f0; padding: 8px 14px; border-radius: 4px; font-family: monospace; font-size: 0.9em; border: 1px solid #ddd; }
 .demo-result-ok { color: #27ae60; }
 .demo-result-deny { color: #e74c3c; }
-.footer { margin-top: 40px; padding-top: 15px; border-top: 1px solid #333; color: #546e7a; font-size: 0.8em; text-align: center; }
+.footer { margin-top: 40px; padding-top: 15px; border-top: 1px solid #e0e0e0; color: #999999; font-size: 0.8em; text-align: center; }
 .nginx-summary table { max-width: 600px; }
 .nginx-summary .result-table td { text-align: right; padding-right: 12px; }
 </style>
