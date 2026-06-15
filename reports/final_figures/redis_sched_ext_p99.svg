@@ -1,81 +1,97 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="460">
-<style>text{font-family:Arial,Helvetica,sans-serif;font-size:12px;fill:#222}.title{font-size:18px;font-weight:bold}</style>
-<text class="title" x="550.0" y="28" text-anchor="middle">Redis sched_ext 后端对照 P99</text>
-<line x1="90" y1="370" x2="1070" y2="370" stroke="#444"/>
-<line x1="90" y1="50" x2="90" y2="370" stroke="#444"/>
-<text x="20" y="70" transform="rotate(-90,20,70)">P99 (ms)</text>
-<text x="212.5" y="396" text-anchor="middle">GET</text>
-<rect x="101.3" y="244.6" width="23.2" height="125.4" fill="#1f77b4"/>
-<text x="112.9" y="240.6" text-anchor="middle">0.41</text>
-<rect x="133.5" y="252.7" width="23.2" height="117.3" fill="#ff7f0e"/>
-<text x="145.1" y="248.7" text-anchor="middle">0.38</text>
-<rect x="165.8" y="244.0" width="23.2" height="126.0" fill="#2ca02c"/>
-<text x="177.4" y="240.0" text-anchor="middle">0.41</text>
-<rect x="198.0" y="248.6" width="23.2" height="121.4" fill="#d62728"/>
-<text x="209.6" y="244.6" text-anchor="middle">0.39</text>
-<rect x="230.2" y="266.8" width="23.2" height="103.2" fill="#9467bd"/>
-<text x="241.8" y="262.8" text-anchor="middle">0.34</text>
-<rect x="262.5" y="221.5" width="23.2" height="148.5" fill="#8c564b"/>
-<text x="274.1" y="217.5" text-anchor="middle">0.48</text>
-<rect x="294.7" y="242.2" width="23.2" height="127.8" fill="#17becf"/>
-<text x="306.3" y="238.2" text-anchor="middle">0.41</text>
-<text x="457.5" y="396" text-anchor="middle">INCR</text>
-<rect x="346.3" y="244.0" width="23.2" height="126.0" fill="#1f77b4"/>
-<text x="357.9" y="240.0" text-anchor="middle">0.41</text>
-<rect x="378.5" y="255.4" width="23.2" height="114.6" fill="#ff7f0e"/>
-<text x="390.1" y="251.4" text-anchor="middle">0.37</text>
-<rect x="410.8" y="223.4" width="23.2" height="146.6" fill="#2ca02c"/>
-<text x="422.4" y="219.4" text-anchor="middle">0.48</text>
-<rect x="443.0" y="243.7" width="23.2" height="126.3" fill="#d62728"/>
-<text x="454.6" y="239.7" text-anchor="middle">0.41</text>
-<rect x="475.2" y="266.8" width="23.2" height="103.2" fill="#9467bd"/>
-<text x="486.8" y="262.8" text-anchor="middle">0.34</text>
-<rect x="507.5" y="241.6" width="23.2" height="128.4" fill="#8c564b"/>
-<text x="519.1" y="237.6" text-anchor="middle">0.42</text>
-<rect x="539.7" y="245.3" width="23.2" height="124.7" fill="#17becf"/>
-<text x="551.3" y="241.3" text-anchor="middle">0.41</text>
-<text x="702.5" y="396" text-anchor="middle">PING_INLINE</text>
-<rect x="591.3" y="252.7" width="23.2" height="117.3" fill="#1f77b4"/>
-<text x="602.9" y="248.7" text-anchor="middle">0.38</text>
-<rect x="623.5" y="261.0" width="23.2" height="109.0" fill="#ff7f0e"/>
-<text x="635.1" y="257.0" text-anchor="middle">0.35</text>
-<rect x="655.8" y="242.8" width="23.2" height="127.2" fill="#2ca02c"/>
-<text x="667.4" y="238.8" text-anchor="middle">0.41</text>
-<rect x="688.0" y="248.0" width="23.2" height="122.0" fill="#d62728"/>
-<text x="699.6" y="244.0" text-anchor="middle">0.40</text>
-<rect x="720.2" y="246.5" width="23.2" height="123.5" fill="#9467bd"/>
-<text x="731.8" y="242.5" text-anchor="middle">0.40</text>
-<rect x="752.5" y="244.6" width="23.2" height="125.4" fill="#8c564b"/>
-<text x="764.1" y="240.6" text-anchor="middle">0.41</text>
-<rect x="784.7" y="260.0" width="23.2" height="110.0" fill="#17becf"/>
-<text x="796.3" y="256.0" text-anchor="middle">0.36</text>
-<text x="947.5" y="396" text-anchor="middle">SET</text>
-<rect x="836.3" y="258.8" width="23.2" height="111.2" fill="#1f77b4"/>
-<text x="847.9" y="254.8" text-anchor="middle">0.36</text>
-<rect x="868.5" y="256.3" width="23.2" height="113.7" fill="#ff7f0e"/>
-<text x="880.1" y="252.3" text-anchor="middle">0.37</text>
-<rect x="900.8" y="241.3" width="23.2" height="128.7" fill="#2ca02c"/>
-<text x="912.4" y="237.3" text-anchor="middle">0.42</text>
-<rect x="933.0" y="255.4" width="23.2" height="114.6" fill="#d62728"/>
-<text x="944.6" y="251.4" text-anchor="middle">0.37</text>
-<rect x="965.2" y="280.1" width="23.2" height="89.9" fill="#9467bd"/>
-<text x="976.8" y="276.1" text-anchor="middle">0.29</text>
-<rect x="997.5" y="234.2" width="23.2" height="135.8" fill="#8c564b"/>
-<text x="1009.1" y="230.2" text-anchor="middle">0.44</text>
-<rect x="1029.7" y="241.3" width="23.2" height="128.7" fill="#17becf"/>
-<text x="1041.3" y="237.3" text-anchor="middle">0.42</text>
-<rect x="850" y="42" width="12" height="12" fill="#1f77b4"/>
-<text x="868" y="52">quiet_default</text>
-<rect x="850" y="60" width="12" height="12" fill="#ff7f0e"/>
-<text x="868" y="70">quiet_scx_normal</text>
-<rect x="850" y="78" width="12" height="12" fill="#2ca02c"/>
-<text x="868" y="88">noisy_default</text>
-<rect x="850" y="96" width="12" height="12" fill="#d62728"/>
-<text x="868" y="106">noisy_cgroup_v2</text>
-<rect x="850" y="114" width="12" height="12" fill="#9467bd"/>
-<text x="868" y="124">noisy_scx_normal</text>
-<rect x="850" y="132" width="12" height="12" fill="#8c564b"/>
-<text x="868" y="142">noisy_scx_always_active</text>
-<rect x="850" y="150" width="12" height="12" fill="#17becf"/>
-<text x="868" y="160">noisy_scx_psi</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="500">
+<style>text{font-family:Arial,Helvetica,sans-serif;font-size:11px;fill:#333}.title{font-size:17px;font-weight:bold}.axis{font-size:10px;fill:#666}.legend{font-size:10px}</style>
+<text class="title" x="550.0" y="22" text-anchor="middle">Redis 各后端 P99 延迟对照 (RUNS=5)</text>
+<line x1="110" y1="390.0" x2="1060" y2="390.0" stroke="#e8e8e8" stroke-dasharray="4,3"/>
+<text x="102" y="394.0" text-anchor="end" class="axis">0</text>
+<line x1="110" y1="324.0" x2="1060" y2="324.0" stroke="#e8e8e8" stroke-dasharray="4,3"/>
+<text x="102" y="328.0" text-anchor="end" class="axis">0</text>
+<line x1="110" y1="258.0" x2="1060" y2="258.0" stroke="#e8e8e8" stroke-dasharray="4,3"/>
+<text x="102" y="262.0" text-anchor="end" class="axis">0</text>
+<line x1="110" y1="192.0" x2="1060" y2="192.0" stroke="#e8e8e8" stroke-dasharray="4,3"/>
+<text x="102" y="195.99999999999997" text-anchor="end" class="axis">0</text>
+<line x1="110" y1="126.0" x2="1060" y2="126.0" stroke="#e8e8e8" stroke-dasharray="4,3"/>
+<text x="102" y="130.0" text-anchor="end" class="axis">0</text>
+<line x1="110" y1="60.0" x2="1060" y2="60.0" stroke="#e8e8e8" stroke-dasharray="4,3"/>
+<text x="102" y="64.0" text-anchor="end" class="axis">1</text>
+<line x1="110" y1="60" x2="110" y2="390" stroke="#999"/>
+<line x1="110" y1="390" x2="1060" y2="390" stroke="#999"/>
+<text x="16" y="225.0" transform="rotate(-90,16,225.0)" text-anchor="middle">P99 (ms)</text>
+<text x="228.8" y="406" text-anchor="middle" class="axis">GET</text>
+<text x="228.8" y="420" text-anchor="middle" class="axis" transform="rotate(-35,228.8,420)">GET</text>
+<rect x="119.9" y="147.7" width="23.3" height="242.3" fill="#2e86c1" rx="2"/>
+<text x="131.7" y="143.7" text-anchor="middle" font-size="9" fill="#555">0.4</text>
+<rect x="151.0" y="163.2" width="23.3" height="226.8" fill="#e67e22" rx="2"/>
+<text x="162.8" y="159.2" text-anchor="middle" font-size="9" fill="#555">0.4</text>
+<rect x="182.0" y="146.5" width="23.3" height="243.5" fill="#27ae60" rx="2"/>
+<text x="193.8" y="142.5" text-anchor="middle" font-size="9" fill="#555">0.4</text>
+<rect x="213.1" y="155.4" width="23.3" height="234.6" fill="#c0392b" rx="2"/>
+<text x="224.9" y="151.4" text-anchor="middle" font-size="9" fill="#555">0.4</text>
+<rect x="244.1" y="190.6" width="23.3" height="199.4" fill="#8e44ad" rx="2"/>
+<text x="255.9" y="186.6" text-anchor="middle" font-size="9" fill="#555">0.3</text>
+<rect x="275.2" y="103.0" width="23.3" height="287.0" fill="#16a085" rx="2"/>
+<text x="287.0" y="99.0" text-anchor="middle" font-size="9" fill="#555">0.5</text>
+<rect x="306.2" y="142.9" width="23.3" height="247.1" fill="#d35400" rx="2"/>
+<text x="318.0" y="138.9" text-anchor="middle" font-size="9" fill="#555">0.4</text>
+<text x="466.2" y="406" text-anchor="middle" class="axis">INCR</text>
+<text x="466.2" y="420" text-anchor="middle" class="axis" transform="rotate(-35,466.2,420)">INCR</text>
+<rect x="357.4" y="146.5" width="23.3" height="243.5" fill="#2e86c1" rx="2"/>
+<text x="369.2" y="142.5" text-anchor="middle" font-size="9" fill="#555">0.4</text>
+<rect x="388.5" y="168.5" width="23.3" height="221.5" fill="#e67e22" rx="2"/>
+<text x="400.3" y="164.5" text-anchor="middle" font-size="9" fill="#555">0.4</text>
+<rect x="419.5" y="106.6" width="23.3" height="283.4" fill="#27ae60" rx="2"/>
+<text x="431.3" y="102.6" text-anchor="middle" font-size="9" fill="#555">0.5</text>
+<rect x="450.6" y="145.9" width="23.3" height="244.1" fill="#c0392b" rx="2"/>
+<text x="462.4" y="141.9" text-anchor="middle" font-size="9" fill="#555">0.4</text>
+<rect x="481.6" y="190.6" width="23.3" height="199.4" fill="#8e44ad" rx="2"/>
+<text x="493.4" y="186.6" text-anchor="middle" font-size="9" fill="#555">0.3</text>
+<rect x="512.7" y="141.7" width="23.3" height="248.3" fill="#16a085" rx="2"/>
+<text x="524.5" y="137.7" text-anchor="middle" font-size="9" fill="#555">0.4</text>
+<rect x="543.7" y="148.9" width="23.3" height="241.1" fill="#d35400" rx="2"/>
+<text x="555.5" y="144.9" text-anchor="middle" font-size="9" fill="#555">0.4</text>
+<text x="703.8" y="406" text-anchor="middle" class="axis">PING_INLINE</text>
+<text x="703.8" y="420" text-anchor="middle" class="axis" transform="rotate(-35,703.8,420)">PING_INLINE</text>
+<rect x="594.9" y="163.2" width="23.3" height="226.8" fill="#2e86c1" rx="2"/>
+<text x="606.7" y="159.2" text-anchor="middle" font-size="9" fill="#555">0.4</text>
+<rect x="626.0" y="179.2" width="23.3" height="210.8" fill="#e67e22" rx="2"/>
+<text x="637.8" y="175.2" text-anchor="middle" font-size="9" fill="#555">0.4</text>
+<rect x="657.0" y="144.1" width="23.3" height="245.9" fill="#27ae60" rx="2"/>
+<text x="668.8" y="140.1" text-anchor="middle" font-size="9" fill="#555">0.4</text>
+<rect x="688.1" y="154.2" width="23.3" height="235.8" fill="#c0392b" rx="2"/>
+<text x="699.9" y="150.2" text-anchor="middle" font-size="9" fill="#555">0.4</text>
+<rect x="719.1" y="151.3" width="23.3" height="238.7" fill="#8e44ad" rx="2"/>
+<text x="730.9" y="147.3" text-anchor="middle" font-size="9" fill="#555">0.4</text>
+<rect x="750.2" y="147.7" width="23.3" height="242.3" fill="#16a085" rx="2"/>
+<text x="762.0" y="143.7" text-anchor="middle" font-size="9" fill="#555">0.4</text>
+<rect x="781.2" y="177.5" width="23.3" height="212.5" fill="#d35400" rx="2"/>
+<text x="793.0" y="173.5" text-anchor="middle" font-size="9" fill="#555">0.4</text>
+<text x="941.2" y="406" text-anchor="middle" class="axis">SET</text>
+<text x="941.2" y="420" text-anchor="middle" class="axis" transform="rotate(-35,941.2,420)">SET</text>
+<rect x="832.4" y="175.1" width="23.3" height="214.9" fill="#2e86c1" rx="2"/>
+<text x="844.2" y="171.1" text-anchor="middle" font-size="9" fill="#555">0.4</text>
+<rect x="863.5" y="170.3" width="23.3" height="219.7" fill="#e67e22" rx="2"/>
+<text x="875.3" y="166.3" text-anchor="middle" font-size="9" fill="#555">0.4</text>
+<rect x="894.5" y="141.1" width="23.3" height="248.9" fill="#27ae60" rx="2"/>
+<text x="906.3" y="137.1" text-anchor="middle" font-size="9" fill="#555">0.4</text>
+<rect x="925.6" y="168.5" width="23.3" height="221.5" fill="#c0392b" rx="2"/>
+<text x="937.4" y="164.5" text-anchor="middle" font-size="9" fill="#555">0.4</text>
+<rect x="956.6" y="216.2" width="23.3" height="173.8" fill="#8e44ad" rx="2"/>
+<text x="968.4" y="212.2" text-anchor="middle" font-size="9" fill="#555">0.3</text>
+<rect x="987.7" y="127.5" width="23.3" height="262.5" fill="#16a085" rx="2"/>
+<text x="999.5" y="123.5" text-anchor="middle" font-size="9" fill="#555">0.4</text>
+<rect x="1018.7" y="141.1" width="23.3" height="248.9" fill="#d35400" rx="2"/>
+<text x="1030.5" y="137.1" text-anchor="middle" font-size="9" fill="#555">0.4</text>
+<rect x="110" y="476" width="10" height="10" fill="#2e86c1" rx="1"/>
+<text x="124" y="485" class="legend">Quiet default</text>
+<rect x="216" y="476" width="10" height="10" fill="#e67e22" rx="1"/>
+<text x="230" y="485" class="legend">Quiet scx</text>
+<rect x="298" y="476" width="10" height="10" fill="#27ae60" rx="1"/>
+<text x="312" y="485" class="legend">Noisy default</text>
+<rect x="404" y="476" width="10" height="10" fill="#c0392b" rx="1"/>
+<text x="418" y="485" class="legend">Noisy cgroup v2</text>
+<rect x="522" y="476" width="10" height="10" fill="#8e44ad" rx="1"/>
+<text x="536" y="485" class="legend">Noisy scx normal</text>
+<rect x="646" y="476" width="10" height="10" fill="#16a085" rx="1"/>
+<text x="660" y="485" class="legend">Noisy scx active</text>
+<rect x="770" y="476" width="10" height="10" fill="#d35400" rx="1"/>
+<text x="784" y="485" class="legend">Noisy scx psi</text>
 </svg>

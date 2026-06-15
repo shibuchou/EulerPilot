@@ -100,7 +100,7 @@ def build_redis_table(rows):
     lines = []
     lines.append('<table class="result-table">')
     lines.append("<thead><tr>")
-    lines.append('<th class="op-col">op</th>')
+    lines.append('<th class="op-col">操作</th>')
     for s in SCENARIOS:
         label = s.replace("_", " ")
         lines.append(f'<th>{html.escape(label)}</th>')
@@ -169,7 +169,7 @@ def build():
     for sk in skills:
         enabled = sk.get("enabled") == "true"
         color = "#27ae60" if enabled else "#7f8c8d"
-        label = "enabled" if enabled else "disabled"
+        label = "已启用" if enabled else "已关闭"
         icon = "&#x2713;" if enabled else "&#x2013;"
         skill_cards += (
             f'<div class="skill-card" style="border-left: 4px solid {color}">'
@@ -185,7 +185,7 @@ def build():
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EulerPilot Release Dashboard</title>
+<title>EulerPilot 发布看板</title>
 <style>
 * {{ box-sizing: border-box; margin: 0; padding: 0; }}
 body {{ font-family: -apple-system, "Segoe UI", Roboto, sans-serif; background: #ffffff; color: #333333; line-height: 1.6; max-width: 1200px; margin: 0 auto; padding: 20px; }}
@@ -222,59 +222,59 @@ h4 {{ color: #666666; margin: 10px 0 5px; }}
 <body>
 
 <h1>EulerPilot</h1>
-<p class="subtitle">openEuler Adaptive Resource Control Agent &mdash; Release Candidate Dashboard</p>
+<p class="subtitle">面向 openEuler 的自适应资源管控 Agent &mdash; 发布候选看板</p>
 
 <div class="meta">
-  <div class="meta-item">Version: v0.1-rc1</div>
-  <div class="meta-item">OS: openEuler 24.03 LTS SP3</div>
-  <div class="meta-item">Backend: cgroup_v2 + sched_ext</div>
-  <div class="meta-item">Skills: 4 runtime skills</div>
+  <div class="meta-item">版本: v0.1-rc2</div>
+  <div class="meta-item">系统: openEuler 24.03 LTS SP3</div>
+  <div class="meta-item">后端: cgroup_v2 + sched_ext</div>
+  <div class="meta-item">Skills: 4 个运行时技能</div>
 </div>
 
-<h2>Skills Status</h2>
+<h2>技能状态</h2>
 <div class="skills">
 {skill_cards}
 </div>
 
-<h2>Redis Results (RUNS=5)</h2>
+<h2>Redis 实验结果 (RUNS=5)</h2>
 {build_redis_table(redis_rows)}
 
-<h3>Redis Charts</h3>
+<h3>Redis 图表</h3>
 {''.join(f'<div class="chart"><img src="data:image/svg+xml;base64,{svgs[k]}" alt="{k}"></div>' for k in sorted(svgs) if 'redis' in k)}
 
-<h2>Nginx Results (RUNS=5)</h2>
+<h2>Nginx 实验结果 (RUNS=5)</h2>
 {build_nginx_table(nginx_rows)}
 
-<h3>Nginx Charts</h3>
+<h3>Nginx 图表</h3>
 {''.join(f'<div class="chart"><img src="data:image/svg+xml;base64,{svgs[k]}" alt="{k}"></div>' for k in sorted(svgs) if 'nginx' in k)}
 
-<h2>PsiGate Timeline</h2>
+<h2>PsiGate 门控时间线</h2>
 {''.join(f'<div class="chart"><img src="data:image/svg+xml;base64,{svgs[k]}" alt="{k}"></div>' for k in sorted(svgs) if 'psigate' in k)}
 
-<h2>eBPF Extension Demos</h2>
+<h2>eBPF 扩展能力演示</h2>
 
 <div class="demo-card">
-  <h4>Network Policy Demo (cgroup/connect4)</h4>
+  <h4>网络策略演示 (cgroup/connect4)</h4>
   <div class="demo-step">
-    <div>Before attach: <span class="demo-result-ok">curl -> 200</span></div>
-    <div>During agent: <span class="demo-result-deny">curl -> 000 (denied)</span></div>
-    <div>After rollback: <span class="demo-result-ok">curl -> 200</span></div>
+    <div>挂载前: <span class="demo-result-ok">curl -> 200</span></div>
+    <div>Agent 运行中: <span class="demo-result-deny">curl -> 000 (已拦截)</span></div>
+    <div>回滚后: <span class="demo-result-ok">curl -> 200</span></div>
   </div>
-  <p style="font-size:0.8em;color:#78909c">Hook: cgroup/connect4 | Port: 18080 | Cgroup: demo-net</p>
+  <p class="note">钩子: cgroup/connect4 | 端口: 18080 | Cgroup: demo-net</p>
 </div>
 
 <div class="demo-card">
-  <h4>Security Policy Demo (BPF LSM file_open)</h4>
+  <h4>安全策略演示 (BPF LSM file_open)</h4>
   <div class="demo-step">
-    <div>Before attach: <span class="demo-result-ok">cat -> "TOP SECRET..."</span></div>
-    <div>During agent: <span class="demo-result-deny">cat -> Operation not permitted</span></div>
-    <div>After rollback: <span class="demo-result-ok">cat -> "TOP SECRET..."</span></div>
+    <div>挂载前: <span class="demo-result-ok">cat -> "TOP SECRET..."</span></div>
+    <div>Agent 运行中: <span class="demo-result-deny">cat -> Operation not permitted</span></div>
+    <div>回滚后: <span class="demo-result-ok">cat -> "TOP SECRET..."</span></div>
   </div>
-  <p style="font-size:0.8em;color:#78909c">Hook: BPF LSM file_open | Target: demo/security_policy_demo/secret.txt</p>
+  <p class="note">钩子: BPF LSM file_open | 目标: demo/security_policy_demo/secret.txt</p>
 </div>
 
 <div class="footer">
-  EulerPilot Release Dashboard &middot; Generated from RUNS=5 candidate results &middot; openEuler 24.03 LTS SP3 + OLK-6.6
+  EulerPilot 发布看板 &middot; 基于 RUNS=5 候选结果生成 &middot; openEuler 24.03 LTS SP3 + OLK-6.6
 </div>
 
 </body>
