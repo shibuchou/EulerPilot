@@ -1,8 +1,12 @@
 #include "eulerpilot.hpp"
 #include "builtin_skills.hpp"
+#include "metrics_exporter.hpp"
+#include "metrics_state.hpp"
 #include "skill_manager.hpp"
 
 #include "color.hpp"
+
+#include <yaml-cpp/yaml.h>
 
 #include <exception>
 #include <iomanip>
@@ -11,6 +15,22 @@
 namespace clr = eulerpilot::color;
 
 namespace {
+
+struct MetricsExporterGuard {
+    bool started = false;
+
+    explicit MetricsExporterGuard(const eulerpilot::RuntimeConfig &config) {
+        if (config.metrics_enabled && !config.metrics_listen.empty()) {
+            started = eulerpilot::metrics_exporter_start(config.metrics_listen);
+        }
+    }
+
+    ~MetricsExporterGuard() {
+        if (started) {
+            eulerpilot::metrics_exporter_stop();
+        }
+    }
+};
 
 std::string bar(std::size_t width = 50) {
     return std::string(width, '-');
@@ -193,12 +213,29 @@ int main(int argc, char **argv) {
             print_banner(config, env);
         }
 
+        {
+            YAML::Node agent_root = YAML::LoadFile(config.config_path);
+            if (agent_root["exporter"] && agent_root["exporter"]["prometheus"]) {
+                auto pm = agent_root["exporter"]["prometheus"];
+                if (pm["enabled"]) config.metrics_enabled = pm["enabled"].as<bool>();
+                if (pm["listen"]) config.metrics_listen = pm["listen"].as<std::string>();
+            }
+        }
+
         eulerpilot::SkillManager manager;
         if (!manager.load_from_yaml(config, registry)) {
             throw std::runtime_error(manager.last_error());
         }
         if (!manager.start_enabled_skills()) {
             throw std::runtime_error(manager.last_error());
+        }
+
+        auto &metrics = eulerpilot::global_metrics_state();
+        for (const auto &snap : manager.snapshots()) {
+            if (snap.skill_name == "resource_control")
+                metrics.skill_resource_control_running.store(snap.running ? 1 : 0);
+            else if (snap.skill_name == "psi_gate")
+                metrics.skill_psi_gate_running.store(snap.running ? 1 : 0);
         }
 
         if (!config.jsonl) {
@@ -217,6 +254,8 @@ int main(int argc, char **argv) {
                       << "  mark name             pid  class        act profile    w:weight reason"
                       << clr::r() << "\n";
         }
+
+        MetricsExporterGuard metrics_guard(config);
 
         auto decisions = eulerpilot::run_cycles(config);
         for (const auto &decision : decisions) {

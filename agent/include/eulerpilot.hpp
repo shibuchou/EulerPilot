@@ -44,6 +44,8 @@ struct RuntimeConfig {
     bool doctor_skills_only = false;
     bool verbose = false;
     bool jsonl = false;
+    bool metrics_enabled = false;
+    std::string metrics_listen = "127.0.0.1:9108";
 };
 
 struct EnvironmentStatus {

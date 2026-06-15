@@ -1,5 +1,6 @@
 #include "eulerpilot.hpp"
 #include "builtin_skills.hpp"
+#include "metrics_state.hpp"
 #include "skill_manager.hpp"
 #include "skill_runtime_context.hpp"
 
@@ -522,6 +523,27 @@ std::vector<WorkloadDecision> run_cycles(const RuntimeConfig &config) {
         skill_context.resource_ops->apply_in_cycle(cycle_decisions, gate_decision);
 
         merged.insert(merged.end(), cycle_decisions.begin(), cycle_decisions.end());
+
+        auto &m = global_metrics_state();
+        m.cycles_total.store(m.cycles_total.load() + 1);
+        m.observed_tasks.store(static_cast<std::uint64_t>(cycle_decisions.size()));
+        m.psi_cpu_avg10.store(cpu_psi_high ? psi.cpu.some.avg10 : 0.0);
+        m.gate_state.store(static_cast<int>(gate_decision.next_state));
+        m.scx_ready.store(skill_context.scx_ready ? 1 : 0);
+
+        std::uint64_t cl = 0, cb = 0, cu = 0, ca = 0;
+        for (const auto &d : cycle_decisions) {
+            if (d.action.applied) ca++;
+            switch (d.klass) {
+            case WorkloadClass::LatencySensitive: cl++; break;
+            case WorkloadClass::BackgroundNoisy: cb++; break;
+            default: cu++; break;
+            }
+        }
+        m.classified_latency.store(cl);
+        m.classified_background.store(cb);
+        m.classified_unknown.store(cu);
+        m.decisions_applied.store(ca);
     }
 
     workload_observer_bpf__destroy(skel);
