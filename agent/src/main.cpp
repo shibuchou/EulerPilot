@@ -164,7 +164,7 @@ void print_summary(const std::vector<eulerpilot::WorkloadDecision> &decisions) {
               << "  L=" << clr::green_() << latency << clr::r()
               << "  T=" << clr::yellow_() << batch << clr::r()
               << "  B=" << clr::red_() << noisy << clr::r()
-              << "  u=" << clr::dim_() << unknown << clr::r()
+              << "  U=" << clr::dim_() << unknown << clr::r()
               << "\n\n";
 }
 
@@ -259,6 +259,11 @@ int main(int argc, char **argv) {
 
         auto decisions = eulerpilot::run_cycles(config);
         for (const auto &decision : decisions) {
+            if (!config.verbose && !config.jsonl &&
+                decision.klass == eulerpilot::WorkloadClass::Unknown &&
+                !decision.gate_relevant) {
+                continue;
+            }
             print_decision(decision, config.verbose, config.jsonl);
         }
 

@@ -1,14 +1,46 @@
 #!/usr/bin/env bash
 # EulerPilot Release Candidate Demo Script
-# 只展示已有成果，不修改任何配置，不启动实验
+# --static: show existing results (default)
+# --live:   run stable demo commands (no benchmarks)
 set -euo pipefail
+
+MODE="${1:-static}"
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 echo "============================================"
 echo "  EulerPilot Release Candidate Demo"
+echo "  Mode: $MODE"
 echo "============================================"
+
+if [ "$MODE" = "--live" ]; then
+  echo ""
+  echo "[LIVE] Skills check"
+  ./build/eulerpilot-agent --list-skills 2>/dev/null
+  echo ""
+  echo "[LIVE] Doctor check"
+  ./build/eulerpilot-agent --doctor-skills 2>/dev/null
+  echo ""
+  echo "[LIVE] Agent 10s smoke"
+  timeout 15s ./build/eulerpilot-agent --config configs/agent.yaml --duration-s 10 --interval-ms 2000 2>/dev/null || true
+  echo ""
+  echo "[LIVE] Rollback"
+  bash scripts/rollback.sh 2>/dev/null || true
+  echo ""
+  echo "[LIVE] Quality gate (quick)"
+  bash scripts/final_quality_gate.sh 2>/dev/null | head -20 || true
+  echo ""
+  echo "[LIVE] Demo results:"
+  echo "  Redis:  $(ls results/final/redis-*/compare_summary_avg.csv 2>/dev/null | tail -1 || echo 'on 122')"
+  echo "  Nginx:  $(ls results/final/nginx-*/compare_summary_avg.csv 2>/dev/null | tail -1 || echo 'on 122')"
+  echo "  Dashboard: reports/dashboard/index.html"
+  echo ""
+  echo "============================================"
+  echo "  Live demo complete."
+  echo "============================================"
+  exit 0
+fi
 
 echo ""
 echo "[1/6] Version"

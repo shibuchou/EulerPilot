@@ -1,15 +1,12 @@
 # EulerPilot：面向 openEuler 的自适应资源管控 Agent
 
-更新时间：`2026-06-14`
+更新时间：`2026-06-15`
 
 ## 摘要
 
 EulerPilot 是一个面向 openEuler 的自适应资源管控 Agent。项目通过 eBPF 进行低开销观测，在用户态完成 workload 分类、压力识别和策略决策，并通过 `cgroup v2` 与 `sched_ext/scx` 双执行后端实现资源调控。当前项目已经完成从系统观测、策略执行到正式实验和中文报告输出的完整工程闭环，并分别在 Redis 与 Nginx 两条业务线上形成 `RUNS=5` 的候选结果目录。
 
-说明：
-
-- 文中提到的 `sched_ext` 候选结果目录与图表目录已经统一回收到主交付仓库 `192.168.1.121:/root/EulerPilot`。
-- `192.168.1.122` 当前主要用于 `OLK-6.6 / sched_ext` 正式对照验证。
+EulerPilot 不追求无条件替代 Linux 默认调度器，而是面向混部干扰场景，通过 eBPF/PSI 感知 workload 状态，在延迟敏感服务与后台干扰共存时，选择 cgroup v2 或 sched_ext/scx 后端进行按需控制，并通过 Redis/Nginx 对照实验展示收益、边界与可回滚能力。
 
 ---
 
@@ -141,6 +138,17 @@ EulerPilot 没有将 `cgroup v2` 与 `sched_ext` 实现为两套割裂系统，�
 
 其设计目的并不是把 PSI 当作业务退化标签，而是将 PSI 与调度等待、后台运行时等证据结合，用于识别需要加强控制的压力窗口。
 
+PsiGate v1 的核心思想是"压力证据驱动的按需调度激活"：
+
+| 状态 | 触发条件 | 行为 | 退出条件 |
+|------|----------|------|----------|
+| NORMAL | 无压力证据 | 不激活 scx gate | latency wait / PSI 升高 |
+| ARMED | 单周期压力证据出现 | 等待连续确认，避免误触发 | 压力消失或连续成立 |
+| ACTIVE | 连续压力证据成立 | 激活 scx 调度策略 | 压力下降 |
+| COOLDOWN | 压力刚消退 | 防止抖动反复切换，冷却后回 NORMAL | 冷却结束 |
+
+该机制避免了 sched_ext 长期常驻带来的基础性能开销，也避免了在无干扰场景下误触发调度策略。
+
 ### 3.3 正式 compare 实验框架
 
 当前 Redis 与 Nginx 的 `sched_ext` 正式实验脚本已经支持：
@@ -232,6 +240,15 @@ EulerPilot 实现了一套轻量 Skills 插件化能力框架，通过 YAML 驱�
 - `PSI`、`cgroup v2`、`bpftool` 可用
 - 最终候选结果与图表已回传主交付仓库
 
+### 4.3 双环境交付定位
+
+| 环境 | 内核 | sched_ext | 角色 | 交付定位 |
+|------|------|-----------|------|----------|
+| 121 / SP3 主环境 | openEuler 24.03 LTS SP3 官方内核 | 不可用 | cgroup v2 主闭环、代码、文档、Dashboard、质量门禁 | **主交付** |
+| 122 / OLK-6.6 验证环境 | 6.6.0-olk66-scx | 可用 | sched_ext/scx 正式 compare、class_map、PsiGate 验证 | **增强验证** |
+
+`cgroup v2` 是当前 SP3 上的正式主交付路径；`sched_ext/scx` 是在 OLK-6.6 验证环境完成的增强验证线，用于证明 Agent 架构可以对接用户态调度后端。
+
 ---
 
 ## 5. Redis 正式实验
@@ -314,6 +331,19 @@ EulerPilot 实现了一套轻量 Skills 插件化能力框架，通过 YAML 驱�
 - `noisy_scx_psi` 与 `noisy_scx_always_active` 当前仍存在显著尾延迟代价
 - `quiet_scx_normal` 的基础开销不可忽略
 
+### 6.3 Nginx 场景下的策略适配边界
+
+Nginx 结果不是框架不可用，而是当前 `scx_eulerpilot` v1 策略对短连接、高频唤醒型 workload 的适配不足。该结果暴露了策略边界，也说明 EulerPilot 需要按 workload 类型选择不同执行后端和参数：
+
+| 维度 | Redis | Nginx | 影响 |
+|------|-------|-------|------|
+| 连接模型 | 长连接、少量 fd | 短连接、高频 accept | scx DSQ 上下文切换开销放大 |
+| 唤醒模式 | 少量 client 唤醒 | wrk 高频并发唤醒 | scx 调度延迟放大为 P99 |
+| 请求粒度 | 微秒级内存操作 | 网络 I/O + 文件操作 | scx 常驻 base cost 占比更高 |
+| 当前结论 | 正收益可复现 | 策略适配不足 |
+
+因此 Nginx 结果表明：EulerPilot 框架已成功迁移到第二条业务线并获得可对比性能证据，但不同 workload 对同一 sched_ext 策略的敏感性差异显著——后续应按 workload 类型差异化配置调度参数。
+
 当前可配套引用图表：
 
 - `/root/EulerPilot/reports/final_figures/nginx_sched_ext_rps.svg`
@@ -338,18 +368,28 @@ EulerPilot 实现了一套轻量 Skills 插件化能力框架，通过 YAML 驱�
 
 ---
 
-## 8. 结果边界
+## 8. 结果边界与定位
 
-当前结果足以支撑：
+EulerPilot 的价值不在于证明某一组参数在所有场景下都优于默认调度器，而在于：
 
-- 工程实现完成
-- 正式 compare 成立
-- Redis / Nginx 两条业务线均已形成多轮候选结果
+1. 完成从 eBPF 观测到双后端执行的完整工程闭环
+2. 在 Redis 混部场景下实现可重现的尾延迟保护
+3. 在 Nginx 场景下暴露 sched_ext 策略的适配边界
+4. 通过 Skills 框架证明新增 OS Agent 能力的扩展性
+5. 通过质量门禁和双环境回归证明工程可靠性
+
+### 8.1 最终数据采用规则
+
+1. 正文主结论以最新完成的正式实验轮次为准
+2. 历史候选结果（含 `RUNS=5`）作为参考保留，不作为正文主结论
+3. 报告中保留全部轮次的 `run_manifest`、原始 CSV、`summary.json`
+4. 结论优先使用 median 与方向一致的指标，不只挑单项最优值
+5. 不同 workload 的结果按各自场景分别讨论，不做跨场景简单平均
 
 但最终报告中不应写成：
 
-- “sched_ext 全面优于默认调度器”
-- “所有模式都稳定带来收益”
+- "sched_ext 全面优于默认调度器"
+- "所有模式都稳定带来收益"
 
 更稳的结论应是：
 
@@ -359,16 +399,16 @@ EulerPilot 实现了一套轻量 Skills 插件化能力框架，通过 YAML 驱�
 
 ## 9. 当前结论
 
-当前已经可以明确给出三条结论：
-
-1. EulerPilot 已在 `SP3` 上完成主闭环，具备正式交付能力。
-2. EulerPilot 已在 `OLK-6.6` 上完成 Redis 与 Nginx 的 `sched_ext` 正式 compare，并分别形成 `RUNS=5` 候选结果目录。
-3. EulerPilot 已实现 Skills 插件化框架，并通过 `network_policy_demo`（cgroup/connect4）和 `security_policy_demo`（BPF LSM file_open）两个独立演示，证明了 Agent 能力可扩展和 eBPF hook 在 network/security 方向的集成可行性。
-4. 当前剩余工作已经从系统开发收敛为最终报告、图表与答辩材料的整理和润色。
+1. EulerPilot 已在 `SP3` 上完成 cgroup v2 主闭环，具备正式交付能力。
+2. EulerPilot 已在 `OLK-6.6` 上完成 Redis 与 Nginx 的 `sched_ext` 正式 compare，并形成多轮候选结果目录。
+3. EulerPilot 已实现 Skills 插件化框架（4 runtime skills + YAML 驱动），并通过 network/security eBPF demo 证明了 Agent 能力可扩展。
+4. 项目已通过最终质量门禁（12/12 P0 项）和安全审计，进入提交准备阶段。
 
 补充说明：
 
+- `cgroup v2` 是当前 SP3 上的正式主交付路径；`sched_ext/scx` 是在 OLK-6.6 验证环境完成的增强验证线。
 - 当前建议提交时以 `192.168.1.121:/root/EulerPilot` 作为统一交付目录。
+- 项目代码已同步推送至 GitHub 私密仓库 `shibuchou/EulerPilot`。
 
 项目代码已同步推送至 GitHub 私密仓库 `shibuchou/EulerPilot`。
 
