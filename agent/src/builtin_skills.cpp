@@ -10,6 +10,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <fcntl.h>
+#include <iostream>
 #include <fstream>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -446,6 +447,14 @@ public:
     }
 
     void stop() override {
+        try {
+            rollback();
+        } catch (const std::exception &ex) {
+            std::cerr << "[network_policy_demo] stop cleanup failed: "
+                      << ex.what() << "\n";
+        } catch (...) {
+            std::cerr << "[network_policy_demo] stop cleanup failed: unknown\n";
+        }
         running_ = false;
         state_ = "stopped";
     }

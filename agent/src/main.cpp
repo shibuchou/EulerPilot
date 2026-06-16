@@ -171,6 +171,7 @@ void print_summary(const std::vector<eulerpilot::WorkloadDecision> &decisions) {
 } // anonymous namespace
 
 int main(int argc, char **argv) {
+    eulerpilot::SkillManager manager;
     try {
         auto config = eulerpilot::parse_args(argc, argv);
         auto env = eulerpilot::detect_environment();
@@ -222,7 +223,6 @@ int main(int argc, char **argv) {
             }
         }
 
-        eulerpilot::SkillManager manager;
         if (!manager.load_from_yaml(config, registry)) {
             throw std::runtime_error(manager.last_error());
         }
@@ -274,6 +274,11 @@ int main(int argc, char **argv) {
         return 0;
     } catch (const std::exception &ex) {
         std::cerr << clr::red_() << "EulerPilot error: " << ex.what() << clr::r() << "\n";
+        try {
+            manager.stop_all();
+        } catch (...) {
+            // cleanup failure must not hide original error
+        }
         return 1;
     }
 }

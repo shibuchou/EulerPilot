@@ -48,7 +48,8 @@ EulerPilot 的答案是：**eBPF 观测 → 用户态分类 → 分层决策 →
 # 2. 编译
 make agent
 
-# 3. 运行（默认 dry-run 模式，观察系统进程）
+# 3. 运行（默认 gate_mode=always-active，dry-run 模式）
+# PsiGate 状态机需显式启用：export EULERPILOT_GATE_MODE=psi
 ./build/eulerpilot-agent --config configs/agent.yaml
 ```
 
