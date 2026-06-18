@@ -235,9 +235,10 @@ SkillManager::stop_all()
 阶段 A 结束时至少应满足：
 
 - 设计文档存在并与 `docs/skills_yaml_plan.md` 不冲突。
-- `--doctor-skills` 能输出公共能力探测摘要。
-- `--status --json` 能展示 Skill 状态和 target 解析摘要，若代码尚未实现则必须在下一阶段第一项实现。
-- `reports/final_quality_gate_20260618_stage_a.log` 作为当前基线门禁证据。
+- `--doctor-skills` 能输出公共能力探测摘要。已完成，见 `reports/final_quality_gate_20260618_control_plane.log`。
+- `CapabilityDetector` 已接入 doctor；`TargetResolver / AuditBus / ActionJournal` 已提供可编译最小接口，后续正式 Skill 接入时继续扩展。
+- `--status --json` 尚未实现，保留为下一阶段 CLI 增强项。
+- `reports/final_quality_gate_20260618_stage_a.log` 和 `reports/final_quality_gate_20260618_control_plane.log` 作为当前基线门禁证据。
 
 ## 9. 下一步实现顺序
 

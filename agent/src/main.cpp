@@ -1,5 +1,6 @@
 #include "eulerpilot.hpp"
 #include "builtin_skills.hpp"
+#include "capability_detector.hpp"
 #include "metrics_exporter.hpp"
 #include "metrics_state.hpp"
 #include "skill_manager.hpp"
@@ -191,7 +192,19 @@ int main(int argc, char **argv) {
                 std::cerr << "EulerPilot error: " << manager.last_error() << "\n";
                 return 1;
             }
+            auto capabilities = eulerpilot::detect_capabilities();
             int exit_code = manager.doctor_enabled_skills();
+            std::cout << "\n" << clr::cyan_() << clr::b() << "  Capability Detector" << clr::r() << "\n"
+                      << clr::dim_() << "  " << bar() << clr::r() << "\n";
+            for (const auto &probe : capabilities.probes) {
+                const char *pc = probe.second.available ? clr::green_() : clr::yellow_();
+                const char *pi = probe.second.available ? "+" : "!";
+                std::cout << "  " << pc << pi << clr::r() << " "
+                          << clr::b() << std::left << std::setw(18) << probe.first << clr::r()
+                          << " " << (probe.second.available ? "available" : "missing")
+                          << " " << clr::dim_() << probe.second.evidence << clr::r() << "\n";
+            }
+            std::cout << clr::dim_() << "  " << bar() << clr::r() << "\n";
             std::cout << "\n" << clr::cyan_() << clr::b() << "  Skills Doctor" << clr::r() << "\n"
                       << clr::dim_() << "  " << bar() << clr::r() << "\n";
             for (const auto &snapshot : manager.snapshots()) {

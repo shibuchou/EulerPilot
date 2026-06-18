@@ -13,11 +13,12 @@
 
 - 已有 `Skill / SkillRegistry / SkillManager / builtin_skills` 基础闭环。
 - 已有 `resource_control / psi_gate / network_policy_demo / security_policy_demo` 进入统一 Agent 管理。
-- 下一步按 `docs/next_phase_plan_v2_1.md` 增加公共控制面：
-  - `TargetResolver`
-  - `AuditBus`
-  - `ActionJournal`
-  - `CapabilityDetector`
+- 已新增公共控制面最小代码：
+  - `CapabilityDetector`：已接入 `--doctor-skills`。
+  - `TargetResolver`：已提供 PID/cgroup/netdev 最小解析接口。
+  - `AuditBus`：已提供统一 JSONL 事件写入接口。
+  - `ActionJournal`：已提供动作日志追加接口。
+- 下一步按 `docs/next_phase_plan_v2_1.md` 把 Network/Security/Resource 正式 Skill 接入这些公共模块。
 
 ## 维护规则
 
