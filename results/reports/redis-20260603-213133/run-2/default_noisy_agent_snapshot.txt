@@ -1,0 +1,41 @@
+EulerPilot Agent starting
+  config: /root/EulerPilot/configs/agent.yaml
+  interval_ms: 1000
+  duration_s: 2
+  warmup_cycles: 0
+  mode: dry-run
+  preferred_backend: cgroup_v2
+  env.psi: enabled
+  env.cgroup_v2: mounted
+  env.sched_ext: not-available
+[Analyzer] in:imjournal pid=1445 class=UNKNOWN latency_score=0.231816 batch_score=0 interference_score=0.0063632 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] NetworkManager pid=1043 class=UNKNOWN latency_score=0.215509 batch_score=0 interference_score=0.0031018 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] redis-server pid=31128 class=LATENCY_SENSITIVE latency_score=0.85 batch_score=1 interference_score=0.0045656 profile=latency_profile executor=cgroup_v2 group=latency action_profile=latency_profile cpu_weight=1000 cpuset=0-1 applied=no reason=dry-run
+[Analyzer] tuned pid=1379 class=UNKNOWN latency_score=0.217818 batch_score=0 interference_score=0.0035636 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] tokio-runtime-w pid=2212 class=UNKNOWN latency_score=0.221132 batch_score=0 interference_score=0.0042264 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] tuned pid=1065 class=UNKNOWN latency_score=0.209214 batch_score=0 interference_score=0.0018428 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] khugepaged pid=84 class=UNKNOWN latency_score=0.216594 batch_score=0.4 interference_score=0.504978 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] tokio-runtime-w pid=2212 class=UNKNOWN latency_score=0.206919 batch_score=1 interference_score=0.252076 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] sqlx-sqlite-wor pid=29816 class=UNKNOWN latency_score=0.211009 batch_score=1 interference_score=0.0022018 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] iou-wrk-3004 pid=3055 class=LATENCY_SENSITIVE latency_score=0.85 batch_score=0 interference_score=0.0015146 profile=latency_profile executor=cgroup_v2 group=latency action_profile=latency_profile cpu_weight=1000 cpuset=0-1 applied=no reason=dry-run
+[Analyzer] tuned pid=1065 class=UNKNOWN latency_score=0.217932 batch_score=0 interference_score=0.0035864 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] tuned pid=1379 class=UNKNOWN latency_score=0.211272 batch_score=0 interference_score=0.0022544 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] sqlx-sqlite-wor pid=29674 class=UNKNOWN latency_score=0.20614 batch_score=1 interference_score=0.751842 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] tokio-runtime-w pid=30646 class=UNKNOWN latency_score=0.213389 batch_score=0 interference_score=0.254017 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] codex pid=2902 class=UNKNOWN latency_score=0.208994 batch_score=0.5 interference_score=0.502698 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] iou-wrk-2201 pid=2203 class=LATENCY_SENSITIVE latency_score=0.85 batch_score=0 interference_score=0.005329 profile=latency_profile executor=cgroup_v2 group=latency action_profile=latency_profile cpu_weight=1000 cpuset=0-1 applied=no reason=dry-run
+[Analyzer] tokio-runtime-w pid=2205 class=UNKNOWN latency_score=0.204512 batch_score=1 interference_score=0.000902446 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] auditd pid=958 class=UNKNOWN latency_score=0.216341 batch_score=0 interference_score=0.0032682 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] tokio-runtime-w pid=31185 class=UNKNOWN latency_score=0.209555 batch_score=1 interference_score=0.252867 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] tokio-runtime-w pid=2211 class=UNKNOWN latency_score=0.212233 batch_score=1 interference_score=0.25367 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] NetworkManager pid=1043 class=UNKNOWN latency_score=0.216163 batch_score=0 interference_score=0.0032326 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] stress-ng-cpu pid=31195 class=BACKGROUND_NOISY latency_score=0 batch_score=0.5 interference_score=0.8 profile=mixed_profile executor=cgroup_v2 group=background action_profile=mixed_profile cpu_weight=5 cpuset=4-7 applied=no reason=dry-run
+[Analyzer] sqlx-sqlite-wor pid=29693 class=UNKNOWN latency_score=0.225607 batch_score=1 interference_score=0.00512131 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] irqbalance pid=995 class=UNKNOWN latency_score=0.231807 batch_score=0 interference_score=0.0063614 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] in:imjournal pid=1445 class=UNKNOWN latency_score=0.221289 batch_score=0 interference_score=0.0042578 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] sshd pid=2782 class=UNKNOWN latency_score=0.248002 batch_score=0.3 interference_score=0.514401 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] tokio-runtime-w pid=2903 class=UNKNOWN latency_score=0.212412 batch_score=0.3 interference_score=0.753723 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] tokio-runtime-w pid=31181 class=UNKNOWN latency_score=0.235995 batch_score=0.4 interference_score=0.510799 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] jbd2/dm-0-8 pid=665 class=UNKNOWN latency_score=0.216241 batch_score=0.7 interference_score=0.00324814 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] redis-server pid=31128 class=LATENCY_SENSITIVE latency_score=0.85 batch_score=1 interference_score=0.00397942 profile=latency_profile executor=cgroup_v2 group=latency action_profile=latency_profile cpu_weight=1000 cpuset=0-1 applied=no reason=dry-run
+EulerPilot Agent run finished. Next step is to improve workload targeting and metrics export.

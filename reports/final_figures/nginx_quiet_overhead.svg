@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="420">
+<style>text{font-family:Arial,Helvetica,sans-serif;font-size:12px;fill:#222}.title{font-size:18px;font-weight:bold}</style>
+<text class="title" x="550.0" y="28" text-anchor="middle">Nginx quiet 开销消融</text>
+<line x1="80" y1="340" x2="1070" y2="340" stroke="#444"/>
+<line x1="80" y1="50" x2="80" y2="340" stroke="#444"/>
+<text x="20" y="70" transform="rotate(-90,20,70)">Requests/sec</text>
+<text x="575.0" y="364" text-anchor="middle">Nginx</text>
+<rect x="327.5" y="60.0" width="247.5" height="280.0" fill="#1f77b4"/>
+<text x="449.6" y="56.0" text-anchor="middle">29707.96</text>
+<rect x="657.5" y="212.4" width="247.5" height="127.6" fill="#ff7f0e"/>
+<text x="779.6" y="208.4" text-anchor="middle">13533.46</text>
+<rect x="890" y="44" width="12" height="12" fill="#1f77b4"/>
+<text x="908" y="54">quiet_default</text>
+<rect x="890" y="62" width="12" height="12" fill="#ff7f0e"/>
+<text x="908" y="72">quiet_scx_normal</text>
+</svg>

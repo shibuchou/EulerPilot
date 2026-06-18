@@ -1,0 +1,27 @@
+EulerPilot Agent starting
+  config: /root/EulerPilot/configs/agent.yaml
+  interval_ms: 1000
+  duration_s: 2
+  warmup_cycles: 0
+  mode: dry-run
+  preferred_backend: cgroup_v2
+  env.psi: enabled
+  env.cgroup_v2: mounted
+  env.sched_ext: not-available
+[Analyzer] in:imjournal pid=1445 class=UNKNOWN latency_score=0.226 batch_score=0 interference_score=0.0052 cpu_psi_high=no latency_wait_high=no background_runtime_high=no profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] tokio-runtime-w pid=2207 class=UNKNOWN latency_score=0.219285 batch_score=0 interference_score=0.003857 cpu_psi_high=no latency_wait_high=no background_runtime_high=no profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] redis-server pid=34129 class=LATENCY_SENSITIVE latency_score=0.85 batch_score=1 interference_score=0.00433002 cpu_psi_high=no latency_wait_high=no background_runtime_high=no profile=latency_profile executor=cgroup_v2 group=latency action_profile=latency_profile cpu_weight=1000 cpuset=0-1 applied=no reason=dry-run
+[Analyzer] NetworkManager pid=1043 class=UNKNOWN latency_score=0.229388 batch_score=0 interference_score=0.0058775 cpu_psi_high=no latency_wait_high=no background_runtime_high=no profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] tuned pid=1065 class=UNKNOWN latency_score=0.261976 batch_score=0 interference_score=0.0123952 cpu_psi_high=no latency_wait_high=no background_runtime_high=no profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] tuned pid=1379 class=UNKNOWN latency_score=0.213858 batch_score=0 interference_score=0.0027716 cpu_psi_high=no latency_wait_high=no background_runtime_high=no profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] tuned pid=1065 class=UNKNOWN latency_score=0.228158 batch_score=0 interference_score=0.0056316 cpu_psi_high=no latency_wait_high=no background_runtime_high=no profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] irqbalance pid=995 class=UNKNOWN latency_score=0.217407 batch_score=0 interference_score=0.0034814 cpu_psi_high=no latency_wait_high=no background_runtime_high=no profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] tokio-runtime-w pid=2209 class=UNKNOWN latency_score=0.215039 batch_score=0.7 interference_score=0.00300786 cpu_psi_high=no latency_wait_high=no background_runtime_high=no profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] sqlx-sqlite-wor pid=33602 class=UNKNOWN latency_score=0.211942 batch_score=0.9 interference_score=0.00238836 cpu_psi_high=no latency_wait_high=no background_runtime_high=no profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] redis-server pid=34129 class=LATENCY_SENSITIVE latency_score=0.85 batch_score=1 interference_score=0.00369688 cpu_psi_high=no latency_wait_high=no background_runtime_high=no profile=latency_profile executor=cgroup_v2 group=latency action_profile=latency_profile cpu_weight=1000 cpuset=0-1 applied=no reason=dry-run
+[Analyzer] auditd pid=958 class=UNKNOWN latency_score=0.217979 batch_score=0 interference_score=0.0035958 cpu_psi_high=no latency_wait_high=no background_runtime_high=no profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] tuned pid=1379 class=UNKNOWN latency_score=0.218612 batch_score=0 interference_score=0.0037224 cpu_psi_high=no latency_wait_high=no background_runtime_high=no profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] tokio-runtime-w pid=2207 class=UNKNOWN latency_score=0.213497 batch_score=0.9 interference_score=0.00269944 cpu_psi_high=no latency_wait_high=no background_runtime_high=no profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] jbd2/dm-0-8 pid=665 class=UNKNOWN latency_score=0.224619 batch_score=0 interference_score=0.0049238 cpu_psi_high=no latency_wait_high=no background_runtime_high=no profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] in:imjournal pid=1445 class=UNKNOWN latency_score=0.222819 batch_score=0 interference_score=0.0045638 cpu_psi_high=no latency_wait_high=no background_runtime_high=no profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+EulerPilot Agent run finished. Next step is to improve workload targeting and metrics export.

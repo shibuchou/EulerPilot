@@ -1,0 +1,1 @@
+noisy_scx_psi quiet_default quiet_scx_normal noisy_default noisy_cgroup_v2 noisy_scx_normal noisy_scx_always_active

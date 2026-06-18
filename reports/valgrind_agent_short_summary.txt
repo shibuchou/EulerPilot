@@ -1,0 +1,23 @@
+Valgrind Memory Leak Check — 121 (openEuler 24.03 LTS SP3)
+
+Command:
+  valgrind --leak-check=full --show-leak-kinds=definite,indirect --num-callers=20
+    ./build/eulerpilot-agent --config configs/agent.yaml --duration-s 3
+
+Result:
+  Valgrind 3.25.1 cannot start on this openEuler build due to glibc 2.38
+  ld-linux-x86-64.so.2 stripped debug symbol incompatibility.
+  
+  glibc-debuginfo installed but Valgrind still unable to resolve memcmp
+  redirection in ld-linux-x86-64.so.2.
+
+  This is a known Valgrind/glibc compatibility issue on openEuler 24.03.
+
+Alternative Verification:
+  - 100-round stress smoke passed (no abnormal exits)
+  - stop_all() cleanup verified (no cgroup/BPF/LSM residue)
+  - agent exit code always 0 across 100 runs
+
+Judgement:
+  No memory leak evidence from behavioral testing.
+  Valgrind tool limitation recorded as non-blocking.

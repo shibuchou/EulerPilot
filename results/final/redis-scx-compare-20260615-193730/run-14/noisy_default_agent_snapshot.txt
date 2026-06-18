@@ -1,0 +1,36 @@
+
+  * EulerPilot Agent 
+  --------------------------------------------------
+  config:     /root/EulerPilot/configs/agent.yaml
+  interval:   1000ms  duration:   2s  warmup: 0
+  mode:       dry-run  backend:    cgroup_v2
+  gate:       always-active
+  env:         psi:ok  cg:ok  scx:ok
+  --------------------------------------------------
+
+  --- legend ---
+  mark: . UNKNOWN  L LATENCY_SENSITIVE  B BACKGROUND_NOISY  T THROUGHPUT_BATCH
+  act:  + applied  ~ managed  - none
+  --- observing ---
+  mark name             pid  class        act profile    w:weight reason
+  B stress-ng-cpu      77647 BACKGROUND_NOISY |~ normal_profile w:100 no-group-for-class
+  . tuned               1240 UNKNOWN      |- normal_profile w:100 non-target-process
+  . in:imjournal        1577 UNKNOWN      |- normal_profile w:100 non-target-process
+  . tuned               1536 UNKNOWN      |- normal_profile w:100 non-target-process
+  . NetworkManager      1211 UNKNOWN      |- normal_profile w:100 non-target-process
+  T redis-benchmark    77651 THROUGHPUT_BATCH |- normal_profile w:100 non-target-process
+  L redis-server       73333 LATENCY_SENSITIVE |~ normal_profile w:100 no-group-for-class
+  B stress-ng-cpu      77648 BACKGROUND_NOISY |~ normal_profile w:100 no-group-for-class
+  B stress-ng-cpu      77647 BACKGROUND_NOISY |~ normal_profile w:100 no-group-for-class
+  . tuned               1240 UNKNOWN      |- normal_profile w:100 non-target-process
+  . in:imjournal        1577 UNKNOWN      |- normal_profile w:100 non-target-process
+  . tuned               1536 UNKNOWN      |- normal_profile w:100 non-target-process
+  . irqbalance          1176 UNKNOWN      |- normal_profile w:100 non-target-process
+  . NetworkManager      1211 UNKNOWN      |- normal_profile w:100 non-target-process
+  . gmain               1220 UNKNOWN      |- normal_profile w:100 non-target-process
+  T redis-benchmark    77651 THROUGHPUT_BATCH |- normal_profile w:100 non-target-process
+  L redis-server       73333 LATENCY_SENSITIVE |~ normal_profile w:100 no-group-for-class
+  B stress-ng-cpu      77648 BACKGROUND_NOISY |~ normal_profile w:100 no-group-for-class
+  --------------------------------------------------
+  DONE  total=18  applied=0  L=2  T=2  B=4  u=10
+

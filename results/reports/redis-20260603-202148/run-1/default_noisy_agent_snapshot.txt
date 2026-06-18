@@ -1,0 +1,19 @@
+EulerPilot Agent starting
+  config: /root/EulerPilot/configs/agent.yaml
+  interval_ms: 1000
+  mode: dry-run
+  preferred_backend: cgroup_v2
+  env.psi: enabled
+  env.cgroup_v2: mounted
+  env.sched_ext: not-available
+[Analyzer] tuned pid=1065 class=UNKNOWN latency_score=0.212653 batch_score=0 interference_score=0.0025306 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 applied=no reason=no-group-for-class
+[Analyzer] tokio-runtime-w pid=2206 class=UNKNOWN latency_score=0.243545 batch_score=1 interference_score=0.008709 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 applied=no reason=no-group-for-class
+[Analyzer] in:imjournal pid=1445 class=UNKNOWN latency_score=0.221263 batch_score=0 interference_score=0.0042526 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 applied=no reason=no-group-for-class
+[Analyzer] iou-wrk-2996 pid=3056 class=LATENCY_SENSITIVE latency_score=0.85 batch_score=0 interference_score=0.00372 profile=latency_profile executor=cgroup_v2 group=latency action_profile=latency_profile cpu_weight=1000 applied=no reason=dry-run
+[Analyzer] sqlx-sqlite-wor pid=9657 class=MIXED_SERVICE latency_score=1 batch_score=1 interference_score=0.508413 profile=mixed_profile executor=cgroup_v2 group=background action_profile=mixed_profile cpu_weight=20 applied=no reason=dry-run
+[Analyzer] stress-ng-cpu pid=24142 class=BACKGROUND_NOISY latency_score=0 batch_score=0.6 interference_score=0.8 profile=mixed_profile executor=cgroup_v2 group=background action_profile=mixed_profile cpu_weight=20 applied=no reason=dry-run
+[Analyzer] NetworkManager pid=1043 class=UNKNOWN latency_score=0.218382 batch_score=0 interference_score=0.0036764 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 applied=no reason=no-group-for-class
+[Analyzer] redis-server pid=24126 class=LATENCY_SENSITIVE latency_score=0.85 batch_score=1 interference_score=0.00315932 profile=latency_profile executor=cgroup_v2 group=latency action_profile=latency_profile cpu_weight=1000 applied=no reason=dry-run
+[Analyzer] tuned pid=1379 class=UNKNOWN latency_score=0.220707 batch_score=0 interference_score=0.0041414 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 applied=no reason=no-group-for-class
+[Analyzer] tokio-runtime-w pid=2212 class=UNKNOWN latency_score=0.2208 batch_score=0.7 interference_score=0.25624 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 applied=no reason=no-group-for-class
+EulerPilot Agent run finished. Next step is to improve workload targeting and metrics export.

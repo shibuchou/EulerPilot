@@ -1,0 +1,15 @@
+EulerPilot Agent starting
+  config: /root/EulerPilot/configs/agent.yaml
+  interval_ms: 1000
+  mode: dry-run
+  preferred_backend: cgroup_v2
+  env.psi: enabled
+  env.cgroup_v2: mounted
+  env.sched_ext: not-available
+[Analyzer] NetworkManager pid=1043 class=UNKNOWN latency_score=0.222077 batch_score=0 interference_score=0.0044154 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 applied=no reason=no-group-for-class
+[Analyzer] tuned pid=1065 class=UNKNOWN latency_score=0.228889 batch_score=0 interference_score=0.0057778 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 applied=no reason=no-group-for-class
+[Analyzer] redis-server pid=10890 class=LATENCY_SENSITIVE latency_score=0.85 batch_score=1 interference_score=0.00399754 profile=latency_profile executor=cgroup_v2 group=latency action_profile=latency_profile cpu_weight=1000 applied=no reason=dry-run
+[Analyzer] tuned pid=1379 class=UNKNOWN latency_score=0.212311 batch_score=0 interference_score=0.253693 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 applied=no reason=no-group-for-class
+[Analyzer] in:imjournal pid=1445 class=UNKNOWN latency_score=0.231503 batch_score=0 interference_score=0.0063006 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 applied=no reason=no-group-for-class
+[Analyzer] stress-ng-cpu pid=10906 class=BACKGROUND_NOISY latency_score=0 batch_score=0 interference_score=0.8 profile=mixed_profile executor=cgroup_v2 group=background action_profile=mixed_profile cpu_weight=20 applied=no reason=dry-run
+EulerPilot Agent run finished. Next step is to improve workload targeting and metrics export.

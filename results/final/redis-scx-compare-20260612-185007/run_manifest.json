@@ -1,0 +1,53 @@
+{
+  "run_id": "redis-scx-compare-20260612-185007",
+  "timestamp": "2026-06-12T18:52:38+08:00",
+  "host": "cernet2.net",
+  "kernel_release": "6.6.0-olk66-scx",
+  "runs": 1,
+  "redis_port": "6386",
+  "bench_clients": "8",
+  "bench_requests": "10000",
+  "stress_workers": "2",
+  "sched_ext_switch_mode": "full",
+  "labels": [
+    "quiet_default",
+    "quiet_scx_normal",
+    "noisy_default",
+    "noisy_cgroup_v2",
+    "noisy_scx_normal",
+    "noisy_scx_always_active",
+    "noisy_scx_psi"
+  ],
+  "label_titles": {
+    "quiet_default": "仅 Redis，默认调度器",
+    "quiet_scx_normal": "仅 Redis，sched_ext 常驻但保持 normal",
+    "noisy_default": "Redis + stress-ng，默认调度器",
+    "noisy_cgroup_v2": "Redis + stress-ng，cgroup v2 控制",
+    "noisy_scx_normal": "Redis + stress-ng，sched_ext normal",
+    "noisy_scx_always_active": "Redis + stress-ng，sched_ext always-active",
+    "noisy_scx_psi": "Redis + stress-ng，sched_ext psi"
+  },
+  "summary_paths": {
+    "quiet_default": [
+      "/root/EulerPilot/results/final/redis-scx-compare-20260612-185007/run-1/quiet_default_summary.csv"
+    ],
+    "quiet_scx_normal": [
+      "/root/EulerPilot/results/final/redis-scx-compare-20260612-185007/run-1/quiet_scx_normal_summary.csv"
+    ],
+    "noisy_default": [
+      "/root/EulerPilot/results/final/redis-scx-compare-20260612-185007/run-1/noisy_default_summary.csv"
+    ],
+    "noisy_cgroup_v2": [
+      "/root/EulerPilot/results/final/redis-scx-compare-20260612-185007/run-1/noisy_cgroup_v2_summary.csv"
+    ],
+    "noisy_scx_normal": [
+      "/root/EulerPilot/results/final/redis-scx-compare-20260612-185007/run-1/noisy_scx_normal_summary.csv"
+    ],
+    "noisy_scx_always_active": [
+      "/root/EulerPilot/results/final/redis-scx-compare-20260612-185007/run-1/noisy_scx_always_active_summary.csv"
+    ],
+    "noisy_scx_psi": [
+      "/root/EulerPilot/results/final/redis-scx-compare-20260612-185007/run-1/noisy_scx_psi_summary.csv"
+    ]
+  }
+}

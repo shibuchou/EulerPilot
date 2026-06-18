@@ -1,0 +1,129 @@
+flowchart TB
+    subgraph Workloads["Workloads / Test Targets"]
+        W1["Redis / Memcached / Nginx"]
+        W2["stress-ng / make -j / sysbench"]
+        W3["Containers / cgroups / mixed services"]
+    end
+
+    subgraph Kernel["openEuler 24.03 LTS SP3"]
+        K1["Linux Scheduler / Runqueue"]
+        K2["BPF Hooks / Tracepoints"]
+        K3["cgroup v2"]
+        K4["sched_ext / scx (if available)"]
+        K5["BTF / Kernel Interfaces"]
+    end
+
+    subgraph Observe["eBPF Observation Layer"]
+        O1["workload_observer.bpf.c"]
+        O2["sched_wakeup / sched_switch / migrate"]
+        O3["task_stats_map / cgroup_stats_map / ringbuf"]
+        O4["wait time / runtime / wakeup / migration"]
+    end
+
+    subgraph Agent["User-space Agent Runtime"]
+        A1["Agent Main Loop"]
+        A2["State Store / Snapshot Builder"]
+        A3["Config Loader"]
+        A4["Exporter / API"]
+    end
+
+    subgraph Analyze["Workload Analysis"]
+        N1["Workload Analyzer"]
+        N2["latency_score"]
+        N3["batch_score"]
+        N4["interference_score"]
+        N5["Classify: latency / batch / background / mixed"]
+    end
+
+    subgraph Decide["Policy Decision"]
+        P1["Policy Engine"]
+        P2["normal_profile"]
+        P3["latency_profile"]
+        P4["throughput_profile"]
+        P5["mixed_profile"]
+        P6["Rollback Guard / Safety Check"]
+    end
+
+    subgraph Skills["Skill Manager"]
+        S1["cpu_schedule_skill"]
+        S2["cgroup_control_skill"]
+        S3["benchmark_skill"]
+        S4["rollback_skill"]
+        S5["network_policy_skill"]
+        S6["security_policy_skill"]
+    end
+
+    subgraph Execute["Execution Layer"]
+        E1["scx_eulerpilot"]
+        E2["class_map / queue policy"]
+        E3["cgroup cpu.weight / cpu.max"]
+        E4["TC / XDP demo path"]
+        E5["LSM / security event demo path"]
+    end
+
+    subgraph Validate["Benchmark / Report / Demo"]
+        V1["Redis benchmark"]
+        V2["wrk / Nginx test"]
+        V3["mixed workload scenario"]
+        V4["CSV / figures / report"]
+        V5["Grafana / dashboard / demo logs"]
+    end
+
+    W1 --> K1
+    W2 --> K1
+    W3 --> K3
+
+    K1 --> K2
+    K2 --> O1
+    K5 --> O1
+    O1 --> O2
+    O2 --> O3
+    O3 --> O4
+    O4 --> A1
+
+    A3 --> A1
+    A1 --> A2
+    A2 --> N1
+    N1 --> N2
+    N1 --> N3
+    N1 --> N4
+    N2 --> N5
+    N3 --> N5
+    N4 --> N5
+
+    N5 --> P1
+    P1 --> P2
+    P1 --> P3
+    P1 --> P4
+    P1 --> P5
+    P1 --> P6
+
+    P1 --> S1
+    P1 --> S2
+    P1 --> S3
+    P1 --> S4
+    P1 -. optional .-> S5
+    P1 -. optional .-> S6
+
+    S1 --> E1
+    S1 --> E2
+    S2 --> E3
+    S5 --> E4
+    S6 --> E5
+    S4 --> P6
+
+    E1 --> K4
+    E2 --> K4
+    E3 --> K3
+    E4 --> K2
+    E5 --> K2
+
+    A4 --> V5
+    S3 --> V1
+    S3 --> V2
+    S3 --> V3
+    V1 --> V4
+    V2 --> V4
+    V3 --> V4
+    V4 --> V5
+

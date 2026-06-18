@@ -1,0 +1,12 @@
+# PSI 与等待阈值扫描
+
+| cpu_psi_threshold | latency_wait_threshold_ns | background_runtime_threshold_ns | result_dir |
+| ---: | ---: | ---: | --- |
+| 0.01 | 1000000 | 2000000 | /root/EulerPilot/results/reports/redis-20260604-164221 |
+| 0.01 | 1000000 | 4000000 | /root/EulerPilot/results/reports/redis-20260604-164310 |
+| 0.01 | 5000000 | 2000000 | /root/EulerPilot/results/reports/redis-20260604-164358 |
+| 0.01 | 5000000 | 4000000 | /root/EulerPilot/results/reports/redis-20260604-164447 |
+| 0.05 | 1000000 | 2000000 | /root/EulerPilot/results/reports/redis-20260604-164535 |
+| 0.05 | 1000000 | 4000000 | /root/EulerPilot/results/reports/redis-20260604-164624 |
+| 0.05 | 5000000 | 2000000 | /root/EulerPilot/results/reports/redis-20260604-164712 |
+| 0.05 | 5000000 | 4000000 | /root/EulerPilot/results/reports/redis-20260604-164801 |

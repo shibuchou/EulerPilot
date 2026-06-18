@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="420">
+<style>text{font-family:Arial,Helvetica,sans-serif;font-size:12px;fill:#222}.title{font-size:18px;font-weight:bold}</style>
+<text class="title" x="450.0" y="28" text-anchor="middle">Redis P99 对比</text>
+<line x1="70" y1="350" x2="870" y2="350" stroke="#444"/>
+<line x1="70" y1="50" x2="70" y2="350" stroke="#444"/>
+<text x="18" y="60" transform="rotate(-90,18,60)">P99 (ms)</text>
+<text x="170.0" y="370" text-anchor="middle">GET</text>
+<rect x="103.3" y="184.7" width="46.7" height="165.3" fill="#1976d2"/>
+<text x="126.7" y="180.7" text-anchor="middle">0.57</text>
+<rect x="170.0" y="196.3" width="46.7" height="153.7" fill="#ef6c00"/>
+<text x="193.3" y="192.3" text-anchor="middle">0.53</text>
+<text x="370.0" y="370" text-anchor="middle">INCR</text>
+<rect x="303.3" y="182.7" width="46.7" height="167.3" fill="#1976d2"/>
+<text x="326.7" y="178.7" text-anchor="middle">0.58</text>
+<rect x="370.0" y="200.4" width="46.7" height="149.6" fill="#ef6c00"/>
+<text x="393.3" y="196.4" text-anchor="middle">0.52</text>
+<text x="570.0" y="370" text-anchor="middle">PING_INLINE</text>
+<rect x="503.3" y="197.2" width="46.7" height="152.8" fill="#1976d2"/>
+<text x="526.7" y="193.2" text-anchor="middle">0.53</text>
+<rect x="570.0" y="210.5" width="46.7" height="139.5" fill="#ef6c00"/>
+<text x="593.3" y="206.5" text-anchor="middle">0.48</text>
+<text x="770.0" y="370" text-anchor="middle">SET</text>
+<rect x="703.3" y="194.3" width="46.7" height="155.7" fill="#1976d2"/>
+<text x="726.7" y="190.3" text-anchor="middle">0.54</text>
+<rect x="770.0" y="204.1" width="46.7" height="145.9" fill="#ef6c00"/>
+<text x="793.3" y="200.1" text-anchor="middle">0.50</text>
+<rect x="690" y="42" width="12" height="12" fill="#1976d2"/>
+<text x="708" y="52">default_noisy</text>
+<rect x="690" y="60" width="12" height="12" fill="#ef6c00"/>
+<text x="708" y="70">active_noisy</text>
+</svg>

@@ -1,0 +1,6 @@
+# Background Weight 微调
+
+| background_weight | cpu_psi_threshold | latency_wait_threshold_ns | background_runtime_threshold_ns | result_dir |
+| ---: | ---: | ---: | ---: | --- |
+| 5 | 0.05 | 500000 | 2500000 | /root/EulerPilot/results/reports/redis-20260604-175044 |
+| 10 | 0.05 | 500000 | 2500000 | /root/EulerPilot/results/reports/redis-20260604-175357 |

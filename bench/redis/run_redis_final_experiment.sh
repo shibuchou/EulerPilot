@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="/root/EulerPilot"
+
+LATENCY_WEIGHT="${LATENCY_WEIGHT:-1000}"
+BACKGROUND_WEIGHT="${BACKGROUND_WEIGHT:-5}"
+BATCH_WEIGHT="${BATCH_WEIGHT:-100}"
+EULERPILOT_CPU_PSI_THRESHOLD="${EULERPILOT_CPU_PSI_THRESHOLD:-0.05}"
+RUNS="${RUNS:-10}"
+INTERVAL_MS="${INTERVAL_MS:-1000}"
+STRESS_WORKERS="${STRESS_WORKERS:-2}"
+BENCH_CLIENTS="${BENCH_CLIENTS:-16}"
+BENCH_REQUESTS="${BENCH_REQUESTS:-100000}"
+
+printf '[INFO] Redis 最终长跑实验启动\n'
+printf '[INFO] latency_weight=%s background_weight=%s batch_weight=%s cpu_psi_threshold=%s\n' \
+    "$LATENCY_WEIGHT" "$BACKGROUND_WEIGHT" "$BATCH_WEIGHT" "$EULERPILOT_CPU_PSI_THRESHOLD"
+printf '[INFO] runs=%s clients=%s requests=%s stress_workers=%s interval_ms=%s\n' \
+    "$RUNS" "$BENCH_CLIENTS" "$BENCH_REQUESTS" "$STRESS_WORKERS" "$INTERVAL_MS"
+
+export LATENCY_WEIGHT
+export BACKGROUND_WEIGHT
+export BATCH_WEIGHT
+export EULERPILOT_LATENCY_WEIGHT="$LATENCY_WEIGHT"
+export EULERPILOT_BACKGROUND_WEIGHT="$BACKGROUND_WEIGHT"
+export EULERPILOT_BATCH_WEIGHT="$BATCH_WEIGHT"
+export EULERPILOT_CPU_PSI_THRESHOLD
+export RUNS
+export INTERVAL_MS
+export STRESS_WORKERS
+export BENCH_CLIENTS
+export BENCH_REQUESTS
+
+exec "$ROOT/bench/redis/run_redis_stress_benchmark.sh"

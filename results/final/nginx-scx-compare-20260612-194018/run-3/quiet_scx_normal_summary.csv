@@ -1,0 +1,2 @@
+requests_per_sec,avg_latency,stdev_latency,max_latency,p99_latency
+14522.09,642.71us,1.61ms,31.97ms,1.31ms

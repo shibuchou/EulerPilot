@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="420">
+<style>text{font-family:Arial,Helvetica,sans-serif;font-size:12px;fill:#222}.title{font-size:18px;font-weight:bold}</style>
+<text class="title" x="550.0" y="28" text-anchor="middle">Redis quiet 开销消融</text>
+<line x1="80" y1="340" x2="1070" y2="340" stroke="#444"/>
+<line x1="80" y1="50" x2="80" y2="340" stroke="#444"/>
+<text x="20" y="70" transform="rotate(-90,20,70)">Requests/sec</text>
+<text x="203.75" y="364" text-anchor="middle">GET</text>
+<rect x="141.9" y="71.8" width="61.9" height="268.2" fill="#1f77b4"/>
+<text x="172.4" y="67.8" text-anchor="middle">31665.70</text>
+<rect x="224.4" y="77.0" width="61.9" height="263.0" fill="#ff7f0e"/>
+<text x="254.9" y="73.0" text-anchor="middle">31044.57</text>
+<text x="451.25" y="364" text-anchor="middle">INCR</text>
+<rect x="389.4" y="77.8" width="61.9" height="262.2" fill="#1f77b4"/>
+<text x="419.9" y="73.8" text-anchor="middle">30948.83</text>
+<rect x="471.9" y="64.4" width="61.9" height="275.6" fill="#ff7f0e"/>
+<text x="502.4" y="60.4" text-anchor="middle">32531.77</text>
+<text x="698.75" y="364" text-anchor="middle">PING_INLINE</text>
+<rect x="636.9" y="74.8" width="61.9" height="265.2" fill="#1f77b4"/>
+<text x="667.4" y="70.8" text-anchor="middle">31312.15</text>
+<rect x="719.4" y="60.0" width="61.9" height="280.0" fill="#ff7f0e"/>
+<text x="749.9" y="56.0" text-anchor="middle">33055.06</text>
+<text x="946.25" y="364" text-anchor="middle">SET</text>
+<rect x="884.4" y="69.6" width="61.9" height="270.4" fill="#1f77b4"/>
+<text x="914.9" y="65.6" text-anchor="middle">31917.70</text>
+<rect x="966.9" y="67.0" width="61.9" height="273.0" fill="#ff7f0e"/>
+<text x="997.4" y="63.0" text-anchor="middle">32231.07</text>
+<rect x="890" y="44" width="12" height="12" fill="#1f77b4"/>
+<text x="908" y="54">quiet_default</text>
+<rect x="890" y="62" width="12" height="12" fill="#ff7f0e"/>
+<text x="908" y="72">quiet_scx_normal</text>
+</svg>

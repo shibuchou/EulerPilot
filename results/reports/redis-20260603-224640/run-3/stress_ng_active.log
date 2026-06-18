@@ -1,0 +1,7 @@
+stress-ng: info:  [36767] setting to a 20 secs run per stressor
+stress-ng: info:  [36767] dispatching hogs: 2 cpu
+stress-ng: info:  [36767] skipped: 0
+stress-ng: info:  [36767] passed: 2: cpu (2)
+stress-ng: info:  [36767] failed: 0
+stress-ng: info:  [36767] metrics untrustworthy: 0
+stress-ng: info:  [36767] successful run completed in 20.01 secs

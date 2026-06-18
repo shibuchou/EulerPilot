@@ -1,0 +1,20 @@
+EulerPilot Agent starting
+  config: /root/EulerPilot/configs/agent.yaml
+  interval_ms: 1000
+  mode: dry-run
+  preferred_backend: cgroup_v2
+  env.psi: enabled
+  env.cgroup_v2: mounted
+  env.sched_ext: not-available
+[Analyzer] tuned pid=1379 class=UNKNOWN latency_score=0.35951 batch_score=0 interference_score=0.031902 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 applied=no reason=no-group-for-class
+[Analyzer] tuned pid=1065 class=UNKNOWN latency_score=0.225105 batch_score=0 interference_score=0.005021 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 applied=no reason=no-group-for-class
+[Analyzer] in:imjournal pid=1445 class=UNKNOWN latency_score=0.22126 batch_score=0 interference_score=0.004252 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 applied=no reason=no-group-for-class
+[Analyzer] stress-ng-cpu pid=9647 class=BACKGROUND_NOISY latency_score=0 batch_score=0.6 interference_score=0.8 profile=mixed_profile executor=cgroup_v2 group=background action_profile=mixed_profile cpu_weight=20 applied=no reason=dry-run
+[Analyzer] redis-server pid=9634 class=LATENCY_SENSITIVE latency_score=0.85 batch_score=0.9 interference_score=0.00291522 profile=latency_profile executor=cgroup_v2 group=latency action_profile=latency_profile cpu_weight=1000 applied=no reason=dry-run
+[Analyzer] jbd2/dm-0-8 pid=665 class=UNKNOWN latency_score=0.207921 batch_score=0.3 interference_score=0.0015842 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 applied=no reason=no-group-for-class
+[Analyzer] stress-ng-cpu pid=9648 class=BACKGROUND_NOISY latency_score=0 batch_score=0.8 interference_score=0.8 profile=mixed_profile executor=cgroup_v2 group=background action_profile=mixed_profile cpu_weight=20 applied=no reason=dry-run
+[Analyzer] auditd pid=958 class=UNKNOWN latency_score=0.209646 batch_score=0 interference_score=0.0019291 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 applied=no reason=no-group-for-class
+[Analyzer] iou-wrk-2996 pid=3056 class=LATENCY_SENSITIVE latency_score=0.85 batch_score=0 interference_score=0.0051166 profile=latency_profile executor=cgroup_v2 group=latency action_profile=latency_profile cpu_weight=1000 applied=no reason=dry-run
+[Analyzer] NetworkManager pid=1043 class=UNKNOWN latency_score=0.215772 batch_score=0 interference_score=0.0031543 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 applied=no reason=no-group-for-class
+[Analyzer] irqbalance pid=995 class=UNKNOWN latency_score=0.205385 batch_score=0 interference_score=0.001077 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 applied=no reason=no-group-for-class
+EulerPilot Agent run finished. Next step is to improve workload targeting and metrics export.

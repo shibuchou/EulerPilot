@@ -1,0 +1,25 @@
+agent:
+  name: EulerPilot
+  mode: dry-run
+  interval_ms: 1000
+  fallback_enabled: true
+skills_config_path: skills.yaml
+
+observer:
+  ebpf:
+    enabled: true
+    collect_sched: true
+    collect_cgroup: true
+    collect_migration: true
+    collect_psi: true
+
+scheduler:
+  type: cgroup_v2
+  name: cgroup_executor
+  default_profile: normal_profile
+  enable_rollback: true
+
+exporter:
+  prometheus:
+    enabled: false
+    listen:  127.0.0.1:9108

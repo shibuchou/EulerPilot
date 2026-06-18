@@ -1,0 +1,43 @@
+- program: merge_latency
+  args:
+  - "-threshold"
+  - "20"
+  - "-trigger"
+  - "-save"
+  - "-resource"
+  - "any"
+  - "-window"
+  - "avg10"
+  - "-interval"
+  - "5"
+- program: kprobe_delay
+  args:
+  - "-save"
+- program: cpu_migration
+  args:
+  - "-save"
+- program: io_latency
+  args:
+  - "-save"
+- program: fileopen
+  args:
+  - "-save"
+- program: sched_dispatch
+  args:
+  - "-save"
+- program: tpruntime
+  args:
+  - "-save"
+- program: processlen
+  args:
+  - "-save"
+- program: ddr_freq
+  args:
+  - "-save"
+- program: buddy_stat
+  args:
+  - "-save"
+- program: preemptive
+  args:
+  - "-save"
+

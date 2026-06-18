@@ -1,0 +1,5 @@
+test,baseline_rps,default_noisy_rps,active_noisy_rps,baseline_p99_ms,default_noisy_p99_ms,active_noisy_p99_ms
+GET,34722.22,32000.00,37950.66,0.495,0.447,0.511
+INCR,35087.72,38240.92,40000.00,0.487,0.615,0.479
+SET,33898.30,32467.53,33388.98,0.591,0.447,0.559
+PING_INLINE,32154.34,31695.72,34013.61,0.567,0.575,0.519

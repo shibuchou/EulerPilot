@@ -1,0 +1,80 @@
+
+  * EulerPilot Agent 
+  --------------------------------------------------
+  config:     /root/EulerPilot/configs/agent.yaml
+  interval:   1000ms  duration:   4s  warmup: 0
+  mode:       active  backend:    sched_ext
+  gate:       normal
+  env:         psi:ok  cg:ok  scx:ok
+  --------------------------------------------------
+
+  --- legend ---
+  mark: . UNKNOWN  L LATENCY_SENSITIVE  B BACKGROUND_NOISY  T THROUGHPUT_BATCH
+  act:  + applied  ~ managed  - none
+  --- observing ---
+  mark name             pid  class        act profile    w:weight reason
+  L redis-server       73333 LATENCY_SENSITIVE |~ normal_profile w:0 gate-state-map-updated
+  . scx_eulerpilot     75304 UNKNOWN      |- normal_profile w:0 non-target-process
+  . systemd-journal      743 UNKNOWN      |- normal_profile w:0 non-target-process
+  . jbd2/dm-0-8          667 UNKNOWN      |- normal_profile w:0 non-target-process
+  . systemd                1 UNKNOWN      |- normal_profile w:0 non-target-process
+  . irqbalance          1176 UNKNOWN      |- normal_profile w:0 non-target-process
+  . tuned               1240 UNKNOWN      |- normal_profile w:0 non-target-process
+  . auditd              1144 UNKNOWN      |- normal_profile w:0 non-target-process
+  . gmain               1220 UNKNOWN      |- normal_profile w:0 non-target-process
+  . in:imjournal        1577 UNKNOWN      |- normal_profile w:0 non-target-process
+  . tuned               1536 UNKNOWN      |- normal_profile w:0 non-target-process
+  . NetworkManager      1211 UNKNOWN      |- normal_profile w:0 non-target-process
+  . dnf                74949 UNKNOWN      |- normal_profile w:0 non-target-process
+  . rs:main Q:Reg       1587 UNKNOWN      |- normal_profile w:0 non-target-process
+  T redis-benchmark    75298 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  L redis-server       73333 LATENCY_SENSITIVE |~ normal_profile w:0 gate-state-map-updated
+  . scx_eulerpilot     75304 UNKNOWN      |- normal_profile w:0 non-target-process
+  . systemd-journal      743 UNKNOWN      |- normal_profile w:0 non-target-process
+  . jbd2/dm-0-8          667 UNKNOWN      |- normal_profile w:0 non-target-process
+  . systemd                1 UNKNOWN      |- normal_profile w:0 non-target-process
+  . irqbalance          1176 UNKNOWN      |- normal_profile w:0 non-target-process
+  . tuned               1240 UNKNOWN      |- normal_profile w:0 non-target-process
+  . auditd              1144 UNKNOWN      |- normal_profile w:0 non-target-process
+  . gmain               1220 UNKNOWN      |- normal_profile w:0 non-target-process
+  . in:imjournal        1577 UNKNOWN      |- normal_profile w:0 non-target-process
+  . tuned               1536 UNKNOWN      |- normal_profile w:0 non-target-process
+  . NetworkManager      1211 UNKNOWN      |- normal_profile w:0 non-target-process
+  . dnf                74949 UNKNOWN      |- normal_profile w:0 non-target-process
+  . rs:main Q:Reg       1587 UNKNOWN      |- normal_profile w:0 non-target-process
+  T redis-benchmark    75298 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  L redis-server       73333 LATENCY_SENSITIVE |~ normal_profile w:0 gate-state-map-updated
+  . scx_eulerpilot     75304 UNKNOWN      |- normal_profile w:0 non-target-process
+  . systemd-journal      743 UNKNOWN      |- normal_profile w:0 non-target-process
+  . jbd2/dm-0-8          667 UNKNOWN      |- normal_profile w:0 non-target-process
+  . systemd                1 UNKNOWN      |- normal_profile w:0 non-target-process
+  . irqbalance          1176 UNKNOWN      |- normal_profile w:0 non-target-process
+  . tuned               1240 UNKNOWN      |- normal_profile w:0 non-target-process
+  . auditd              1144 UNKNOWN      |- normal_profile w:0 non-target-process
+  . gmain               1220 UNKNOWN      |- normal_profile w:0 non-target-process
+  . in:imjournal        1577 UNKNOWN      |- normal_profile w:0 non-target-process
+  . tuned               1536 UNKNOWN      |- normal_profile w:0 non-target-process
+  . NetworkManager      1211 UNKNOWN      |- normal_profile w:0 non-target-process
+  . dnf                74949 UNKNOWN      |- normal_profile w:0 non-target-process
+  . rs:main Q:Reg       1587 UNKNOWN      |- normal_profile w:0 non-target-process
+  T redis-benchmark    75298 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  L redis-server       73333 LATENCY_SENSITIVE |~ normal_profile w:0 gate-state-map-updated
+  . scx_eulerpilot     75304 UNKNOWN      |- normal_profile w:0 non-target-process
+  . systemd-journal      743 UNKNOWN      |- normal_profile w:0 non-target-process
+  . jbd2/dm-0-8          667 UNKNOWN      |- normal_profile w:0 non-target-process
+  . systemd-udevd        779 UNKNOWN      |- normal_profile w:0 non-target-process
+  . (udev-worker)      75305 UNKNOWN      |- normal_profile w:0 non-target-process
+  . systemd                1 UNKNOWN      |- normal_profile w:0 non-target-process
+  . irqbalance          1176 UNKNOWN      |- normal_profile w:0 non-target-process
+  . tuned               1240 UNKNOWN      |- normal_profile w:0 non-target-process
+  . auditd              1144 UNKNOWN      |- normal_profile w:0 non-target-process
+  . gmain               1220 UNKNOWN      |- normal_profile w:0 non-target-process
+  . in:imjournal        1577 UNKNOWN      |- normal_profile w:0 non-target-process
+  . tuned               1536 UNKNOWN      |- normal_profile w:0 non-target-process
+  . NetworkManager      1211 UNKNOWN      |- normal_profile w:0 non-target-process
+  . dnf                74949 UNKNOWN      |- normal_profile w:0 non-target-process
+  . rs:main Q:Reg       1587 UNKNOWN      |- normal_profile w:0 non-target-process
+  T redis-benchmark    75298 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  --------------------------------------------------
+  DONE  total=62  applied=0  L=4  T=4  B=0  u=54
+

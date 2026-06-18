@@ -1,0 +1,29 @@
+# Build outputs
+build/
+*.o
+*.a
+*.so
+*.d
+
+# Runtime state
+run/
+*.pid
+*.sock
+
+# Python/cache artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Temporary and backup files
+*.bak
+*.tmp
+*.swp
+*.swo
+*~
+
+# Local editor/OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

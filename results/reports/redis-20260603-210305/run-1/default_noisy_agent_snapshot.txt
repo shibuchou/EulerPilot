@@ -1,0 +1,33 @@
+EulerPilot Agent starting
+  config: /root/EulerPilot/configs/agent.yaml
+  interval_ms: 1000
+  duration_s: 1
+  warmup_cycles: 0
+  mode: dry-run
+  preferred_backend: cgroup_v2
+  env.psi: enabled
+  env.cgroup_v2: mounted
+  env.sched_ext: not-available
+[Analyzer] code-8761a5560c pid=27175 class=UNKNOWN latency_score=0.210234 batch_score=0 interference_score=0.25307 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] node pid=27303 class=UNKNOWN latency_score=0.216003 batch_score=0 interference_score=0.0032006 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] tokio-rt-worker pid=27182 class=UNKNOWN latency_score=0.217418 batch_score=0.3 interference_score=0.505225 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] tuned pid=1379 class=UNKNOWN latency_score=0.218362 batch_score=0 interference_score=0.0036724 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] NetworkManager pid=1043 class=UNKNOWN latency_score=0.215546 batch_score=0 interference_score=0.0031092 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] tokio-rt-worker pid=27188 class=UNKNOWN latency_score=0.211891 batch_score=0.5 interference_score=0.503567 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] tuned pid=1065 class=UNKNOWN latency_score=0.22191 batch_score=0 interference_score=0.004382 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] in:imjournal pid=1445 class=UNKNOWN latency_score=0.220477 batch_score=0 interference_score=0.0040954 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] stress-ng-cpu pid=28510 class=BACKGROUND_NOISY latency_score=0 batch_score=0 interference_score=0.8 profile=mixed_profile executor=cgroup_v2 group=background action_profile=mixed_profile cpu_weight=20 cpuset=4-7 applied=no reason=dry-run
+[Analyzer] sshd pid=27103 class=UNKNOWN latency_score=0.212525 batch_score=0.4 interference_score=0.503758 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] redis-server pid=28494 class=LATENCY_SENSITIVE latency_score=0.85 batch_score=1 interference_score=0.00377156 profile=latency_profile executor=cgroup_v2 group=latency action_profile=latency_profile cpu_weight=1000 cpuset=0-1 applied=no reason=dry-run
+[Analyzer] node pid=27345 class=UNKNOWN latency_score=0.218055 batch_score=0 interference_score=0.003611 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] node pid=27300 class=UNKNOWN latency_score=0.211436 batch_score=0.8 interference_score=0.253431 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] node pid=27316 class=UNKNOWN latency_score=0.227273 batch_score=0 interference_score=0.0054545 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] libuv-worker pid=27312 class=UNKNOWN latency_score=0.212619 batch_score=0 interference_score=0.0025238 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] libuv-worker pid=27314 class=UNKNOWN latency_score=0.210653 batch_score=0 interference_score=0.0021306 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] node pid=27293 class=UNKNOWN latency_score=0.212218 batch_score=0 interference_score=0.0024435 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] node pid=27219 class=UNKNOWN latency_score=0.218088 batch_score=0.3 interference_score=0.255426 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] libuv-worker pid=27313 class=UNKNOWN latency_score=0.208065 batch_score=0 interference_score=0.001613 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] node pid=27315 class=UNKNOWN latency_score=0.232341 batch_score=0 interference_score=0.0064682 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] node pid=27302 class=UNKNOWN latency_score=0.215077 batch_score=0 interference_score=0.0030154 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+[Analyzer] libuv-worker pid=27311 class=UNKNOWN latency_score=0.212588 batch_score=0 interference_score=0.0025175 profile=normal_profile executor=observe-only group=none action_profile=normal_profile cpu_weight=100 cpuset= applied=no reason=non-target-process
+EulerPilot Agent run finished. Next step is to improve workload targeting and metrics export.

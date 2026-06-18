@@ -1,0 +1,44 @@
+
+  * EulerPilot Agent 
+  --------------------------------------------------
+  config:     /root/EulerPilot/configs/agent.yaml
+  interval:   1000ms  duration:   2s  warmup: 0
+  mode:       dry-run  backend:    cgroup_v2
+  gate:       always-active
+  env:         psi:ok  cg:ok  scx:ok
+  --------------------------------------------------
+
+  --- legend ---
+  mark: . UNKNOWN  L LATENCY_SENSITIVE  B BACKGROUND_NOISY  T THROUGHPUT_BATCH
+  act:  + applied  ~ managed  - none
+  --- observing ---
+  mark name             pid  class        act profile    w:weight reason
+  . tuned               1240 UNKNOWN      |- normal_profile w:100 non-target-process
+  . jbd2/dm-0-8          667 UNKNOWN      |- normal_profile w:100 non-target-process
+  . tokio-rt-worker    23487 UNKNOWN      |- normal_profile w:100 non-target-process
+  T redis-benchmark    75345 THROUGHPUT_BATCH |- normal_profile w:100 non-target-process
+  . NetworkManager      1211 UNKNOWN      |- normal_profile w:100 non-target-process
+  . tuned               1536 UNKNOWN      |- normal_profile w:100 non-target-process
+  . auditd              1144 UNKNOWN      |- normal_profile w:100 non-target-process
+  B stress-ng-cpu      75341 BACKGROUND_NOISY |~ normal_profile w:100 no-group-for-class
+  . systemd                1 UNKNOWN      |- normal_profile w:100 non-target-process
+  . dnf                74949 UNKNOWN      |- normal_profile w:100 non-target-process
+  L redis-server       73333 LATENCY_SENSITIVE |~ normal_profile w:100 no-group-for-class
+  . in:imjournal        1577 UNKNOWN      |- normal_profile w:100 non-target-process
+  . tuned               1240 UNKNOWN      |- normal_profile w:100 non-target-process
+  . jbd2/dm-0-8          667 UNKNOWN      |- normal_profile w:100 non-target-process
+  . irqbalance          1176 UNKNOWN      |- normal_profile w:100 non-target-process
+  . tokio-rt-worker    23487 UNKNOWN      |- normal_profile w:100 non-target-process
+  B stress-ng-cpu      75342 BACKGROUND_NOISY |~ normal_profile w:100 no-group-for-class
+  T redis-benchmark    75345 THROUGHPUT_BATCH |- normal_profile w:100 non-target-process
+  . NetworkManager      1211 UNKNOWN      |- normal_profile w:100 non-target-process
+  . tuned               1536 UNKNOWN      |- normal_profile w:100 non-target-process
+  . auditd              1144 UNKNOWN      |- normal_profile w:100 non-target-process
+  B stress-ng-cpu      75341 BACKGROUND_NOISY |~ normal_profile w:100 no-group-for-class
+  . systemd                1 UNKNOWN      |- normal_profile w:100 non-target-process
+  . dnf                74949 UNKNOWN      |- normal_profile w:100 non-target-process
+  L redis-server       73333 LATENCY_SENSITIVE |~ normal_profile w:100 no-group-for-class
+  . in:imjournal        1577 UNKNOWN      |- normal_profile w:100 non-target-process
+  --------------------------------------------------
+  DONE  total=26  applied=0  L=2  T=2  B=3  u=19
+
