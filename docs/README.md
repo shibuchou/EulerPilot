@@ -9,6 +9,7 @@
 - `skills_yaml_plan.md`：Skill/YAML 控制面规划。
 - `progress_status.md`：当前阶段进度状态看板。
 - `public_control_plane_design.md`：TargetResolver、AuditBus、ActionJournal、CapabilityDetector 公共控制面设计。
+- `network_policy_skill.md`：NetworkPolicySkill 阶段 B 设计、YAML、hook 作用域、审计与回滚口径。
 - `design_proposal.md`：总体设计方案。
 - `final_report_submission.md`：已有阶段最终报告草稿。
 
