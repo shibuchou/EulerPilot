@@ -6,7 +6,7 @@
 
 ## 当前阶段
 
-阶段 B：Network Policy 完整实现，状态：`准备开始`
+阶段 B：Network Policy 完整实现，状态：`进行中`
 
 目标：
 
