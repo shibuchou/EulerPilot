@@ -1,0 +1,7 @@
+=== NetworkPolicySkill integration test ===
+PASS: formal network_policy skill is registered
+PASS: doctor succeeds with network_policy audit mode
+PASS: agent runs with network_policy audit mode
+PASS: audit mode has no cgroup BPF attachment
+PASS: network policy audit event written
+=== NetworkPolicySkill integration test complete ===

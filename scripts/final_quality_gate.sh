@@ -83,10 +83,10 @@ fi
 # 4. list skills
 SKILLS_OUT=$("$AGENT_BIN" --list-skills 2>/dev/null)
 SKILL_COUNT=$(echo "$SKILLS_OUT" | wc -l)
-if [ "$SKILL_COUNT" -eq 4 ]; then
-    ok "--list-skills outputs 4 items"
+if [ "$SKILL_COUNT" -ge 5 ] && echo "$SKILLS_OUT" | grep -q '^network_policy$'; then
+    ok "--list-skills outputs formal network_policy skill"
 else
-    not_ok "--list-skills outputs $SKILL_COUNT items (expected 4)"
+    not_ok "--list-skills missing formal network_policy skill (count=$SKILL_COUNT)"
 fi
 
 # 5. doctor skills
@@ -106,11 +106,11 @@ else
     not_ok "agent 15s smoke agent failed"
 fi
 
-# 7. network_policy_demo disabled
-if ensure_skill_disabled "network_policy_demo"; then
-    ok "network_policy_demo default disabled"
+# 7. network_policy disabled
+if ensure_skill_disabled "network_policy"; then
+    ok "network_policy default disabled"
 else
-    not_ok "network_policy_demo not disabled"
+    not_ok "network_policy not disabled"
 fi
 
 # 8. security_policy_demo disabled

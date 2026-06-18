@@ -12,6 +12,14 @@ skills:
     cgroup_path: /sys/fs/cgroup/eulerpilot/demo-net
     dst_port: '18080'
     hook: cgroup_connect4
+    mode: audit
+  enabled: false
+  kind: runtime
+  name: network_policy
+- config:
+    cgroup_path: /sys/fs/cgroup/eulerpilot/demo-net
+    dst_port: '18080'
+    hook: cgroup_connect4
     mode: enforce
   enabled: false
   kind: runtime

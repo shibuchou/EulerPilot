@@ -195,17 +195,23 @@ results/network_policy/
 
 ## 9. 当前状态
 
-状态：`阶段 B 已启动，B1 文档和接口口径已固定`
+状态：`阶段 B 已启动，B1/B2 已完成，B3 connect4 audit/enforce 正在推进`
 
 已具备：
 
 - `TargetResolver / AuditBus / ActionJournal / CapabilityDetector` 最小代码。
 - 现有 `network_policy_demo` cgroup/connect4 demo。
 - 现有质量门禁可保证 demo 默认 disabled 且无 BPF/LSM 残留。
+- 正式 `network_policy` Skill 名称已注册，`network_policy_demo` 作为兼容名称保留。
+- `network_policy` 默认 disabled，默认 `audit` 模式。
+- `audit` 模式不挂载 BPF，只写 AuditBus/ActionJournal 事件，避免误阻断流量。
+- `tests/integration/test_network_policy.sh` 已验证 audit 模式不挂 cgroup BPF，并写入 `reports/events/network_policy.jsonl`。
+- 完整质量门禁已通过，日志为 `reports/final_quality_gate_20260618_network_policy_alias.log`。
+- 121 最新集成测试目录：`results/network_policy/integration-20260618-170758/`。
+- 122 最新集成测试目录：`results/network_policy/integration-20260618-170830/`。
 
 下一步：
 
-1. 更新 `agent/skills/network_policy/README.md`。
-2. 将 `network_policy_demo` 包装为正式 `network_policy` Skill 名称。
-3. connect4 路径接入 `TargetResolver`、`AuditBus`、`ActionJournal`。
-4. 增加 `tests/integration/test_network_policy.sh`。
+1. connect4 enforce 路径补动态端口配置和命中统计。
+2. 增强 `tests/integration/test_network_policy.sh`，覆盖 enforce 和 rollback。
+3. 开始 TC QoS 设计与最小实现。

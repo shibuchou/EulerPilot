@@ -20,7 +20,7 @@
 | 阶段 | 状态 | 当前结论 | 主要证据 |
 |------|------|----------|----------|
 | A. 公共基础设施 | 已完成 | 远端 Git、文档规则、README 覆盖、公共控制面最小代码和现有质量门禁已完成；后续随正式 Skill 深度接入 | `AGENTS.md`、本文件、各目录 README、`docs/public_control_plane_design.md`、`reports/final_quality_gate_20260618_control_plane.log` |
-| B. Network Policy | 进行中 | 阶段 B 已启动，正式 Skill 文档和 connect4/TC/XDP 目标模型开始落地 | `docs/network_policy_skill.md`、`docs/skills_yaml_plan.md` |
+| B. Network Policy | 进行中 | 正式 `network_policy` 注册名已落地，audit 模式已验证；下一步补 connect4 enforce 动态端口和命中统计 | `docs/network_policy_skill.md`、`tests/integration/test_network_policy.sh`、`reports/final_quality_gate_20260618_network_policy_alias.log` |
 | C. Security Agent | 未开始 | 等待公共控制面、AuditBus 和 target filter | `docs/next_phase_plan_v2_1.md` |
 | D. Resource Control | 未开始 | 需要扩展到 CPU + Memory 自动闭环，IO 可演示可回滚 | `docs/next_phase_plan_v2_1.md` |
 | E. SP4/sched_ext 复核 | 未开始 | 等待 SP4/123 环境 | `docs/next_phase_plan_v2_1.md` |
@@ -66,10 +66,24 @@
 | 编号 | 任务 | 状态 | 说明 |
 |------|------|------|------|
 | B1 | NetworkPolicySkill 文档升级 | 已完成 | `docs/network_policy_skill.md` 已固定正式 Skill 目标、YAML、事件和回滚口径 |
-| B2 | `network_policy_demo` 到 `network_policy` 迁移方案 | 待开始 | 保留 demo 作为子能力或回归测试，正式 CLI/文档使用 `network_policy` |
-| B3 | connect4 audit/enforce | 待开始 | 接入 TargetResolver、AuditBus、ActionJournal |
+| B2 | `network_policy_demo` 到 `network_policy` 迁移方案 | 已完成 | 正式注册名 `network_policy` 已增加，`network_policy_demo` 保留兼容 |
+| B3 | connect4 audit/enforce | 进行中 | audit 模式已接入 TargetResolver、AuditBus、ActionJournal；enforce 待补动态端口和命中统计 |
 | B4 | TC QoS | 待开始 | 使用 eBPF TC classifier + HTB/TBF |
 | B5 | isolated-veth XDP | 待开始 | 只允许 lab veth/netns，不挂生产管理网卡 |
+
+## 阶段 B 当前证据
+
+- 正式 `network_policy` Skill 已注册，`network_policy_demo` 保留兼容。
+- `configs/skills.yaml` 已增加默认 disabled 的 `network_policy` 配置，默认模式为 `audit`。
+- `tests/integration/test_network_policy.sh` 已验证：
+  - `network_policy` 能被 `--list-skills` 枚举。
+  - audit 模式下 `--doctor-skills` 通过。
+  - audit 模式下 Agent 能运行。
+  - audit 模式不挂载 cgroup BPF，不会阻断流量。
+  - audit 模式会写入 `reports/events/network_policy.jsonl`。
+- 121 集成测试证据目录：`results/network_policy/integration-20260618-170758/`。
+- 122 集成测试证据目录：`results/network_policy/integration-20260618-170830/`。
+- 121 完整质量门禁已通过：`reports/final_quality_gate_20260618_network_policy_alias.log`。
 
 ## 阶段 A 后续随阶段接入项
 

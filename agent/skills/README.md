@@ -15,8 +15,8 @@ init -> observe -> analyze -> decide -> act -> rollback -> export_metrics
 - `benchmark/`：一键实验和报告生成。
 - `rollback/`：策略失败或异常时恢复系统状态。
 
-演示级扩展：
+正式化扩展：
 
-- `network_policy/`：TC/XDP 或 socket filter 演示。
-- `security_policy/`：LSM/tracepoint 安全事件观测演示。
+- `network_policy/`：Network Policy Agent，当前从 `cgroup/connect4` 迁移到正式 `network_policy` Skill，后续补 TC QoS 和 isolated-veth XDP。
+- `security_policy/`：Security Agent，后续覆盖 syscall tracing、runtime anomaly 和 BPF LSM enforce。
 - `policy_advisor/`：预留的可选解释/调参建议接口，不进入当前核心资源控制热路径。

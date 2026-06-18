@@ -1,10 +1,15 @@
 #include "builtin_skills.hpp"
 
+#include "action_journal.hpp"
+#include "audit_bus.hpp"
 #include "executors.hpp"
 #include "psi_gate.hpp"
 #include "skill_runtime_context.hpp"
+#include "target_resolver.hpp"
 
 #include <bpf/libbpf.h>
+#include <cctype>
+#include <ctime>
 #include <iterator>
 
 #include <cstdlib>
@@ -12,9 +17,11 @@
 #include <fcntl.h>
 #include <iostream>
 #include <fstream>
+#include <map>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <string>
+#include <utility>
 
 namespace eulerpilot {
 
@@ -25,6 +32,24 @@ namespace fs = std::filesystem;
 bool file_exists(const char *path) {
     std::ifstream file(path);
     return file.good();
+}
+
+std::string now_event_timestamp() {
+    return std::to_string(static_cast<long long>(time(nullptr)));
+}
+
+void ensure_parent_dir(const fs::path &path) {
+    std::error_code ec;
+    fs::create_directories(path.parent_path(), ec);
+}
+
+std::string sanitize_for_id(std::string value) {
+    for (char &ch : value) {
+        if (!(std::isalnum(static_cast<unsigned char>(ch)) || ch == '_' || ch == '-')) {
+            ch = '_';
+        }
+    }
+    return value;
 }
 
 
@@ -278,7 +303,10 @@ private:
 
 class NetworkPolicySkill final : public Skill {
 public:
-    std::string name() const override { return "network_policy_demo"; }
+    explicit NetworkPolicySkill(std::string skill_name = "network_policy_demo")
+        : skill_name_(std::move(skill_name)) {}
+
+    std::string name() const override { return skill_name_; }
 
     bool configure(const RuntimeConfig &, const SkillSpec &spec) override {
         auto hook = spec.config.find("hook");
@@ -294,6 +322,10 @@ public:
         cgroup_path_ = cgroup_path->second;
         mode_ = mode->second;
         dst_port_ = port->second;
+        if (mode_ != "audit" && mode_ != "enforce") {
+            last_error_ = "unsupported-mode";
+            return false;
+        }
         return true;
     }
 
@@ -376,6 +408,24 @@ public:
             last_error_ = "demo-cgroup-create-failed";
             return false;
         }
+        auto target = resolve_cgroup_target(skill_name_, cgroup_path_);
+        if (!target.resolved) {
+            last_error_ = "target-resolve-failed:" + target.reason;
+            return false;
+        }
+        cgroup_id_ = target.cgroup_id;
+
+        if (mode_ == "audit") {
+            // In audit mode, the NetworkPolicySkill only records that the policy
+            // matched configuration. It intentionally does not attach BPF, so it
+            // cannot block traffic or affect SSH/host networking.
+            running_ = true;
+            state_ = "audit-only";
+            write_audit_event("start", "audit-only", "success");
+            write_journal_action("start-audit", "audit-only", "none");
+            return true;
+        }
+
         cgroup_fd_ = open(cgroup_path_.c_str(), O_RDONLY | O_DIRECTORY);
         if (cgroup_fd_ < 0) {
             cleanup_cgroup(cgroup_path_);
@@ -400,9 +450,17 @@ public:
             last_error_ = "demo-bpf-attach-failed";
             return false;
         }
-        bpf_link__pin(link_, "/sys/fs/bpf/network_policy_demo_link");
+        std::error_code ec;
+        fs::remove(link_pin_path(), ec);
+        if (bpf_link__pin(link_, link_pin_path().c_str()) != 0) {
+            rollback();
+            last_error_ = "demo-bpf-pin-failed";
+            return false;
+        }
         running_ = true;
         state_ = "started";
+        write_audit_event("start", "attach-cgroup-connect4", "success");
+        write_journal_action("start-enforce", "attach-cgroup-connect4", link_pin_path());
         return true;
     }
 
@@ -416,6 +474,8 @@ public:
         snapshot.evidence["dst_port"] = dst_port_;
         snapshot.evidence["mode"] = mode_;
         snapshot.evidence["cgroup_path"] = cgroup_path_;
+        snapshot.evidence["cgroup_id"] = std::to_string(cgroup_id_);
+        snapshot.evidence["link_pin_path"] = link_pin_path();
         snapshot.evidence["allow_count"] = std::to_string(allow_count_);
         snapshot.evidence["deny_count"] = std::to_string(deny_count_);
         snapshot.evidence["reason"] = last_error_.empty() ? "ok" : last_error_;
@@ -423,6 +483,10 @@ public:
     }
 
     bool rollback() override {
+        if (running_) {
+            write_audit_event("rollback", "detach-cgroup-connect4", "success");
+            write_journal_action("rollback", "detach-cgroup-connect4", link_pin_path());
+        }
         if (link_) {
             bpf_link__unpin(link_);
             bpf_link__destroy(link_);
@@ -462,6 +526,66 @@ public:
     std::string last_error() const override { return last_error_; }
 
 private:
+    std::string link_pin_path() const {
+        return "/sys/fs/bpf/eulerpilot_" + sanitize_for_id(skill_name_) + "_link";
+    }
+
+    void write_audit_event(const std::string &operation,
+                           const std::string &action,
+                           const std::string &result) const {
+        const fs::path audit_path = "reports/events/network_policy.jsonl";
+        ensure_parent_dir(audit_path);
+
+        AuditEvent event;
+        event.timestamp = now_event_timestamp();
+        event.event_id = skill_name_ + "-" + operation + "-" + event.timestamp;
+        event.skill = skill_name_;
+        event.policy_id = "network_policy";
+        event.rule_id = "connect4-deny-port-" + dst_port_;
+        event.mode = mode_;
+        event.target = {
+            {"cgroup_id", std::to_string(cgroup_id_)},
+            {"cgroup_path", cgroup_path_},
+        };
+        event.operation = operation;
+        event.evidence = {
+            {"hook", hook_},
+            {"dst_port", dst_port_},
+        };
+        event.action = action;
+        event.result = result;
+        event.severity = "info";
+        std::string error;
+        append_audit_event(audit_path.string(), event, &error);
+    }
+
+    void write_journal_action(const std::string &operation,
+                              const std::string &action,
+                              const std::string &handle) const {
+        const fs::path journal_path = "run/eulerpilot/action_journal.jsonl";
+        ensure_parent_dir(journal_path);
+
+        JournalAction entry;
+        entry.action_id = skill_name_ + "-" + operation + "-" + now_event_timestamp();
+        entry.skill = skill_name_;
+        entry.target = cgroup_path_;
+        entry.operation = operation;
+        entry.new_values = {
+            {"mode", mode_},
+            {"hook", hook_},
+            {"dst_port", dst_port_},
+            {"action", action},
+        };
+        entry.handles = {
+            {"cgroup_path", cgroup_path_},
+            {"bpf_link", handle},
+        };
+        entry.restored = operation == "rollback";
+        std::string error;
+        append_journal_action(journal_path.string(), entry, &error);
+    }
+
+    std::string skill_name_;
     bool available_ = false;
     bool running_ = false;
     std::string state_ = "created";
@@ -470,6 +594,7 @@ private:
     std::string cgroup_path_ = "/sys/fs/cgroup/eulerpilot/demo-net";
     std::string mode_ = "enforce";
     std::string dst_port_ = "18080";
+    std::uint64_t cgroup_id_ = 0;
     int allow_count_ = 0;
     int deny_count_ = 0;
     int cgroup_fd_ = -1;
@@ -646,7 +771,10 @@ void register_builtin_skills(SkillRegistry &registry) {
         return std::make_unique<PsiGateSkillAdapter>();
     });
     registry.register_factory("network_policy_demo", [] {
-        return std::make_unique<NetworkPolicySkill>();
+        return std::make_unique<NetworkPolicySkill>("network_policy_demo");
+    });
+    registry.register_factory("network_policy", [] {
+        return std::make_unique<NetworkPolicySkill>("network_policy");
     });
     registry.register_factory("security_policy_demo", [] {
         return std::make_unique<SecurityPolicyDemoSkill>();
