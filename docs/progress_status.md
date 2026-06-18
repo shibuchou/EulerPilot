@@ -19,7 +19,7 @@
 
 | 阶段 | 状态 | 当前结论 | 主要证据 |
 |------|------|----------|----------|
-| A. 公共基础设施 | 进行中 | 已进入远端执行；正在修复 Git 与文档基线 | `AGENTS.md`、本文件、各目录 README |
+| A. 公共基础设施 | 进行中 | 远端 Git、文档规则、README 覆盖和现有质量门禁已完成；公共控制面进入设计收口 | `AGENTS.md`、本文件、各目录 README、`reports/final_quality_gate_20260618_stage_a.log` |
 | B. Network Policy | 未开始 | 等待公共控制面和 target 模型完成 | `docs/next_phase_plan_v2_1.md` |
 | C. Security Agent | 未开始 | 等待公共控制面、AuditBus 和 target filter | `docs/next_phase_plan_v2_1.md` |
 | D. Resource Control | 未开始 | 需要扩展到 CPU + Memory 自动闭环，IO 可演示可回滚 | `docs/next_phase_plan_v2_1.md` |
@@ -34,16 +34,19 @@
 - `docs/skills_yaml_plan.md` 已升级为 v2.1 YAML/Skill 控制面规划。
 - 121/122 已有 `.gitignore` 与 `.gitattributes`。
 - 本地镜像已从 121 重新同步并建立 Git 初始提交。
+- 121 已初始化真实 Git 仓库，当前基线提交为 `d81f920 Initialize EulerPilot remote baseline`。
+- 项目自有关键顶层目录 README 已补齐：`agent/`、`bench/`、`bpf/`、`configs/`、`dashboard/`、`demo/`、`docs/`、`reports/`、`results/`、`sched/`、`scripts/`、`tools/`。
+- 121 现有质量门禁已复测通过，日志为 `reports/final_quality_gate_20260618_stage_a.log`。
 
 ## 阶段 A 待办
 
 | 编号 | 任务 | 状态 | 说明 |
 |------|------|------|------|
-| A1 | 121 初始化 Git 仓库 | 待完成 | 远端 `.git` 当前为空目录，需要建立真实仓库 |
-| A2 | 关键目录 README 补齐 | 进行中 | 优先覆盖项目自有顶层目录 |
-| A3 | 文档规则写入 `AGENTS.md` | 进行中 | 要求阶段完成同步更新文档和 README |
-| A4 | 公共控制面接口设计文档 | 待完成 | TargetResolver、AuditBus、ActionJournal、CapabilityDetector |
-| A5 | 质量门禁基线复测 | 待完成 | `make`、`--list-skills`、`--doctor-skills`、`final_quality_gate.sh` |
+| A1 | 121 初始化 Git 仓库 | 已完成 | 远端基线提交：`d81f920 Initialize EulerPilot remote baseline` |
+| A2 | 关键目录 README 补齐 | 已完成 | 项目自有关键顶层目录均已有 README |
+| A3 | 文档规则写入 `AGENTS.md` | 已完成 | 已要求阶段收口同步更新文档、README 和进度看板 |
+| A4 | 公共控制面接口设计文档 | 进行中 | 设计文档：`docs/public_control_plane_design.md` |
+| A5 | 质量门禁基线复测 | 已完成 | `reports/final_quality_gate_20260618_stage_a.log`，12 项 P0 与 optional checks 均通过 |
 
 ## 进度维护规则
 
