@@ -6,21 +6,21 @@
 
 ## 当前阶段
 
-阶段 A：公共基础设施与仓库基线，状态：`进行中`
+阶段 B：Network Policy 完整实现，状态：`准备开始`
 
 目标：
 
-- 修复 121 远端 Git 仓库态，建立可提交、可追踪的基线。
-- 补齐 `.gitignore`、`.gitattributes` 和文档规则。
-- 固定 `TargetResolver / AuditBus / ActionJournal / CapabilityDetector` 的接口与落地路径。
-- 补齐项目自有顶层目录 README，让后续实现和验收位置清晰。
+- 将 `network_policy_demo` 升级为正式 `network_policy` Skill。
+- 先完成 `cgroup/connect4` 的 `audit/enforce/status/rollback` 正式口径。
+- 再补 TC QoS 和 isolated-veth XDP。
+- 所有 Network 事件接入 `AuditBus`，所有挂载/卸载动作接入 `ActionJournal`。
 
 ## 阶段完成情况
 
 | 阶段 | 状态 | 当前结论 | 主要证据 |
 |------|------|----------|----------|
-| A. 公共基础设施 | 进行中 | 远端 Git、文档规则、README 覆盖、公共控制面最小代码和现有质量门禁已完成；下一步进入公共控制面深度接入 | `AGENTS.md`、本文件、各目录 README、`docs/public_control_plane_design.md`、`reports/final_quality_gate_20260618_control_plane.log` |
-| B. Network Policy | 未开始 | 等待公共控制面和 target 模型完成 | `docs/next_phase_plan_v2_1.md` |
+| A. 公共基础设施 | 已完成 | 远端 Git、文档规则、README 覆盖、公共控制面最小代码和现有质量门禁已完成；后续随正式 Skill 深度接入 | `AGENTS.md`、本文件、各目录 README、`docs/public_control_plane_design.md`、`reports/final_quality_gate_20260618_control_plane.log` |
+| B. Network Policy | 准备开始 | 公共控制面最小接口已具备，下一步升级 `network_policy_demo` 为正式 Skill | `docs/next_phase_plan_v2_1.md`、`docs/skills_yaml_plan.md` |
 | C. Security Agent | 未开始 | 等待公共控制面、AuditBus 和 target filter | `docs/next_phase_plan_v2_1.md` |
 | D. Resource Control | 未开始 | 需要扩展到 CPU + Memory 自动闭环，IO 可演示可回滚 | `docs/next_phase_plan_v2_1.md` |
 | E. SP4/sched_ext 复核 | 未开始 | 等待 SP4/123 环境 | `docs/next_phase_plan_v2_1.md` |
@@ -45,6 +45,11 @@
 - `--doctor-skills` 已输出 Capability Detector 摘要，覆盖 BTF、BPF LSM、XDP、TC、cgroup v2、PSI、sched_ext、memory.reclaim、Kubernetes 等能力。
 - 公共控制面改动后的 Agent smoke 已通过，日志为 `reports/agent_smoke_20260618_control_plane.log`。
 - 公共控制面改动后的完整质量门禁已通过，日志为 `reports/final_quality_gate_20260618_control_plane.log`。
+- 121 提交记录：
+  - `d81f920 Initialize EulerPilot remote baseline`
+  - `6219b82 Document stage A baseline progress`
+  - `d7fbee6 Add stage A control plane foundation`
+- 122 已同步公共控制面代码，并完成 `make -B agent` 与 `--doctor-skills` 检查；122 doctor 显示 `sched_ext` available。
 
 ## 阶段 A 待办
 
@@ -56,7 +61,7 @@
 | A4 | 公共控制面接口与最小实现 | 已完成 | 设计文档：`docs/public_control_plane_design.md`；`CapabilityDetector` 已接入 `--doctor-skills`，其余三项已提供可编译最小接口 |
 | A5 | 质量门禁基线复测 | 已完成 | `reports/final_quality_gate_20260618_stage_a.log`，12 项 P0 与 optional checks 均通过 |
 
-## 阶段 A 剩余工程化增强
+## 阶段 A 后续随阶段接入项
 
 这些内容不阻塞阶段 B 开始，但应在 Network/Security/Resource 正式接入时继续完善：
 
