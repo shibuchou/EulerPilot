@@ -51,7 +51,7 @@
   - `d7fbee6 Add stage A control plane foundation`
 - 122 已同步公共控制面代码，并完成 `make -B agent` 与 `--doctor-skills` 检查；122 doctor 显示 `sched_ext` available。
 
-## 阶段 A 待办
+## 阶段 A 任务收口
 
 | 编号 | 任务 | 状态 | 说明 |
 |------|------|------|------|
@@ -60,6 +60,16 @@
 | A3 | 文档规则写入 `AGENTS.md` | 已完成 | 已要求阶段收口同步更新文档、README 和进度看板 |
 | A4 | 公共控制面接口与最小实现 | 已完成 | 设计文档：`docs/public_control_plane_design.md`；`CapabilityDetector` 已接入 `--doctor-skills`，其余三项已提供可编译最小接口 |
 | A5 | 质量门禁基线复测 | 已完成 | `reports/final_quality_gate_20260618_stage_a.log`，12 项 P0 与 optional checks 均通过 |
+
+## 阶段 B 立即任务
+
+| 编号 | 任务 | 状态 | 说明 |
+|------|------|------|------|
+| B1 | NetworkPolicySkill 文档升级 | 待开始 | 新增 `docs/network_policy_skill.md`，固定正式 Skill 目标、YAML、事件和回滚口径 |
+| B2 | `network_policy_demo` 到 `network_policy` 迁移方案 | 待开始 | 保留 demo 作为子能力或回归测试，正式 CLI/文档使用 `network_policy` |
+| B3 | connect4 audit/enforce | 待开始 | 接入 TargetResolver、AuditBus、ActionJournal |
+| B4 | TC QoS | 待开始 | 使用 eBPF TC classifier + HTB/TBF |
+| B5 | isolated-veth XDP | 待开始 | 只允许 lab veth/netns，不挂生产管理网卡 |
 
 ## 阶段 A 后续随阶段接入项
 
