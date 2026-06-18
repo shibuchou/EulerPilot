@@ -13,6 +13,8 @@
 ## 当前完成状态
 
 - 已有 v1 配置可以驱动当前 Agent 和 Skills。
+- `skills.yaml` 中 `network_policy`、`network_qos`、`network_policy_demo` 和 `security_policy_demo` 默认均为 disabled。
+- `network_qos` 默认目标为 lab veth `ep-veth-qos0`，不能作为真实业务网卡默认配置使用。
 - v2.1 计划要求升级到 `schema_version: 2`，并统一表达：
   - `targets`
   - `network_policy.rules`

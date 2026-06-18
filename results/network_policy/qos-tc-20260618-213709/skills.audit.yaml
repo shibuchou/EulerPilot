@@ -33,7 +33,7 @@ skills:
     mode: audit
     protocol: any
     rate: 1mbit
-  enabled: false
+  enabled: true
   kind: runtime
   name: network_qos
 - config:

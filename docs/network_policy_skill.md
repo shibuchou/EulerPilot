@@ -195,7 +195,7 @@ results/network_policy/
 
 ## 9. 当前状态
 
-状态：`阶段 B 进行中，connect4 子能力已完成，TC QoS 与 isolated-veth XDP 待启动`
+状态：`阶段 B 进行中，connect4 子能力已完成，TC QoS 最小闭环已完成，isolated-veth XDP 待启动`
 
 已具备：
 
@@ -209,12 +209,18 @@ results/network_policy/
 - `stats_map` 已记录 allow/deny 命中计数，rollback 审计事件包含最终计数。
 - `tests/integration/test_network_policy.sh` 已验证 audit 模式不挂 cgroup BPF，并写入 `reports/events/network_policy.jsonl`。
 - `tests/integration/test_network_policy.sh` 已验证 enforce 模式下目标 cgroup 访问动态端口 `18081` 被拒绝，非目标 cgroup 访问正常，退出后无 pinned link 或 cgroup attachment 残留。
-- 完整质量门禁已通过，日志为 `reports/final_quality_gate_20260618_network_policy_alias.log`。
+- `network_qos` 子能力已注册，默认 disabled。
+- `bpf/network_qos_tc.bpf.c` 已实现 TC egress classifier，负责按协议/端口配置命中并累计 packet/byte 统计。
+- `network_qos` enforce 模式通过 libbpf `bpf_tc_attach` 挂载 classifier，并通过 TBF root qdisc 执行限速。
+- `tests/integration/test_network_qos_tc.sh` 已验证 lab netns/veth、audit 不改 qdisc、enforce 安装 clsact + TBF、流量命中统计和 rollback 无残留。
+- 完整质量门禁已通过，日志为 `reports/final_quality_gate_20260618_network_qos_tc.log`。
 - 121 最新集成测试目录：`results/network_policy/integration-20260618-210126/`。
 - 122 最新集成测试目录：`results/network_policy/integration-20260618-211444/`。
+- 121 最新 TC QoS 集成测试目录：`results/network_policy/qos-tc-20260618-213709/`。
+- 122 最新 TC QoS 集成测试目录：`results/network_policy/qos-tc-20260618-214115/`。
 
 下一步：
 
-1. connect4 路径接入 YAML v2 的 `targets + rules + target_ref`。
-2. 开始 TC QoS 设计与最小实现。
+1. connect4 与 TC QoS 接入 YAML v2 的 `targets + rules + target_ref`。
+2. 为 TC QoS 增加速率误差 Benchmark 和多规则验证。
 3. 开始 isolated-veth XDP 设计与最小实现。

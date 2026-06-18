@@ -20,7 +20,7 @@
 | 阶段 | 状态 | 当前结论 | 主要证据 |
 |------|------|----------|----------|
 | A. 公共基础设施 | 已完成 | 远端 Git、文档规则、README 覆盖、公共控制面最小代码和现有质量门禁已完成；后续随正式 Skill 深度接入 | `AGENTS.md`、本文件、各目录 README、`docs/public_control_plane_design.md`、`reports/final_quality_gate_20260618_control_plane.log` |
-| B. Network Policy | 进行中 | 正式 `network_policy` 注册名已落地；connect4 audit/enforce、动态端口、命中统计和 rollback 无残留已验证；下一步进入 TC QoS 和 isolated-veth XDP | `docs/network_policy_skill.md`、`tests/integration/test_network_policy.sh`、`results/network_policy/integration-20260618-210126/` |
+| B. Network Policy | 进行中 | 正式 `network_policy` 注册名已落地；connect4 audit/enforce 已完成；TC QoS 最小闭环已完成；下一步进入 YAML v2 多 target/rules 和 isolated-veth XDP | `docs/network_policy_skill.md`、`tests/integration/test_network_policy.sh`、`tests/integration/test_network_qos_tc.sh` |
 | C. Security Agent | 未开始 | 等待公共控制面、AuditBus 和 target filter | `docs/next_phase_plan_v2_1.md` |
 | D. Resource Control | 未开始 | 需要扩展到 CPU + Memory 自动闭环，IO 可演示可回滚 | `docs/next_phase_plan_v2_1.md` |
 | E. SP4/sched_ext 复核 | 未开始 | 等待 SP4/123 环境 | `docs/next_phase_plan_v2_1.md` |
@@ -68,7 +68,7 @@
 | B1 | NetworkPolicySkill 文档升级 | 已完成 | `docs/network_policy_skill.md` 已固定正式 Skill 目标、YAML、事件和回滚口径 |
 | B2 | `network_policy_demo` 到 `network_policy` 迁移方案 | 已完成 | 正式注册名 `network_policy` 已增加，`network_policy_demo` 保留兼容 |
 | B3 | connect4 audit/enforce | 已完成 | audit 模式不挂 BPF；enforce 模式使用 BPF map 动态配置端口，`stats_map` 记录 allow/deny，rollback 后无 attachment 残留 |
-| B4 | TC QoS | 待开始 | 使用 eBPF TC classifier + HTB/TBF |
+| B4 | TC QoS | 已完成最小闭环 | `network_qos` 使用 TC egress BPF classifier 统计命中，TBF qdisc 执行限速；已验证 lab netns/veth、audit/enforce 和 rollback |
 | B5 | isolated-veth XDP | 待开始 | 只允许 lab veth/netns，不挂生产管理网卡 |
 
 ## 阶段 B 当前证据
@@ -88,7 +88,23 @@
   - Agent 退出后 `/sys/fs/bpf/eulerpilot_network_policy_link` 和 cgroup BPF attachment 无残留。
 - 121 最新集成测试证据目录：`results/network_policy/integration-20260618-210126/`。
 - 122 最新集成测试证据目录：`results/network_policy/integration-20260618-211444/`。
-- 121 完整质量门禁已通过：`reports/final_quality_gate_20260618_network_policy_dynamic.log`。
+- 121 完整质量门禁已通过：`reports/final_quality_gate_20260618_network_qos_tc.log`。
+
+### TC QoS 证据
+
+- 新增正式子能力 `network_qos`，默认 disabled。
+- 新增 BPF 程序 `bpf/network_qos_tc.bpf.c`，提供 `tc_egress` classifier 命中统计。
+- 新增构建目标 `make network-qos-tc`。
+- 新增清理脚本 `scripts/cleanup_network_qos_tc.sh`，负责删除 lab veth/netns、root qdisc 和 clsact。
+- 新增集成测试 `tests/integration/test_network_qos_tc.sh`，已验证：
+  - `network_qos` 能被 `--list-skills` 枚举。
+  - 专用 lab netns/veth 基线连通。
+  - audit 模式不修改 TC qdisc。
+  - enforce 模式安装 TC clsact + TBF。
+  - ping 流量命中 BPF stats，rollback 事件记录 `packet_count=3`、`byte_count=294`。
+  - Agent 退出后无 TC qdisc 残留。
+- 121 最新 TC QoS 集成测试证据目录：`results/network_policy/qos-tc-20260618-213709/`。
+- 122 最新 TC QoS 集成测试证据目录：`results/network_policy/qos-tc-20260618-214115/`。
 
 ## 阶段 A 后续随阶段接入项
 

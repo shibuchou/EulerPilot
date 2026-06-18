@@ -18,10 +18,11 @@ BPF_SKEL := $(BUILD_DIR)/workload_observer.skel.h
 OBSERVER_BIN := $(BUILD_DIR)/workload_observer_dump
 NETWORK_POLICY_BPF := $(BUILD_DIR)/network_policy_demo.bpf.o
 NETWORK_POLICY_SKEL := $(BUILD_DIR)/network_policy_demo.skel.h
+NETWORK_QOS_TC_BPF := $(BUILD_DIR)/network_qos_tc.bpf.o
 SECURITY_POLICY_BPF := $(BUILD_DIR)/security_policy_demo.bpf.o
 SECURITY_POLICY_SKEL := $(BUILD_DIR)/security_policy_demo.skel.h
 
-.PHONY: all agent observer network-policy-demo security-policy-demo clean check-env format
+.PHONY: all agent observer network-policy-demo network-qos-tc security-policy-demo clean check-env format
 
 all: agent observer
 
@@ -30,6 +31,8 @@ agent: $(AGENT_BIN)
 observer: $(OBSERVER_BIN)
 
 network-policy-demo: $(NETWORK_POLICY_BPF) $(NETWORK_POLICY_SKEL)
+
+network-qos-tc: $(NETWORK_QOS_TC_BPF)
 
 security-policy-demo: $(SECURITY_POLICY_BPF) $(SECURITY_POLICY_SKEL)
 
@@ -53,6 +56,9 @@ $(NETWORK_POLICY_BPF): bpf/network_policy_demo.bpf.c $(VMLINUX) | $(BUILD_DIR)
 
 $(NETWORK_POLICY_SKEL): $(NETWORK_POLICY_BPF)
 	$(BPFTOOL) gen skeleton $< > $@
+
+$(NETWORK_QOS_TC_BPF): bpf/network_qos_tc.bpf.c $(VMLINUX) | $(BUILD_DIR)
+	$(CLANG) -g -O2 -target bpf -D__TARGET_ARCH_x86 -D__BPF__ -I. -I./bpf -c $< -o $@
 
 $(SECURITY_POLICY_BPF): bpf/security_policy_demo.bpf.c $(VMLINUX) | $(BUILD_DIR)
 	$(CLANG) -g -O2 -target bpf -D__TARGET_ARCH_x86 -D__BPF__ -I. -I./bpf -c $< -o $@

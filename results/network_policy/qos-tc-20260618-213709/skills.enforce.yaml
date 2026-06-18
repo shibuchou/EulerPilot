@@ -30,10 +30,10 @@ skills:
     hook: tc_egress
     ifname: ep-veth-qos0
     latency: 50ms
-    mode: audit
+    mode: enforce
     protocol: any
     rate: 1mbit
-  enabled: false
+  enabled: true
   kind: runtime
   name: network_qos
 - config:

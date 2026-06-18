@@ -7,6 +7,8 @@
 - 第一版 CO-RE observer 已可构建并运行。
 - 已验证 `tp_btf/sched_wakeup`、`tp_btf/sched_switch`、`tp_btf/sched_migrate_task` 可在当前 openEuler 24.03 LTS SP3 内核上加载。
 - 当前通过 `task_metrics_map` 按 PID 聚合观测数据，并由 `build/workload_observer_dump` 或主 Agent 读取输出。
+- `network_policy_demo.bpf.c` 提供 `cgroup/connect4` 子能力，当前用于正式 `network_policy` 的端口拒绝与统计。
+- `network_qos_tc.bpf.c` 提供 `tc_egress` classifier 子能力，当前用于 `network_qos` 的 lab veth QoS 命中统计，限速由 TBF qdisc 执行。
 
 ## 当前已采集的证据
 

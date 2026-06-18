@@ -9,13 +9,14 @@
 - `rollback.sh`：回滚入口。
 - `run_agent.sh`：Agent 启动辅助。
 - `render_*`：报告和图表生成脚本。
-- `cleanup_network_policy_demo.sh` / `cleanup_security_policy_demo.sh`：当前 demo 清理脚本。
+- `cleanup_network_policy_demo.sh` / `cleanup_network_qos_tc.sh` / `cleanup_security_policy_demo.sh`：当前 Network/Security 清理脚本。
 
 ## 当前完成状态
 
 - 已能支撑当前阶段 Redis/Nginx/sched_ext 结果整理。
 - v2.1 后续需要新增正式 Skill 集成测试和演示脚本：
   - `tests/integration/test_network_policy.sh`
+  - `tests/integration/test_network_qos_tc.sh`
   - `tests/integration/test_security_policy.sh`
   - `tests/integration/test_resource_control.sh`
   - `tests/e2e/test_cross_agent_protection.sh`
