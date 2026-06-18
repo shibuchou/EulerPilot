@@ -4,7 +4,7 @@
 
 ## 当前测试
 
-- `test_network_policy.sh`：验证正式 `network_policy` 注册名、默认 disabled、audit 模式不挂 BPF、doctor 可通过。脚本只使用 Python 标准库，不依赖 PyYAML。
+- `test_network_policy.sh`：验证正式 `network_policy` 注册名、默认 disabled、audit 模式不挂 BPF、doctor 可通过；同时验证 enforce 模式会把 YAML 动态端口写入 BPF map，目标 cgroup 内连接被拒绝，Agent 退出后无 BPF attachment 残留。脚本只使用 Python 标准库，不依赖 PyYAML。
 
 ## 后续测试
 

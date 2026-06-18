@@ -7,8 +7,11 @@
 #include "skill_runtime_context.hpp"
 #include "target_resolver.hpp"
 
+#include <bpf/bpf.h>
 #include <bpf/libbpf.h>
+#include <cerrno>
 #include <cctype>
+#include <cstdint>
 #include <ctime>
 #include <iterator>
 
@@ -52,6 +55,33 @@ std::string sanitize_for_id(std::string value) {
     return value;
 }
 
+bool parse_tcp_port(const std::string &value, std::uint16_t &port) {
+    char *end = nullptr;
+    errno = 0;
+    const unsigned long parsed = std::strtoul(value.c_str(), &end, 10);
+    if (errno != 0 || end == value.c_str() || *end != '\0' ||
+        parsed == 0 || parsed > 65535) {
+        return false;
+    }
+    port = static_cast<std::uint16_t>(parsed);
+    return true;
+}
+
+struct NetworkPolicyMapConfig {
+    std::uint16_t deny_port = 18080;
+    std::uint8_t enforce = 1;
+    std::uint8_t reserved[5] = {};
+};
+
+struct NetworkPolicyMapStats {
+    std::uint64_t allow_count = 0;
+    std::uint64_t deny_count = 0;
+};
+
+static_assert(sizeof(NetworkPolicyMapConfig) == 8,
+              "network policy config map layout must match BPF");
+static_assert(sizeof(NetworkPolicyMapStats) == 16,
+              "network policy stats map layout must match BPF");
 
 bool ensure_cgroup(const fs::path &path) {
     if (!fs::exists("/sys/fs/cgroup") || access("/sys/fs/cgroup", W_OK) != 0) {
@@ -326,6 +356,10 @@ public:
             last_error_ = "unsupported-mode";
             return false;
         }
+        if (!parse_tcp_port(dst_port_, dst_port_value_)) {
+            last_error_ = "invalid-dst-port";
+            return false;
+        }
         return true;
     }
 
@@ -443,6 +477,10 @@ public:
             last_error_ = "demo-bpf-load-failed";
             return false;
         }
+        if (!install_policy_config()) {
+            rollback();
+            return false;
+        }
         bpf_program *prog = bpf_object__next_program(bpf_object_, nullptr);
         link_ = bpf_program__attach_cgroup(prog, cgroup_fd_);
         if (!link_) {
@@ -476,13 +514,15 @@ public:
         snapshot.evidence["cgroup_path"] = cgroup_path_;
         snapshot.evidence["cgroup_id"] = std::to_string(cgroup_id_);
         snapshot.evidence["link_pin_path"] = link_pin_path();
-        snapshot.evidence["allow_count"] = std::to_string(allow_count_);
-        snapshot.evidence["deny_count"] = std::to_string(deny_count_);
+        const auto stats = read_stats_counts();
+        snapshot.evidence["allow_count"] = std::to_string(stats.first);
+        snapshot.evidence["deny_count"] = std::to_string(stats.second);
         snapshot.evidence["reason"] = last_error_.empty() ? "ok" : last_error_;
         return snapshot;
     }
 
     bool rollback() override {
+        update_cached_stats();
         if (running_) {
             write_audit_event("rollback", "detach-cgroup-connect4", "success");
             write_journal_action("rollback", "detach-cgroup-connect4", link_pin_path());
@@ -503,8 +543,6 @@ public:
         if (!cgroup_path_.empty()) {
             cleanup_cgroup(cgroup_path_);
         }
-        allow_count_ = 0;
-        deny_count_ = 0;
         running_ = false;
         state_ = "rolled-back";
         return true;
@@ -530,6 +568,59 @@ private:
         return "/sys/fs/bpf/eulerpilot_" + sanitize_for_id(skill_name_) + "_link";
     }
 
+    bool install_policy_config() {
+        const int policy_fd = bpf_object__find_map_fd_by_name(bpf_object_, "policy_map");
+        if (policy_fd < 0) {
+            last_error_ = "policy-map-missing";
+            return false;
+        }
+        const int stats_fd = bpf_object__find_map_fd_by_name(bpf_object_, "stats_map");
+        if (stats_fd < 0) {
+            last_error_ = "stats-map-missing";
+            return false;
+        }
+
+        std::uint32_t key = 0;
+        NetworkPolicyMapConfig config;
+        config.deny_port = dst_port_value_;
+        config.enforce = mode_ == "enforce" ? 1 : 0;
+        if (bpf_map_update_elem(policy_fd, &key, &config, BPF_ANY) != 0) {
+            last_error_ = "policy-map-update-failed";
+            return false;
+        }
+
+        NetworkPolicyMapStats stats;
+        if (bpf_map_update_elem(stats_fd, &key, &stats, BPF_ANY) != 0) {
+            last_error_ = "stats-map-reset-failed";
+            return false;
+        }
+        allow_count_ = 0;
+        deny_count_ = 0;
+        return true;
+    }
+
+    std::pair<std::uint64_t, std::uint64_t> read_stats_counts() const {
+        if (!bpf_object_) {
+            return {allow_count_, deny_count_};
+        }
+        const int stats_fd = bpf_object__find_map_fd_by_name(bpf_object_, "stats_map");
+        if (stats_fd < 0) {
+            return {allow_count_, deny_count_};
+        }
+        std::uint32_t key = 0;
+        NetworkPolicyMapStats stats;
+        if (bpf_map_lookup_elem(stats_fd, &key, &stats) != 0) {
+            return {allow_count_, deny_count_};
+        }
+        return {stats.allow_count, stats.deny_count};
+    }
+
+    void update_cached_stats() {
+        const auto stats = read_stats_counts();
+        allow_count_ = stats.first;
+        deny_count_ = stats.second;
+    }
+
     void write_audit_event(const std::string &operation,
                            const std::string &action,
                            const std::string &result) const {
@@ -551,6 +642,8 @@ private:
         event.evidence = {
             {"hook", hook_},
             {"dst_port", dst_port_},
+            {"allow_count", std::to_string(allow_count_)},
+            {"deny_count", std::to_string(deny_count_)},
         };
         event.action = action;
         event.result = result;
@@ -594,9 +687,10 @@ private:
     std::string cgroup_path_ = "/sys/fs/cgroup/eulerpilot/demo-net";
     std::string mode_ = "enforce";
     std::string dst_port_ = "18080";
+    std::uint16_t dst_port_value_ = 18080;
     std::uint64_t cgroup_id_ = 0;
-    int allow_count_ = 0;
-    int deny_count_ = 0;
+    std::uint64_t allow_count_ = 0;
+    std::uint64_t deny_count_ = 0;
     int cgroup_fd_ = -1;
     bpf_object *bpf_object_ = nullptr;
     bpf_link *link_ = nullptr;

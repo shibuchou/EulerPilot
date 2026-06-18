@@ -1,0 +1,13 @@
+=== NetworkPolicySkill integration test ===
+PASS: formal network_policy skill is registered
+PASS: doctor succeeds with network_policy audit mode
+PASS: agent runs with network_policy audit mode
+PASS: audit mode has no cgroup BPF attachment
+PASS: network policy audit event written
+PASS: doctor succeeds with network_policy enforce mode
+PASS: outside-cgroup curl succeeds before policy hit
+PASS: enforce mode attaches cgroup/connect4 program
+PASS: target-cgroup curl is denied by dynamic dst_port=18081
+PASS: enforce agent exits cleanly
+PASS: rollback leaves no network policy BPF attachment
+=== NetworkPolicySkill integration test complete ===

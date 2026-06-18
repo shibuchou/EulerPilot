@@ -195,7 +195,7 @@ results/network_policy/
 
 ## 9. 当前状态
 
-状态：`阶段 B 已启动，B1/B2 已完成，B3 connect4 audit/enforce 正在推进`
+状态：`阶段 B 进行中，connect4 子能力已完成，TC QoS 与 isolated-veth XDP 待启动`
 
 已具备：
 
@@ -205,13 +205,16 @@ results/network_policy/
 - 正式 `network_policy` Skill 名称已注册，`network_policy_demo` 作为兼容名称保留。
 - `network_policy` 默认 disabled，默认 `audit` 模式。
 - `audit` 模式不挂载 BPF，只写 AuditBus/ActionJournal 事件，避免误阻断流量。
+- `enforce` 模式使用 BPF `policy_map` 动态配置目标端口，不再依赖 BPF 常量端口。
+- `stats_map` 已记录 allow/deny 命中计数，rollback 审计事件包含最终计数。
 - `tests/integration/test_network_policy.sh` 已验证 audit 模式不挂 cgroup BPF，并写入 `reports/events/network_policy.jsonl`。
+- `tests/integration/test_network_policy.sh` 已验证 enforce 模式下目标 cgroup 访问动态端口 `18081` 被拒绝，非目标 cgroup 访问正常，退出后无 pinned link 或 cgroup attachment 残留。
 - 完整质量门禁已通过，日志为 `reports/final_quality_gate_20260618_network_policy_alias.log`。
-- 121 最新集成测试目录：`results/network_policy/integration-20260618-170758/`。
-- 122 最新集成测试目录：`results/network_policy/integration-20260618-170830/`。
+- 121 最新集成测试目录：`results/network_policy/integration-20260618-210126/`。
+- 122 最新集成测试目录：`results/network_policy/integration-20260618-211444/`。
 
 下一步：
 
-1. connect4 enforce 路径补动态端口配置和命中统计。
-2. 增强 `tests/integration/test_network_policy.sh`，覆盖 enforce 和 rollback。
-3. 开始 TC QoS 设计与最小实现。
+1. connect4 路径接入 YAML v2 的 `targets + rules + target_ref`。
+2. 开始 TC QoS 设计与最小实现。
+3. 开始 isolated-veth XDP 设计与最小实现。

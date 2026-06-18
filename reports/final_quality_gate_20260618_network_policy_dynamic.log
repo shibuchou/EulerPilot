@@ -1,0 +1,22 @@
+1..12
+ok 1 - make agent
+ok 2 - make network-policy-demo
+ok 3 - make security-policy-demo
+ok 4 - --list-skills outputs formal network_policy skill
+ok 5 - --doctor-skills exit 0
+  metrics config:   prometheus:
+    enabled: false
+    listen:  127.0.0.1:9108
+ok 6 - agent 15s smoke
+ok 7 - network_policy default disabled
+ok 8 - security_policy_demo default disabled
+ok 9 - metrics default disabled on 127.0.0.1
+ok 10 - dashboard index.html exists and non-empty
+ok 11 - frozen result dirs exist (Redis=7, Nginx=3)
+ok 12 - no BPF/LSM residue
+
+# optional checks
+ok - agent 100-round stress smoke
+ok - doctor 5-round stable
+
+quality gate complete
