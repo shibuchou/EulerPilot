@@ -1,0 +1,11 @@
+=== NetworkQos TC integration test ===
+PASS: network_qos skill is registered
+PASS: lab veth baseline connectivity works
+PASS: audit mode leaves TC qdisc unchanged
+PASS: doctor succeeds with network_qos enforce mode
+PASS: enforce mode installs TC clsact + TBF
+PASS: lab veth traffic passes through QoS path
+PASS: enforce agent exits cleanly
+PASS: rollback leaves no TC qdisc residue
+PASS: network_qos rollback event records packet hits
+=== NetworkQos TC integration test complete ===

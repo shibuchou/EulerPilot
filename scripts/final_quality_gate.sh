@@ -39,12 +39,16 @@ block = -1
 name_map = {}
 enabled_map = {}
 for line in lines:
-    t = line.strip()
-    if t.startswith('- config:') or t.startswith('- name:'):
+    if line.startswith('- '):
         block += 1
-    if t.startswith('name:'):
+    if block < 0:
+        continue
+    t = line.strip()
+    if line.startswith('- name:'):
+        name_map[block] = line.split(':', 1)[1].strip()
+    elif line.startswith('  name:'):
         name_map[block] = t.split(':', 1)[1].strip()
-    if t.startswith('enabled:'):
+    if line.startswith('  enabled:'):
         enabled_map[block] = t.split(':', 1)[1].strip()
 # Find the block containing the target skill
 for b, n in name_map.items():

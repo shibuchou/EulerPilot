@@ -1,0 +1,27 @@
+
+  Capability Detector
+  --------------------------------------------------
+  + bpf_lsm            available /sys/kernel/security/lsm
+  + btf                available /sys/kernel/btf/vmlinux
+  + cgroup_v2          available /sys/fs/cgroup/cgroup.controllers
+  ! kubernetes         missing kubectl command
+  + memory_reclaim     available /sys/fs/cgroup/memory.reclaim
+  + psi_cpu            available /proc/pressure/cpu
+  + psi_io             available /proc/pressure/io
+  + psi_memory         available /proc/pressure/memory
+  + ringbuf            available libbpf ringbuf requires BTF/libbpf runtime
+  ! sched_ext          missing /sys/kernel/sched_ext
+  + tc                 available tc command
+  + xdp                available /sys/class/net/* with generic fallback
+  --------------------------------------------------
+
+  Skills Doctor
+  --------------------------------------------------
+  + resource_control       created
+  + psi_gate               created
+  + network_policy         created
+  + network_policy_demo    created
+  x network_qos            created [tc-ifname-missing]
+  + security_policy_demo   created
+  --------------------------------------------------
+

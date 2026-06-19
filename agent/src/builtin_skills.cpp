@@ -68,6 +68,32 @@ bool parse_tcp_port(const std::string &value, std::uint16_t &port) {
     return true;
 }
 
+const std::string *find_config_value(const SkillSpec &spec, const std::string &key) {
+    auto it = spec.config.find(key);
+    return it == spec.config.end() ? nullptr : &it->second;
+}
+
+std::string config_value_or(const SkillSpec &spec,
+                            const std::string &key,
+                            const std::string &fallback) {
+    const auto *value = find_config_value(spec, key);
+    return value ? *value : fallback;
+}
+
+int find_rule_by_hook(const SkillSpec &spec, const std::string &hook) {
+    for (int i = 0; i < 128; ++i) {
+        const std::string prefix = "rules." + std::to_string(i) + ".";
+        const auto *rule_hook = find_config_value(spec, prefix + "hook");
+        if (!rule_hook) {
+            continue;
+        }
+        if (*rule_hook == hook) {
+            return i;
+        }
+    }
+    return -1;
+}
+
 struct NetworkPolicyMapConfig {
     std::uint16_t deny_port = 18080;
     std::uint8_t enforce = 1;
@@ -393,21 +419,62 @@ public:
     std::string name() const override { return skill_name_; }
 
     bool configure(const RuntimeConfig &, const SkillSpec &spec) override {
-        auto hook = spec.config.find("hook");
-        auto cgroup_path = spec.config.find("cgroup_path");
-        auto mode = spec.config.find("mode");
-        auto port = spec.config.find("dst_port");
-        if (hook == spec.config.end() || cgroup_path == spec.config.end() ||
-            mode == spec.config.end() || port == spec.config.end()) {
-            last_error_ = "network-policy-demo-missing-required-config";
-            return false;
+        const int rule_index = find_rule_by_hook(spec, "cgroup_connect4");
+        if (rule_index >= 0) {
+            const std::string rule_prefix = "rules." + std::to_string(rule_index) + ".";
+            hook_ = config_value_or(spec, rule_prefix + "hook", "cgroup_connect4");
+            mode_ = config_value_or(spec, rule_prefix + "mode",
+                                    config_value_or(spec, "mode", "audit"));
+            dst_port_ = config_value_or(spec, rule_prefix + "dst_port", "18080");
+            protocol_ = config_value_or(spec, rule_prefix + "protocol", "tcp");
+            action_ = config_value_or(spec, rule_prefix + "action", "deny");
+            rule_id_ = config_value_or(spec, rule_prefix + "name",
+                                       "connect4-deny-port-" + dst_port_);
+            target_ref_ = config_value_or(spec, rule_prefix + "target_ref", "");
+            if (target_ref_.empty()) {
+                last_error_ = "network-policy-v2-missing-target-ref";
+                return false;
+            }
+            const std::string target_prefix = "targets." + target_ref_ + ".";
+            const std::string target_type = config_value_or(spec, target_prefix + "type", "");
+            if (target_type != "cgroup") {
+                last_error_ = "network-policy-v2-target-not-cgroup";
+                return false;
+            }
+            cgroup_path_ = config_value_or(spec, target_prefix + "path", "");
+            if (cgroup_path_.empty()) {
+                last_error_ = "network-policy-v2-target-path-missing";
+                return false;
+            }
+        } else {
+            auto hook = spec.config.find("hook");
+            auto cgroup_path = spec.config.find("cgroup_path");
+            auto mode = spec.config.find("mode");
+            auto port = spec.config.find("dst_port");
+            if (hook == spec.config.end() || cgroup_path == spec.config.end() ||
+                mode == spec.config.end() || port == spec.config.end()) {
+                last_error_ = "network-policy-demo-missing-required-config";
+                return false;
+            }
+            hook_ = hook->second;
+            cgroup_path_ = cgroup_path->second;
+            mode_ = mode->second;
+            dst_port_ = port->second;
+            protocol_ = config_value_or(spec, "protocol", "tcp");
+            action_ = config_value_or(spec, "action", "deny");
+            target_ref_ = config_value_or(spec, "target_ref", "legacy_cgroup");
+            rule_id_ = "connect4-deny-port-" + dst_port_;
         }
-        hook_ = hook->second;
-        cgroup_path_ = cgroup_path->second;
-        mode_ = mode->second;
-        dst_port_ = port->second;
         if (mode_ != "audit" && mode_ != "enforce") {
             last_error_ = "unsupported-mode";
+            return false;
+        }
+        if (protocol_ != "tcp") {
+            last_error_ = "unsupported-protocol";
+            return false;
+        }
+        if (action_ != "deny") {
+            last_error_ = "unsupported-action";
             return false;
         }
         if (!parse_tcp_port(dst_port_, dst_port_value_)) {
@@ -565,6 +632,8 @@ public:
         snapshot.evidence["hook"] = hook_;
         snapshot.evidence["dst_port"] = dst_port_;
         snapshot.evidence["mode"] = mode_;
+        snapshot.evidence["target_ref"] = target_ref_;
+        snapshot.evidence["rule_id"] = rule_id_;
         snapshot.evidence["cgroup_path"] = cgroup_path_;
         snapshot.evidence["cgroup_id"] = std::to_string(cgroup_id_);
         snapshot.evidence["link_pin_path"] = link_pin_path();
@@ -686,15 +755,17 @@ private:
         event.event_id = skill_name_ + "-" + operation + "-" + event.timestamp;
         event.skill = skill_name_;
         event.policy_id = "network_policy";
-        event.rule_id = "connect4-deny-port-" + dst_port_;
+        event.rule_id = rule_id_;
         event.mode = mode_;
         event.target = {
             {"cgroup_id", std::to_string(cgroup_id_)},
             {"cgroup_path", cgroup_path_},
+            {"target_ref", target_ref_},
         };
         event.operation = operation;
         event.evidence = {
             {"hook", hook_},
+            {"protocol", protocol_},
             {"dst_port", dst_port_},
             {"allow_count", std::to_string(allow_count_)},
             {"deny_count", std::to_string(deny_count_)},
@@ -720,6 +791,8 @@ private:
         entry.new_values = {
             {"mode", mode_},
             {"hook", hook_},
+            {"target_ref", target_ref_},
+            {"rule_id", rule_id_},
             {"dst_port", dst_port_},
             {"action", action},
         };
@@ -741,6 +814,10 @@ private:
     std::string cgroup_path_ = "/sys/fs/cgroup/eulerpilot/demo-net";
     std::string mode_ = "enforce";
     std::string dst_port_ = "18080";
+    std::string protocol_ = "tcp";
+    std::string action_ = "deny";
+    std::string target_ref_ = "legacy_cgroup";
+    std::string rule_id_ = "connect4-deny-port-18080";
     std::uint16_t dst_port_value_ = 18080;
     std::uint64_t cgroup_id_ = 0;
     std::uint64_t allow_count_ = 0;
@@ -755,30 +832,64 @@ public:
     std::string name() const override { return "network_qos"; }
 
     bool configure(const RuntimeConfig &, const SkillSpec &spec) override {
-        auto hook = spec.config.find("hook");
-        auto mode = spec.config.find("mode");
-        auto ifname = spec.config.find("ifname");
-        auto protocol = spec.config.find("protocol");
-        auto port = spec.config.find("dst_port");
-        auto rate = spec.config.find("rate");
-        auto burst = spec.config.find("burst");
-        auto latency = spec.config.find("latency");
-        if (hook == spec.config.end() || mode == spec.config.end() ||
-            ifname == spec.config.end() || protocol == spec.config.end() ||
-            port == spec.config.end() || rate == spec.config.end() ||
-            burst == spec.config.end() || latency == spec.config.end()) {
-            last_error_ = "network-qos-missing-required-config";
-            return false;
-        }
+        const int rule_index = find_rule_by_hook(spec, "tc_egress");
+        if (rule_index >= 0) {
+            const std::string rule_prefix = "rules." + std::to_string(rule_index) + ".";
+            hook_ = config_value_or(spec, rule_prefix + "hook", "tc_egress");
+            mode_ = config_value_or(spec, rule_prefix + "mode",
+                                    config_value_or(spec, "mode", "audit"));
+            protocol_ = config_value_or(spec, rule_prefix + "protocol", "any");
+            dst_port_ = config_value_or(spec, rule_prefix + "dst_port", "0");
+            rate_ = config_value_or(spec, rule_prefix + "rate", "1mbit");
+            burst_ = config_value_or(spec, rule_prefix + "burst", "32kb");
+            latency_ = config_value_or(spec, rule_prefix + "latency", "50ms");
+            action_ = config_value_or(spec, rule_prefix + "action", "limit");
+            rule_id_ = config_value_or(spec, rule_prefix + "name", "tc-egress-qos");
+            target_ref_ = config_value_or(spec, rule_prefix + "target_ref", "");
+            if (target_ref_.empty()) {
+                last_error_ = "network-qos-v2-missing-target-ref";
+                return false;
+            }
+            const std::string target_prefix = "targets." + target_ref_ + ".";
+            const std::string target_type = config_value_or(spec, target_prefix + "type", "");
+            if (target_type != "netdev") {
+                last_error_ = "network-qos-v2-target-not-netdev";
+                return false;
+            }
+            ifname_ = config_value_or(spec, target_prefix + "ifname", "");
+            if (ifname_.empty()) {
+                last_error_ = "network-qos-v2-ifname-missing";
+                return false;
+            }
+        } else {
+            auto hook = spec.config.find("hook");
+            auto mode = spec.config.find("mode");
+            auto ifname = spec.config.find("ifname");
+            auto protocol = spec.config.find("protocol");
+            auto port = spec.config.find("dst_port");
+            auto rate = spec.config.find("rate");
+            auto burst = spec.config.find("burst");
+            auto latency = spec.config.find("latency");
+            if (hook == spec.config.end() || mode == spec.config.end() ||
+                ifname == spec.config.end() || protocol == spec.config.end() ||
+                port == spec.config.end() || rate == spec.config.end() ||
+                burst == spec.config.end() || latency == spec.config.end()) {
+                last_error_ = "network-qos-missing-required-config";
+                return false;
+            }
 
-        hook_ = hook->second;
-        mode_ = mode->second;
-        ifname_ = ifname->second;
-        protocol_ = protocol->second;
-        dst_port_ = port->second;
-        rate_ = rate->second;
-        burst_ = burst->second;
-        latency_ = latency->second;
+            hook_ = hook->second;
+            mode_ = mode->second;
+            ifname_ = ifname->second;
+            protocol_ = protocol->second;
+            dst_port_ = port->second;
+            rate_ = rate->second;
+            burst_ = burst->second;
+            latency_ = latency->second;
+            action_ = config_value_or(spec, "action", "limit");
+            target_ref_ = config_value_or(spec, "target_ref", "legacy_netdev");
+            rule_id_ = "tc-egress-qos-" + ifname_;
+        }
 
         if (hook_ != "tc_egress") {
             last_error_ = "unsupported-hook";
@@ -791,6 +902,10 @@ public:
         if (protocol_ != "any" && protocol_ != "tcp" &&
             protocol_ != "udp" && protocol_ != "icmp") {
             last_error_ = "unsupported-protocol";
+            return false;
+        }
+        if (action_ != "limit") {
+            last_error_ = "unsupported-action";
             return false;
         }
         if (dst_port_ == "0") {
@@ -922,6 +1037,8 @@ public:
         snapshot.evidence["mode"] = mode_;
         snapshot.evidence["ifname"] = ifname_;
         snapshot.evidence["ifindex"] = std::to_string(ifindex_);
+        snapshot.evidence["target_ref"] = target_ref_;
+        snapshot.evidence["rule_id"] = rule_id_;
         snapshot.evidence["protocol"] = protocol_;
         snapshot.evidence["dst_port"] = dst_port_;
         snapshot.evidence["rate"] = rate_;
@@ -1048,11 +1165,12 @@ private:
         event.event_id = "network_qos-" + operation + "-" + event.timestamp;
         event.skill = "network_qos";
         event.policy_id = "network_policy";
-        event.rule_id = "tc-egress-qos-" + ifname_;
+        event.rule_id = rule_id_;
         event.mode = mode_;
         event.target = {
             {"ifname", ifname_},
             {"ifindex", std::to_string(ifindex_)},
+            {"target_ref", target_ref_},
         };
         event.operation = operation;
         event.evidence = {
@@ -1084,6 +1202,8 @@ private:
         entry.new_values = {
             {"mode", mode_},
             {"hook", hook_},
+            {"target_ref", target_ref_},
+            {"rule_id", rule_id_},
             {"protocol", protocol_},
             {"dst_port", dst_port_},
             {"rate", rate_},
@@ -1111,11 +1231,14 @@ private:
     std::string hook_ = "tc_egress";
     std::string mode_ = "audit";
     std::string ifname_ = "ep-veth-qos0";
+    std::string target_ref_ = "legacy_netdev";
+    std::string rule_id_ = "tc-egress-qos-ep-veth-qos0";
     std::string protocol_ = "any";
     std::string dst_port_ = "0";
     std::string rate_ = "1mbit";
     std::string burst_ = "32kb";
     std::string latency_ = "50ms";
+    std::string action_ = "limit";
     std::uint16_t dst_port_value_ = 0;
     std::uint8_t protocol_value_ = 0;
     std::uint64_t packet_count_ = 0;

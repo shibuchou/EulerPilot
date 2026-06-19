@@ -1,6 +1,6 @@
 # EulerPilot 进度状态看板
 
-更新时间：`2026-06-18`
+更新时间：`2026-06-19`
 
 当前执行口径：`docs/next_phase_plan_v2_1.md`
 
@@ -20,7 +20,7 @@
 | 阶段 | 状态 | 当前结论 | 主要证据 |
 |------|------|----------|----------|
 | A. 公共基础设施 | 已完成 | 远端 Git、文档规则、README 覆盖、公共控制面最小代码和现有质量门禁已完成；后续随正式 Skill 深度接入 | `AGENTS.md`、本文件、各目录 README、`docs/public_control_plane_design.md`、`reports/final_quality_gate_20260618_control_plane.log` |
-| B. Network Policy | 进行中 | 正式 `network_policy` 注册名已落地；connect4 audit/enforce 已完成；TC QoS 最小闭环已完成；下一步进入 YAML v2 多 target/rules 和 isolated-veth XDP | `docs/network_policy_skill.md`、`tests/integration/test_network_policy.sh`、`tests/integration/test_network_qos_tc.sh` |
+| B. Network Policy | 进行中 | 正式 `network_policy` 注册名已落地；connect4 audit/enforce 已完成；TC QoS 最小闭环已完成；schema v2 `targets + rules + target_ref` 已落地；下一步进入 isolated-veth XDP 和 QoS Benchmark | `docs/network_policy_skill.md`、`tests/integration/test_network_policy.sh`、`tests/integration/test_network_qos_tc.sh` |
 | C. Security Agent | 未开始 | 等待公共控制面、AuditBus 和 target filter | `docs/next_phase_plan_v2_1.md` |
 | D. Resource Control | 未开始 | 需要扩展到 CPU + Memory 自动闭环，IO 可演示可回滚 | `docs/next_phase_plan_v2_1.md` |
 | E. SP4/sched_ext 复核 | 未开始 | 等待 SP4/123 环境 | `docs/next_phase_plan_v2_1.md` |
@@ -69,12 +69,14 @@
 | B2 | `network_policy_demo` 到 `network_policy` 迁移方案 | 已完成 | 正式注册名 `network_policy` 已增加，`network_policy_demo` 保留兼容 |
 | B3 | connect4 audit/enforce | 已完成 | audit 模式不挂 BPF；enforce 模式使用 BPF map 动态配置端口，`stats_map` 记录 allow/deny，rollback 后无 attachment 残留 |
 | B4 | TC QoS | 已完成最小闭环 | `network_qos` 使用 TC egress BPF classifier 统计命中，TBF qdisc 执行限速；已验证 lab netns/veth、audit/enforce 和 rollback |
-| B5 | isolated-veth XDP | 待开始 | 只允许 lab veth/netns，不挂生产管理网卡 |
+| B5 | YAML v2 targets/rules | 已完成最小闭环 | `configs/skills.yaml` 已升级为 `schema_version: 2`；connect4 与 TC QoS 均通过 `target_ref` 解析目标 |
+| B6 | isolated-veth XDP | 待开始 | 只允许 lab veth/netns，不挂生产管理网卡 |
 
 ## 阶段 B 当前证据
 
 - 正式 `network_policy` Skill 已注册，`network_policy_demo` 保留兼容。
-- `configs/skills.yaml` 已增加默认 disabled 的 `network_policy` 配置，默认模式为 `audit`。
+- `configs/skills.yaml` 已升级为 `schema_version: 2`，`network_policy` 与 `network_qos` 均使用 `targets + rules + target_ref`。
+- `network_policy` 默认 disabled，默认模式为 `audit`。
 - `tests/integration/test_network_policy.sh` 已验证：
   - `network_policy` 能被 `--list-skills` 枚举。
   - audit 模式下 `--doctor-skills` 通过。
@@ -86,9 +88,19 @@
   - 目标 cgroup 内 curl 被 cgroup/connect4 拒绝，结果为 `rc=7 http_code=000`。
   - rollback 事件包含 `deny_count=1`，证明 `stats_map` 生效。
   - Agent 退出后 `/sys/fs/bpf/eulerpilot_network_policy_link` 和 cgroup BPF attachment 无残留。
-- 121 最新集成测试证据目录：`results/network_policy/integration-20260618-210126/`。
-- 122 最新集成测试证据目录：`results/network_policy/integration-20260618-211444/`。
-- 121 完整质量门禁已通过：`reports/final_quality_gate_20260618_network_qos_tc.log`。
+- 121 最新集成测试证据目录：`results/network_policy/integration-20260619-120828/`。
+- 122 最新集成测试证据目录：`results/network_policy/integration-20260619-122352/`。
+- 121 完整质量门禁已通过：`reports/final_quality_gate_20260619_yaml_v2.log`。
+
+### YAML v2 证据
+
+- `SkillManager` 已支持 `schema_version: 1/2`，并将嵌套 YAML flatten 为现有 `SkillSpec.config`，避免大改 Skill 接口。
+- `network_policy` 已优先读取 `rules.*.hook=cgroup_connect4` 和 `targets.<target_ref>.type=cgroup`。
+- `network_qos` 已优先读取 `rules.*.hook=tc_egress` 和 `targets.<target_ref>.type=netdev`。
+- 审计事件已带上 v2 规则和目标：
+  - connect4：`rule_id=deny_demo_port`，`target_ref=demo_cgroup`。
+  - TC QoS：`rule_id=limit_lab_egress`，`target_ref=lab_veth`。
+  - 121 验证事件位于 `reports/events/network_policy.jsonl`。
 
 ### TC QoS 证据
 
@@ -103,8 +115,8 @@
   - enforce 模式安装 TC clsact + TBF。
   - ping 流量命中 BPF stats，rollback 事件记录 `packet_count=3`、`byte_count=294`。
   - Agent 退出后无 TC qdisc 残留。
-- 121 最新 TC QoS 集成测试证据目录：`results/network_policy/qos-tc-20260618-213709/`。
-- 122 最新 TC QoS 集成测试证据目录：`results/network_policy/qos-tc-20260618-214115/`。
+- 121 最新 TC QoS 集成测试证据目录：`results/network_policy/qos-tc-20260619-120916/`。
+- 122 最新 TC QoS 集成测试证据目录：`results/network_policy/qos-tc-20260619-122403/`。
 
 ## 阶段 A 后续随阶段接入项
 

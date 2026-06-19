@@ -10,7 +10,7 @@ skills:
   config: {}
 - name: network_policy
   kind: runtime
-  enabled: false
+  enabled: true
   config:
     mode: audit
     targets:
@@ -22,7 +22,7 @@ skills:
         hook: cgroup_connect4
         target_ref: demo_cgroup
         protocol: tcp
-        dst_port: '18080'
+        dst_port: '18081'
         action: deny
 - name: network_policy_demo
   kind: runtime

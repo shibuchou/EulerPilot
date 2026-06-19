@@ -1,10 +1,12 @@
 # EulerPilot Skills 与 YAML 能力规划 v2.1
 
-更新时间：`2026-06-18`
+更新时间：`2026-06-19`
 
 ## 1. 当前判断
 
-`Skill / SkillRegistry / SkillManager / builtin_skills` 已经完成第一阶段闭环，`resource_control / psi_gate / network_policy_demo / security_policy_demo` 也已进入统一 Agent 管理。
+`Skill / SkillRegistry / SkillManager / builtin_skills` 已经完成第一阶段闭环，`resource_control / psi_gate / network_policy / network_qos / network_policy_demo / security_policy_demo` 也已进入统一 Agent 管理。
+
+当前 `configs/skills.yaml` 已升级为 `schema_version: 2`。解析层通过 flatten 嵌套 YAML 的方式兼容现有 `SkillSpec.config`，因此旧 `schema_version: 1` flat config 仍可使用。
 
 下一阶段不再是“证明可以扩展 Skill”，而是把 demo 级能力升级为正式 Agent 能力：
 
@@ -202,7 +204,7 @@ skills:
 
 ## 6. NetworkPolicySkill YAML
 
-Network 必须使用“目标定义 + 规则引用”，不能让 `cgroup/connect4`、TC 和 XDP 共享一个全局 cgroup target。
+Network 必须使用“目标定义 + 规则引用”，不能让 `cgroup/connect4`、TC 和 XDP 共享一个全局 cgroup target。当前已落地 `cgroup_connect4` 与 `tc_egress` 的 v2 最小闭环；XDP 仍待实现。
 
 ```yaml
 network_policy:
@@ -258,10 +260,17 @@ QoS 路线固定为：
 
 ```text
 eBPF TC classifier
-  -> classid/mark
-  -> HTB/TBF
-  -> Agent 动态调速
+  -> 命中统计
+  -> TBF root qdisc
+  -> Agent 负责配置与回滚
 ```
+
+当前实现边界：
+
+- `network_policy` 会选择 `rules.*.hook=cgroup_connect4` 的第一条规则，并解析其 `target_ref` 指向的 `type: cgroup` target。
+- `network_qos` 会选择 `rules.*.hook=tc_egress` 的第一条规则，并解析其 `target_ref` 指向的 `type: netdev` target。
+- 审计事件已输出 `rule_id` 与 `target_ref`。
+- 多规则并行、k8s_pod 到 veth 解析、TC 速率误差 Benchmark 和 XDP 尚未完成。
 
 ## 7. SecurityPolicySkill YAML
 

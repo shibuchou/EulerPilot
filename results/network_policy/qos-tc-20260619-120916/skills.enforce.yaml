@@ -34,9 +34,9 @@ skills:
     mode: enforce
 - name: network_qos
   kind: runtime
-  enabled: false
+  enabled: true
   config:
-    mode: audit
+    mode: enforce
     targets:
       lab_veth:
         type: netdev

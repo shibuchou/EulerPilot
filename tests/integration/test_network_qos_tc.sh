@@ -74,6 +74,9 @@ for block in blocks:
     name = ""
     for item in block:
         stripped = item.strip()
+        if stripped.startswith("- name:"):
+            name = stripped.split(":", 1)[1].strip().strip("'\"")
+            break
         if stripped.startswith("name:"):
             name = stripped.split(":", 1)[1].strip().strip("'\"")
             break

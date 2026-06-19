@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <queue>
+#include <sstream>
 #include <stdexcept>
 #include <unordered_map>
 #include <yaml-cpp/yaml.h>
@@ -9,6 +10,33 @@
 namespace fs = std::filesystem;
 
 namespace eulerpilot {
+
+namespace {
+
+void flatten_config_node(const YAML::Node &node,
+                         const std::string &prefix,
+                         std::map<std::string, std::string> &out) {
+    if (node.IsScalar()) {
+        out[prefix] = node.as<std::string>();
+        return;
+    }
+    if (node.IsMap()) {
+        for (const auto &item : node) {
+            const std::string key = item.first.as<std::string>();
+            const std::string child_prefix = prefix.empty() ? key : prefix + "." + key;
+            flatten_config_node(item.second, child_prefix, out);
+        }
+        return;
+    }
+    if (node.IsSequence()) {
+        for (std::size_t i = 0; i < node.size(); ++i) {
+            const std::string child_prefix = prefix + "." + std::to_string(i);
+            flatten_config_node(node[i], child_prefix, out);
+        }
+    }
+}
+
+} // namespace
 
 std::string resolve_skills_config_path(const std::string &agent_config_path, const std::string &skills_config_path) {
     fs::path agent_path = fs::weakly_canonical(fs::path(agent_config_path));
@@ -25,7 +53,7 @@ SkillsFileConfig parse_skills_file(const std::string &resolved_path) {
         throw std::runtime_error("skills.yaml missing schema_version");
     }
     config.schema_version = root["schema_version"].as<int>();
-    if (config.schema_version != 1) {
+    if (config.schema_version != 1 && config.schema_version != 2) {
         throw std::runtime_error("unsupported skills.yaml schema_version: " + std::to_string(config.schema_version));
     }
 
@@ -45,9 +73,7 @@ SkillsFileConfig parse_skills_file(const std::string &resolved_path) {
         if (!seen.emplace(entry.name, true).second) {
             throw std::runtime_error("duplicate skill name in skills.yaml: " + entry.name);
         }
-        for (const auto &item : node["config"]) {
-            entry.config[item.first.as<std::string>()] = item.second.as<std::string>();
-        }
+        flatten_config_node(node["config"], "", entry.config);
         config.skills.push_back(std::move(entry));
     }
 

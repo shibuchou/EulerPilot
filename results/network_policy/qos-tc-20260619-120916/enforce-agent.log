@@ -1,0 +1,34 @@
+
+  * EulerPilot Agent 
+  --------------------------------------------------
+  config:     configs/agent.yaml
+  interval:   1000ms  duration:   8s  warmup: 0
+  mode:       dry-run  backend:    cgroup_v2
+  gate:       always-active
+  env:         psi:ok  cg:ok  scx:--
+  --------------------------------------------------
+
+  --- legend ---
+  mark: . UNKNOWN  L LATENCY_SENSITIVE  B BACKGROUND_NOISY  T THROUGHPUT_BATCH
+  act:  + applied  ~ managed  - none
+  --- observing ---
+  mark name             pid  class        act profile    w:weight reason
+  L redis-server       53349 LATENCY_SENSITIVE |~ normal_profile w:100 no-group-for-class
+  B sleep             129217 BACKGROUND_NOISY |- normal_profile w:100 no-group-for-class
+  L redis-server       53349 LATENCY_SENSITIVE |~ latency_profile w:1000 dry-run
+  B sleep             129217 BACKGROUND_NOISY |- latency_profile w:100 dry-run
+  L redis-server       53349 LATENCY_SENSITIVE |~ latency_profile w:1000 dry-run
+  B sleep             129217 BACKGROUND_NOISY |- latency_profile w:100 dry-run
+  L redis-server       53349 LATENCY_SENSITIVE |~ latency_profile w:1000 dry-run
+  B sleep             129217 BACKGROUND_NOISY |- latency_profile w:100 dry-run
+  L redis-server       53349 LATENCY_SENSITIVE |~ latency_profile w:1000 dry-run
+  B sleep             129217 BACKGROUND_NOISY |- latency_profile w:100 dry-run
+  L redis-server       53349 LATENCY_SENSITIVE |~ latency_profile w:1000 dry-run
+  B sleep             129217 BACKGROUND_NOISY |- latency_profile w:100 dry-run
+  L redis-server       53349 LATENCY_SENSITIVE |~ latency_profile w:1000 dry-run
+  B sleep             129217 BACKGROUND_NOISY |- latency_profile w:100 dry-run
+  L redis-server       53349 LATENCY_SENSITIVE |~ latency_profile w:1000 dry-run
+  B sleep             129217 BACKGROUND_NOISY |- latency_profile w:100 dry-run
+  --------------------------------------------------
+  DONE  total=478  applied=0  L=8  T=0  B=8  U=462
+
