@@ -14,6 +14,7 @@
 - [x] `--list-skills / --doctor-skills / --verbose / --jsonl` 命令行
 - [x] `network_policy` cgroup/connect4 audit/enforce/rollback 最小闭环
 - [x] `network_qos` TC egress classifier + TBF 限速最小闭环
+- [x] `network_qos` TC QoS 速率误差 Benchmark 双机通过
 - [x] `network_xdp` isolated-veth generic XDP ICMP drop/pass 最小闭环
 - [x] `security_policy_demo` BPF LSM file_open 最小闭环
 - [x] Runtime 生命周期收拢与 ActionJournal/AuditBus 最小接入
@@ -28,6 +29,8 @@
 - Nginx：`results/final/nginx-scx-compare-20260612-194018`
 - Network connect4：`results/network_policy/integration-20260619-142347`
 - Network TC QoS：`results/network_policy/qos-tc-20260619-142357`
+- Network TC QoS Benchmark 121：`results/network_policy/qos-rate-20260620-181708`
+- Network TC QoS Benchmark 122：`results/network_policy/qos-rate-20260620-181755`
 - Network XDP：`results/network_policy/xdp-20260619-142321`
 - Network XDP 122 复验：`results/network_policy/xdp-20260620-180651`
 

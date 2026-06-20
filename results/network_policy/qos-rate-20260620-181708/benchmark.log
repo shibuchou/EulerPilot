@@ -1,0 +1,9 @@
+=== NetworkQos rate benchmark ===
+PASS: lab veth baseline connectivity works
+PASS: baseline TCP throughput probe complete
+PASS: doctor succeeds with network_qos enforce mode
+PASS: enforce TCP throughput probe complete
+PASS: enforce agent exits cleanly
+PASS: rollback leaves no TC qdisc residue
+PASS: rate benchmark summary generated
+=== NetworkQos rate benchmark complete ===

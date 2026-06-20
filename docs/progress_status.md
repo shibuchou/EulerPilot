@@ -20,7 +20,7 @@
 | 阶段 | 状态 | 当前结论 | 主要证据 |
 |------|------|----------|----------|
 | A. 公共基础设施 | 已完成 | 远端 Git、文档规则、README 覆盖、公共控制面最小代码和现有质量门禁已完成；后续随正式 Skill 深度接入 | `AGENTS.md`、本文件、各目录 README、`docs/public_control_plane_design.md`、`reports/final_quality_gate_20260618_control_plane.log` |
-| B. Network Policy | 进行中 | 正式 `network_policy` 注册名已落地；connect4 audit/enforce 已完成；TC QoS 最小闭环已完成；isolated-veth XDP 最小闭环已完成；schema v2 `targets + rules + target_ref` 已落地；下一步进入 QoS Benchmark、XDP 多规则和 Pod veth target | `docs/network_policy_skill.md`、`tests/integration/test_network_policy.sh`、`tests/integration/test_network_qos_tc.sh`、`tests/integration/test_network_xdp.sh` |
+| B. Network Policy | 进行中 | 正式 `network_policy` 注册名已落地；connect4 audit/enforce 已完成；TC QoS 最小闭环与速率误差 Benchmark 已完成；isolated-veth XDP 最小闭环已完成；schema v2 `targets + rules + target_ref` 已落地；下一步进入 XDP 多规则和 Pod veth target | `docs/network_policy_skill.md`、`tests/integration/test_network_policy.sh`、`tests/integration/test_network_qos_tc.sh`、`tests/integration/test_network_xdp.sh`、`tests/benchmark/test_network_qos_rate.sh` |
 | C. Security Agent | 未开始 | 等待公共控制面、AuditBus 和 target filter | `docs/next_phase_plan_v2_1.md` |
 | D. Resource Control | 未开始 | 需要扩展到 CPU + Memory 自动闭环，IO 可演示可回滚 | `docs/next_phase_plan_v2_1.md` |
 | E. SP4/sched_ext 复核 | 未开始 | 等待 SP4/123 环境 | `docs/next_phase_plan_v2_1.md` |
@@ -71,6 +71,7 @@
 | B4 | TC QoS | 已完成最小闭环 | `network_qos` 使用 TC egress BPF classifier 统计命中，TBF qdisc 执行限速；已验证 lab netns/veth、audit/enforce 和 rollback |
 | B5 | YAML v2 targets/rules | 已完成最小闭环 | `configs/skills.yaml` 已升级为 `schema_version: 2`；connect4 与 TC QoS 均通过 `target_ref` 解析目标 |
 | B6 | isolated-veth XDP | 已完成最小闭环 | `network_xdp` 使用 generic XDP 在专用 lab veth 上执行 ICMP drop/pass；已验证 audit/enforce、drop 统计和 rollback 后连通性恢复 |
+| B7 | TC QoS 速率误差 Benchmark | 已完成 | `tests/benchmark/test_network_qos_rate.sh` 使用 Python TCP rate probe 验证 2 Mbit/s TBF 限速；121 误差 -1.22%，122 误差 -1.45% |
 
 ## 阶段 B 当前证据
 
@@ -119,6 +120,24 @@
   - Agent 退出后无 TC qdisc 残留。
 - 121 最新 TC QoS 集成测试证据目录：`results/network_policy/qos-tc-20260619-142357/`。
 - 122 最新 TC QoS 集成测试证据目录：`results/network_policy/qos-tc-20260619-122403/`。
+
+### TC QoS Benchmark 证据
+
+- 新增工具 `tools/tcp_rate_probe.py`，只依赖 Python 标准库，负责在 lab veth 上输出 baseline/enforce TCP 吞吐。
+- 新增 Benchmark `tests/benchmark/test_network_qos_rate.sh`，验证 `network_qos` 在 2 Mbit/s TBF 目标下的实际限速误差。
+- Benchmark 会关闭 lab veth 的 TSO/GSO/GRO 并使用小块 TCP 发送，避免 veth/GSO 聚合导致 TBF 误差失真。
+- 121 最新 QoS rate Benchmark 目录：`results/network_policy/qos-rate-20260620-181708/`。
+  - baseline：`1607.461 Mbit/s`
+  - enforce：`1.976 Mbit/s`
+  - 目标：`2.000 Mbit/s`
+  - 误差：`-1.22%`
+  - 降幅：`813.65x`
+- 122 最新 QoS rate Benchmark 目录：`results/network_policy/qos-rate-20260620-181755/`。
+  - baseline：`1796.228 Mbit/s`
+  - enforce：`1.971 Mbit/s`
+  - 目标：`2.000 Mbit/s`
+  - 误差：`-1.45%`
+  - 降幅：`911.33x`
 
 ### XDP 证据
 

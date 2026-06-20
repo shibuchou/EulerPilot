@@ -1,0 +1,9 @@
+{
+  "baseline_mbps": 1607.4606345534676,
+  "enforce_mbps": 1.9756176228854607,
+  "error_pct": -1.2191188557269639,
+  "reasons": "",
+  "reduction_ratio": 813.6496738704494,
+  "status": "PASS",
+  "target_mbps": 2.0
+}

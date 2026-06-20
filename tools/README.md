@@ -5,6 +5,7 @@
 ## 当前内容
 
 - `workload_observer_dump.c`：workload observer 相关数据 dump 工具。
+- `tcp_rate_probe.py`：Network QoS Benchmark 使用的最小 TCP 吞吐探针，只依赖 Python 标准库，用于 isolated veth 场景下测量 baseline/enforce 吞吐。
 
 ## 当前完成状态
 

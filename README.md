@@ -30,6 +30,7 @@ eBPF Observer
 - Network Policy 阶段 B 最小闭环：
   - `network_policy`：cgroup/connect4 audit/enforce/rollback
   - `network_qos`：TC egress classifier + TBF 限速闭环
+  - `network_qos` Benchmark：2 Mbit/s 目标下 121/122 实测误差约 -1.22% / -1.45%
   - `network_xdp`：isolated-veth generic XDP ICMP drop/pass 闭环
 
 当前最重要的候选结果目录为：
@@ -59,6 +60,7 @@ eBPF Observer
 - Nginx sched_ext 正式 compare：`/root/EulerPilot/bench/nginx/run_nginx_sched_ext_compare.sh`
 - Network connect4 集成测试：`/root/EulerPilot/tests/integration/test_network_policy.sh`
 - Network TC QoS 集成测试：`/root/EulerPilot/tests/integration/test_network_qos_tc.sh`
+- Network TC QoS 速率 Benchmark：`/root/EulerPilot/tests/benchmark/test_network_qos_rate.sh`
 - Network XDP 集成测试：`/root/EulerPilot/tests/integration/test_network_xdp.sh`
 
 ### 最终候选结果

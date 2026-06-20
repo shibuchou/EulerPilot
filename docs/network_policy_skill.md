@@ -225,6 +225,7 @@ results/network_policy/
 - `network_qos` enforce 模式通过 libbpf `bpf_tc_attach` 挂载 classifier，并通过 TBF root qdisc 执行限速。
 - `tests/integration/test_network_qos_tc.sh` 已基于 YAML v2 验证 lab netns/veth、audit 不改 qdisc、enforce 安装 clsact + TBF、流量命中统计和 rollback 无残留。
 - TC QoS 审计事件已包含 `rule_id=limit_lab_egress` 与 `target_ref=lab_veth`。
+- `tests/benchmark/test_network_qos_rate.sh` 已验证 TC QoS 速率误差：121 上 2 Mbit/s 目标实测 1.976 Mbit/s，误差 -1.22%；122 上实测 1.971 Mbit/s，误差 -1.45%。
 - `network_xdp` 子能力已注册，默认 disabled。
 - `bpf/network_xdp_demo.bpf.c` 已实现 XDP generic filter，负责按协议/端口配置执行 pass/drop 并累计 pass/drop/byte 统计。
 - `network_xdp` enforce 模式通过 libbpf `bpf_xdp_attach` 以 generic mode 挂载程序，rollback 通过 `bpf_xdp_detach` 卸载。
@@ -235,11 +236,13 @@ results/network_policy/
 - 122 最新集成测试目录：`results/network_policy/integration-20260619-122352/`。
 - 121 最新 TC QoS 集成测试目录：`results/network_policy/qos-tc-20260619-142357/`。
 - 122 最新 TC QoS 集成测试目录：`results/network_policy/qos-tc-20260619-122403/`。
+- 121 最新 TC QoS Benchmark 目录：`results/network_policy/qos-rate-20260620-181708/`。
+- 122 最新 TC QoS Benchmark 目录：`results/network_policy/qos-rate-20260620-181755/`。
 - 121 最新 XDP 集成测试目录：`results/network_policy/xdp-20260619-142321/`。
 - 122 最新 XDP 集成测试目录：`results/network_policy/xdp-20260620-180651/`。
 
 下一步：
 
-1. 为 TC QoS 增加速率误差 Benchmark 和多规则验证。
+1. 为 TC QoS 增加多规则验证。
 2. 将 isolated-veth XDP 扩展到 TCP/UDP 多规则和 lab Pod veth。
 3. 将 `TargetResolver` 从 cgroup/connect4 扩展到 netdev/k8s_pod 解析。

@@ -186,16 +186,19 @@ EulerPilot 实现了一套轻量 Skills 插件化能力框架，通过 YAML 驱�
 
 ### 3.5 Network Policy Demo — eBPF 扩展示例
 
-为验证 Skills 框架的可扩展性和赛题对 eBPF 作为 hook 实现 network policy agent 的要求，项目实现了一个闭环的 eBPF 网络策略演示：
+为验证 Skills 框架的可扩展性和赛题对 eBPF 作为 hook 实现 network policy agent 的要求，项目实现了三个可独立验证的网络策略子能力：
 
 | 组件 | 内容 |
 |------|------|
-| BPF 程序 | `cgroup/connect4`，对目标端口 18080 执行 deny |
-| 控制方式 | 创建 `demo-net` cgroup，受控进程移入后自动生效 |
-| 生命周期 | YAML 驱动启用 -> BPF attach -> deny 验证 -> rollback detach -> 恢复 |
-| 验证结果 | cgroup 内 `curl` 被拦截（000），cgroup 外正常（200），detach 后恢复 |
+| connect4 策略 | `cgroup/connect4`，对目标 cgroup 的动态端口执行 deny |
+| TC QoS | `tc_egress` BPF classifier 统计命中，TBF qdisc 执行限速 |
+| XDP 策略 | isolated veth 上挂 generic XDP，执行 ICMP drop/pass 和统计 |
+| 生命周期 | YAML v2 驱动启用 -> attach -> 验证 -> rollback detach -> 恢复 |
+| 验证结果 | connect4 deny/recover、TC QoS rollback、XDP drop/recover 均通过 |
 
-该演示证明：新增一个 eBPF Skill 只需补充 BPF 程序、Skill 适配器和 `skills.yaml` 配置，无需改动 Agent 核心 Runtime 流程。
+TC QoS 还完成了速率误差 Benchmark：在 2 Mbit/s 目标下，121 实测 1.976 Mbit/s（误差 -1.22%），122 实测 1.971 Mbit/s（误差 -1.45%）。这证明 Network Skill 不只是 attach 演示，也能输出可量化的策略效果数据。
+
+这些演示证明：新增一个 eBPF Skill 只需补充 BPF 程序、Skill 适配器和 `skills.yaml` 配置，无需改动 Agent 核心 Runtime 流程。
 ### 3.6 Security Policy Demo — BPF LSM 安全策略演示
 
 为补齐赛题对 "eBPF 作为 hook 实现 security policy agent" 的要求，项目实现了一个基于 BPF LSM 的最小安全策略演示：
