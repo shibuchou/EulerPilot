@@ -15,8 +15,8 @@
 - `tests/integration/test_network_policy.sh` 已覆盖 YAML v2、audit、enforce、动态端口拒绝和 rollback 无残留。
 - 已新增 `network_qos` 子能力：在专用 lab veth 上挂 `tc_egress` BPF classifier，并通过 TBF qdisc 执行最小限速闭环。
 - `tests/integration/test_network_qos_tc.sh` 已覆盖 YAML v2、lab netns/veth、TC clsact + TBF、BPF 命中统计和 rollback 无残留。
-- 已新增 `network_xdp` 子能力：在专用 isolated veth 上挂 generic XDP 程序，支持 ICMP drop/pass 和 BPF 命中统计。
-- `tests/integration/test_network_xdp.sh` 已覆盖 YAML v2、lab netns/veth、audit 不挂 XDP、enforce 丢 ICMP、rollback 后连通性恢复。
+- 已新增 `network_xdp` 子能力：在专用 isolated veth 上挂 generic XDP 程序，支持最多 8 条规则和 BPF 命中统计。
+- `tests/integration/test_network_xdp.sh` 已覆盖 YAML v2、lab netns/veth、audit 不挂 XDP、enforce 丢 ICMP、enforce 丢 TCP:19092、rollback 后连通性恢复。
 
 ## 当前安全边界
 
@@ -29,5 +29,5 @@
 
 1. 将命中级事件从“启动/回滚统计”升级为按规则聚合输出。
 2. 将 TC QoS 从单 lab veth 扩展到多规则和速率误差 Benchmark。
-3. 将 isolated-veth XDP 从 ICMP demo 扩展到 TCP/UDP 多规则和 Pod veth。
+3. 将 isolated-veth XDP 从 ICMP/TCP 多规则扩展到 UDP 和 Pod veth。
 4. 将 `TargetResolver` 扩展到 netdev/k8s_pod。

@@ -1,0 +1,18 @@
+
+  * EulerPilot Agent 
+  --------------------------------------------------
+  config:     configs/agent.yaml
+  interval:   1000ms  duration:   1s  warmup: 0
+  mode:       dry-run  backend:    cgroup_v2
+  gate:       always-active
+  env:         psi:ok  cg:ok  scx:ok
+  --------------------------------------------------
+
+  --- legend ---
+  mark: . UNKNOWN  L LATENCY_SENSITIVE  B BACKGROUND_NOISY  T THROUGHPUT_BATCH
+  act:  + applied  ~ managed  - none
+  --- observing ---
+  mark name             pid  class        act profile    w:weight reason
+  --------------------------------------------------
+  DONE  total=7  applied=0  L=0  T=0  B=0  U=7
+

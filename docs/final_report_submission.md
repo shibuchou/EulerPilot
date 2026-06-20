@@ -192,7 +192,7 @@ EulerPilot 实现了一套轻量 Skills 插件化能力框架，通过 YAML 驱�
 |------|------|
 | connect4 策略 | `cgroup/connect4`，对目标 cgroup 的动态端口执行 deny |
 | TC QoS | `tc_egress` BPF classifier 统计命中，TBF qdisc 执行限速 |
-| XDP 策略 | isolated veth 上挂 generic XDP，执行 ICMP drop/pass 和统计 |
+| XDP 策略 | isolated veth 上挂 generic XDP，执行 ICMP + TCP 多规则 drop/pass 和统计 |
 | 生命周期 | YAML v2 驱动启用 -> attach -> 验证 -> rollback detach -> 恢复 |
 | 验证结果 | connect4 deny/recover、TC QoS rollback、XDP drop/recover 均通过 |
 
@@ -415,4 +415,4 @@ EulerPilot 的价值不在于证明某一组参数在所有场景下都优于默
 
 项目代码已同步推送至 GitHub 私密仓库 `shibuchou/EulerPilot`。
 
-当前项目已覆盖 resource control、network policy、security policy 三类 OS Agent 扩展方向：其中 resource control 进入 Redis/Nginx 主实验路径，network policy 已具备 connect4、TC QoS、XDP 三个可验证子能力，security policy 作为独立 eBPF hook demo 提供 attach、deny、rollback、recover 的可演示闭环。
+当前项目已覆盖 resource control、network policy、security policy 三类 OS Agent 扩展方向：其中 resource control 进入 Redis/Nginx 主实验路径，network policy 已具备 connect4、TC QoS、XDP 三个可验证子能力，XDP 已支持 ICMP/TCP 多规则，security policy 作为独立 eBPF hook demo 提供 attach、deny、rollback、recover 的可演示闭环。

@@ -53,7 +53,7 @@ skills:
         action: limit
 - name: network_xdp
   kind: runtime
-  enabled: false
+  enabled: true
   config:
     mode: audit
     targets:

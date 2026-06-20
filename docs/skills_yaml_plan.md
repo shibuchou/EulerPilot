@@ -269,9 +269,9 @@ eBPF TC classifier
 
 - `network_policy` 会选择 `rules.*.hook=cgroup_connect4` 的第一条规则，并解析其 `target_ref` 指向的 `type: cgroup` target。
 - `network_qos` 会选择 `rules.*.hook=tc_egress` 的第一条规则，并解析其 `target_ref` 指向的 `type: netdev` target。
-- `network_xdp` 会选择 `rules.*.hook=xdp` 的第一条规则，并解析其 `target_ref` 指向的 `type: netdev` target。
+- `network_xdp` 会读取最多 8 条 `rules.*.hook=xdp` 规则，并要求这些规则解析到同一个 `type: netdev` target。
 - 审计事件已输出 `rule_id` 与 `target_ref`。
-- 多规则并行、k8s_pod 到 veth 解析、TC 速率误差 Benchmark、XDP TCP/UDP 规则扩展尚未完成。
+- k8s_pod 到 veth 解析、TC 多规则、XDP UDP 规则扩展尚未完成。
 
 ## 7. SecurityPolicySkill YAML
 

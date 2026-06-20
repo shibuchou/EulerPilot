@@ -1,0 +1,4 @@
+26: ep-veth-xdp0@if25: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 xdpgeneric qdisc noqueue state UP mode DEFAULT group default qlen 1000
+    link/ether 66:60:19:70:20:c0 brd ff:ff:ff:ff:ff:ff link-netns ep-xdp-ns promiscuity 0 allmulti 0 minmtu 68 maxmtu 65535 
+    veth addrgenmode eui64 numtxqueues 16 numrxqueues 16 gso_max_size 65536 gso_max_segs 65535 tso_max_size 524280 tso_max_segs 65535 gro_max_size 65536 gso_ipv4_max_size 65536 gro_ipv4_max_size 65536 
+    prog/xdp id 9883 name network_xdp_fil tag 405f543102904460 jited load_time 704504777850999 created_by_uid 0 btf_id 12434 

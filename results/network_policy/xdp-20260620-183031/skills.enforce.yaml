@@ -53,9 +53,9 @@ skills:
         action: limit
 - name: network_xdp
   kind: runtime
-  enabled: false
+  enabled: true
   config:
-    mode: audit
+    mode: enforce
     targets:
       lab_xdp_veth:
         type: netdev

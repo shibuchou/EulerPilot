@@ -31,7 +31,7 @@ eBPF Observer
   - `network_policy`：cgroup/connect4 audit/enforce/rollback
   - `network_qos`：TC egress classifier + TBF 限速闭环
   - `network_qos` Benchmark：2 Mbit/s 目标下 121/122 实测误差约 -1.22% / -1.45%
-  - `network_xdp`：isolated-veth generic XDP ICMP drop/pass 闭环
+  - `network_xdp`：isolated-veth generic XDP ICMP + TCP 多规则闭环
 
 当前最重要的候选结果目录为：
 

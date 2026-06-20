@@ -79,9 +79,9 @@
 
 - 参考仓库只解决“怎么设计、怎么拆模块、怎么适配 hook”。
 - EulerPilot 生产代码必须按 openEuler 目标环境重新整理目录、构建脚本和接口。
-- 当前阶段已完成 `network_policy` connect4、`network_qos` TC egress 和 `network_xdp` isolated-veth XDP 的最小闭环；后续再进入 Security Agent 正式化。
+- 当前阶段已完成 `network_policy` connect4、`network_qos` TC egress + 速率 Benchmark 和 `network_xdp` isolated-veth XDP 多规则闭环；后续再进入 Security Agent 正式化。
 - 下一阶段优先事项是补强：
-  - TC QoS 速率误差 Benchmark
-  - XDP TCP/UDP 多规则和 Pod veth target
+  - TC QoS 多规则验证
+  - XDP UDP 和 Pod veth target
   - Security Agent 的 syscall tracing 与 BPF LSM enforce
   - Resource Control 的 CPU + Memory 自动闭环

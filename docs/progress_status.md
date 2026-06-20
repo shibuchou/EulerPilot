@@ -20,7 +20,7 @@
 | 阶段 | 状态 | 当前结论 | 主要证据 |
 |------|------|----------|----------|
 | A. 公共基础设施 | 已完成 | 远端 Git、文档规则、README 覆盖、公共控制面最小代码和现有质量门禁已完成；后续随正式 Skill 深度接入 | `AGENTS.md`、本文件、各目录 README、`docs/public_control_plane_design.md`、`reports/final_quality_gate_20260618_control_plane.log` |
-| B. Network Policy | 进行中 | 正式 `network_policy` 注册名已落地；connect4 audit/enforce 已完成；TC QoS 最小闭环与速率误差 Benchmark 已完成；isolated-veth XDP 最小闭环已完成；schema v2 `targets + rules + target_ref` 已落地；下一步进入 XDP 多规则和 Pod veth target | `docs/network_policy_skill.md`、`tests/integration/test_network_policy.sh`、`tests/integration/test_network_qos_tc.sh`、`tests/integration/test_network_xdp.sh`、`tests/benchmark/test_network_qos_rate.sh` |
+| B. Network Policy | 进行中 | 正式 `network_policy` 注册名已落地；connect4 audit/enforce 已完成；TC QoS 最小闭环与速率误差 Benchmark 已完成；isolated-veth XDP 多规则闭环已完成；schema v2 `targets + rules + target_ref` 已落地；下一步进入 Pod veth target 和 Network/Security 联动 | `docs/network_policy_skill.md`、`tests/integration/test_network_policy.sh`、`tests/integration/test_network_qos_tc.sh`、`tests/integration/test_network_xdp.sh`、`tests/benchmark/test_network_qos_rate.sh` |
 | C. Security Agent | 未开始 | 等待公共控制面、AuditBus 和 target filter | `docs/next_phase_plan_v2_1.md` |
 | D. Resource Control | 未开始 | 需要扩展到 CPU + Memory 自动闭环，IO 可演示可回滚 | `docs/next_phase_plan_v2_1.md` |
 | E. SP4/sched_ext 复核 | 未开始 | 等待 SP4/123 环境 | `docs/next_phase_plan_v2_1.md` |
@@ -70,7 +70,7 @@
 | B3 | connect4 audit/enforce | 已完成 | audit 模式不挂 BPF；enforce 模式使用 BPF map 动态配置端口，`stats_map` 记录 allow/deny，rollback 后无 attachment 残留 |
 | B4 | TC QoS | 已完成最小闭环 | `network_qos` 使用 TC egress BPF classifier 统计命中，TBF qdisc 执行限速；已验证 lab netns/veth、audit/enforce 和 rollback |
 | B5 | YAML v2 targets/rules | 已完成最小闭环 | `configs/skills.yaml` 已升级为 `schema_version: 2`；connect4 与 TC QoS 均通过 `target_ref` 解析目标 |
-| B6 | isolated-veth XDP | 已完成最小闭环 | `network_xdp` 使用 generic XDP 在专用 lab veth 上执行 ICMP drop/pass；已验证 audit/enforce、drop 统计和 rollback 后连通性恢复 |
+| B6 | isolated-veth XDP | 已完成多规则闭环 | `network_xdp` 使用 generic XDP 在专用 lab veth 上执行 ICMP drop 与 TCP:19092 drop；已验证 audit/enforce、多规则 drop 统计和 rollback 后连通性恢复 |
 | B7 | TC QoS 速率误差 Benchmark | 已完成 | `tests/benchmark/test_network_qos_rate.sh` 使用 Python TCP rate probe 验证 2 Mbit/s TBF 限速；121 误差 -1.22%，122 误差 -1.45% |
 
 ## 阶段 B 当前证据
@@ -141,8 +141,8 @@
 
 ### XDP 证据
 
-- 新增正式子能力 `network_xdp`，默认 disabled。
-- 新增 BPF 程序 `bpf/network_xdp_demo.bpf.c`，提供 generic XDP filter 和 `pass/drop/byte` 统计。
+- 正式子能力 `network_xdp` 默认 disabled。
+- `bpf/network_xdp_demo.bpf.c` 已从单规则扩展为最多 8 条 XDP 规则，提供 generic XDP filter 和 `pass/drop/byte` 聚合统计。
 - 新增构建目标 `make network-xdp-demo`。
 - 新增清理脚本 `scripts/cleanup_network_xdp_demo.sh`，负责删除 lab veth/netns 并尝试卸载 XDP。
 - 新增集成测试 `tests/integration/test_network_xdp.sh`，已验证：
@@ -150,10 +150,12 @@
   - 专用 lab netns/veth 基线连通。
   - audit 模式不挂 XDP。
   - enforce 模式在 `ep-veth-xdp0` 上挂 generic XDP 并 drop ICMP。
-  - rollback 事件记录 `drop_count > 0`。
+  - enforce 模式同时验证 TCP:19092 规则命中。
+  - rollback 事件记录多规则 `drop_count >= 2`。
   - Agent 退出后无 XDP attachment 残留，连通性恢复。
-- 121 最新 XDP 集成测试证据目录：`results/network_policy/xdp-20260619-142321/`。
-- 122 最新 XDP 集成测试证据目录：`results/network_policy/xdp-20260620-180651/`。
+- 121 最新 XDP 多规则集成测试证据目录：`results/network_policy/xdp-20260620-183031/`。
+- 122 最新 XDP 多规则集成测试证据目录：`results/network_policy/xdp-20260620-184212/`。
+- 121 最新完整质量门禁已通过：`reports/final_quality_gate_20260620_xdp_multirule.log`。
 
 ## 阶段 A 后续随阶段接入项
 

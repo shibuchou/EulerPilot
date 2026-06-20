@@ -27,6 +27,7 @@
 #include <unistd.h>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace eulerpilot {
 
@@ -132,7 +133,8 @@ struct NetworkXdpConfig {
     std::uint16_t dst_port = 0;
     std::uint8_t protocol = 0;
     std::uint8_t action = 1;
-    std::uint32_t reserved = 0;
+    std::uint8_t enabled = 0;
+    std::uint8_t reserved[3] = {};
 };
 
 struct NetworkXdpStats {
@@ -146,6 +148,19 @@ struct NetworkXdpCounters {
     std::uint64_t drop_count = 0;
     std::uint64_t byte_count = 0;
 };
+
+struct NetworkXdpRule {
+    std::string rule_id;
+    std::string protocol;
+    std::string dst_port;
+    std::string action;
+    std::string target_ref;
+    std::uint16_t dst_port_value = 0;
+    std::uint8_t protocol_value = 0;
+    std::uint8_t action_value = 1;
+};
+
+constexpr std::size_t kNetworkXdpMaxRules = 8;
 
 static_assert(sizeof(NetworkXdpConfig) == 8,
               "network xdp config map layout must match BPF");
@@ -1279,30 +1294,63 @@ public:
     std::string name() const override { return "network_xdp"; }
 
     bool configure(const RuntimeConfig &, const SkillSpec &spec) override {
-        const int rule_index = find_rule_by_hook(spec, "xdp");
-        if (rule_index >= 0) {
-            const std::string rule_prefix = "rules." + std::to_string(rule_index) + ".";
-            hook_ = config_value_or(spec, rule_prefix + "hook", "xdp");
-            mode_ = config_value_or(spec, rule_prefix + "mode",
-                                    config_value_or(spec, "mode", "audit"));
-            protocol_ = config_value_or(spec, rule_prefix + "protocol", "icmp");
-            dst_port_ = config_value_or(spec, rule_prefix + "dst_port", "0");
-            action_ = config_value_or(spec, rule_prefix + "action", "drop");
-            rule_id_ = config_value_or(spec, rule_prefix + "name", "xdp-drop-icmp-lab");
-            target_ref_ = config_value_or(spec, rule_prefix + "target_ref", "");
-            if (target_ref_.empty()) {
+        rules_.clear();
+        mode_ = config_value_or(spec, "mode", "audit");
+        hook_ = "xdp";
+        ifname_.clear();
+        target_ref_.clear();
+
+        bool saw_v2_rule = false;
+        for (int i = 0; i < 128; ++i) {
+            const std::string rule_prefix = "rules." + std::to_string(i) + ".";
+            const auto *rule_hook = find_config_value(spec, rule_prefix + "hook");
+            if (!rule_hook || *rule_hook != "xdp") {
+                continue;
+            }
+            saw_v2_rule = true;
+            if (rules_.size() >= kNetworkXdpMaxRules) {
+                last_error_ = "network-xdp-too-many-rules";
+                return false;
+            }
+
+            NetworkXdpRule rule;
+            rule.rule_id = config_value_or(spec, rule_prefix + "name",
+                                           "xdp-rule-" + std::to_string(rules_.size()));
+            rule.protocol = config_value_or(spec, rule_prefix + "protocol", "icmp");
+            rule.dst_port = config_value_or(spec, rule_prefix + "dst_port", "0");
+            rule.action = config_value_or(spec, rule_prefix + "action", "drop");
+            rule.target_ref = config_value_or(spec, rule_prefix + "target_ref", "");
+            mode_ = config_value_or(spec, rule_prefix + "mode", mode_);
+            if (rule.target_ref.empty()) {
                 last_error_ = "network-xdp-v2-missing-target-ref";
                 return false;
             }
-            const std::string target_prefix = "targets." + target_ref_ + ".";
+            const std::string target_prefix = "targets." + rule.target_ref + ".";
             const std::string target_type = config_value_or(spec, target_prefix + "type", "");
             if (target_type != "netdev") {
                 last_error_ = "network-xdp-v2-target-not-netdev";
                 return false;
             }
-            ifname_ = config_value_or(spec, target_prefix + "ifname", "");
-            if (ifname_.empty()) {
+            const std::string ifname = config_value_or(spec, target_prefix + "ifname", "");
+            if (ifname.empty()) {
                 last_error_ = "network-xdp-v2-ifname-missing";
+                return false;
+            }
+            if (ifname_.empty()) {
+                ifname_ = ifname;
+                target_ref_ = rule.target_ref;
+            } else if (ifname_ != ifname) {
+                last_error_ = "network-xdp-multiple-ifnames-unsupported";
+                return false;
+            }
+            if (!parse_and_add_rule(rule)) {
+                return false;
+            }
+        }
+
+        if (saw_v2_rule) {
+            if (rules_.empty()) {
+                last_error_ = "network-xdp-no-rules";
                 return false;
             }
         } else {
@@ -1322,11 +1370,16 @@ public:
             hook_ = hook->second;
             mode_ = mode->second;
             ifname_ = ifname->second;
-            protocol_ = protocol->second;
-            dst_port_ = port->second;
-            action_ = action->second;
+            NetworkXdpRule rule;
+            rule.protocol = protocol->second;
+            rule.dst_port = port->second;
+            rule.action = action->second;
             target_ref_ = config_value_or(spec, "target_ref", "legacy_netdev");
-            rule_id_ = "xdp-" + action_ + "-" + protocol_ + "-" + ifname_;
+            rule.target_ref = target_ref_;
+            rule.rule_id = "xdp-" + rule.action + "-" + rule.protocol + "-" + ifname_;
+            if (!parse_and_add_rule(rule)) {
+                return false;
+            }
         }
 
         if (hook_ != "xdp") {
@@ -1337,27 +1390,15 @@ public:
             last_error_ = "unsupported-mode";
             return false;
         }
-        if (protocol_ != "any" && protocol_ != "tcp" &&
-            protocol_ != "udp" && protocol_ != "icmp") {
-            last_error_ = "unsupported-protocol";
-            return false;
-        }
-        if (action_ != "drop" && action_ != "pass") {
-            last_error_ = "unsupported-action";
-            return false;
-        }
-        if (dst_port_ == "0") {
-            dst_port_value_ = 0;
-        } else if (!parse_tcp_port(dst_port_, dst_port_value_)) {
-            last_error_ = "invalid-dst-port";
-            return false;
-        }
         if (!valid_tc_token(ifname_)) {
             last_error_ = "invalid-ifname";
             return false;
         }
-        protocol_value_ = protocol_id(protocol_);
-        action_value_ = action_ == "drop" ? 1 : 0;
+        if (rules_.empty()) {
+            last_error_ = "network-xdp-no-rules";
+            return false;
+        }
+        rule_ids_ = joined_rule_ids();
         return true;
     }
 
@@ -1471,10 +1512,8 @@ public:
         snapshot.evidence["ifname"] = ifname_;
         snapshot.evidence["ifindex"] = std::to_string(ifindex_);
         snapshot.evidence["target_ref"] = target_ref_;
-        snapshot.evidence["rule_id"] = rule_id_;
-        snapshot.evidence["protocol"] = protocol_;
-        snapshot.evidence["dst_port"] = dst_port_;
-        snapshot.evidence["action"] = action_;
+        snapshot.evidence["rule_ids"] = rule_ids_;
+        snapshot.evidence["rule_count"] = std::to_string(rules_.size());
         const auto stats = read_xdp_stats();
         snapshot.evidence["pass_count"] = std::to_string(stats.pass_count);
         snapshot.evidence["drop_count"] = std::to_string(stats.drop_count);
@@ -1518,6 +1557,39 @@ public:
     std::string last_error() const override { return last_error_; }
 
 private:
+    bool parse_and_add_rule(NetworkXdpRule &rule) {
+        if (rule.protocol != "any" && rule.protocol != "tcp" &&
+            rule.protocol != "udp" && rule.protocol != "icmp") {
+            last_error_ = "unsupported-protocol";
+            return false;
+        }
+        if (rule.action != "drop" && rule.action != "pass") {
+            last_error_ = "unsupported-action";
+            return false;
+        }
+        if (rule.dst_port == "0") {
+            rule.dst_port_value = 0;
+        } else if (!parse_tcp_port(rule.dst_port, rule.dst_port_value)) {
+            last_error_ = "invalid-dst-port";
+            return false;
+        }
+        rule.protocol_value = protocol_id(rule.protocol);
+        rule.action_value = rule.action == "drop" ? 1 : 0;
+        rules_.push_back(rule);
+        return true;
+    }
+
+    std::string joined_rule_ids() const {
+        std::string joined;
+        for (std::size_t i = 0; i < rules_.size(); ++i) {
+            if (i != 0) {
+                joined += ",";
+            }
+            joined += rules_[i].rule_id;
+        }
+        return joined;
+    }
+
     bool install_xdp_config() {
         const int config_fd = bpf_object__find_map_fd_by_name(bpf_object_, "xdp_config_map");
         if (config_fd < 0) {
@@ -1529,19 +1601,25 @@ private:
             last_error_ = "xdp-stats-map-missing";
             return false;
         }
-        std::uint32_t key = 0;
-        NetworkXdpConfig config;
-        config.dst_port = dst_port_value_;
-        config.protocol = protocol_value_;
-        config.action = action_value_;
-        if (bpf_map_update_elem(config_fd, &key, &config, BPF_ANY) != 0) {
-            last_error_ = "xdp-config-map-update-failed";
-            return false;
-        }
-        NetworkXdpStats stats;
-        if (bpf_map_update_elem(stats_fd, &key, &stats, BPF_ANY) != 0) {
-            last_error_ = "xdp-stats-map-reset-failed";
-            return false;
+        for (std::uint32_t key = 0; key < kNetworkXdpMaxRules; ++key) {
+            NetworkXdpConfig config;
+            if (key < rules_.size()) {
+                const auto &rule = rules_[key];
+                config.dst_port = rule.dst_port_value;
+                config.protocol = rule.protocol_value;
+                config.action = rule.action_value;
+                config.enabled = 1;
+            }
+            if (bpf_map_update_elem(config_fd, &key, &config, BPF_ANY) != 0) {
+                last_error_ = "xdp-config-map-update-failed";
+                return false;
+            }
+
+            NetworkXdpStats stats;
+            if (bpf_map_update_elem(stats_fd, &key, &stats, BPF_ANY) != 0) {
+                last_error_ = "xdp-stats-map-reset-failed";
+                return false;
+            }
         }
         pass_count_ = 0;
         drop_count_ = 0;
@@ -1561,14 +1639,16 @@ private:
         if (stats_fd < 0) {
             return counters;
         }
-        std::uint32_t key = 0;
-        NetworkXdpStats stats;
-        if (bpf_map_lookup_elem(stats_fd, &key, &stats) != 0) {
-            return counters;
+        counters = {};
+        for (std::uint32_t key = 0; key < kNetworkXdpMaxRules; ++key) {
+            NetworkXdpStats stats;
+            if (bpf_map_lookup_elem(stats_fd, &key, &stats) != 0) {
+                continue;
+            }
+            counters.pass_count += stats.pass_count;
+            counters.drop_count += stats.drop_count;
+            counters.byte_count += stats.byte_count;
         }
-        counters.pass_count = stats.pass_count;
-        counters.drop_count = stats.drop_count;
-        counters.byte_count = stats.byte_count;
         return counters;
     }
 
@@ -1590,7 +1670,7 @@ private:
         event.event_id = "network_xdp-" + operation + "-" + event.timestamp;
         event.skill = "network_xdp";
         event.policy_id = "network_policy";
-        event.rule_id = rule_id_;
+        event.rule_id = rule_ids_;
         event.mode = mode_;
         event.target = {
             {"ifname", ifname_},
@@ -1600,9 +1680,8 @@ private:
         event.operation = operation;
         event.evidence = {
             {"hook", hook_},
-            {"protocol", protocol_},
-            {"dst_port", dst_port_},
-            {"action", action_},
+            {"rule_count", std::to_string(rules_.size())},
+            {"rule_ids", rule_ids_},
             {"pass_count", std::to_string(pass_count_)},
             {"drop_count", std::to_string(drop_count_)},
             {"byte_count", std::to_string(byte_count_)},
@@ -1629,11 +1708,9 @@ private:
             {"mode", mode_},
             {"hook", hook_},
             {"target_ref", target_ref_},
-            {"rule_id", rule_id_},
-            {"protocol", protocol_},
-            {"dst_port", dst_port_},
+            {"rule_ids", rule_ids_},
+            {"rule_count", std::to_string(rules_.size())},
             {"action", action},
-            {"policy_action", action_},
         };
         entry.handles = {
             {"ifname", ifname_},
@@ -1654,13 +1731,8 @@ private:
     std::string mode_ = "audit";
     std::string ifname_ = "ep-veth-xdp0";
     std::string target_ref_ = "legacy_netdev";
-    std::string rule_id_ = "xdp-drop-icmp-lab";
-    std::string protocol_ = "icmp";
-    std::string dst_port_ = "0";
-    std::string action_ = "drop";
-    std::uint16_t dst_port_value_ = 0;
-    std::uint8_t protocol_value_ = 1;
-    std::uint8_t action_value_ = 1;
+    std::string rule_ids_ = "xdp-drop-icmp-lab";
+    std::vector<NetworkXdpRule> rules_;
     std::uint64_t pass_count_ = 0;
     std::uint64_t drop_count_ = 0;
     std::uint64_t byte_count_ = 0;

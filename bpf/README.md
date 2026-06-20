@@ -9,7 +9,7 @@
 - 当前通过 `task_metrics_map` 按 PID 聚合观测数据，并由 `build/workload_observer_dump` 或主 Agent 读取输出。
 - `network_policy_demo.bpf.c` 提供 `cgroup/connect4` 子能力，当前用于正式 `network_policy` 的端口拒绝与统计。
 - `network_qos_tc.bpf.c` 提供 `tc_egress` classifier 子能力，当前用于 `network_qos` 的 lab veth QoS 命中统计，限速由 TBF qdisc 执行。
-- `network_xdp_demo.bpf.c` 提供 `xdp` 子能力，当前用于 `network_xdp` 在 isolated veth 上执行 ICMP drop/pass 和命中统计；默认不挂真实业务网卡。
+- `network_xdp_demo.bpf.c` 提供 `xdp` 子能力，当前用于 `network_xdp` 在 isolated veth 上执行最多 8 条规则的 ICMP/TCP drop/pass 和命中统计；默认不挂真实业务网卡。
 
 ## 当前已采集的证据
 
