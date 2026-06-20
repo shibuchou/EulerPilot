@@ -54,28 +54,34 @@ security_policy_demo 默认不 pin link，LSM 程序随 Agent 进程退出自动
 |------|--------|------|
 | 121 | make agent | PASS |
 | 121 | make network-policy-demo | PASS |
+| 121 | make network-qos-tc | PASS |
+| 121 | make network-xdp-demo | PASS |
 | 121 | make security-policy-demo | PASS |
-| 121 | --list-skills 输出 4 项 | PASS |
+| 121 | --list-skills 输出正式 network_policy/network_qos/network_xdp | PASS |
 | 121 | --doctor-skills 返回 0 | PASS |
 | 122 | make agent | PASS |
-| 122 | --list-skills 输出 4 项 | PASS |
+| 122 | --list-skills 输出正式 Network 子能力 | PASS |
 | 122 | --doctor-skills 返回 0 | PASS |
 
-## 6. TAP 质量门禁结果（12/12）
+## 6. TAP 质量门禁结果（16/16）
 
 ```
 ok 1 - make agent
 ok 2 - make network-policy-demo
-ok 3 - make security-policy-demo
-ok 4 - --list-skills outputs 4 items
-ok 5 - --doctor-skills exit 0
-ok 6 - agent 15s smoke
-ok 7 - network_policy_demo default disabled
-ok 8 - security_policy_demo default disabled
-ok 9 - metrics default disabled on 127.0.0.1
-ok 10 - dashboard index.html exists and non-empty
-ok 11 - frozen result dirs exist (Redis=6, Nginx=3)
-ok 12 - no BPF/LSM residue
+ok 3 - make network-qos-tc
+ok 4 - make network-xdp-demo
+ok 5 - make security-policy-demo
+ok 6 - --list-skills outputs formal network policy sub-skills
+ok 7 - --doctor-skills exit 0
+ok 8 - agent 15s smoke
+ok 9 - network_policy default disabled
+ok 10 - network_qos default disabled
+ok 11 - network_xdp default disabled
+ok 12 - security_policy_demo default disabled
+ok 13 - metrics default disabled on 127.0.0.1
+ok 14 - dashboard index.html exists and non-empty
+ok 15 - frozen result dirs exist
+ok 16 - no BPF/LSM/TC/XDP residue
 ```
 
 ## 7. 最终判定
@@ -87,6 +93,6 @@ ok 12 - no BPF/LSM residue
 | 内存泄漏 | WARN (Valgrind 工具限制，100 轮 smoke 替代) |
 | 死锁/卡死 | PASS |
 | 构建/回归 | PASS |
-| 质量门禁 | PASS (12/12) |
+| 质量门禁 | PASS (16/16) |
 
 **最终结论：EulerPilot v0.1-rc2 通过最终安全与质量审计，可作为提交版本。**

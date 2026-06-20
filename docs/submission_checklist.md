@@ -1,55 +1,52 @@
 # EulerPilot 提交清单
 
-更新时间：2026-06-15
+更新时间：`2026-06-19`
 
 ## 已完成
 
 - [x] SP3 + cgroup v2 主闭环
 - [x] OLK-6.6 + sched_ext 正式对照线
 - [x] PsiGate v1 闭环验证
-- [x] Redis RUNS=5 正式候选结果
-- [x] Nginx RUNS=5 正式候选结果
-- [x] Skills 插件化框架（Skill/Registry/Manager/builtin_skills, 4 runtime skills）
-- [x] YAML 驱动 Skills 启停与配置（skills.yaml -> gent.yaml 联动）
-- [x] --list-skills / --doctor-skills / --verbose / --jsonl 命令行
-- [x] 
-etwork_policy_demo eBPF cgroup/connect4 最小闭环
-- [x] security_policy_demo BPF LSM file_open 最小闭环（含最终 re-smoke 验证）
-- [x] Runtime 生命周期收拢（SkillManager ops 接口）
-- [x] 双环境（121 SP3 + 122 OLK-6.6）编译与回归通过
-- [x] Agent 输出美化（紧凑格式 + 颜色 + legend + --verbose / --jsonl）
-- [x] 静态 Dashboard（eports/dashboard/index.html，7 SVG 内嵌，零外部依赖）
-- [x] Prometheus /metrics 端点（127.0.0.1:9108，默认关闭，12 行指标）
-- [x] 中文最终报告主稿 + 答辩材料
-- [x] 代码推送至 GitHub 私密仓库 shibuchou/EulerPilot（含 0.1-rc1 tag）
+- [x] Redis `RUNS=5` 正式候选结果
+- [x] Nginx `RUNS=5` 正式候选结果
+- [x] Skills 插件化框架：`Skill / SkillRegistry / SkillManager / builtin_skills`
+- [x] YAML v2 驱动 Skills 启停与配置：`targets + rules + target_ref`
+- [x] `--list-skills / --doctor-skills / --verbose / --jsonl` 命令行
+- [x] `network_policy` cgroup/connect4 audit/enforce/rollback 最小闭环
+- [x] `network_qos` TC egress classifier + TBF 限速最小闭环
+- [x] `network_xdp` isolated-veth generic XDP ICMP drop/pass 最小闭环
+- [x] `security_policy_demo` BPF LSM file_open 最小闭环
+- [x] Runtime 生命周期收拢与 ActionJournal/AuditBus 最小接入
+- [x] 121 SP3 编译、集成测试和 16 项质量门禁通过
+- [x] 静态 Dashboard：`reports/dashboard/index.html`
+- [x] Prometheus `/metrics` 端点：默认关闭，监听 `127.0.0.1:9108`
+- [x] 中文最终报告主稿与答辩材料
 
 ## 当前核心结果目录
 
-- Redis：esults/final/redis-scx-compare-20260612-191543（RUNS=5）
-- Nginx：esults/final/nginx-scx-compare-20260612-194018（RUNS=5）
+- Redis：`results/final/redis-scx-compare-20260612-191543`
+- Nginx：`results/final/nginx-scx-compare-20260612-194018`
+- Network connect4：`results/network_policy/integration-20260619-142347`
+- Network TC QoS：`results/network_policy/qos-tc-20260619-142357`
+- Network XDP：`results/network_policy/xdp-20260619-142321`
+- Network XDP 122 复验：`results/network_policy/xdp-20260620-180651`
 
 ## 当前核心文档
 
-- docs/final_report_submission.md — 最终报告主稿
-- docs/defense_final.md — 答辩主文档
-- docs/defense_summary.md — 答辩摘要
-- docs/final_talk_script.md — 答辩讲稿
-- docs/handover_manual.md — 项目交接手册
-
-## 当前可视化
-
-- eports/dashboard/index.html — 静态 Dashboard（浏览器直接打开）
-- eports/final_figures/ — 7 张 SVG 图表
-- Agent /metrics 端点 — curl http://127.0.0.1:9108/metrics（需启用）
-
-## 当前结论
-
-项目已通过最终质量门禁（12/12 P0）和安全审计。剩余工作为答辩排练和演示视频录制。
+- `docs/final_report_submission.md`：最终报告主稿
+- `docs/progress_status.md`：当前进度看板
+- `docs/network_policy_skill.md`：Network Policy 设计与实施说明
+- `docs/skills_yaml_plan.md`：Skills/YAML 控制面规划
+- `docs/final_quality_gate.md`：质量门禁说明
+- `docs/reference_repos.md`：参考仓库与复用边界
+- `docs/defense_final.md`：答辩主文档
 
 ## 质量与安全审计
 
-- scripts/final_quality_gate.sh — TAP 风格 12 项质量门禁脚本
-- docs/final_security_audit.md — 最终安全与质量审计报告
-- docs/final_quality_gate.md — 质量门禁文档
-- eports/final_quality_gate_121.tap — 121 门禁通过记录
-- eports/valgrind_agent_short_summary.txt — Valgrind 兼容性记录
+- `scripts/final_quality_gate.sh`：TAP 风格 16 项 P0 质量门禁脚本
+- `reports/final_quality_gate_20260619_xdp.log`：121 最新门禁通过记录
+- `docs/final_security_audit.md`：最终安全与质量审计报告
+
+## 当前结论
+
+项目仍处于争奖增强阶段，不应停留在“最终材料整理”。下一步重点是补强 Network/Security/Resource 的成品化深度：TC QoS Benchmark、XDP TCP/UDP 多规则与 Pod veth、Security syscall tracing/BPF LSM、Resource CPU+Memory 自动闭环。

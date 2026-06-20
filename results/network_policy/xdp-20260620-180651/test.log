@@ -1,0 +1,12 @@
+=== NetworkXDP integration test ===
+PASS: network_xdp skill is registered
+PASS: lab veth baseline connectivity works
+PASS: audit mode leaves XDP detached
+PASS: doctor succeeds with network_xdp enforce mode
+PASS: enforce mode attaches XDP generic program
+PASS: XDP drop blocks ICMP in isolated veth lab
+PASS: enforce agent exits cleanly
+PASS: rollback leaves no XDP attachment
+PASS: connectivity recovers after rollback
+PASS: network_xdp rollback event records ICMP drops
+=== NetworkXDP integration test complete ===

@@ -1,0 +1,76 @@
+schema_version: 2
+skills:
+- name: resource_control
+  kind: runtime
+  enabled: true
+  config: {}
+- name: psi_gate
+  kind: runtime
+  enabled: true
+  config: {}
+- name: network_policy
+  kind: runtime
+  enabled: true
+  config:
+    mode: audit
+    targets:
+      demo_cgroup:
+        type: cgroup
+        path: /sys/fs/cgroup/eulerpilot/demo-net
+    rules:
+      - name: deny_demo_port
+        hook: cgroup_connect4
+        target_ref: demo_cgroup
+        protocol: tcp
+        dst_port: '18081'
+        action: deny
+- name: network_policy_demo
+  kind: runtime
+  enabled: false
+  config:
+    cgroup_path: /sys/fs/cgroup/eulerpilot/demo-net
+    dst_port: '18080'
+    hook: cgroup_connect4
+    mode: enforce
+- name: network_qos
+  kind: runtime
+  enabled: false
+  config:
+    mode: audit
+    targets:
+      lab_veth:
+        type: netdev
+        ifname: ep-veth-qos0
+    rules:
+      - name: limit_lab_egress
+        hook: tc_egress
+        target_ref: lab_veth
+        protocol: any
+        dst_port: '0'
+        rate: 1mbit
+        burst: 32kb
+        latency: 50ms
+        action: limit
+- name: network_xdp
+  kind: runtime
+  enabled: false
+  config:
+    mode: audit
+    targets:
+      lab_xdp_veth:
+        type: netdev
+        ifname: ep-veth-xdp0
+    rules:
+      - name: drop_icmp_lab
+        hook: xdp
+        target_ref: lab_xdp_veth
+        protocol: icmp
+        dst_port: '0'
+        action: drop
+- name: security_policy_demo
+  kind: runtime
+  enabled: false
+  config:
+    hook: lsm_file_open
+    mode: enforce
+    target_path: /root/EulerPilot/demo/security_policy_demo/secret.txt

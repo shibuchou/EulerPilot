@@ -136,10 +136,19 @@ eBPF TC classifier
 - XDP attach 只允许目标 veth。
 - 支持 drop/pass、命中计数、动态规则更新。
 
+当前最小实现：
+
+- 新增 `network_xdp` 独立注册名，默认 disabled。
+- 新增 `bpf/network_xdp_demo.bpf.c`，使用 XDP generic mode 在 isolated veth 上匹配协议和端口。
+- 当前集成测试固定验证 ICMP drop；后续扩展 TCP/UDP、多规则和 Pod veth。
+- `AuditBus` rollback 事件记录 `pass_count/drop_count/byte_count`。
+- `ActionJournal` 记录 ifname、XDP mode、rule id 和 target_ref。
+
 验收：
 
-- 测试 UDP/TCP 报文 drop 命中率接近 100%。
+- isolated netns 到 host veth 的 ICMP 在 enforce 模式下被 drop。
 - 卸载后流量恢复。
+- audit 模式不挂 XDP。
 - 不影响 SSH 和主机管理网卡。
 
 ## 6. AuditBus 事件字段
@@ -195,7 +204,7 @@ results/network_policy/
 
 ## 9. 当前状态
 
-状态：`阶段 B 进行中，connect4 子能力已完成，TC QoS 最小闭环已完成，YAML v2 target_ref 已落地，isolated-veth XDP 待启动`
+状态：`阶段 B 进行中，connect4 子能力已完成，TC QoS 最小闭环已完成，isolated-veth XDP 最小闭环已完成，YAML v2 target_ref 已落地`
 
 已具备：
 
@@ -216,14 +225,21 @@ results/network_policy/
 - `network_qos` enforce 模式通过 libbpf `bpf_tc_attach` 挂载 classifier，并通过 TBF root qdisc 执行限速。
 - `tests/integration/test_network_qos_tc.sh` 已基于 YAML v2 验证 lab netns/veth、audit 不改 qdisc、enforce 安装 clsact + TBF、流量命中统计和 rollback 无残留。
 - TC QoS 审计事件已包含 `rule_id=limit_lab_egress` 与 `target_ref=lab_veth`。
-- 完整质量门禁已通过，日志为 `reports/final_quality_gate_20260619_yaml_v2.log`。
-- 121 最新集成测试目录：`results/network_policy/integration-20260619-120828/`。
+- `network_xdp` 子能力已注册，默认 disabled。
+- `bpf/network_xdp_demo.bpf.c` 已实现 XDP generic filter，负责按协议/端口配置执行 pass/drop 并累计 pass/drop/byte 统计。
+- `network_xdp` enforce 模式通过 libbpf `bpf_xdp_attach` 以 generic mode 挂载程序，rollback 通过 `bpf_xdp_detach` 卸载。
+- `tests/integration/test_network_xdp.sh` 已基于 YAML v2 验证 lab netns/veth、audit 不挂 XDP、enforce drop ICMP、rollback 后连通性恢复。
+- XDP 审计事件已包含 `rule_id=drop_icmp_lab` 与 `target_ref=lab_xdp_veth`。
+- 完整质量门禁已通过，日志为 `reports/final_quality_gate_20260619_xdp.log`。
+- 121 最新集成测试目录：`results/network_policy/integration-20260619-142347/`。
 - 122 最新集成测试目录：`results/network_policy/integration-20260619-122352/`。
-- 121 最新 TC QoS 集成测试目录：`results/network_policy/qos-tc-20260619-120916/`。
+- 121 最新 TC QoS 集成测试目录：`results/network_policy/qos-tc-20260619-142357/`。
 - 122 最新 TC QoS 集成测试目录：`results/network_policy/qos-tc-20260619-122403/`。
+- 121 最新 XDP 集成测试目录：`results/network_policy/xdp-20260619-142321/`。
+- 122 最新 XDP 集成测试目录：`results/network_policy/xdp-20260620-180651/`。
 
 下一步：
 
 1. 为 TC QoS 增加速率误差 Benchmark 和多规则验证。
-2. 开始 isolated-veth XDP 设计与最小实现。
+2. 将 isolated-veth XDP 扩展到 TCP/UDP 多规则和 lab Pod veth。
 3. 将 `TargetResolver` 从 cgroup/connect4 扩展到 netdev/k8s_pod 解析。

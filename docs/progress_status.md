@@ -12,7 +12,7 @@
 
 - 将 `network_policy_demo` 升级为正式 `network_policy` Skill。
 - 先完成 `cgroup/connect4` 的 `audit/enforce/status/rollback` 正式口径。
-- 再补 TC QoS 和 isolated-veth XDP。
+- 再补 TC QoS 和 isolated-veth XDP，并继续扩展 Benchmark、多规则和 Pod veth。
 - 所有 Network 事件接入 `AuditBus`，所有挂载/卸载动作接入 `ActionJournal`。
 
 ## 阶段完成情况
@@ -20,7 +20,7 @@
 | 阶段 | 状态 | 当前结论 | 主要证据 |
 |------|------|----------|----------|
 | A. 公共基础设施 | 已完成 | 远端 Git、文档规则、README 覆盖、公共控制面最小代码和现有质量门禁已完成；后续随正式 Skill 深度接入 | `AGENTS.md`、本文件、各目录 README、`docs/public_control_plane_design.md`、`reports/final_quality_gate_20260618_control_plane.log` |
-| B. Network Policy | 进行中 | 正式 `network_policy` 注册名已落地；connect4 audit/enforce 已完成；TC QoS 最小闭环已完成；schema v2 `targets + rules + target_ref` 已落地；下一步进入 isolated-veth XDP 和 QoS Benchmark | `docs/network_policy_skill.md`、`tests/integration/test_network_policy.sh`、`tests/integration/test_network_qos_tc.sh` |
+| B. Network Policy | 进行中 | 正式 `network_policy` 注册名已落地；connect4 audit/enforce 已完成；TC QoS 最小闭环已完成；isolated-veth XDP 最小闭环已完成；schema v2 `targets + rules + target_ref` 已落地；下一步进入 QoS Benchmark、XDP 多规则和 Pod veth target | `docs/network_policy_skill.md`、`tests/integration/test_network_policy.sh`、`tests/integration/test_network_qos_tc.sh`、`tests/integration/test_network_xdp.sh` |
 | C. Security Agent | 未开始 | 等待公共控制面、AuditBus 和 target filter | `docs/next_phase_plan_v2_1.md` |
 | D. Resource Control | 未开始 | 需要扩展到 CPU + Memory 自动闭环，IO 可演示可回滚 | `docs/next_phase_plan_v2_1.md` |
 | E. SP4/sched_ext 复核 | 未开始 | 等待 SP4/123 环境 | `docs/next_phase_plan_v2_1.md` |
@@ -70,12 +70,12 @@
 | B3 | connect4 audit/enforce | 已完成 | audit 模式不挂 BPF；enforce 模式使用 BPF map 动态配置端口，`stats_map` 记录 allow/deny，rollback 后无 attachment 残留 |
 | B4 | TC QoS | 已完成最小闭环 | `network_qos` 使用 TC egress BPF classifier 统计命中，TBF qdisc 执行限速；已验证 lab netns/veth、audit/enforce 和 rollback |
 | B5 | YAML v2 targets/rules | 已完成最小闭环 | `configs/skills.yaml` 已升级为 `schema_version: 2`；connect4 与 TC QoS 均通过 `target_ref` 解析目标 |
-| B6 | isolated-veth XDP | 待开始 | 只允许 lab veth/netns，不挂生产管理网卡 |
+| B6 | isolated-veth XDP | 已完成最小闭环 | `network_xdp` 使用 generic XDP 在专用 lab veth 上执行 ICMP drop/pass；已验证 audit/enforce、drop 统计和 rollback 后连通性恢复 |
 
 ## 阶段 B 当前证据
 
 - 正式 `network_policy` Skill 已注册，`network_policy_demo` 保留兼容。
-- `configs/skills.yaml` 已升级为 `schema_version: 2`，`network_policy` 与 `network_qos` 均使用 `targets + rules + target_ref`。
+- `configs/skills.yaml` 已升级为 `schema_version: 2`，`network_policy`、`network_qos` 与 `network_xdp` 均使用 `targets + rules + target_ref`。
 - `network_policy` 默认 disabled，默认模式为 `audit`。
 - `tests/integration/test_network_policy.sh` 已验证：
   - `network_policy` 能被 `--list-skills` 枚举。
@@ -88,18 +88,20 @@
   - 目标 cgroup 内 curl 被 cgroup/connect4 拒绝，结果为 `rc=7 http_code=000`。
   - rollback 事件包含 `deny_count=1`，证明 `stats_map` 生效。
   - Agent 退出后 `/sys/fs/bpf/eulerpilot_network_policy_link` 和 cgroup BPF attachment 无残留。
-- 121 最新集成测试证据目录：`results/network_policy/integration-20260619-120828/`。
+- 121 最新集成测试证据目录：`results/network_policy/integration-20260619-142347/`。
 - 122 最新集成测试证据目录：`results/network_policy/integration-20260619-122352/`。
-- 121 完整质量门禁已通过：`reports/final_quality_gate_20260619_yaml_v2.log`。
+- 121 完整质量门禁已通过：`reports/final_quality_gate_20260619_xdp.log`。
 
 ### YAML v2 证据
 
 - `SkillManager` 已支持 `schema_version: 1/2`，并将嵌套 YAML flatten 为现有 `SkillSpec.config`，避免大改 Skill 接口。
 - `network_policy` 已优先读取 `rules.*.hook=cgroup_connect4` 和 `targets.<target_ref>.type=cgroup`。
 - `network_qos` 已优先读取 `rules.*.hook=tc_egress` 和 `targets.<target_ref>.type=netdev`。
+- `network_xdp` 已优先读取 `rules.*.hook=xdp` 和 `targets.<target_ref>.type=netdev`。
 - 审计事件已带上 v2 规则和目标：
   - connect4：`rule_id=deny_demo_port`，`target_ref=demo_cgroup`。
   - TC QoS：`rule_id=limit_lab_egress`，`target_ref=lab_veth`。
+  - XDP：`rule_id=drop_icmp_lab`，`target_ref=lab_xdp_veth`。
   - 121 验证事件位于 `reports/events/network_policy.jsonl`。
 
 ### TC QoS 证据
@@ -115,8 +117,24 @@
   - enforce 模式安装 TC clsact + TBF。
   - ping 流量命中 BPF stats，rollback 事件记录 `packet_count=3`、`byte_count=294`。
   - Agent 退出后无 TC qdisc 残留。
-- 121 最新 TC QoS 集成测试证据目录：`results/network_policy/qos-tc-20260619-120916/`。
+- 121 最新 TC QoS 集成测试证据目录：`results/network_policy/qos-tc-20260619-142357/`。
 - 122 最新 TC QoS 集成测试证据目录：`results/network_policy/qos-tc-20260619-122403/`。
+
+### XDP 证据
+
+- 新增正式子能力 `network_xdp`，默认 disabled。
+- 新增 BPF 程序 `bpf/network_xdp_demo.bpf.c`，提供 generic XDP filter 和 `pass/drop/byte` 统计。
+- 新增构建目标 `make network-xdp-demo`。
+- 新增清理脚本 `scripts/cleanup_network_xdp_demo.sh`，负责删除 lab veth/netns 并尝试卸载 XDP。
+- 新增集成测试 `tests/integration/test_network_xdp.sh`，已验证：
+  - `network_xdp` 能被 `--list-skills` 枚举。
+  - 专用 lab netns/veth 基线连通。
+  - audit 模式不挂 XDP。
+  - enforce 模式在 `ep-veth-xdp0` 上挂 generic XDP 并 drop ICMP。
+  - rollback 事件记录 `drop_count > 0`。
+  - Agent 退出后无 XDP attachment 残留，连通性恢复。
+- 121 最新 XDP 集成测试证据目录：`results/network_policy/xdp-20260619-142321/`。
+- 122 最新 XDP 集成测试证据目录：`results/network_policy/xdp-20260620-180651/`。
 
 ## 阶段 A 后续随阶段接入项
 

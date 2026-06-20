@@ -51,6 +51,22 @@ skills:
         burst: 32kb
         latency: 50ms
         action: limit
+- name: network_xdp
+  kind: runtime
+  enabled: false
+  config:
+    mode: audit
+    targets:
+      lab_xdp_veth:
+        type: netdev
+        ifname: ep-veth-xdp0
+    rules:
+      - name: drop_icmp_lab
+        hook: xdp
+        target_ref: lab_xdp_veth
+        protocol: icmp
+        dst_port: '0'
+        action: drop
 - name: security_policy_demo
   kind: runtime
   enabled: false

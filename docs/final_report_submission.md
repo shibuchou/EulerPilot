@@ -401,8 +401,8 @@ EulerPilot 的价值不在于证明某一组参数在所有场景下都优于默
 
 1. EulerPilot 已在 `SP3` 上完成 cgroup v2 主闭环，具备正式交付能力。
 2. EulerPilot 已在 `OLK-6.6` 上完成 Redis 与 Nginx 的 `sched_ext` 正式 compare，并形成多轮候选结果目录。
-3. EulerPilot 已实现 Skills 插件化框架（4 runtime skills + YAML 驱动），并通过 network/security eBPF demo 证明了 Agent 能力可扩展。
-4. 项目已通过最终质量门禁（12/12 P0 项）和安全审计，进入提交准备阶段。
+3. EulerPilot 已实现 Skills 插件化框架与 YAML v2 驱动，并通过 `network_policy`、`network_qos`、`network_xdp` 和 security eBPF demo 证明了 Agent 能力可扩展。
+4. 项目已通过最新质量门禁（16/16 P0 项）和安全审计，仍处于争奖增强阶段。
 
 补充说明：
 
@@ -412,4 +412,4 @@ EulerPilot 的价值不在于证明某一组参数在所有场景下都优于默
 
 项目代码已同步推送至 GitHub 私密仓库 `shibuchou/EulerPilot`。
 
-当前项目已覆盖 resource control、network policy、security policy 三类 OS Agent 扩展方向：其中 resource control 进入 Redis/Nginx 主实验路径，network/security policy 作为独立 eBPF hook demo 提供 attach、deny、rollback、recover 的可演示闭环。
+当前项目已覆盖 resource control、network policy、security policy 三类 OS Agent 扩展方向：其中 resource control 进入 Redis/Nginx 主实验路径，network policy 已具备 connect4、TC QoS、XDP 三个可验证子能力，security policy 作为独立 eBPF hook demo 提供 attach、deny、rollback、recover 的可演示闭环。

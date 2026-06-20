@@ -20,6 +20,7 @@
 #include <fcntl.h>
 #include <iostream>
 #include <fstream>
+#include <linux/if_link.h>
 #include <map>
 #include <net/if.h>
 #include <sys/stat.h>
@@ -126,6 +127,30 @@ static_assert(sizeof(NetworkQosTcConfig) == 8,
               "network qos config map layout must match BPF");
 static_assert(sizeof(NetworkQosTcStats) == 16,
               "network qos stats map layout must match BPF");
+
+struct NetworkXdpConfig {
+    std::uint16_t dst_port = 0;
+    std::uint8_t protocol = 0;
+    std::uint8_t action = 1;
+    std::uint32_t reserved = 0;
+};
+
+struct NetworkXdpStats {
+    std::uint64_t pass_count = 0;
+    std::uint64_t drop_count = 0;
+    std::uint64_t byte_count = 0;
+};
+
+struct NetworkXdpCounters {
+    std::uint64_t pass_count = 0;
+    std::uint64_t drop_count = 0;
+    std::uint64_t byte_count = 0;
+};
+
+static_assert(sizeof(NetworkXdpConfig) == 8,
+              "network xdp config map layout must match BPF");
+static_assert(sizeof(NetworkXdpStats) == 24,
+              "network xdp stats map layout must match BPF");
 
 bool valid_tc_token(const std::string &value) {
     if (value.empty()) {
@@ -1249,6 +1274,400 @@ private:
     bpf_tc_opts tc_opts_ = {};
 };
 
+class NetworkXdpSkill final : public Skill {
+public:
+    std::string name() const override { return "network_xdp"; }
+
+    bool configure(const RuntimeConfig &, const SkillSpec &spec) override {
+        const int rule_index = find_rule_by_hook(spec, "xdp");
+        if (rule_index >= 0) {
+            const std::string rule_prefix = "rules." + std::to_string(rule_index) + ".";
+            hook_ = config_value_or(spec, rule_prefix + "hook", "xdp");
+            mode_ = config_value_or(spec, rule_prefix + "mode",
+                                    config_value_or(spec, "mode", "audit"));
+            protocol_ = config_value_or(spec, rule_prefix + "protocol", "icmp");
+            dst_port_ = config_value_or(spec, rule_prefix + "dst_port", "0");
+            action_ = config_value_or(spec, rule_prefix + "action", "drop");
+            rule_id_ = config_value_or(spec, rule_prefix + "name", "xdp-drop-icmp-lab");
+            target_ref_ = config_value_or(spec, rule_prefix + "target_ref", "");
+            if (target_ref_.empty()) {
+                last_error_ = "network-xdp-v2-missing-target-ref";
+                return false;
+            }
+            const std::string target_prefix = "targets." + target_ref_ + ".";
+            const std::string target_type = config_value_or(spec, target_prefix + "type", "");
+            if (target_type != "netdev") {
+                last_error_ = "network-xdp-v2-target-not-netdev";
+                return false;
+            }
+            ifname_ = config_value_or(spec, target_prefix + "ifname", "");
+            if (ifname_.empty()) {
+                last_error_ = "network-xdp-v2-ifname-missing";
+                return false;
+            }
+        } else {
+            auto hook = spec.config.find("hook");
+            auto mode = spec.config.find("mode");
+            auto ifname = spec.config.find("ifname");
+            auto protocol = spec.config.find("protocol");
+            auto port = spec.config.find("dst_port");
+            auto action = spec.config.find("action");
+            if (hook == spec.config.end() || mode == spec.config.end() ||
+                ifname == spec.config.end() || protocol == spec.config.end() ||
+                port == spec.config.end() || action == spec.config.end()) {
+                last_error_ = "network-xdp-missing-required-config";
+                return false;
+            }
+
+            hook_ = hook->second;
+            mode_ = mode->second;
+            ifname_ = ifname->second;
+            protocol_ = protocol->second;
+            dst_port_ = port->second;
+            action_ = action->second;
+            target_ref_ = config_value_or(spec, "target_ref", "legacy_netdev");
+            rule_id_ = "xdp-" + action_ + "-" + protocol_ + "-" + ifname_;
+        }
+
+        if (hook_ != "xdp") {
+            last_error_ = "unsupported-hook";
+            return false;
+        }
+        if (mode_ != "audit" && mode_ != "enforce") {
+            last_error_ = "unsupported-mode";
+            return false;
+        }
+        if (protocol_ != "any" && protocol_ != "tcp" &&
+            protocol_ != "udp" && protocol_ != "icmp") {
+            last_error_ = "unsupported-protocol";
+            return false;
+        }
+        if (action_ != "drop" && action_ != "pass") {
+            last_error_ = "unsupported-action";
+            return false;
+        }
+        if (dst_port_ == "0") {
+            dst_port_value_ = 0;
+        } else if (!parse_tcp_port(dst_port_, dst_port_value_)) {
+            last_error_ = "invalid-dst-port";
+            return false;
+        }
+        if (!valid_tc_token(ifname_)) {
+            last_error_ = "invalid-ifname";
+            return false;
+        }
+        protocol_value_ = protocol_id(protocol_);
+        action_value_ = action_ == "drop" ? 1 : 0;
+        return true;
+    }
+
+    bool probe() override {
+        available_ = false;
+        if (!command_available("ip")) {
+            last_error_ = "iproute2-missing";
+            return false;
+        }
+        if (!file_exists("/root/EulerPilot/build/network_xdp_demo.bpf.o")) {
+            last_error_ = "network-xdp-demo-not-built";
+            return false;
+        }
+        const unsigned int ifindex = if_nametoindex(ifname_.c_str());
+        if (ifindex == 0) {
+            last_error_ = "xdp-ifname-missing";
+            return false;
+        }
+        ifindex_ = static_cast<int>(ifindex);
+
+        bpf_object *obj = bpf_object__open_file("/root/EulerPilot/build/network_xdp_demo.bpf.o", nullptr);
+        if (!obj) {
+            last_error_ = "probe-xdp-bpf-open-failed";
+            return false;
+        }
+        if (bpf_object__load(obj) != 0) {
+            bpf_object__close(obj);
+            last_error_ = "probe-xdp-bpf-load-failed";
+            return false;
+        }
+        bpf_program *prog = bpf_object__find_program_by_name(obj, "network_xdp_filter");
+        if (!prog) {
+            bpf_object__close(obj);
+            last_error_ = "probe-xdp-program-missing";
+            return false;
+        }
+        bpf_object__close(obj);
+        available_ = true;
+        last_error_.clear();
+        return true;
+    }
+
+    bool init() override {
+        running_ = false;
+        return true;
+    }
+
+    bool start() override {
+        if (!available_ && !probe()) {
+            return false;
+        }
+
+        ifindex_ = static_cast<int>(if_nametoindex(ifname_.c_str()));
+        if (ifindex_ <= 0) {
+            last_error_ = "xdp-ifindex-resolve-failed";
+            return false;
+        }
+
+        if (mode_ == "audit") {
+            running_ = true;
+            state_ = "audit-only";
+            write_audit_event("start", "audit-only", "success");
+            write_journal_action("start-audit", "audit-only", "none");
+            return true;
+        }
+
+        bpf_object_ = bpf_object__open_file("/root/EulerPilot/build/network_xdp_demo.bpf.o", nullptr);
+        if (!bpf_object_) {
+            last_error_ = "xdp-bpf-open-failed";
+            return false;
+        }
+        if (bpf_object__load(bpf_object_) != 0) {
+            rollback();
+            last_error_ = "xdp-bpf-load-failed";
+            return false;
+        }
+        if (!install_xdp_config()) {
+            rollback();
+            return false;
+        }
+
+        bpf_program *prog = bpf_object__find_program_by_name(bpf_object_, "network_xdp_filter");
+        if (!prog) {
+            rollback();
+            last_error_ = "xdp-program-missing";
+            return false;
+        }
+
+        const std::uint32_t flags = XDP_FLAGS_SKB_MODE | XDP_FLAGS_UPDATE_IF_NOEXIST;
+        if (bpf_xdp_attach(ifindex_, bpf_program__fd(prog), flags, nullptr) != 0) {
+            rollback();
+            last_error_ = "xdp-attach-failed";
+            return false;
+        }
+        xdp_attached_ = true;
+        running_ = true;
+        state_ = "started";
+        write_audit_event("start", "attach-xdp-generic", "success");
+        write_journal_action("start-enforce", "attach-xdp-generic", ifname_);
+        return true;
+    }
+
+    SkillSnapshot snapshot() const override {
+        SkillSnapshot snapshot;
+        snapshot.skill_name = name();
+        snapshot.available = available_;
+        snapshot.running = running_;
+        snapshot.state = state_;
+        snapshot.evidence["hook"] = hook_;
+        snapshot.evidence["mode"] = mode_;
+        snapshot.evidence["ifname"] = ifname_;
+        snapshot.evidence["ifindex"] = std::to_string(ifindex_);
+        snapshot.evidence["target_ref"] = target_ref_;
+        snapshot.evidence["rule_id"] = rule_id_;
+        snapshot.evidence["protocol"] = protocol_;
+        snapshot.evidence["dst_port"] = dst_port_;
+        snapshot.evidence["action"] = action_;
+        const auto stats = read_xdp_stats();
+        snapshot.evidence["pass_count"] = std::to_string(stats.pass_count);
+        snapshot.evidence["drop_count"] = std::to_string(stats.drop_count);
+        snapshot.evidence["byte_count"] = std::to_string(stats.byte_count);
+        snapshot.evidence["reason"] = last_error_.empty() ? "ok" : last_error_;
+        return snapshot;
+    }
+
+    bool rollback() override {
+        update_cached_stats();
+        if (running_) {
+            write_audit_event("rollback", "detach-xdp-generic", "success");
+            write_journal_action("rollback", "detach-xdp-generic", ifname_);
+        }
+        if (xdp_attached_) {
+            bpf_xdp_detach(ifindex_, XDP_FLAGS_SKB_MODE, nullptr);
+            xdp_attached_ = false;
+        }
+        if (bpf_object_) {
+            bpf_object__close(bpf_object_);
+            bpf_object_ = nullptr;
+        }
+        running_ = false;
+        state_ = "rolled-back";
+        return true;
+    }
+
+    void stop() override {
+        try {
+            rollback();
+        } catch (const std::exception &ex) {
+            std::cerr << "[network_xdp] stop cleanup failed: "
+                      << ex.what() << "\n";
+        } catch (...) {
+            std::cerr << "[network_xdp] stop cleanup failed: unknown\n";
+        }
+        running_ = false;
+        state_ = "stopped";
+    }
+
+    std::string last_error() const override { return last_error_; }
+
+private:
+    bool install_xdp_config() {
+        const int config_fd = bpf_object__find_map_fd_by_name(bpf_object_, "xdp_config_map");
+        if (config_fd < 0) {
+            last_error_ = "xdp-config-map-missing";
+            return false;
+        }
+        const int stats_fd = bpf_object__find_map_fd_by_name(bpf_object_, "xdp_stats_map");
+        if (stats_fd < 0) {
+            last_error_ = "xdp-stats-map-missing";
+            return false;
+        }
+        std::uint32_t key = 0;
+        NetworkXdpConfig config;
+        config.dst_port = dst_port_value_;
+        config.protocol = protocol_value_;
+        config.action = action_value_;
+        if (bpf_map_update_elem(config_fd, &key, &config, BPF_ANY) != 0) {
+            last_error_ = "xdp-config-map-update-failed";
+            return false;
+        }
+        NetworkXdpStats stats;
+        if (bpf_map_update_elem(stats_fd, &key, &stats, BPF_ANY) != 0) {
+            last_error_ = "xdp-stats-map-reset-failed";
+            return false;
+        }
+        pass_count_ = 0;
+        drop_count_ = 0;
+        byte_count_ = 0;
+        return true;
+    }
+
+    NetworkXdpCounters read_xdp_stats() const {
+        NetworkXdpCounters counters;
+        counters.pass_count = pass_count_;
+        counters.drop_count = drop_count_;
+        counters.byte_count = byte_count_;
+        if (!bpf_object_) {
+            return counters;
+        }
+        const int stats_fd = bpf_object__find_map_fd_by_name(bpf_object_, "xdp_stats_map");
+        if (stats_fd < 0) {
+            return counters;
+        }
+        std::uint32_t key = 0;
+        NetworkXdpStats stats;
+        if (bpf_map_lookup_elem(stats_fd, &key, &stats) != 0) {
+            return counters;
+        }
+        counters.pass_count = stats.pass_count;
+        counters.drop_count = stats.drop_count;
+        counters.byte_count = stats.byte_count;
+        return counters;
+    }
+
+    void update_cached_stats() {
+        const auto stats = read_xdp_stats();
+        pass_count_ = stats.pass_count;
+        drop_count_ = stats.drop_count;
+        byte_count_ = stats.byte_count;
+    }
+
+    void write_audit_event(const std::string &operation,
+                           const std::string &action,
+                           const std::string &result) const {
+        const fs::path audit_path = "reports/events/network_policy.jsonl";
+        ensure_parent_dir(audit_path);
+
+        AuditEvent event;
+        event.timestamp = now_event_timestamp();
+        event.event_id = "network_xdp-" + operation + "-" + event.timestamp;
+        event.skill = "network_xdp";
+        event.policy_id = "network_policy";
+        event.rule_id = rule_id_;
+        event.mode = mode_;
+        event.target = {
+            {"ifname", ifname_},
+            {"ifindex", std::to_string(ifindex_)},
+            {"target_ref", target_ref_},
+        };
+        event.operation = operation;
+        event.evidence = {
+            {"hook", hook_},
+            {"protocol", protocol_},
+            {"dst_port", dst_port_},
+            {"action", action_},
+            {"pass_count", std::to_string(pass_count_)},
+            {"drop_count", std::to_string(drop_count_)},
+            {"byte_count", std::to_string(byte_count_)},
+        };
+        event.action = action;
+        event.result = result;
+        event.severity = "info";
+        std::string error;
+        append_audit_event(audit_path.string(), event, &error);
+    }
+
+    void write_journal_action(const std::string &operation,
+                              const std::string &action,
+                              const std::string &handle) const {
+        const fs::path journal_path = "run/eulerpilot/action_journal.jsonl";
+        ensure_parent_dir(journal_path);
+
+        JournalAction entry;
+        entry.action_id = "network_xdp-" + operation + "-" + now_event_timestamp();
+        entry.skill = "network_xdp";
+        entry.target = ifname_;
+        entry.operation = operation;
+        entry.new_values = {
+            {"mode", mode_},
+            {"hook", hook_},
+            {"target_ref", target_ref_},
+            {"rule_id", rule_id_},
+            {"protocol", protocol_},
+            {"dst_port", dst_port_},
+            {"action", action},
+            {"policy_action", action_},
+        };
+        entry.handles = {
+            {"ifname", ifname_},
+            {"xdp_mode", "generic"},
+            {"handle", handle},
+        };
+        entry.restored = operation == "rollback";
+        std::string error;
+        append_journal_action(journal_path.string(), entry, &error);
+    }
+
+    bool available_ = false;
+    bool running_ = false;
+    bool xdp_attached_ = false;
+    std::string state_ = "created";
+    std::string last_error_;
+    std::string hook_ = "xdp";
+    std::string mode_ = "audit";
+    std::string ifname_ = "ep-veth-xdp0";
+    std::string target_ref_ = "legacy_netdev";
+    std::string rule_id_ = "xdp-drop-icmp-lab";
+    std::string protocol_ = "icmp";
+    std::string dst_port_ = "0";
+    std::string action_ = "drop";
+    std::uint16_t dst_port_value_ = 0;
+    std::uint8_t protocol_value_ = 1;
+    std::uint8_t action_value_ = 1;
+    std::uint64_t pass_count_ = 0;
+    std::uint64_t drop_count_ = 0;
+    std::uint64_t byte_count_ = 0;
+    int ifindex_ = 0;
+    bpf_object *bpf_object_ = nullptr;
+};
+
 class SecurityPolicyDemoSkill final : public Skill {
 public:
     std::string name() const override { return "security_policy_demo"; }
@@ -1425,6 +1844,9 @@ void register_builtin_skills(SkillRegistry &registry) {
     });
     registry.register_factory("network_qos", [] {
         return std::make_unique<NetworkQosSkill>();
+    });
+    registry.register_factory("network_xdp", [] {
+        return std::make_unique<NetworkXdpSkill>();
     });
     registry.register_factory("security_policy_demo", [] {
         return std::make_unique<SecurityPolicyDemoSkill>();

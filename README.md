@@ -19,7 +19,7 @@ eBPF Observer
 
 ## 当前状态
 
-截至 `2026-06-12`，项目已经完成：
+截至 `2026-06-19`，项目已经完成：
 
 - `SP3 + cgroup v2` 主闭环
 - `OLK-6.6 + sched_ext` 正式对照线
@@ -27,6 +27,10 @@ eBPF Observer
 - Redis `sched_ext` 正式候选结果：`RUNS=5`
 - Nginx `sched_ext` 正式候选结果：`RUNS=5`
 - 中文结果摘要、中文报告草稿和 SVG 图表材料
+- Network Policy 阶段 B 最小闭环：
+  - `network_policy`：cgroup/connect4 audit/enforce/rollback
+  - `network_qos`：TC egress classifier + TBF 限速闭环
+  - `network_xdp`：isolated-veth generic XDP ICMP drop/pass 闭环
 
 当前最重要的候选结果目录为：
 
@@ -53,6 +57,9 @@ eBPF Observer
 - Redis sched_ext 正式 compare：`/root/EulerPilot/bench/redis/run_redis_sched_ext_compare.sh`
 - Nginx 主实验：`/root/EulerPilot/bench/nginx/run_nginx_main_experiment.sh`
 - Nginx sched_ext 正式 compare：`/root/EulerPilot/bench/nginx/run_nginx_sched_ext_compare.sh`
+- Network connect4 集成测试：`/root/EulerPilot/tests/integration/test_network_policy.sh`
+- Network TC QoS 集成测试：`/root/EulerPilot/tests/integration/test_network_qos_tc.sh`
+- Network XDP 集成测试：`/root/EulerPilot/tests/integration/test_network_xdp.sh`
 
 ### 最终候选结果
 
@@ -77,9 +84,11 @@ eBPF Observer
 
 1. `/root/EulerPilot/docs/contest_briefing_reference.md`
 2. `/root/EulerPilot/docs/next_phase_plan_v2_1.md`
-3. `/root/EulerPilot/docs/skills_yaml_plan.md`
-4. `/root/EulerPilot/docs/final_report_submission.md`
-5. `/root/EulerPilot/docs/design_proposal.md`
+3. `/root/EulerPilot/docs/progress_status.md`
+4. `/root/EulerPilot/docs/network_policy_skill.md`
+5. `/root/EulerPilot/docs/skills_yaml_plan.md`
+6. `/root/EulerPilot/docs/final_report_submission.md`
+7. `/root/EulerPilot/docs/design_proposal.md`
 
 如果要继续实现下一阶段功能，以 `docs/next_phase_plan_v2_1.md` 为当前执行口径；`docs/next_phase_plan_v2.md` 仅作为历史版本保留。
 

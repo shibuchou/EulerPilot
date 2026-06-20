@@ -13,14 +13,16 @@
 ## 当前完成状态
 
 - `skills.yaml` 已升级到 `schema_version: 2`，当前 Agent 仍兼容旧 `schema_version: 1` flat config。
-- `skills.yaml` 中 `network_policy`、`network_qos`、`network_policy_demo` 和 `security_policy_demo` 默认均为 disabled。
+- `skills.yaml` 中 `network_policy`、`network_qos`、`network_xdp`、`network_policy_demo` 和 `security_policy_demo` 默认均为 disabled。
 - `network_qos` 默认目标为 lab veth `ep-veth-qos0`，不能作为真实业务网卡默认配置使用。
+- `network_xdp` 默认目标为 lab veth `ep-veth-xdp0`，只能用于 isolated veth/netns 或后续 lab Pod veth。
 - 当前 `schema_version: 2` 已覆盖：
   - `targets`
   - `rules`
   - `target_ref`
   - `network_policy` 的 `cgroup_connect4`
   - `network_qos` 的 `tc_egress`
+  - `network_xdp` 的 `xdp`
 - 后续还需要补：
   - `security_policy.rules`
   - `resource_control.controllers`

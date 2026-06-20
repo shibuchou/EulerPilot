@@ -90,8 +90,10 @@
   - `third_party/reference/lmp-xdp-lsm`
   - `third_party/reference/kata-lsm-ebpf`
   - `third_party/reference/perfinsight-psi`
+- 用户明确允许在需要时参考其 GitHub/本地仓库中的 `katalsm`、`lightprobe`、`netscope` 和 `lmp`。使用这些仓库时只抽取与当前任务直接相关的 hook、观测、装载、策略或测试设计；若要把代码并入 EulerPilot，必须先形成最小 reference snapshot，注明来源和复用边界，再针对 openEuler 24.03-LTS-SP3 重新编译适配。
 - `lmp-xdp-lsm` 主要提供 `XDP` 与 `LSM` 方向的最小参考样例，后续 `NetworkPolicySkill` 优先参考其中的 `xdp/xacl_ip` 与公共装载代码。
 - `kata-lsm-ebpf` 主要提供 `BPF LSM` 程序、用户态装载方式和最小头文件集合，后续 `SecurityPolicySkill` 优先参考其中的 `varmor_lsm` 与 `kata_lsm_agent` 相关代码。
+- `netscope` 可作为后续 Network observability、协议解析、连接路径证据补强参考；`lightprobe` 可作为轻量动态观测和运行时探针组织参考；`katalsm` 可作为 Security Agent/Kata 场景下 LSM 事件链路参考。
 - 这些目录都是“reference snapshot”，只用于方案设计、接口抽取和 openEuler 适配参考；不要把其中的历史备份、构建产物或与项目无关的大框架直接并入生产代码。
 - 当前 `NetworkPolicySkill` 和 `SecurityPolicySkill` 已有 demo 级闭环，但后续必须按争奖目标继续成品化；不要把单端口拒绝或单文件拒绝当作最终完成。
 - `NetworkPolicySkill` 的基础演示优先选择 `cgroup/connect4` 这类只作用于 demo cgroup 的 hook，避免影响远端 SSH 与主机网络；成品化阶段再补 QoS/TC 和 XDP 高速拦截能力。

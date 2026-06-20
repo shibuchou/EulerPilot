@@ -1,6 +1,6 @@
 # EulerPilot 参考仓库说明
 
-更新时间：`2026-06-12`
+更新时间：`2026-06-19`
 
 本文档只描述“已经确认对 EulerPilot 有价值的参考代码”，不把这些参考仓库等同于生产代码。
 
@@ -64,13 +64,24 @@
 - `third_party/reference/kata-lsm-ebpf/varmor_lsm/apply_lsm_policy.c`
 - `third_party/reference/kata-lsm-ebpf/kata_lsm_agent/kata_lsm_agent.bpf.c`
 
-## 5. 当前复用原则
+## 5. 用户补充可参考仓库
+
+用户明确允许在需要时参考其 GitHub/本地仓库中的以下项目：
+
+- `lmp`：已抽取 `third_party/reference/lmp-xdp-lsm`，本阶段 `network_xdp` 的 XDP hook、map 统计和用户态装载边界参考其中 XDP 样例思路，但生产代码已按 EulerPilot schema v2、libbpf attach/detach 和 isolated veth 测试重新实现。
+- `netscope`：后续可用于 Network observability、协议解析、连接路径和统计事件设计参考；当前未直接复制源码到生产路径。
+- `lightprobe`：后续可用于轻量运行时观测、动态探针组织和低侵入演示链路参考；当前不进入 Network hot path。
+- `katalsm`：后续可用于 Security Agent/Kata 场景下 BPF LSM 事件链路、策略装载和端到端验证参考；当前不直接并入 Network 子能力。
+
+若后续需要把上述仓库的代码并入 EulerPilot，必须先创建最小 reference snapshot，删除构建产物和无关大框架，补充来源说明，再针对 openEuler 24.03-LTS-SP3 编译和测试。
+
+## 6. 当前复用原则
 
 - 参考仓库只解决“怎么设计、怎么拆模块、怎么适配 hook”。
 - EulerPilot 生产代码必须按 openEuler 目标环境重新整理目录、构建脚本和接口。
-- 当前阶段不同时开工 `Network Policy Agent` 与 `Security Policy Agent`。
+- 当前阶段已完成 `network_policy` connect4、`network_qos` TC egress 和 `network_xdp` isolated-veth XDP 的最小闭环；后续再进入 Security Agent 正式化。
 - 下一阶段优先事项是补强：
-  - 统一 `Skill` 接口
-  - `SkillRegistry`
-  - `skills.yaml` / 能力 YAML 的真实驱动能力
-  - 一个隔离的 eBPF 扩展示例
+  - TC QoS 速率误差 Benchmark
+  - XDP TCP/UDP 多规则和 Pod veth target
+  - Security Agent 的 syscall tracing 与 BPF LSM enforce
+  - Resource Control 的 CPU + Memory 自动闭环
