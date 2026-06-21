@@ -156,6 +156,11 @@ struct SecurityPolicyConfig {
     std::uint32_t enforce = 0;
 };
 
+struct SecurityPolicyTarget {
+    char file_path[256] = {};
+    char exec_path[256] = {};
+};
+
 struct SecurityPolicyEvent {
     std::uint32_t event_type = 0;
     std::uint32_t pid = 0;
@@ -185,6 +190,8 @@ static_assert(sizeof(NetworkXdpStats) == 24,
               "network xdp stats map layout must match BPF");
 static_assert(sizeof(SecurityPolicyConfig) == 4,
               "security policy config map layout must match BPF");
+static_assert(sizeof(SecurityPolicyTarget) == 512,
+              "security policy target map layout must match BPF");
 static_assert(sizeof(SecurityPolicyEvent) == 292,
               "security policy ringbuf event layout must match BPF");
 
@@ -1793,6 +1800,11 @@ public:
                 last_error_ = "security-policy-v2-target-path-missing";
                 return false;
             }
+            exec_target_path_ = config_value_or(spec, target_prefix + "exec_path", "");
+            if (exec_target_path_.empty()) {
+                last_error_ = "security-policy-v2-target-exec-path-missing";
+                return false;
+            }
         } else {
             auto hook = spec.config.find("hook");
             auto mode = spec.config.find("mode");
@@ -1805,6 +1817,8 @@ public:
             hook_ = hook->second;
             mode_ = mode->second;
             target_path_ = target_path->second;
+            exec_target_path_ = config_value_or(spec, "target_exec_path",
+                                                "/root/EulerPilot/demo/security_policy_demo/deny_exec.sh");
             action_ = config_value_or(spec, "action", "deny");
             target_ref_ = config_value_or(spec, "target_ref", "legacy_path");
             rule_id_ = config_value_or(spec, "rule_id", "deny-demo-secret-open");
@@ -1821,9 +1835,12 @@ public:
             last_error_ = "unsupported-action";
             return false;
         }
-        // Must match BPF hardcoded path
-        if (target_path_ != "/root/EulerPilot/demo/security_policy_demo/secret.txt") {
-            last_error_ = "target-path-mismatch: expected /root/EulerPilot/demo/security_policy_demo/secret.txt";
+        if (!valid_security_path(target_path_)) {
+            last_error_ = "invalid-target-path";
+            return false;
+        }
+        if (!valid_security_path(exec_target_path_)) {
+            last_error_ = "invalid-exec-target-path";
             return false;
         }
         return true;
@@ -1936,6 +1953,7 @@ public:
         snapshot.state = state_;
         snapshot.evidence["hook"] = hook_;
         snapshot.evidence["target_path"] = target_path_;
+        snapshot.evidence["exec_target_path"] = exec_target_path_;
         snapshot.evidence["mode"] = mode_;
         snapshot.evidence["target_ref"] = target_ref_;
         snapshot.evidence["rule_id"] = rule_id_;
@@ -1979,6 +1997,24 @@ public:
     std::string last_error() const override { return last_error_; }
 
 private:
+    static bool valid_security_path(const std::string &path) {
+        return !path.empty() && path[0] == '/' && path.size() < 256;
+    }
+
+    static bool copy_security_path(const std::string &src,
+                                   char *dst,
+                                   std::size_t dst_len,
+                                   std::string &error,
+                                   const char *field) {
+        if (src.empty() || src.size() >= dst_len) {
+            error = std::string("security-policy-invalid-") + field;
+            return false;
+        }
+        std::memset(dst, 0, dst_len);
+        std::memcpy(dst, src.data(), src.size());
+        return true;
+    }
+
     static bool attach_security_programs(bpf_object *obj,
                                          std::vector<bpf_link *> &links,
                                          std::string &error) {
@@ -2070,6 +2106,27 @@ private:
             last_error_ = "security-policy-config-map-update-failed";
             return false;
         }
+
+        const int target_fd = bpf_object__find_map_fd_by_name(bpf_object_, "target_map");
+        if (target_fd < 0) {
+            last_error_ = "security-policy-target-map-missing";
+            return false;
+        }
+
+        SecurityPolicyTarget target;
+        if (!copy_security_path(target_path_, target.file_path, sizeof(target.file_path),
+                                last_error_, "file-path")) {
+            return false;
+        }
+        if (!copy_security_path(exec_target_path_, target.exec_path, sizeof(target.exec_path),
+                                last_error_, "exec-path")) {
+            return false;
+        }
+        if (bpf_map_update_elem(target_fd, &key, &target, BPF_ANY) != 0) {
+            last_error_ = "security-policy-target-map-update-failed";
+            return false;
+        }
+
         hit_count_.store(0);
         deny_count_.store(0);
         return true;
@@ -2208,12 +2265,13 @@ private:
         event.target = {
             {"target_ref", target_ref_},
             {"path", target_path_},
+            {"exec_path", exec_target_path_},
         };
         event.operation = operation;
         event.evidence = {
             {"hook", hook_},
             {"action", action_},
-            {"current_scope", "fixed-demo-path"},
+            {"current_scope", "map-configured-demo-paths"},
         };
         event.action = action;
         event.result = result;
@@ -2238,10 +2296,13 @@ private:
             {"hook", hook_},
             {"target_ref", target_ref_},
             {"rule_id", rule_id_},
+            {"path", target_path_},
+            {"exec_path", exec_target_path_},
             {"action", action},
         };
         entry.handles = {
             {"path", target_path_},
+            {"exec_path", exec_target_path_},
             {"bpf_link", handle},
         };
         entry.restored = operation == "rollback";
@@ -2256,6 +2317,7 @@ private:
     std::string last_error_;
     std::string hook_ = "lsm_file_open";
     std::string target_path_ = "/root/EulerPilot/demo/security_policy_demo/secret.txt";
+    std::string exec_target_path_ = "/root/EulerPilot/demo/security_policy_demo/deny_exec.sh";
     std::string mode_ = "enforce";
     std::string action_ = "deny";
     std::string target_ref_ = "legacy_path";

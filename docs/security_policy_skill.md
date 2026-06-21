@@ -1,6 +1,6 @@
 # SecurityPolicySkill 正式化说明
 
-本文面向比赛评委和后续 Agent，说明 EulerPilot Security Agent 的能力定位、当前完成度、参考代码复用边界和最小验收入口。当前仓库已经注册正式 `security_policy` Skill，并保留 `security_policy_demo` 兼容入口。正式入口已支持 YAML v2 `targets + rules + target_ref`，`audit` 与 `enforce` 都会 attach 最小 BPF LSM 程序并消费 ringbuf 命中事件；同时 audit 路径已补入 `sys_enter_execve`、`sys_enter_openat`、`sys_enter_connect` 与 `sys_enter_ptrace` tracepoint 观测事件。`audit` 模式通过 map 配置 `enforce=0`，只记录命中、不阻断；`enforce` 模式通过 `enforce=1` 对固定 demo secret 文件执行拒绝，并在 Agent 退出时通过 BPF link fd 自动 detach。
+本文面向比赛评委和后续 Agent，说明 EulerPilot Security Agent 的能力定位、当前完成度、参考代码复用边界和最小验收入口。当前仓库已经注册正式 `security_policy` Skill，并保留 `security_policy_demo` 兼容入口。正式入口已支持 YAML v2 `targets + rules + target_ref`，`audit` 与 `enforce` 都会 attach 最小 BPF LSM 程序并消费 ringbuf 命中事件；同时 audit 路径已补入 `sys_enter_execve`、`sys_enter_openat`、`sys_enter_connect` 与 `sys_enter_ptrace` tracepoint 观测事件。用户态已从 `targets.<target_ref>.path` 和 `exec_path` / legacy `target_exec_path` 解析 demo 文件与执行目标，并写入单 entry `BPF_ARRAY target_map`；BPF 不再硬编码 demo secret 或 demo exec 路径。`audit` 模式通过 map 配置 `enforce=0`，只记录命中、不阻断；`enforce` 模式通过 `enforce=1` 对当前 demo 单目标执行拒绝，并在 Agent 退出时通过 BPF link fd 自动 detach。
 
 ## 能力定位
 
@@ -20,13 +20,14 @@ BPF LSM 的边界需要写清楚：它运行在内核 LSM hook 链中，只能�
 - 容器过滤：优先通过 host PID 解析 mount namespace、cgroup path、容器 ID，再把规则落到 mount namespace 或 cgroup 维度。
 - Kubernetes 过滤：正式能力可以由 Pod/container target 解析到 host PID、cgroup、namespace；最小 integration 测试不依赖 Kubernetes。
 
-当前 `bpf/security_policy_demo.bpf.c` 的强制控制只实现了固定路径：
+当前 `bpf/security_policy_demo.bpf.c` 的强制控制已经从 BPF 硬编码路径切到用户态填充的单 entry `target_map`。当前 demo 配置仍默认指向：
 
 ```text
 /root/EulerPilot/demo/security_policy_demo/secret.txt
+/root/EulerPilot/demo/security_policy_demo/deny_exec.sh
 ```
 
-它已经有最小 `policy_map` 和 ringbuf 命中事件，但尚未支持动态 path/process/container target map。当前 `mode` 已由 BPF map 生效：`audit` attach BPF 但返回 allow；`enforce` attach BPF LSM 并触发固定路径和固定 demo 可执行文件拒绝。当前 tracepoint 观测已覆盖 `sys_enter_execve`、`sys_enter_openat`、`sys_enter_connect` 与 `sys_enter_ptrace`，并在 BPF 侧过滤 Agent 自身写审计日志产生的递归事件；这些 syscall 事件目前只做观测和证据输出，不参与 enforce。文档和验收时应把当前阶段称为正式 `security_policy` BPF LSM + 四类 syscall tracing 最小闭环，而不是完整 SecurityPolicySkill 成品。
+它已经有最小 `policy_map`、单 entry `target_map` 和 ringbuf 命中事件。当前 `mode` 已由 BPF map 生效：`audit` attach BPF 但返回 allow；`enforce` attach BPF LSM 并触发 demo 文件路径和 demo 可执行路径拒绝。当前 tracepoint 观测已覆盖 `sys_enter_execve`、`sys_enter_openat`、`sys_enter_connect` 与 `sys_enter_ptrace`，并在 BPF 侧过滤 Agent 自身写审计日志产生的递归事件；这些 syscall 事件目前只做观测和证据输出，不参与 enforce。文档和验收时应把当前阶段称为正式 `security_policy` file_open + bprm + 四类 syscall + target_map 最小闭环，而不是完整 SecurityPolicySkill 成品。`target_map` 当前仍是 demo 单目标，不是生产级多目标、进程/容器绑定或动态规则矩阵。
 
 ## 事件输出
 
@@ -37,7 +38,7 @@ BPF LSM 的边界需要写清楚：它运行在内核 LSM hook 链中，只能�
 - `target_ref`、`pid`、`tgid`、`comm`、`cgroup`、`mnt_ns`
 - `path` 或 `exec_path`、`errno`、`rule_id`、`reason`
 
-当前 BPF demo 已输出 ringbuf 命中事件；用户态 `security_policy` 消费事件并写入 `reports/events/security_policy.jsonl`。当前事件已区分 `event_hook=lsm_file_open`、`event_hook=lsm_bprm_check_security`、`event_hook=sys_enter_execve`、`event_hook=sys_enter_openat`、`event_hook=sys_enter_connect` 和 `event_hook=sys_enter_ptrace`。最小验收以“audit 不阻断且存在 `operation=hit/result=observed`、audit 事件覆盖 file_open、bprm_check_security 与四类 syscall tracepoint、enforce attach 后目标文件和固定 demo 可执行文件被拒绝且存在 `operation=hit/result=blocked`、Agent 退出后恢复访问、无 BPF link/pin 残留”为准。下一步成品化时需要把 ringbuf 事件从固定路径 demo 扩展到动态规则命中，并继续补齐容器级 target 绑定。
+当前 BPF demo 已输出 ringbuf 命中事件；用户态 `security_policy` 消费事件并写入 `reports/events/security_policy.jsonl`。当前事件已区分 `event_hook=lsm_file_open`、`event_hook=lsm_bprm_check_security`、`event_hook=sys_enter_execve`、`event_hook=sys_enter_openat`、`event_hook=sys_enter_connect` 和 `event_hook=sys_enter_ptrace`。最小验收以“audit 不阻断且存在 `operation=hit/result=observed`、audit 事件覆盖 file_open、bprm_check_security 与四类 syscall tracepoint、enforce attach 后 target_map 中的目标文件和 demo 可执行文件被拒绝且存在 `operation=hit/result=blocked`、Agent 退出后恢复访问、无 BPF link/pin 残留”为准。下一步成品化时需要把单目标 `target_map` 扩展到多目标/多规则命中，并继续补齐容器级 target 绑定。
 
 ## 回滚与清理
 
@@ -75,29 +76,30 @@ sudo tests/integration/test_security_policy.sh
 
 脚本默认只验证当前 demo 能力：
 
-1. 检查必须在 `/root/EulerPilot` 运行，因为当前 Agent 和 BPF demo 仍硬编码该路径。
+1. 检查默认 demo 目标位于 `/root/EulerPilot`，因为当前集成脚本仍以该路径作为 demo 配置和结果目录基准。
 2. 检查 root、BPF LSM、bpffs、`bpftool`、`make`、`timeout` 等基础命令。
 3. 执行 `make agent security-policy-demo`。
 4. 使用临时 audit 配置启用正式 `security_policy`，确认目标文件和 demo 可执行文件仍可访问，且写入 BPF ringbuf 命中事件，并覆盖 `lsm_file_open`、`lsm_bprm_check_security`、`sys_enter_execve`、`sys_enter_openat`、`sys_enter_connect`、`sys_enter_ptrace`。
 5. 使用临时 enforce 配置启用正式 `security_policy`，轮询读取 demo secret 文件并执行 demo deny 脚本，确认 attach 后均被拒绝。
-6. 等 Agent 正常退出，确认目标文件和 demo 可执行文件恢复可访问，并调用 cleanup 验证无 demo 残留。
+6. 再创建 `/tmp/eulerpilot-security-policy.*` 动态文件和动态执行脚本，使用临时 YAML 把 `path` 与 `exec_path` 下发到 `target_map`，确认动态目标被拒绝，同时原 demo 目标不被误阻断。
+7. 等 Agent 正常退出，确认目标文件和 demo 可执行文件恢复可访问，并调用 cleanup 验证无 demo 残留。
 
-验收输出应包含 `PASS: security_policy audit mode writes file, bprm and four syscall hit events`、`PASS: security_policy enforce mode writes blocked file and bprm hit events`、`PASS: target file is denied while security_policy enforce is active`、`PASS: exec target is denied while security_policy enforce is active` 和 rollback 恢复类 PASS。
+验收输出应包含 `PASS: security_policy audit mode writes file, bprm and four syscall hit events`、`PASS: security_policy enforce mode writes blocked file and bprm hit events`、`PASS: target file is denied while security_policy enforce is active`、`PASS: exec target is denied while security_policy enforce is active`、`PASS: security_policy target_map accepts dynamic YAML file and exec paths` 和 rollback 恢复类 PASS。
 
 ## 正式实现清单
 
 - 注册正式 `security_policy` Skill，保留 `security_policy_demo` 作为回归用例。（已完成）
 - YAML schema v2 支持 `targets + rules + mode + target_ref`，默认 `mode: audit`。（已完成最小路径 target）
 - 用户态 audit/enforce 模式切换：audit 不阻断并写事件，enforce 执行 BPF LSM。（已完成最小闭环）
-- BPF 侧加入最小 config map 和 event ringbuf。（已完成固定 demo path、LSM file_open、LSM bprm_check_security、execve/openat/connect/ptrace tracepoint 事件）
-- BPF 侧加入动态 map：target map、path rule map、exec rule map、control map。
-- 最低覆盖 `execve/openat/connect/ptrace` syscall tracing，以及 `file_open` 和 `bprm_check_security` 两类 BPF LSM enforce。（已完成四类 syscall 观测、`file_open` 最小 enforce 和 `bprm_check_security` 固定 exec path enforce）
+- BPF 侧加入最小 config map 和 event ringbuf。（已完成 demo target、LSM file_open、LSM bprm_check_security、execve/openat/connect/ptrace tracepoint 事件）
+- BPF 侧加入动态 map：target map、path rule map、exec rule map、control map。（已完成单 entry `target_map`，用户态从 YAML target path 与 exec path 填充；多目标、多规则和容器绑定未完成）
+- 最低覆盖 `execve/openat/connect/ptrace` syscall tracing，以及 `file_open` 和 `bprm_check_security` 两类 BPF LSM enforce。（已完成四类 syscall 观测、`file_open` 最小 enforce 和 `bprm_check_security` target_map exec path enforce）
 - 用户态接入 `TargetResolver`、`AuditBus`、`ActionJournal` 和 `CapabilityDetector`。
 - integration 分层：本地 demo、container namespace、Pod target；Pod 测试只作为增强，不作为最小入口。
 - 文档和脚本明确 openEuler 24.03-LTS-SP3 为硬性目标环境，其他发行版只作为兼容性参考。
 
 ## 验收口径
 
-当前可验收：正式 `security_policy` 注册名、YAML v2 path target、audit 不阻断并写 BPF hit event、audit 事件覆盖 `lsm_file_open/lsm_bprm_check_security/sys_enter_execve/sys_enter_openat/sys_enter_connect/sys_enter_ptrace`、enforce BPF LSM attach、目标文件拒绝、demo 执行文件拒绝、blocked hit event、Agent 退出恢复、cleanup 无残留。
+当前可验收：正式 `security_policy` 注册名、YAML v2 path/exec_path target、用户态向 BPF `target_map` 填充文件路径和执行路径、audit 不阻断并写 BPF hit event、audit 事件覆盖 `lsm_file_open/lsm_bprm_check_security/sys_enter_execve/sys_enter_openat/sys_enter_connect/sys_enter_ptrace`、enforce BPF LSM attach、目标文件拒绝、demo 执行文件拒绝、动态 `/tmp` 目标验证、blocked hit event、Agent 退出恢复、cleanup 无残留。121 最新结果目录为 `results/security_policy/integration-20260621-161943`；122 最新结果目录为 `results/security_policy/integration-20260621-162111`。
 
 下一阶段正式验收：BPF ringbuf 继续补齐动态规则过滤、容器 target 绑定和更多 LSM hook 的真实命中事件；enforce 模式只阻断命中的目标进程/路径/容器；退出、异常和手工 cleanup 后无 BPF link、pin、map 规则残留；所有证据可由 README、integration 日志和结果目录追踪。

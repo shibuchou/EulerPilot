@@ -20,6 +20,7 @@
 - [x] `security_policy` 正式注册名 + YAML v2 path target
 - [x] `security_policy` audit 模式 attach BPF 不阻断并写 `lsm_file_open/lsm_bprm_check_security/sys_enter_execve/sys_enter_openat/sys_enter_connect/sys_enter_ptrace` ringbuf observed hit
 - [x] `security_policy` enforce 模式复用 BPF LSM file_open + bprm_check_security 完成 blocked hit、拒绝、恢复、无残留闭环
+- [x] `security_policy` 单 entry BPF `target_map` 由 YAML `path/exec_path` 下发，并通过 `/tmp` 动态目标验证
 - [x] `security_policy_demo` BPF LSM file_open 最小闭环
 - [x] `security_policy_demo` BPF LSM attach/deny/rollback 集成测试 121/122 均通过
 - [x] Runtime 生命周期收拢与 ActionJournal/AuditBus 最小接入
@@ -50,6 +51,8 @@
 - Security 四类 syscall tracing 122：`results/security_policy/integration-20260621-151229`
 - Security 双 LSM enforce 121：`results/security_policy/integration-20260621-152838`
 - Security 双 LSM enforce 122：`results/security_policy/integration-20260621-153514`
+- Security target_map 动态路径 121：`results/security_policy/integration-20260621-161943`
+- Security target_map 动态路径 122：`results/security_policy/integration-20260621-162111`
 
 ## 当前核心文档
 
@@ -66,9 +69,9 @@
 ## 质量与安全审计
 
 - `scripts/final_quality_gate.sh`：TAP 风格 17 项 P0 质量门禁脚本
-- `reports/final_quality_gate_20260621_security_bprm.log`：121 最新门禁通过记录
+- `reports/final_quality_gate_20260621_security_target_map.log`：121 最新门禁通过记录
 - `docs/final_security_audit.md`：最终安全与质量审计报告
 
 ## 当前结论
 
-项目仍处于争奖增强阶段，不应停留在“最终材料整理”。下一步重点是补强 Network/Security/Resource 的成品化深度：Pod veth、Security 动态 target map、容器级 target 绑定、Resource CPU+Memory 自动闭环。
+项目仍处于争奖增强阶段，不应停留在“最终材料整理”。下一步重点是补强 Network/Security/Resource 的成品化深度：Pod veth、Security 多目标规则 map、容器级 target 绑定、Resource CPU+Memory 自动闭环。

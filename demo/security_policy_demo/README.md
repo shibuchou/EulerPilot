@@ -1,23 +1,24 @@
 # security_policy_demo
 
-本目录是 SecurityPolicySkill 的最小 BPF 演示场景，不依赖 Kubernetes。当前 demo 验证三件事：Agent attach `bpf/security_policy_demo.bpf.c` 后，`lsm/file_open` 可以在 enforce 模式拒绝读取固定文件；`lsm/bprm_check_security` 可以在 enforce 模式拒绝执行固定 demo 脚本；audit 模式同时通过 ringbuf 输出 `lsm_file_open`、`lsm_bprm_check_security`、`sys_enter_execve`、`sys_enter_openat`、`sys_enter_connect`、`sys_enter_ptrace` 命中事件。
+本目录是 SecurityPolicySkill 的最小 BPF 演示场景，不依赖 Kubernetes。当前 demo 验证三件事：Agent attach `bpf/security_policy_demo.bpf.c` 后，用户态从 YAML target path 与 exec path 填充单 entry BPF `target_map`，`lsm/file_open` 可以在 enforce 模式拒绝读取目标文件；`lsm/bprm_check_security` 可以在 enforce 模式拒绝执行 demo 脚本；audit 模式同时通过 ringbuf 输出 `lsm_file_open`、`lsm_bprm_check_security`、`sys_enter_execve`、`sys_enter_openat`、`sys_enter_connect`、`sys_enter_ptrace` 命中事件。
 
 ```text
 /root/EulerPilot/demo/security_policy_demo/secret.txt
+/root/EulerPilot/demo/security_policy_demo/deny_exec.sh
 ```
 
 ## 当前能力
 
 - BPF LSM hook：`lsm/file_open`、`lsm/bprm_check_security`
 - BPF tracepoint hook：`tracepoint/syscalls/sys_enter_execve`、`tracepoint/syscalls/sys_enter_openat`、`tracepoint/syscalls/sys_enter_connect`、`tracepoint/syscalls/sys_enter_ptrace`
-- 当前行为：`lsm/file_open` 命中固定 secret 文件后按 mode 决定 allow 或返回 `-EPERM`；`lsm/bprm_check_security` 命中固定 demo 执行脚本后按 mode 决定 allow 或返回 `-EPERM`；四类 syscall 只观测不阻断
-- 当前模式：`audit` 通过 `policy_map.enforce=0` 允许访问并记录 observed hit；`enforce` 通过 `policy_map.enforce=1` 阻断固定 secret 文件和固定 demo 执行脚本并记录 blocked hit
-- 当前输出：写入 `reports/events/security_policy.jsonl`，测试会归档为 `security_policy_events.audit.jsonl` 和 `security_policy_events.enforce.jsonl`
+- 当前行为：`lsm/file_open` 命中 `target_map` 中的 demo secret 文件后按 mode 决定 allow 或返回 `-EPERM`；`lsm/bprm_check_security` 命中 `target_map` 中的 demo 执行脚本后按 mode 决定 allow 或返回 `-EPERM`；四类 syscall 只观测不阻断
+- 当前模式：`audit` 通过 `policy_map.enforce=0` 允许访问并记录 observed hit；`enforce` 通过 `policy_map.enforce=1` 阻断 demo secret 文件和 demo 执行脚本并记录 blocked hit
+- 当前输出：写入 `reports/events/security_policy.jsonl`，测试会归档为 `security_policy_events.audit.jsonl`、`security_policy_events.enforce.jsonl` 和 `security_policy_events.dynamic.jsonl`
 - 当前回滚：Agent `stop/rollback` 销毁所有 BPF link 和 object；正常退出不应留下 pin
 
 ## 快速验证
 
-该 demo 目前硬编码 `/root/EulerPilot`，请在 openEuler 目标机或等价 Linux 环境的 `/root/EulerPilot` 下运行：
+当前集成脚本仍以 `/root/EulerPilot` 作为 demo 目标路径基准，请在 openEuler 目标机或等价 Linux 环境的 `/root/EulerPilot` 下运行：
 
 ```bash
 make agent security-policy-demo
@@ -41,4 +42,4 @@ sudo scripts/cleanup_security_policy_demo.sh
 
 ## 风险边界
 
-这是正式 `security_policy` 的最小兼容 demo，不是完整 SecurityPolicySkill。不能把它直接用于真实业务路径，也不能扩大成全局文件拒绝策略。下一步需要补动态 target、路径/进程/容器过滤和更完整的 ActionJournal 回滚证据。
+这是正式 `security_policy` 的最小兼容 demo，不是完整 SecurityPolicySkill。当前 `target_map` 已能由 YAML 填充单组文件/执行路径，并在集成测试中验证 `/tmp/eulerpilot-security-policy.*` 动态目标；但它仍不是生产级多目标、路径/进程/容器过滤矩阵，也不能扩大成全局文件拒绝策略。下一步需要补多目标规则 map、容器绑定和更完整的 ActionJournal 回滚证据。121 最新通过结果为 `results/security_policy/integration-20260621-161943`，122 最新通过结果为 `results/security_policy/integration-20260621-162111`。

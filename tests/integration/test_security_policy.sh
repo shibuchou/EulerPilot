@@ -9,6 +9,9 @@ TARGET_FILE="$ROOT/demo/security_policy_demo/secret.txt"
 EXEC_TARGET_FILE="$ROOT/demo/security_policy_demo/deny_exec.sh"
 AGENT_PID=""
 RESULT_READY="false"
+DYNAMIC_DIR=""
+DYNAMIC_TARGET_FILE=""
+DYNAMIC_EXEC_TARGET_FILE=""
 
 log() {
     if [ "$RESULT_READY" = "true" ]; then
@@ -50,13 +53,16 @@ restore() {
         wait "$AGENT_PID" 2>/dev/null || true
     fi
     run_cleanup_script
+    if [ -n "${DYNAMIC_DIR:-}" ] && [ -d "$DYNAMIC_DIR" ]; then
+        rm -rf "$DYNAMIC_DIR"
+    fi
     set -e
 }
 
 log "=== SecurityPolicyDemoSkill integration test ==="
 
 if [ "$ROOT" != "$EXPECTED_ROOT" ]; then
-    skip "current root is $ROOT; current demo hardcodes $EXPECTED_ROOT in Agent and BPF path checks"
+    skip "current root is $ROOT; Agent BPF object path and demo result layout currently expect $EXPECTED_ROOT"
 fi
 
 if [ "$(id -u)" -ne 0 ]; then
@@ -170,6 +176,7 @@ skills:
       demo_secret:
         type: path
         path: /root/EulerPilot/demo/security_policy_demo/secret.txt
+        exec_path: /root/EulerPilot/demo/security_policy_demo/deny_exec.sh
     rules:
       - name: deny_demo_secret_open
         hook: lsm_file_open
@@ -280,6 +287,7 @@ skills:
       demo_secret:
         type: path
         path: /root/EulerPilot/demo/security_policy_demo/secret.txt
+        exec_path: /root/EulerPilot/demo/security_policy_demo/deny_exec.sh
     rules:
       - name: deny_demo_secret_open
         hook: lsm_file_open
@@ -380,6 +388,132 @@ if ! "$EXEC_TARGET_FILE" > "$RESULT_DIR/post-cleanup-exec.txt" 2> "$RESULT_DIR/p
     fail "exec target is still denied after rollback/cleanup; see $RESULT_DIR/post-cleanup-exec.err"
 fi
 log "PASS: exec target is runnable after agent rollback"
+
+DYNAMIC_DIR="$(mktemp -d /tmp/eulerpilot-security-policy.XXXXXX)"
+DYNAMIC_TARGET_FILE="$DYNAMIC_DIR/dynamic-secret.txt"
+DYNAMIC_EXEC_TARGET_FILE="$DYNAMIC_DIR/dynamic-deny-exec.sh"
+printf 'dynamic security policy target\n' > "$DYNAMIC_TARGET_FILE"
+cat > "$DYNAMIC_EXEC_TARGET_FILE" <<'SH'
+#!/usr/bin/env bash
+echo dynamic security policy exec target
+SH
+chmod +x "$DYNAMIC_EXEC_TARGET_FILE"
+
+cat > "$RESULT_DIR/agent.dynamic.yaml" <<'YAML'
+skills_config_path: skills.dynamic.yaml
+exporter:
+  prometheus:
+    enabled: false
+YAML
+
+cat > "$RESULT_DIR/skills.dynamic.yaml" <<YAML
+schema_version: 2
+skills:
+- name: resource_control
+  kind: runtime
+  enabled: true
+  config: {}
+- name: psi_gate
+  kind: runtime
+  enabled: true
+  config: {}
+- name: security_policy
+  kind: runtime
+  enabled: true
+  config:
+    mode: enforce
+    targets:
+      dynamic_secret:
+        type: path
+        path: $DYNAMIC_TARGET_FILE
+        exec_path: $DYNAMIC_EXEC_TARGET_FILE
+    rules:
+      - name: deny_dynamic_secret_open
+        hook: lsm_file_open
+        target_ref: dynamic_secret
+        action: deny
+YAML
+
+rm -f "$ROOT/reports/events/security_policy.jsonl"
+
+timeout 20s "$AGENT_BIN" \
+    --config "$RESULT_DIR/agent.dynamic.yaml" \
+    --duration-s 8 \
+    --interval-ms 1000 \
+    --jsonl \
+    > "$RESULT_DIR/agent-dynamic.log" 2>&1 &
+AGENT_PID="$!"
+
+dynamic_blocked="false"
+for _ in $(seq 1 40); do
+    if ! kill -0 "$AGENT_PID" 2>/dev/null; then
+        set +e
+        wait "$AGENT_PID"
+        agent_rc="$?"
+        set -e
+        AGENT_PID=""
+        fail "dynamic target agent exited before denial was observed, rc=$agent_rc; see $RESULT_DIR/agent-dynamic.log"
+    fi
+
+    set +e
+    cat "$DYNAMIC_TARGET_FILE" > "$RESULT_DIR/dynamic-blocked-secret.txt" 2> "$RESULT_DIR/dynamic-blocked-secret.err"
+    cat_rc="$?"
+    set -e
+    if [ "$cat_rc" -ne 0 ]; then
+        dynamic_blocked="true"
+        break
+    fi
+    sleep 0.2
+done
+
+if [ "$dynamic_blocked" != "true" ]; then
+    fail "dynamic target file was not denied; see $RESULT_DIR/agent-dynamic.log"
+fi
+
+if ! cat "$TARGET_FILE" > "$RESULT_DIR/dynamic-default-secret.txt" 2> "$RESULT_DIR/dynamic-default-secret.err"; then
+    fail "default demo target was denied while dynamic target_map was active; see $RESULT_DIR/dynamic-default-secret.err"
+fi
+if ! "$EXEC_TARGET_FILE" > "$RESULT_DIR/dynamic-default-exec.txt" 2> "$RESULT_DIR/dynamic-default-exec.err"; then
+    fail "default demo exec target was denied while dynamic target_map was active; see $RESULT_DIR/dynamic-default-exec.err"
+fi
+
+set +e
+"$DYNAMIC_EXEC_TARGET_FILE" > "$RESULT_DIR/dynamic-blocked-exec.txt" 2> "$RESULT_DIR/dynamic-blocked-exec.err"
+dynamic_exec_rc="$?"
+set -e
+if [ "$dynamic_exec_rc" -eq 0 ]; then
+    fail "dynamic exec target was not denied; see $RESULT_DIR/dynamic-blocked-exec.txt"
+fi
+
+set +e
+wait "$AGENT_PID"
+agent_rc="$?"
+set -e
+AGENT_PID=""
+if [ "$agent_rc" -ne 0 ]; then
+    fail "dynamic target agent exited non-zero, rc=$agent_rc; see $RESULT_DIR/agent-dynamic.log"
+fi
+
+if ! grep -Fq "$DYNAMIC_TARGET_FILE" "$ROOT/reports/events/security_policy.jsonl" 2>/dev/null; then
+    fail "dynamic target file path was not present in security_policy events"
+fi
+if ! grep -Fq "$DYNAMIC_EXEC_TARGET_FILE" "$ROOT/reports/events/security_policy.jsonl" 2>/dev/null; then
+    fail "dynamic exec target path was not present in security_policy events"
+fi
+if ! grep -q '"result":"blocked"' "$ROOT/reports/events/security_policy.jsonl" 2>/dev/null; then
+    fail "dynamic target_map test did not write blocked events"
+fi
+cp "$ROOT/reports/events/security_policy.jsonl" "$RESULT_DIR/security_policy_events.dynamic.jsonl"
+log "PASS: security_policy target_map accepts dynamic YAML file and exec paths"
+
+run_cleanup_script
+
+if ! cat "$DYNAMIC_TARGET_FILE" > "$RESULT_DIR/dynamic-post-cleanup-secret.txt" 2> "$RESULT_DIR/dynamic-post-cleanup-secret.err"; then
+    fail "dynamic target file is still denied after rollback/cleanup; see $RESULT_DIR/dynamic-post-cleanup-secret.err"
+fi
+if ! "$DYNAMIC_EXEC_TARGET_FILE" > "$RESULT_DIR/dynamic-post-cleanup-exec.txt" 2> "$RESULT_DIR/dynamic-post-cleanup-exec.err"; then
+    fail "dynamic exec target is still denied after rollback/cleanup; see $RESULT_DIR/dynamic-post-cleanup-exec.err"
+fi
 
 if bpftool link show 2>/dev/null | grep -q "security_policy_demo"; then
     bpftool link show > "$RESULT_DIR/bpftool-link-after-cleanup.txt" 2>&1 || true
