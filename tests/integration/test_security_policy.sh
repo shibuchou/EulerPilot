@@ -14,6 +14,9 @@ DYNAMIC_TARGET_FILE=""
 DYNAMIC_EXEC_TARGET_FILE=""
 DYNAMIC_SECOND_TARGET_FILE=""
 DYNAMIC_SECOND_EXEC_TARGET_FILE=""
+DYNAMIC_SCOPED_TARGET_FILE=""
+DYNAMIC_SCOPED_EXEC_TARGET_FILE=""
+SCOPED_CGROUP_PATH=""
 
 log() {
     if [ "$RESULT_READY" = "true" ]; then
@@ -48,6 +51,19 @@ run_cleanup_script() {
     rm -f /sys/fs/bpf/security_policy_demo /sys/fs/bpf/security_policy_demo_link 2>/dev/null || true
 }
 
+cleanup_scoped_cgroup() {
+    if [ -n "${SCOPED_CGROUP_PATH:-}" ] && [ -d "$SCOPED_CGROUP_PATH" ]; then
+        if [ -f "$SCOPED_CGROUP_PATH/cgroup.procs" ]; then
+            while read -r pid; do
+                if [ -n "$pid" ]; then
+                    echo "$pid" > /sys/fs/cgroup/cgroup.procs 2>/dev/null || true
+                fi
+            done < "$SCOPED_CGROUP_PATH/cgroup.procs"
+        fi
+        rmdir "$SCOPED_CGROUP_PATH" 2>/dev/null || true
+    fi
+}
+
 restore() {
     set +e
     if [ -n "${AGENT_PID:-}" ] && kill -0 "$AGENT_PID" 2>/dev/null; then
@@ -55,6 +71,7 @@ restore() {
         wait "$AGENT_PID" 2>/dev/null || true
     fi
     run_cleanup_script
+    cleanup_scoped_cgroup
     if [ -n "${DYNAMIC_DIR:-}" ] && [ -d "$DYNAMIC_DIR" ]; then
         rm -rf "$DYNAMIC_DIR"
     fi
@@ -117,6 +134,30 @@ assert_blocked_rule_event() {
         | grep -Fq "\"target_ref\":\"$target_ref\""; then
         fail "blocked event for $path did not carry rule_id=$rule_id target_ref=$target_ref hook=$hook"
     fi
+}
+
+assert_blocked_rule_event_has_cgroup() {
+    local path="$1"
+    local hook="$2"
+    local rule_id="$3"
+    local target_ref="$4"
+
+    if ! grep -F "$path" "$ROOT/reports/events/security_policy.jsonl" 2>/dev/null \
+        | grep -F "\"event_hook\":\"$hook\"" \
+        | grep -F '"result":"blocked"' \
+        | grep -F "\"rule_id\":\"$rule_id\"" \
+        | grep -F "\"target_ref\":\"$target_ref\"" \
+        | grep -Fq '"cgroup_id":"'; then
+        fail "blocked event for $path did not carry cgroup scoped rule metadata"
+    fi
+}
+
+run_in_scoped_cgroup() {
+    local stdout_path="$1"
+    local stderr_path="$2"
+    shift 2
+    bash -c 'echo $$ > "$1/cgroup.procs"; shift; exec "$@"' \
+        _ "$SCOPED_CGROUP_PATH" "$@" > "$stdout_path" 2> "$stderr_path"
 }
 
 if [ ! -r /sys/kernel/security/lsm ]; then
@@ -411,8 +452,11 @@ DYNAMIC_TARGET_FILE="$DYNAMIC_DIR/dynamic-secret.txt"
 DYNAMIC_EXEC_TARGET_FILE="$DYNAMIC_DIR/dynamic-deny-exec.sh"
 DYNAMIC_SECOND_TARGET_FILE="$DYNAMIC_DIR/dynamic-second-secret.txt"
 DYNAMIC_SECOND_EXEC_TARGET_FILE="$DYNAMIC_DIR/dynamic-second-deny-exec.sh"
+DYNAMIC_SCOPED_TARGET_FILE="$DYNAMIC_DIR/dynamic-scoped-secret.txt"
+DYNAMIC_SCOPED_EXEC_TARGET_FILE="$DYNAMIC_DIR/dynamic-scoped-deny-exec.sh"
 printf 'dynamic security policy target\n' > "$DYNAMIC_TARGET_FILE"
 printf 'second dynamic security policy target\n' > "$DYNAMIC_SECOND_TARGET_FILE"
+printf 'scoped dynamic security policy target\n' > "$DYNAMIC_SCOPED_TARGET_FILE"
 cat > "$DYNAMIC_EXEC_TARGET_FILE" <<'SH'
 #!/usr/bin/env bash
 echo dynamic security policy exec target
@@ -421,7 +465,12 @@ cat > "$DYNAMIC_SECOND_EXEC_TARGET_FILE" <<'SH'
 #!/usr/bin/env bash
 echo second dynamic security policy exec target
 SH
-chmod +x "$DYNAMIC_EXEC_TARGET_FILE" "$DYNAMIC_SECOND_EXEC_TARGET_FILE"
+cat > "$DYNAMIC_SCOPED_EXEC_TARGET_FILE" <<'SH'
+#!/usr/bin/env bash
+echo scoped dynamic security policy exec target
+SH
+chmod +x "$DYNAMIC_EXEC_TARGET_FILE" "$DYNAMIC_SECOND_EXEC_TARGET_FILE" \
+    "$DYNAMIC_SCOPED_EXEC_TARGET_FILE"
 
 cat > "$RESULT_DIR/agent.dynamic.yaml" <<'YAML'
 skills_config_path: skills.dynamic.yaml
@@ -599,6 +648,134 @@ fi
 if ! "$DYNAMIC_SECOND_EXEC_TARGET_FILE" > "$RESULT_DIR/dynamic-second-post-cleanup-exec.txt" 2> "$RESULT_DIR/dynamic-second-post-cleanup-exec.err"; then
     fail "second dynamic exec target is still denied after rollback/cleanup; see $RESULT_DIR/dynamic-second-post-cleanup-exec.err"
 fi
+
+SCOPED_CGROUP_PATH="/sys/fs/cgroup/eulerpilot/security-scope-$$"
+mkdir -p /sys/fs/cgroup/eulerpilot
+mkdir "$SCOPED_CGROUP_PATH"
+
+cat > "$RESULT_DIR/agent.scoped.yaml" <<'YAML'
+skills_config_path: skills.scoped.yaml
+exporter:
+  prometheus:
+    enabled: false
+YAML
+
+cat > "$RESULT_DIR/skills.scoped.yaml" <<YAML
+schema_version: 2
+skills:
+- name: resource_control
+  kind: runtime
+  enabled: true
+  config: {}
+- name: psi_gate
+  kind: runtime
+  enabled: true
+  config: {}
+- name: security_policy
+  kind: runtime
+  enabled: true
+  config:
+    mode: enforce
+    targets:
+      scoped_secret:
+        type: path
+        path: $DYNAMIC_SCOPED_TARGET_FILE
+        exec_path: $DYNAMIC_SCOPED_EXEC_TARGET_FILE
+        cgroup_path: $SCOPED_CGROUP_PATH
+    rules:
+      - name: deny_scoped_secret_open
+        hook: lsm_file_open
+        target_ref: scoped_secret
+        action: deny
+YAML
+
+rm -f "$ROOT/reports/events/security_policy.jsonl"
+
+timeout 20s "$AGENT_BIN" \
+    --config "$RESULT_DIR/agent.scoped.yaml" \
+    --duration-s 8 \
+    --interval-ms 1000 \
+    --jsonl \
+    > "$RESULT_DIR/agent-scoped.log" 2>&1 &
+AGENT_PID="$!"
+
+scoped_blocked="false"
+for _ in $(seq 1 40); do
+    if ! kill -0 "$AGENT_PID" 2>/dev/null; then
+        set +e
+        wait "$AGENT_PID"
+        agent_rc="$?"
+        set -e
+        AGENT_PID=""
+        fail "scoped target agent exited before cgroup denial was observed, rc=$agent_rc; see $RESULT_DIR/agent-scoped.log"
+    fi
+
+    if ! cat "$DYNAMIC_SCOPED_TARGET_FILE" > "$RESULT_DIR/scoped-outside-secret.txt" 2> "$RESULT_DIR/scoped-outside-secret.err"; then
+        fail "scoped target file was denied outside target cgroup; see $RESULT_DIR/scoped-outside-secret.err"
+    fi
+
+    set +e
+    run_in_scoped_cgroup "$RESULT_DIR/scoped-blocked-secret.txt" \
+        "$RESULT_DIR/scoped-blocked-secret.err" \
+        cat "$DYNAMIC_SCOPED_TARGET_FILE"
+    cat_rc="$?"
+    set -e
+    if [ "$cat_rc" -ne 0 ]; then
+        scoped_blocked="true"
+        break
+    fi
+    sleep 0.2
+done
+
+if [ "$scoped_blocked" != "true" ]; then
+    fail "scoped target file was not denied inside target cgroup; see $RESULT_DIR/agent-scoped.log"
+fi
+
+if ! "$DYNAMIC_SCOPED_EXEC_TARGET_FILE" > "$RESULT_DIR/scoped-outside-exec.txt" 2> "$RESULT_DIR/scoped-outside-exec.err"; then
+    fail "scoped exec target was denied outside target cgroup; see $RESULT_DIR/scoped-outside-exec.err"
+fi
+
+set +e
+run_in_scoped_cgroup "$RESULT_DIR/scoped-blocked-exec.txt" \
+    "$RESULT_DIR/scoped-blocked-exec.err" \
+    "$DYNAMIC_SCOPED_EXEC_TARGET_FILE"
+scoped_exec_rc="$?"
+set -e
+if [ "$scoped_exec_rc" -eq 0 ]; then
+    fail "scoped exec target was not denied inside target cgroup; see $RESULT_DIR/scoped-blocked-exec.txt"
+fi
+
+set +e
+wait "$AGENT_PID"
+agent_rc="$?"
+set -e
+AGENT_PID=""
+if [ "$agent_rc" -ne 0 ]; then
+    fail "scoped target agent exited non-zero, rc=$agent_rc; see $RESULT_DIR/agent-scoped.log"
+fi
+
+assert_blocked_rule_event "$DYNAMIC_SCOPED_TARGET_FILE" "lsm_file_open" \
+    "deny_scoped_secret_open" "scoped_secret"
+assert_blocked_rule_event "$DYNAMIC_SCOPED_EXEC_TARGET_FILE" "lsm_bprm_check_security" \
+    "deny_scoped_secret_open" "scoped_secret"
+assert_blocked_rule_event_has_cgroup "$DYNAMIC_SCOPED_TARGET_FILE" "lsm_file_open" \
+    "deny_scoped_secret_open" "scoped_secret"
+cp "$ROOT/reports/events/security_policy.jsonl" "$RESULT_DIR/security_policy_events.scoped.jsonl"
+log "PASS: security_policy cgroup scoped target only blocks inside target cgroup"
+
+run_cleanup_script
+
+if ! run_in_scoped_cgroup "$RESULT_DIR/scoped-post-cleanup-secret.txt" \
+    "$RESULT_DIR/scoped-post-cleanup-secret.err" \
+    cat "$DYNAMIC_SCOPED_TARGET_FILE"; then
+    fail "scoped target file is still denied after rollback/cleanup; see $RESULT_DIR/scoped-post-cleanup-secret.err"
+fi
+if ! run_in_scoped_cgroup "$RESULT_DIR/scoped-post-cleanup-exec.txt" \
+    "$RESULT_DIR/scoped-post-cleanup-exec.err" \
+    "$DYNAMIC_SCOPED_EXEC_TARGET_FILE"; then
+    fail "scoped exec target is still denied after rollback/cleanup; see $RESULT_DIR/scoped-post-cleanup-exec.err"
+fi
+cleanup_scoped_cgroup
 
 if bpftool link show 2>/dev/null | grep -q "security_policy_demo"; then
     bpftool link show > "$RESULT_DIR/bpftool-link-after-cleanup.txt" 2>&1 || true

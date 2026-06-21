@@ -28,6 +28,7 @@ struct security_policy_config {
 struct security_policy_target {
     char file_path[MAX_SECURITY_PATH];
     char exec_path[MAX_SECURITY_PATH];
+    __u64 cgroup_id;
 };
 
 struct security_policy_event {
@@ -101,7 +102,15 @@ static __always_inline __u32 clamp_target_count(const struct security_policy_con
     return count;
 }
 
-static __always_inline int file_path_match_index(const char *path, __u32 target_count)
+static __always_inline int target_scope_matches(const struct security_policy_target *target,
+                                                __u64 current_cgroup_id)
+{
+    return target->cgroup_id == 0 || target->cgroup_id == current_cgroup_id;
+}
+
+static __always_inline int file_path_match_index(const char *path,
+                                                 __u32 target_count,
+                                                 __u64 current_cgroup_id)
 {
     for (int i = 0; i < MAX_SECURITY_TARGETS; i++) {
         if ((__u32)i >= target_count)
@@ -110,13 +119,16 @@ static __always_inline int file_path_match_index(const char *path, __u32 target_
         __u32 key = i;
         struct security_policy_target *target = bpf_map_lookup_elem(&target_map, &key);
         if (target && target->file_path[0] != '\0' &&
+            target_scope_matches(target, current_cgroup_id) &&
             path_equals(path, target->file_path))
             return i;
     }
     return -1;
 }
 
-static __always_inline int exec_path_match_index(const char *path, __u32 target_count)
+static __always_inline int exec_path_match_index(const char *path,
+                                                 __u32 target_count,
+                                                 __u64 current_cgroup_id)
 {
     for (int i = 0; i < MAX_SECURITY_TARGETS; i++) {
         if ((__u32)i >= target_count)
@@ -125,6 +137,7 @@ static __always_inline int exec_path_match_index(const char *path, __u32 target_
         __u32 key = i;
         struct security_policy_target *target = bpf_map_lookup_elem(&target_map, &key);
         if (target && target->exec_path[0] != '\0' &&
+            target_scope_matches(target, current_cgroup_id) &&
             path_equals(path, target->exec_path))
             return i;
     }
@@ -159,7 +172,9 @@ int BPF_PROG(security_policy_demo, struct file *file, int ret)
     __u32 key = 0;
     struct security_policy_config *config = bpf_map_lookup_elem(&policy_map, &key);
     __u32 target_count = clamp_target_count(config);
-    int target_index = file_path_match_index(path, target_count);
+    __u64 current_cgroup_id = bpf_get_current_cgroup_id();
+    int target_index = file_path_match_index(path, target_count,
+                                             current_cgroup_id);
     if (target_index < 0)
         return 0;
 
@@ -195,7 +210,9 @@ int BPF_PROG(security_policy_bprm, struct linux_binprm *bprm, int ret)
     __u32 key = 0;
     struct security_policy_config *config = bpf_map_lookup_elem(&policy_map, &key);
     __u32 target_count = clamp_target_count(config);
-    int target_index = exec_path_match_index(path, target_count);
+    __u64 current_cgroup_id = bpf_get_current_cgroup_id();
+    int target_index = exec_path_match_index(path, target_count,
+                                             current_cgroup_id);
     if (target_index < 0)
         return 0;
 

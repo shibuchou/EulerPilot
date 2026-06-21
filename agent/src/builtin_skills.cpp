@@ -160,6 +160,7 @@ struct SecurityPolicyConfig {
 struct SecurityPolicyTarget {
     char file_path[256] = {};
     char exec_path[256] = {};
+    std::uint64_t cgroup_id = 0;
 };
 
 struct SecurityPolicyRule {
@@ -167,6 +168,8 @@ struct SecurityPolicyRule {
     std::string target_ref;
     std::string file_path;
     std::string exec_path;
+    std::string cgroup_path;
+    std::uint64_t cgroup_id = 0;
 };
 
 struct SecurityPolicyEvent {
@@ -201,7 +204,7 @@ static_assert(sizeof(NetworkXdpStats) == 24,
               "network xdp stats map layout must match BPF");
 static_assert(sizeof(SecurityPolicyConfig) == 8,
               "security policy config map layout must match BPF");
-static_assert(sizeof(SecurityPolicyTarget) == 512,
+static_assert(sizeof(SecurityPolicyTarget) == 520,
               "security policy target map layout must match BPF");
 static_assert(sizeof(SecurityPolicyEvent) == 296,
               "security policy ringbuf event layout must match BPF");
@@ -1835,6 +1838,15 @@ public:
                     last_error_ = "security-policy-v2-target-exec-path-missing";
                     return false;
                 }
+                rule.cgroup_path = config_value_or(spec, target_prefix + "cgroup_path", "");
+                if (!rule.cgroup_path.empty()) {
+                    const auto target = resolve_cgroup_target(rule.target_ref, rule.cgroup_path);
+                    if (!target.resolved) {
+                        last_error_ = "security-policy-target-cgroup-resolve-failed:" + target.reason;
+                        return false;
+                    }
+                    rule.cgroup_id = target.cgroup_id;
+                }
                 if (!valid_security_path(rule.file_path)) {
                     last_error_ = "invalid-target-path";
                     return false;
@@ -1875,6 +1887,16 @@ public:
             rule.target_ref = target_ref_;
             rule.file_path = target_path_;
             rule.exec_path = exec_target_path_;
+            rule.cgroup_path = config_value_or(spec, "target_cgroup_path",
+                                               config_value_or(spec, "cgroup_path", ""));
+            if (!rule.cgroup_path.empty()) {
+                const auto target = resolve_cgroup_target(rule.target_ref, rule.cgroup_path);
+                if (!target.resolved) {
+                    last_error_ = "security-policy-target-cgroup-resolve-failed:" + target.reason;
+                    return false;
+                }
+                rule.cgroup_id = target.cgroup_id;
+            }
             rules_.push_back(std::move(rule));
         }
         if (mode_ != "audit" && mode_ != "enforce") {
@@ -2206,6 +2228,7 @@ private:
                                         last_error_, "exec-path")) {
                     return false;
                 }
+                target.cgroup_id = rules_[i].cgroup_id;
             }
             std::uint32_t target_key = static_cast<std::uint32_t>(i);
             if (bpf_map_update_elem(target_fd, &target_key, &target, BPF_ANY) != 0) {
@@ -2325,6 +2348,10 @@ private:
             {"target_ref", matched_rule ? matched_rule->target_ref : target_ref_},
             {"path", bounded_string(hit.path, sizeof(hit.path))},
         };
+        if (matched_rule && matched_rule->cgroup_id != 0) {
+            event.target["cgroup_id"] = std::to_string(matched_rule->cgroup_id);
+            event.target["cgroup_path"] = matched_rule->cgroup_path;
+        }
         event.operation = "hit";
         event.evidence = {
             {"hook", hook_},

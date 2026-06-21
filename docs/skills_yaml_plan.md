@@ -277,7 +277,7 @@ eBPF TC classifier
 
 Security 使用统一目标引用和 observe/audit/enforce 模式。
 
-当前已落地的最小 schema 使用 `targets + rules + target_ref` 描述 path/exec target，默认 `audit` 且默认 disabled。v2 正式入口要求 `targets.<target_ref>.path` 和 `exec_path` 显式存在，用户态会扫描最多 8 条 `rules.*.target_ref` 并把对应 path/exec 写入 BPF `target_map`：
+当前已落地的最小 schema 使用 `targets + rules + target_ref` 描述 path/exec target，默认 `audit` 且默认 disabled。v2 正式入口要求 `targets.<target_ref>.path` 和 `exec_path` 显式存在，并可选配置 `cgroup_path` 作为作用域；用户态会扫描最多 8 条 `rules.*.target_ref` 并把对应 path/exec/cgroup id 写入 BPF `target_map`：
 
 ```yaml
 - name: security_policy
@@ -290,6 +290,8 @@ Security 使用统一目标引用和 observe/audit/enforce 模式。
         type: path
         path: /root/EulerPilot/demo/security_policy_demo/secret.txt
         exec_path: /root/EulerPilot/demo/security_policy_demo/deny_exec.sh
+        # 可选：配置后只在该 cgroup 内 enforce，不配置则按路径全局匹配。
+        cgroup_path: /sys/fs/cgroup/eulerpilot/security-demo
     rules:
       - name: deny_demo_secret_open
         hook: lsm_file_open
@@ -301,8 +303,8 @@ Security 使用统一目标引用和 observe/audit/enforce 模式。
 
 - `audit` 模式 attach BPF LSM + `execve/openat/connect/ptrace` tracepoint，但通过 `policy_map.enforce=0` 允许目标文件访问和 demo 执行脚本运行，并通过 ringbuf 输出 `result=observed` 命中事件。
 - `audit` 事件当前覆盖 `event_hook=lsm_file_open`、`event_hook=lsm_bprm_check_security`、`event_hook=sys_enter_execve`、`event_hook=sys_enter_openat`、`event_hook=sys_enter_connect`、`event_hook=sys_enter_ptrace`。
-- `enforce` 模式复用 `bpf/security_policy_demo.bpf.c`，在 `lsm/file_open` 上拒绝任一 `target_map.file_path`，在 `lsm/bprm_check_security` 上拒绝任一 `target_map.exec_path`，并通过 ringbuf 输出 `result=blocked` 命中事件；LSM blocked 事件携带 BPF `target_index`，用户态映射回单条 YAML `rule_id/target_ref`；四类 syscall 当前只做观测，不阻断。
-- `tests/integration/test_security_policy.sh` 已额外创建 `/tmp/eulerpilot-security-policy.*` 下两组动态目标，证明 YAML `path/exec_path` 能驱动多目标 BPF `target_map`，blocked 事件能定位到对应规则，且不会误阻断默认 demo 目标。
+- `enforce` 模式复用 `bpf/security_policy_demo.bpf.c`，在 `lsm/file_open` 上拒绝任一 `target_map.file_path`，在 `lsm/bprm_check_security` 上拒绝任一 `target_map.exec_path`，并通过 ringbuf 输出 `result=blocked` 命中事件；LSM blocked 事件携带 BPF `target_index`，用户态映射回单条 YAML `rule_id/target_ref`；当 target 配置 `cgroup_path` 时，BPF 还要求当前进程 cgroup id 命中；四类 syscall 当前只做观测，不阻断。
+- `tests/integration/test_security_policy.sh` 已额外创建 `/tmp/eulerpilot-security-policy.*` 下两组动态目标，证明 YAML `path/exec_path` 能驱动多目标 BPF `target_map`，blocked 事件能定位到对应规则，且不会误阻断默认 demo 目标；同时创建临时 cgroup 验证带 `cgroup_path` 的目标只在目标 cgroup 内阻断。
 - `security_policy_demo` 保留为兼容回归入口，最终答辩口径应优先使用正式 `security_policy`。
 
 完整目标态仍按下面结构扩展：
@@ -351,7 +353,7 @@ security_policy:
 
 - syscall tracing 固定覆盖 `execve/openat/connect/ptrace` 四类。（已完成四类 audit 观测）
 - 异常检测在用户态完成，BPF 侧只做过滤和事件上报。
-- LSM 至少覆盖文件访问和程序执行两类强制控制。（已完成 `file_open` 与 `bprm_check_security` 多目标 `target_map`，blocked 事件已支持规则级 `rule_id/target_ref`）
+- LSM 至少覆盖文件访问和程序执行两类强制控制。（已完成 `file_open` 与 `bprm_check_security` 多目标 `target_map`，blocked 事件已支持规则级 `rule_id/target_ref` 和显式 cgroup scope）
 - `enforce` 默认只允许 lab 目标，不允许直接作用于系统级 cgroup。
 
 ## 8. ResourceControlSkill YAML
@@ -516,7 +518,7 @@ policy_engine:
 4. 实现 AuditBus JSONL 写入。
 5. 实现 ActionJournal 写入与恢复。
 6. 将 `network_policy_demo` 包装或迁移为 `network_policy`。
-7. 将 `security_policy_demo` 包装或迁移为 `security_policy`。（已完成正式注册名、最小 audit/enforce 语义、YAML 驱动多目标 target_map、file/exec ringbuf hit 事件、规则级 LSM blocked 事件和四类 syscall tracepoint 观测）
+7. 将 `security_policy_demo` 包装或迁移为 `security_policy`。（已完成正式注册名、最小 audit/enforce 语义、YAML 驱动多目标 target_map、file/exec ringbuf hit 事件、规则级 LSM blocked 事件、显式 cgroup scope 和四类 syscall tracepoint 观测）
 8. 扩展 `resource_control` 的 CPU/Memory/IO 配置模型。
 9. 增加 Policy Engine 联动配置。
 10. 将最终质量门禁从 demo target 切换到正式 Skill target。
