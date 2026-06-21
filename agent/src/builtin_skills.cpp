@@ -9,10 +9,12 @@
 
 #include <bpf/bpf.h>
 #include <bpf/libbpf.h>
+#include <atomic>
 #include <cerrno>
 #include <cctype>
 #include <cstdint>
 #include <ctime>
+#include <cstring>
 #include <iterator>
 
 #include <cstdlib>
@@ -26,6 +28,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <string>
+#include <thread>
 #include <utility>
 #include <vector>
 
@@ -149,6 +152,19 @@ struct NetworkXdpCounters {
     std::uint64_t byte_count = 0;
 };
 
+struct SecurityPolicyConfig {
+    std::uint32_t enforce = 0;
+};
+
+struct SecurityPolicyEvent {
+    std::uint32_t pid = 0;
+    std::uint32_t tgid = 0;
+    std::uint32_t enforce = 0;
+    std::int32_t decision = 0;
+    char comm[16] = {};
+    char path[256] = {};
+};
+
 struct NetworkXdpRule {
     std::string rule_id;
     std::string protocol;
@@ -166,6 +182,10 @@ static_assert(sizeof(NetworkXdpConfig) == 8,
               "network xdp config map layout must match BPF");
 static_assert(sizeof(NetworkXdpStats) == 24,
               "network xdp stats map layout must match BPF");
+static_assert(sizeof(SecurityPolicyConfig) == 4,
+              "security policy config map layout must match BPF");
+static_assert(sizeof(SecurityPolicyEvent) == 288,
+              "security policy ringbuf event layout must match BPF");
 
 bool valid_tc_token(const std::string &value) {
     if (value.empty()) {
@@ -1810,15 +1830,6 @@ public:
 
     bool probe() override {
         available_ = false;
-        if (mode_ == "audit") {
-            // Current audit mode is a safe control-plane check: it records the
-            // configured policy but intentionally does not attach BPF LSM yet.
-            // This keeps the formal security_policy default harmless while the
-            // ringbuf-based audit implementation is being added.
-            available_ = true;
-            last_error_.clear();
-            return true;
-        }
         // Check LSM BPF capability
         std::ifstream lsm("/sys/kernel/security/lsm");
         if (!lsm.good()) {
@@ -1876,13 +1887,6 @@ public:
     }
 
     bool start() override {
-        if (mode_ == "audit") {
-            running_ = true;
-            state_ = "audit-only";
-            write_audit_event("start", "audit-only", "success");
-            write_journal_action("start-audit", "audit-only", "none");
-            return true;
-        }
         bpf_object_ = bpf_object__open_file("/root/EulerPilot/build/security_policy_demo.bpf.o", nullptr);
         if (!bpf_object_) {
             rollback();
@@ -1894,6 +1898,14 @@ public:
             last_error_ = "demo-bpf-load-failed";
             return false;
         }
+        if (!install_policy_config()) {
+            rollback();
+            return false;
+        }
+        if (!start_event_reader()) {
+            rollback();
+            return false;
+        }
         bpf_program *prog = bpf_object__next_program(bpf_object_, nullptr);
         link_ = bpf_program__attach_lsm(prog);
         if (!link_) {
@@ -1903,9 +1915,15 @@ public:
         }
         // Do NOT pin link — LSM should not persist after agent exit
         running_ = true;
-        state_ = "started";
-        write_audit_event("start", "attach-lsm-file-open", "success");
-        write_journal_action("start-enforce", "attach-lsm-file-open", "fd-owned-link");
+        state_ = mode_ == "audit" ? "audit-attached" : "started";
+        write_audit_event("start",
+                          mode_ == "audit" ? "attach-lsm-file-open-audit"
+                                           : "attach-lsm-file-open",
+                          "success");
+        write_journal_action(mode_ == "audit" ? "start-audit" : "start-enforce",
+                             mode_ == "audit" ? "attach-lsm-file-open-audit"
+                                              : "attach-lsm-file-open",
+                             "fd-owned-link");
         return true;
     }
 
@@ -1921,15 +1939,24 @@ public:
         snapshot.evidence["target_ref"] = target_ref_;
         snapshot.evidence["rule_id"] = rule_id_;
         snapshot.evidence["action"] = action_;
+        snapshot.evidence["hit_count"] = std::to_string(hit_count_.load());
+        snapshot.evidence["deny_count"] = std::to_string(deny_count_.load());
         snapshot.evidence["reason"] = last_error_.empty() ? "ok" : last_error_;
         return snapshot;
     }
 
     bool rollback() override {
         if (running_) {
-            write_audit_event("rollback", mode_ == "audit" ? "audit-only" : "detach-lsm-file-open", "success");
-            write_journal_action("rollback", mode_ == "audit" ? "audit-only" : "detach-lsm-file-open", "fd-owned-link");
+            write_audit_event("rollback",
+                              mode_ == "audit" ? "detach-lsm-file-open-audit"
+                                               : "detach-lsm-file-open",
+                              "success");
+            write_journal_action("rollback",
+                                 mode_ == "audit" ? "detach-lsm-file-open-audit"
+                                                  : "detach-lsm-file-open",
+                                 "fd-owned-link");
         }
+        stop_event_reader();
         if (link_) {
             bpf_link__destroy(link_);
             link_ = nullptr;
@@ -1951,6 +1978,127 @@ public:
     std::string last_error() const override { return last_error_; }
 
 private:
+    bool install_policy_config() {
+        const int config_fd = bpf_object__find_map_fd_by_name(bpf_object_, "policy_map");
+        if (config_fd < 0) {
+            last_error_ = "security-policy-config-map-missing";
+            return false;
+        }
+
+        std::uint32_t key = 0;
+        SecurityPolicyConfig config;
+        config.enforce = mode_ == "enforce" ? 1 : 0;
+        if (bpf_map_update_elem(config_fd, &key, &config, BPF_ANY) != 0) {
+            last_error_ = "security-policy-config-map-update-failed";
+            return false;
+        }
+        hit_count_.store(0);
+        deny_count_.store(0);
+        return true;
+    }
+
+    bool start_event_reader() {
+        const int events_fd = bpf_object__find_map_fd_by_name(bpf_object_, "events");
+        if (events_fd < 0) {
+            last_error_ = "security-policy-events-map-missing";
+            return false;
+        }
+
+        ring_buffer_ = ring_buffer__new(events_fd, handle_ringbuf_event, this, nullptr);
+        if (!ring_buffer_) {
+            last_error_ = "security-policy-ringbuf-create-failed";
+            return false;
+        }
+
+        event_thread_stop_.store(false);
+        try {
+            event_thread_ = std::thread([this]() { poll_event_loop(); });
+        } catch (...) {
+            ring_buffer__free(ring_buffer_);
+            ring_buffer_ = nullptr;
+            last_error_ = "security-policy-ringbuf-thread-failed";
+            return false;
+        }
+        return true;
+    }
+
+    void stop_event_reader() {
+        event_thread_stop_.store(true);
+        if (event_thread_.joinable()) {
+            event_thread_.join();
+        }
+        if (ring_buffer_) {
+            ring_buffer__free(ring_buffer_);
+            ring_buffer_ = nullptr;
+        }
+    }
+
+    void poll_event_loop() {
+        while (!event_thread_stop_.load()) {
+            const int rc = ring_buffer__poll(ring_buffer_, 100);
+            if (rc < 0 && rc != -EINTR) {
+                // Keep the Agent alive: a transient ringbuf poll failure should
+                // be visible in counters/logs later, but must not bypass rollback.
+                continue;
+            }
+        }
+    }
+
+    static int handle_ringbuf_event(void *ctx, void *data, size_t size) {
+        auto *self = static_cast<SecurityPolicyDemoSkill *>(ctx);
+        if (!self || size < sizeof(SecurityPolicyEvent)) {
+            return 0;
+        }
+        const auto *event = static_cast<const SecurityPolicyEvent *>(data);
+        self->write_hit_event(*event);
+        return 0;
+    }
+
+    static std::string bounded_string(const char *value, std::size_t max_len) {
+        std::size_t len = 0;
+        while (len < max_len && value[len] != '\0') {
+            ++len;
+        }
+        return std::string(value, len);
+    }
+
+    void write_hit_event(const SecurityPolicyEvent &hit) {
+        const auto hit_index = hit_count_.fetch_add(1) + 1;
+        if (hit.decision < 0) {
+            deny_count_.fetch_add(1);
+        }
+
+        const fs::path audit_path = "reports/events/security_policy.jsonl";
+        ensure_parent_dir(audit_path);
+
+        AuditEvent event;
+        event.timestamp = now_event_timestamp();
+        event.event_id = skill_name_ + "-hit-" + std::to_string(hit_index) + "-" + event.timestamp;
+        event.skill = skill_name_;
+        event.policy_id = "security_policy";
+        event.rule_id = rule_id_;
+        event.mode = mode_;
+        event.target = {
+            {"target_ref", target_ref_},
+            {"path", bounded_string(hit.path, sizeof(hit.path))},
+        };
+        event.operation = "hit";
+        event.evidence = {
+            {"hook", hook_},
+            {"action", action_},
+            {"pid", std::to_string(hit.pid)},
+            {"tgid", std::to_string(hit.tgid)},
+            {"comm", bounded_string(hit.comm, sizeof(hit.comm))},
+            {"enforce", std::to_string(hit.enforce)},
+            {"decision", std::to_string(hit.decision)},
+        };
+        event.action = hit.decision < 0 ? "deny" : "audit-hit";
+        event.result = hit.decision < 0 ? "blocked" : "observed";
+        event.severity = hit.decision < 0 ? "warning" : "info";
+        std::string error;
+        append_audit_event(audit_path.string(), event, &error);
+    }
+
     void write_audit_event(const std::string &operation,
                            const std::string &action,
                            const std::string &result) const {
@@ -2019,8 +2167,13 @@ private:
     std::string action_ = "deny";
     std::string target_ref_ = "legacy_path";
     std::string rule_id_ = "deny-demo-secret-open";
+    std::atomic<std::uint64_t> hit_count_{0};
+    std::atomic<std::uint64_t> deny_count_{0};
+    std::atomic<bool> event_thread_stop_{false};
+    std::thread event_thread_;
     bpf_object *bpf_object_ = nullptr;
     bpf_link *link_ = nullptr;
+    ring_buffer *ring_buffer_ = nullptr;
 };
 
 } // namespace

@@ -24,7 +24,7 @@
 |------|------|----------|----------|
 | A. 公共基础设施 | 已完成 | 远端 Git、文档规则、README 覆盖、公共控制面最小代码和现有质量门禁已完成；后续随正式 Skill 深度接入 | `AGENTS.md`、本文件、各目录 README、`docs/public_control_plane_design.md`、`reports/final_quality_gate_20260618_control_plane.log` |
 | B. Network Policy | 收尾 / Pod veth 预备 | 正式 `network_policy` 注册名已落地；connect4 audit/enforce 已完成；TC QoS 最小闭环与速率误差 Benchmark 已完成；isolated-veth XDP 多规则闭环已完成；schema v2 `targets + rules + target_ref` 已落地；`TargetResolver` 已补 netdev 与 `k8s_pod` 诊断型入口；下一步实现真实 Pod sandbox/netns/veth 映射并接入 `network_qos/network_xdp` | `docs/network_policy_skill.md`、`docs/network_pod_veth_target.md`、`tests/integration/test_network_policy.sh`、`tests/integration/test_network_qos_tc.sh`、`tests/integration/test_network_xdp.sh`、`tests/integration/test_target_resolver.sh`、`tests/benchmark/test_network_qos_rate.sh` |
-| C. Security Agent | 正式入口最小闭环已完成 | 正式 `security_policy` 注册名已落地；YAML v2 path target、audit 不阻断 + AuditBus 事件、enforce BPF LSM 拒绝、rollback 无残留已在 121 通过；`security_policy_demo` 保留兼容；动态 target map、ringbuf 内核事件和 syscall tracing 尚未完成 | `docs/security_policy_skill.md`、`agent/skills/security_policy/README.md`、`tests/integration/test_security_policy.sh`、`demo/security_policy_demo/README.md` |
+| C. Security Agent | BPF 命中审计最小闭环已完成 | 正式 `security_policy` 注册名已落地；YAML v2 path target、audit BPF attach 不阻断 + ringbuf observed hit、enforce BPF LSM blocked hit、rollback 无残留已在 121 通过；`security_policy_demo` 保留兼容；动态 target map、多 hook syscall tracing 尚未完成 | `docs/security_policy_skill.md`、`agent/skills/security_policy/README.md`、`tests/integration/test_security_policy.sh`、`demo/security_policy_demo/README.md` |
 | D. Resource Control | 未开始 | 需要扩展到 CPU + Memory 自动闭环，IO 可演示可回滚 | `docs/next_phase_plan_v2_1.md` |
 | E. SP4/sched_ext 复核 | 未开始 | 等待 SP4/123 环境 | `docs/next_phase_plan_v2_1.md` |
 | F. Kubernetes 与跨 Agent 联动 | 未开始 | 等待 Network/Security/Resource 正式 Skill | `docs/next_phase_plan_v2_1.md` |
@@ -95,7 +95,7 @@
   - Agent 退出后 `/sys/fs/bpf/eulerpilot_network_policy_link` 和 cgroup BPF attachment 无残留。
 - 121 最新集成测试证据目录：`results/network_policy/integration-20260619-142347/`。
 - 122 最新集成测试证据目录：`results/network_policy/integration-20260619-122352/`。
-- 121 完整质量门禁已通过：`reports/final_quality_gate_20260621_security_policy.log`。
+- 121 完整质量门禁已通过：`reports/final_quality_gate_20260621_security_ringbuf.log`。
 
 ### YAML v2 证据
 
@@ -159,7 +159,7 @@
   - Agent 退出后无 XDP attachment 残留，连通性恢复。
 - 121 最新 XDP 多规则集成测试证据目录：`results/network_policy/xdp-20260620-183031/`。
 - 122 最新 XDP 多规则集成测试证据目录：`results/network_policy/xdp-20260620-184212/`。
-- 121 最新完整质量门禁已通过：`reports/final_quality_gate_20260621_security_policy.log`，17/17 P0、100 轮 Agent smoke 和 5 轮 doctor 均通过。
+- 121 最新完整质量门禁已通过：`reports/final_quality_gate_20260621_security_ringbuf.log`，17/17 P0、100 轮 Agent smoke 和 5 轮 doctor 均通过。
 
 ### TargetResolver / Pod veth 预备证据
 
@@ -180,8 +180,10 @@
 - 122 最新 Security demo 集成测试证据目录：`results/security_policy/integration-20260621-100937/`。
 - 121 最新正式 `security_policy` audit/enforce 集成测试证据目录：`results/security_policy/integration-20260621-101929/`。
 - 122 最新正式 `security_policy` audit/enforce 集成测试证据目录：`results/security_policy/integration-20260621-103431/`。
-- audit 模式证据：目标文件保持可读，`reports/events/security_policy.jsonl` 写入 `skill=security_policy` 生命周期事件。
-- enforce 模式证据：目标文件被 BPF LSM 拒绝，Agent 退出后恢复可读，无 BPF link/pin 残留。
+- 121 最新正式 `security_policy` BPF ringbuf hit 集成测试证据目录：`results/security_policy/integration-20260621-104254/`。
+- 122 最新正式 `security_policy` BPF ringbuf hit 集成测试证据目录：`results/security_policy/integration-20260621-105602/`。
+- audit 模式证据：目标文件保持可读，`security_policy_events.audit.jsonl` 包含 `operation=hit`、`result=observed`、`enforce=0`。
+- enforce 模式证据：目标文件被 BPF LSM 拒绝，`security_policy_events.enforce.jsonl` 包含 `operation=hit`、`result=blocked`、`enforce=1`；Agent 退出后恢复可读，无 BPF link/pin 残留。
 - `scripts/cleanup_security_policy_demo.sh` 已修复无残留时因 `grep`/`pipefail` 返回非零的问题，cleanup 空跑现在正常返回 0。
 
 ## 阶段 A 后续随阶段接入项
@@ -189,7 +191,7 @@
 这些内容不阻塞阶段 B 开始，但应在 Network/Security/Resource 正式接入时继续完善：
 
 - `TargetResolver` 从诊断型 `k8s_pod` 扩展到 Pod sandbox/container PID、netns path、host veth ifindex，并接入 v2 YAML 的 `targets` 配置解析。
-- `AuditBus` 从 Security 生命周期事件扩展到 ringbuf syscall/LSM 命中事件，Network/Resource 继续补全统一字段。
+- `AuditBus` 从 Security 固定 path ringbuf 命中事件扩展到 `execve/openat/connect/ptrace` 和更多 LSM hook 命中事件，Network/Resource 继续补全统一字段。
 - `ActionJournal` 从 Security 生命周期动作扩展到动态 map 规则、container target 和异常恢复。
 - `CapabilityDetector` 输出并入未来 `--status --json`。
 

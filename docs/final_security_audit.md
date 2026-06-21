@@ -28,7 +28,7 @@
 | sched_ext state | `disabled` | `disabled` | PASS |
 | sched_ext nr_rejected | `0` | `0` | PASS |
 
-正式 `security_policy` 默认 disabled，audit 模式不 attach BPF、不阻断目标文件，只写 `AuditBus` 和 `ActionJournal` 生命周期事件。enforce 模式当前复用 `security_policy_demo` 的固定路径 BPF LSM，默认不 pin link，LSM 程序随 Agent 进程退出自动消亡。`tests/integration/test_security_policy.sh` 已在 121/122 验证正式 `security_policy` audit/enforce，结果目录分别为 `results/security_policy/integration-20260621-101929` 和 `results/security_policy/integration-20260621-103431`；兼容 demo 路径已在 121/122 验证 attach、deny、Agent 退出恢复和 cleanup 无残留，结果目录分别为 `results/security_policy/integration-20260621-095537` 和 `results/security_policy/integration-20260621-100937`。network_policy_demo 在 rollback 时 unpin + destroy，退出后无残留。
+正式 `security_policy` 默认 disabled，audit 模式 attach BPF LSM 但通过 `policy_map.enforce=0` 保持允许，命中后写 ringbuf observed hit；enforce 模式当前复用 `security_policy_demo` 的固定路径 BPF LSM，写 blocked hit 后拒绝访问。BPF link 默认不 pin，LSM 程序随 Agent 进程退出自动消亡。`tests/integration/test_security_policy.sh` 已在 121/122 验证 BPF ringbuf hit，结果目录分别为 `results/security_policy/integration-20260621-104254` 和 `results/security_policy/integration-20260621-105602`；正式 `security_policy` audit/enforce 已在 121/122 通过，结果目录分别为 `results/security_policy/integration-20260621-101929` 和 `results/security_policy/integration-20260621-103431`；兼容 demo 路径已在 121/122 验证 attach、deny、Agent 退出恢复和 cleanup 无残留，结果目录分别为 `results/security_policy/integration-20260621-095537` 和 `results/security_policy/integration-20260621-100937`。network_policy_demo 在 rollback 时 unpin + destroy，退出后无残留。
 
 ## 3. 内存泄漏审计
 
@@ -71,7 +71,7 @@
 
 ## 6. TAP 质量门禁结果（17/17）
 
-最新日志：`reports/final_quality_gate_20260621_security_policy.log`
+最新日志：`reports/final_quality_gate_20260621_security_ringbuf.log`
 
 ```
 ok 1 - make agent

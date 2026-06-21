@@ -298,8 +298,8 @@ Security 使用统一目标引用和 observe/audit/enforce 模式。
 
 当前语义：
 
-- `audit` 模式不 attach BPF、不阻断目标文件，只写 `AuditBus` 和 `ActionJournal` 生命周期事件。
-- `enforce` 模式复用 `bpf/security_policy_demo.bpf.c`，在 `lsm/file_open` 上拒绝固定 demo secret 文件。
+- `audit` 模式 attach BPF LSM，但通过 `policy_map.enforce=0` 允许目标文件访问，并通过 ringbuf 输出 `result=observed` 命中事件。
+- `enforce` 模式复用 `bpf/security_policy_demo.bpf.c`，在 `lsm/file_open` 上拒绝固定 demo secret 文件，并通过 ringbuf 输出 `result=blocked` 命中事件。
 - `security_policy_demo` 保留为兼容回归入口，最终答辩口径应优先使用正式 `security_policy`。
 
 完整目标态仍按下面结构扩展：
@@ -513,7 +513,7 @@ policy_engine:
 4. 实现 AuditBus JSONL 写入。
 5. 实现 ActionJournal 写入与恢复。
 6. 将 `network_policy_demo` 包装或迁移为 `network_policy`。
-7. 将 `security_policy_demo` 包装或迁移为 `security_policy`。（已完成正式注册名与最小 audit/enforce 语义）
+7. 将 `security_policy_demo` 包装或迁移为 `security_policy`。（已完成正式注册名、最小 audit/enforce 语义和固定 path ringbuf hit 事件）
 8. 扩展 `resource_control` 的 CPU/Memory/IO 配置模型。
 9. 增加 Policy Engine 联动配置。
 10. 将最终质量门禁从 demo target 切换到正式 Skill target。

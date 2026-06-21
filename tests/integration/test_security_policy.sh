@@ -185,8 +185,14 @@ fi
 if ! grep -q '"skill":"security_policy"' "$ROOT/reports/events/security_policy.jsonl" 2>/dev/null; then
     fail "audit mode did not write security_policy audit event"
 fi
+if ! grep -q '"operation":"hit"' "$ROOT/reports/events/security_policy.jsonl" 2>/dev/null; then
+    fail "audit mode did not write BPF hit event"
+fi
+if ! grep -q '"result":"observed"' "$ROOT/reports/events/security_policy.jsonl" 2>/dev/null; then
+    fail "audit mode hit event was not observed/allowed"
+fi
 cp "$ROOT/reports/events/security_policy.jsonl" "$RESULT_DIR/security_policy_events.audit.jsonl"
-log "PASS: security_policy audit mode does not block and writes AuditBus event"
+log "PASS: security_policy audit mode does not block and writes BPF hit event"
 
 cat > "$RESULT_DIR/agent.enforce.yaml" <<'YAML'
 skills_config_path: skills.enforce.yaml
@@ -221,6 +227,8 @@ skills:
         target_ref: demo_secret
         action: deny
 YAML
+
+rm -f "$ROOT/reports/events/security_policy.jsonl"
 
 timeout 20s "$AGENT_BIN" \
     --config "$RESULT_DIR/agent.enforce.yaml" \
@@ -270,6 +278,15 @@ if [ "$agent_rc" -ne 0 ]; then
     fail "agent exited non-zero after policy test, rc=$agent_rc; see $RESULT_DIR/agent-enforce.log"
 fi
 log "PASS: agent exits cleanly"
+
+if ! grep -q '"operation":"hit"' "$ROOT/reports/events/security_policy.jsonl" 2>/dev/null; then
+    fail "enforce mode did not write BPF hit event"
+fi
+if ! grep -q '"result":"blocked"' "$ROOT/reports/events/security_policy.jsonl" 2>/dev/null; then
+    fail "enforce mode hit event was not blocked"
+fi
+cp "$ROOT/reports/events/security_policy.jsonl" "$RESULT_DIR/security_policy_events.enforce.jsonl"
+log "PASS: security_policy enforce mode writes blocked BPF hit event"
 
 run_cleanup_script
 

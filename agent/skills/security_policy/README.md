@@ -26,14 +26,14 @@
 - Hook：`lsm/file_open`
 - 行为：拒绝读取 `/root/EulerPilot/demo/security_policy_demo/secret.txt`
 - 用户态：`SecurityPolicyDemoSkill` 同时服务 `security_policy` 和 `security_policy_demo`；正式名读取 YAML v2 `targets + rules + target_ref`
-- audit：不 attach BPF、不阻断，写入 `reports/events/security_policy.jsonl` 和 `run/eulerpilot/action_journal.jsonl`
+- audit：attach BPF LSM 但通过 `policy_map.enforce=0` 保持允许，命中后通过 ringbuf 写入 `reports/events/security_policy.jsonl`
 - enforce：通过 libbpf 打开 `/root/EulerPilot/build/security_policy_demo.bpf.o` 并 attach LSM
 - 回滚：Agent stop/rollback 销毁 BPF link 和 object；正常路径不 pin link
 
 当前尚未完成：
 
 - 动态 path/process/container target map
-- ringbuf 安全事件和真实 syscall/LSM 命中审计
+- 多 hook 真实 syscall/LSM 命中审计
 - syscall tracing 覆盖 `execve/openat/connect/ptrace`
 
 ## 参考复用
@@ -48,6 +48,6 @@
 sudo tests/integration/test_security_policy.sh
 ```
 
-脚本会构建 Agent 和 demo BPF 对象，先启动正式 `security_policy` 的 audit 模式，确认目标文件不被阻断且写入 AuditBus；再启动 enforce 模式，验证目标文件在策略生效期间被拒绝，并在 Agent 退出后恢复可读。当前 BPF demo 硬编码 `/root/EulerPilot`，因此脚本会在其他路径下安全跳过并给出原因。
+脚本会构建 Agent 和 demo BPF 对象，先启动正式 `security_policy` 的 audit 模式，确认目标文件不被阻断且写入 BPF ringbuf hit 事件；再启动 enforce 模式，验证目标文件在策略生效期间被拒绝并写入 blocked hit 事件，并在 Agent 退出后恢复可读。当前 BPF demo 硬编码 `/root/EulerPilot`，因此脚本会在其他路径下安全跳过并给出原因。
 
 更完整的设计、验收口径和下一步清单见 `docs/security_policy_skill.md`。
