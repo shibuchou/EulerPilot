@@ -12,6 +12,8 @@ RESULT_READY="false"
 DYNAMIC_DIR=""
 DYNAMIC_TARGET_FILE=""
 DYNAMIC_EXEC_TARGET_FILE=""
+DYNAMIC_SECOND_TARGET_FILE=""
+DYNAMIC_SECOND_EXEC_TARGET_FILE=""
 
 log() {
     if [ "$RESULT_READY" = "true" ]; then
@@ -392,12 +394,19 @@ log "PASS: exec target is runnable after agent rollback"
 DYNAMIC_DIR="$(mktemp -d /tmp/eulerpilot-security-policy.XXXXXX)"
 DYNAMIC_TARGET_FILE="$DYNAMIC_DIR/dynamic-secret.txt"
 DYNAMIC_EXEC_TARGET_FILE="$DYNAMIC_DIR/dynamic-deny-exec.sh"
+DYNAMIC_SECOND_TARGET_FILE="$DYNAMIC_DIR/dynamic-second-secret.txt"
+DYNAMIC_SECOND_EXEC_TARGET_FILE="$DYNAMIC_DIR/dynamic-second-deny-exec.sh"
 printf 'dynamic security policy target\n' > "$DYNAMIC_TARGET_FILE"
+printf 'second dynamic security policy target\n' > "$DYNAMIC_SECOND_TARGET_FILE"
 cat > "$DYNAMIC_EXEC_TARGET_FILE" <<'SH'
 #!/usr/bin/env bash
 echo dynamic security policy exec target
 SH
-chmod +x "$DYNAMIC_EXEC_TARGET_FILE"
+cat > "$DYNAMIC_SECOND_EXEC_TARGET_FILE" <<'SH'
+#!/usr/bin/env bash
+echo second dynamic security policy exec target
+SH
+chmod +x "$DYNAMIC_EXEC_TARGET_FILE" "$DYNAMIC_SECOND_EXEC_TARGET_FILE"
 
 cat > "$RESULT_DIR/agent.dynamic.yaml" <<'YAML'
 skills_config_path: skills.dynamic.yaml
@@ -427,10 +436,18 @@ skills:
         type: path
         path: $DYNAMIC_TARGET_FILE
         exec_path: $DYNAMIC_EXEC_TARGET_FILE
+      dynamic_second:
+        type: path
+        path: $DYNAMIC_SECOND_TARGET_FILE
+        exec_path: $DYNAMIC_SECOND_EXEC_TARGET_FILE
     rules:
       - name: deny_dynamic_secret_open
         hook: lsm_file_open
         target_ref: dynamic_secret
+        action: deny
+      - name: deny_dynamic_second_open
+        hook: lsm_file_open
+        target_ref: dynamic_second
         action: deny
 YAML
 
@@ -470,6 +487,32 @@ if [ "$dynamic_blocked" != "true" ]; then
     fail "dynamic target file was not denied; see $RESULT_DIR/agent-dynamic.log"
 fi
 
+dynamic_second_blocked="false"
+for _ in $(seq 1 40); do
+    if ! kill -0 "$AGENT_PID" 2>/dev/null; then
+        set +e
+        wait "$AGENT_PID"
+        agent_rc="$?"
+        set -e
+        AGENT_PID=""
+        fail "multi-target agent exited before second denial was observed, rc=$agent_rc; see $RESULT_DIR/agent-dynamic.log"
+    fi
+
+    set +e
+    cat "$DYNAMIC_SECOND_TARGET_FILE" > "$RESULT_DIR/dynamic-second-blocked-secret.txt" 2> "$RESULT_DIR/dynamic-second-blocked-secret.err"
+    cat_rc="$?"
+    set -e
+    if [ "$cat_rc" -ne 0 ]; then
+        dynamic_second_blocked="true"
+        break
+    fi
+    sleep 0.2
+done
+
+if [ "$dynamic_second_blocked" != "true" ]; then
+    fail "second dynamic target file was not denied; see $RESULT_DIR/agent-dynamic.log"
+fi
+
 if ! cat "$TARGET_FILE" > "$RESULT_DIR/dynamic-default-secret.txt" 2> "$RESULT_DIR/dynamic-default-secret.err"; then
     fail "default demo target was denied while dynamic target_map was active; see $RESULT_DIR/dynamic-default-secret.err"
 fi
@@ -483,6 +526,13 @@ dynamic_exec_rc="$?"
 set -e
 if [ "$dynamic_exec_rc" -eq 0 ]; then
     fail "dynamic exec target was not denied; see $RESULT_DIR/dynamic-blocked-exec.txt"
+fi
+set +e
+"$DYNAMIC_SECOND_EXEC_TARGET_FILE" > "$RESULT_DIR/dynamic-second-blocked-exec.txt" 2> "$RESULT_DIR/dynamic-second-blocked-exec.err"
+dynamic_second_exec_rc="$?"
+set -e
+if [ "$dynamic_second_exec_rc" -eq 0 ]; then
+    fail "second dynamic exec target was not denied; see $RESULT_DIR/dynamic-second-blocked-exec.txt"
 fi
 
 set +e
@@ -500,11 +550,17 @@ fi
 if ! grep -Fq "$DYNAMIC_EXEC_TARGET_FILE" "$ROOT/reports/events/security_policy.jsonl" 2>/dev/null; then
     fail "dynamic exec target path was not present in security_policy events"
 fi
+if ! grep -Fq "$DYNAMIC_SECOND_TARGET_FILE" "$ROOT/reports/events/security_policy.jsonl" 2>/dev/null; then
+    fail "second dynamic target file path was not present in security_policy events"
+fi
+if ! grep -Fq "$DYNAMIC_SECOND_EXEC_TARGET_FILE" "$ROOT/reports/events/security_policy.jsonl" 2>/dev/null; then
+    fail "second dynamic exec target path was not present in security_policy events"
+fi
 if ! grep -q '"result":"blocked"' "$ROOT/reports/events/security_policy.jsonl" 2>/dev/null; then
     fail "dynamic target_map test did not write blocked events"
 fi
 cp "$ROOT/reports/events/security_policy.jsonl" "$RESULT_DIR/security_policy_events.dynamic.jsonl"
-log "PASS: security_policy target_map accepts dynamic YAML file and exec paths"
+log "PASS: security_policy target_map accepts multiple dynamic YAML file and exec paths"
 
 run_cleanup_script
 
@@ -513,6 +569,12 @@ if ! cat "$DYNAMIC_TARGET_FILE" > "$RESULT_DIR/dynamic-post-cleanup-secret.txt" 
 fi
 if ! "$DYNAMIC_EXEC_TARGET_FILE" > "$RESULT_DIR/dynamic-post-cleanup-exec.txt" 2> "$RESULT_DIR/dynamic-post-cleanup-exec.err"; then
     fail "dynamic exec target is still denied after rollback/cleanup; see $RESULT_DIR/dynamic-post-cleanup-exec.err"
+fi
+if ! cat "$DYNAMIC_SECOND_TARGET_FILE" > "$RESULT_DIR/dynamic-second-post-cleanup-secret.txt" 2> "$RESULT_DIR/dynamic-second-post-cleanup-secret.err"; then
+    fail "second dynamic target file is still denied after rollback/cleanup; see $RESULT_DIR/dynamic-second-post-cleanup-secret.err"
+fi
+if ! "$DYNAMIC_SECOND_EXEC_TARGET_FILE" > "$RESULT_DIR/dynamic-second-post-cleanup-exec.txt" 2> "$RESULT_DIR/dynamic-second-post-cleanup-exec.err"; then
+    fail "second dynamic exec target is still denied after rollback/cleanup; see $RESULT_DIR/dynamic-second-post-cleanup-exec.err"
 fi
 
 if bpftool link show 2>/dev/null | grep -q "security_policy_demo"; then

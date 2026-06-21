@@ -17,9 +17,11 @@ char LICENSE[] SEC("license") = "GPL";
 #define EVENT_PTRACE 5
 #define EVENT_LSM_BPRM_CHECK 6
 #define MAX_SECURITY_PATH 256
+#define MAX_SECURITY_TARGETS 8
 
 struct security_policy_config {
     __u32 enforce;
+    __u32 target_count;
 };
 
 struct security_policy_target {
@@ -46,7 +48,7 @@ struct {
 
 struct {
     __uint(type, BPF_MAP_TYPE_ARRAY);
-    __uint(max_entries, 1);
+    __uint(max_entries, MAX_SECURITY_TARGETS);
     __type(key, __u32);
     __type(value, struct security_policy_target);
 } target_map SEC(".maps");
@@ -73,7 +75,6 @@ static __always_inline void fill_common_event(struct security_policy_event *even
 
 static __always_inline int path_equals(const char *actual, const char *expected)
 {
-#pragma unroll
     for (int i = 0; i < MAX_SECURITY_PATH; i++) {
         if (expected[i] == '\0' && actual[i] == '\0')
             return 1;
@@ -81,6 +82,47 @@ static __always_inline int path_equals(const char *actual, const char *expected)
             return 0;
         if (actual[i] != expected[i])
             return 0;
+    }
+    return 0;
+}
+
+static __always_inline __u32 clamp_target_count(const struct security_policy_config *config)
+{
+    __u32 count = config ? config->target_count : 1;
+
+    if (count == 0)
+        count = 1;
+    if (count > MAX_SECURITY_TARGETS)
+        count = MAX_SECURITY_TARGETS;
+    return count;
+}
+
+static __always_inline int file_path_matches(const char *path, __u32 target_count)
+{
+    for (int i = 0; i < MAX_SECURITY_TARGETS; i++) {
+        if ((__u32)i >= target_count)
+            break;
+
+        __u32 key = i;
+        struct security_policy_target *target = bpf_map_lookup_elem(&target_map, &key);
+        if (target && target->file_path[0] != '\0' &&
+            path_equals(path, target->file_path))
+            return 1;
+    }
+    return 0;
+}
+
+static __always_inline int exec_path_matches(const char *path, __u32 target_count)
+{
+    for (int i = 0; i < MAX_SECURITY_TARGETS; i++) {
+        if ((__u32)i >= target_count)
+            break;
+
+        __u32 key = i;
+        struct security_policy_target *target = bpf_map_lookup_elem(&target_map, &key);
+        if (target && target->exec_path[0] != '\0' &&
+            path_equals(path, target->exec_path))
+            return 1;
     }
     return 0;
 }
@@ -111,13 +153,11 @@ int BPF_PROG(security_policy_demo, struct file *file, int ret)
         return 0;
 
     __u32 key = 0;
-    struct security_policy_target *target = bpf_map_lookup_elem(&target_map, &key);
-    if (!target || target->file_path[0] == '\0')
-        return 0;
-    if (!path_equals(path, target->file_path))
+    struct security_policy_config *config = bpf_map_lookup_elem(&policy_map, &key);
+    __u32 target_count = clamp_target_count(config);
+    if (!file_path_matches(path, target_count))
         return 0;
 
-    struct security_policy_config *config = bpf_map_lookup_elem(&policy_map, &key);
     __u32 enforce = config ? config->enforce : 1;
     __s32 decision = enforce ? -EPERM : 0;
 
@@ -147,13 +187,11 @@ int BPF_PROG(security_policy_bprm, struct linux_binprm *bprm, int ret)
         return 0;
 
     __u32 key = 0;
-    struct security_policy_target *target = bpf_map_lookup_elem(&target_map, &key);
-    if (!target || target->exec_path[0] == '\0')
-        return 0;
-    if (!path_equals(path, target->exec_path))
+    struct security_policy_config *config = bpf_map_lookup_elem(&policy_map, &key);
+    __u32 target_count = clamp_target_count(config);
+    if (!exec_path_matches(path, target_count))
         return 0;
 
-    struct security_policy_config *config = bpf_map_lookup_elem(&policy_map, &key);
     __u32 enforce = config ? config->enforce : 1;
     __s32 decision = enforce ? -EPERM : 0;
 

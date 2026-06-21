@@ -1,0 +1,4 @@
+clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -D__BPF__ -I. -I./bpf -c bpf/workload_observer.bpf.c -o build/workload_observer.bpf.o
+bpftool gen skeleton build/workload_observer.bpf.o > build/workload_observer.skel.h
+g++ -Iagent/include -I./bpf -Ibuild -I./agent/observer -std=c++17 -Wall -Wextra -O2 -g   agent/src/main.cpp agent/src/runtime.cpp agent/src/executors.cpp agent/src/psi_gate.cpp agent/src/skill_registry.cpp agent/src/skill_manager.cpp agent/src/builtin_skills.cpp agent/src/skill_runtime_context.cpp agent/src/metrics_exporter.cpp agent/src/metrics_state.cpp agent/src/capability_detector.cpp agent/src/target_resolver.cpp agent/src/audit_bus.cpp agent/src/action_journal.cpp agent/observer/psi_reader.cpp -o build/eulerpilot-agent -lbpf -lyaml-cpp -lelf -lz
+make: 对“security-policy-demo”无需做任何事。

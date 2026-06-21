@@ -154,11 +154,19 @@ struct NetworkXdpCounters {
 
 struct SecurityPolicyConfig {
     std::uint32_t enforce = 0;
+    std::uint32_t target_count = 0;
 };
 
 struct SecurityPolicyTarget {
     char file_path[256] = {};
     char exec_path[256] = {};
+};
+
+struct SecurityPolicyRule {
+    std::string rule_id;
+    std::string target_ref;
+    std::string file_path;
+    std::string exec_path;
 };
 
 struct SecurityPolicyEvent {
@@ -183,12 +191,13 @@ struct NetworkXdpRule {
 };
 
 constexpr std::size_t kNetworkXdpMaxRules = 8;
+constexpr std::size_t kSecurityPolicyMaxTargets = 8;
 
 static_assert(sizeof(NetworkXdpConfig) == 8,
               "network xdp config map layout must match BPF");
 static_assert(sizeof(NetworkXdpStats) == 24,
               "network xdp stats map layout must match BPF");
-static_assert(sizeof(SecurityPolicyConfig) == 4,
+static_assert(sizeof(SecurityPolicyConfig) == 8,
               "security policy config map layout must match BPF");
 static_assert(sizeof(SecurityPolicyTarget) == 512,
               "security policy target map layout must match BPF");
@@ -1776,33 +1785,70 @@ public:
     std::string name() const override { return skill_name_; }
 
     bool configure(const RuntimeConfig &, const SkillSpec &spec) override {
+        rules_.clear();
         const int rule_index = find_rule_by_hook(spec, "lsm_file_open");
         if (rule_index >= 0) {
-            const std::string rule_prefix = "rules." + std::to_string(rule_index) + ".";
-            hook_ = config_value_or(spec, rule_prefix + "hook", "lsm_file_open");
-            mode_ = config_value_or(spec, rule_prefix + "mode",
-                                    config_value_or(spec, "mode", "audit"));
-            action_ = config_value_or(spec, rule_prefix + "action", "deny");
-            rule_id_ = config_value_or(spec, rule_prefix + "name", "deny-demo-secret-open");
-            target_ref_ = config_value_or(spec, rule_prefix + "target_ref", "");
-            if (target_ref_.empty()) {
-                last_error_ = "security-policy-v2-missing-target-ref";
+            mode_ = config_value_or(spec, "mode", "audit");
+            hook_ = "lsm_file_open";
+            action_ = "deny";
+
+            for (std::size_t i = 0; i < kSecurityPolicyMaxTargets; ++i) {
+                const std::string rule_prefix = "rules." + std::to_string(i) + ".";
+                const std::string hook = config_value_or(spec, rule_prefix + "hook", "");
+                if (hook.empty()) {
+                    continue;
+                }
+                if (hook != "lsm_file_open") {
+                    last_error_ = "unsupported-hook";
+                    return false;
+                }
+                const std::string action = config_value_or(spec, rule_prefix + "action", "deny");
+                if (action != "deny") {
+                    last_error_ = "unsupported-action";
+                    return false;
+                }
+                mode_ = config_value_or(spec, rule_prefix + "mode", mode_);
+
+                SecurityPolicyRule rule;
+                rule.rule_id = config_value_or(spec, rule_prefix + "name",
+                                               "deny-security-target-" + std::to_string(i));
+                rule.target_ref = config_value_or(spec, rule_prefix + "target_ref", "");
+                if (rule.target_ref.empty()) {
+                    last_error_ = "security-policy-v2-missing-target-ref";
+                    return false;
+                }
+                const std::string target_prefix = "targets." + rule.target_ref + ".";
+                const std::string target_type = config_value_or(spec, target_prefix + "type", "");
+                if (target_type != "path") {
+                    last_error_ = "security-policy-v2-target-not-path";
+                    return false;
+                }
+                rule.file_path = config_value_or(spec, target_prefix + "path", "");
+                if (rule.file_path.empty()) {
+                    last_error_ = "security-policy-v2-target-path-missing";
+                    return false;
+                }
+                rule.exec_path = config_value_or(spec, target_prefix + "exec_path", "");
+                if (rule.exec_path.empty()) {
+                    last_error_ = "security-policy-v2-target-exec-path-missing";
+                    return false;
+                }
+                if (!valid_security_path(rule.file_path)) {
+                    last_error_ = "invalid-target-path";
+                    return false;
+                }
+                if (!valid_security_path(rule.exec_path)) {
+                    last_error_ = "invalid-exec-target-path";
+                    return false;
+                }
+                rules_.push_back(std::move(rule));
+            }
+            if (!config_value_or(spec, "rules." + std::to_string(kSecurityPolicyMaxTargets) + ".hook", "").empty()) {
+                last_error_ = "security-policy-too-many-targets";
                 return false;
             }
-            const std::string target_prefix = "targets." + target_ref_ + ".";
-            const std::string target_type = config_value_or(spec, target_prefix + "type", "");
-            if (target_type != "path") {
-                last_error_ = "security-policy-v2-target-not-path";
-                return false;
-            }
-            target_path_ = config_value_or(spec, target_prefix + "path", "");
-            if (target_path_.empty()) {
-                last_error_ = "security-policy-v2-target-path-missing";
-                return false;
-            }
-            exec_target_path_ = config_value_or(spec, target_prefix + "exec_path", "");
-            if (exec_target_path_.empty()) {
-                last_error_ = "security-policy-v2-target-exec-path-missing";
+            if (rules_.empty()) {
+                last_error_ = "security-policy-v2-no-supported-rules";
                 return false;
             }
         } else {
@@ -1822,6 +1868,12 @@ public:
             action_ = config_value_or(spec, "action", "deny");
             target_ref_ = config_value_or(spec, "target_ref", "legacy_path");
             rule_id_ = config_value_or(spec, "rule_id", "deny-demo-secret-open");
+            SecurityPolicyRule rule;
+            rule.rule_id = rule_id_;
+            rule.target_ref = target_ref_;
+            rule.file_path = target_path_;
+            rule.exec_path = exec_target_path_;
+            rules_.push_back(std::move(rule));
         }
         if (mode_ != "audit" && mode_ != "enforce") {
             last_error_ = "unsupported-mode";
@@ -1835,14 +1887,24 @@ public:
             last_error_ = "unsupported-action";
             return false;
         }
-        if (!valid_security_path(target_path_)) {
-            last_error_ = "invalid-target-path";
+        if (rules_.empty()) {
+            last_error_ = "security-policy-no-targets";
             return false;
         }
-        if (!valid_security_path(exec_target_path_)) {
-            last_error_ = "invalid-exec-target-path";
-            return false;
+        for (const auto &rule : rules_) {
+            if (!valid_security_path(rule.file_path)) {
+                last_error_ = "invalid-target-path";
+                return false;
+            }
+            if (!valid_security_path(rule.exec_path)) {
+                last_error_ = "invalid-exec-target-path";
+                return false;
+            }
         }
+        target_path_ = rules_.front().file_path;
+        exec_target_path_ = rules_.front().exec_path;
+        target_ref_ = join_security_field(rules_, "target_ref");
+        rule_id_ = join_security_field(rules_, "rule_id");
         return true;
     }
 
@@ -1957,6 +2019,7 @@ public:
         snapshot.evidence["mode"] = mode_;
         snapshot.evidence["target_ref"] = target_ref_;
         snapshot.evidence["rule_id"] = rule_id_;
+        snapshot.evidence["target_count"] = std::to_string(rules_.size());
         snapshot.evidence["action"] = action_;
         snapshot.evidence["hit_count"] = std::to_string(hit_count_.load());
         snapshot.evidence["deny_count"] = std::to_string(deny_count_.load());
@@ -1999,6 +2062,22 @@ public:
 private:
     static bool valid_security_path(const std::string &path) {
         return !path.empty() && path[0] == '/' && path.size() < 256;
+    }
+
+    static std::string join_security_field(const std::vector<SecurityPolicyRule> &rules,
+                                           const char *field) {
+        std::ostringstream out;
+        for (std::size_t i = 0; i < rules.size(); ++i) {
+            if (i > 0) {
+                out << ",";
+            }
+            if (std::string(field) == "target_ref") {
+                out << rules[i].target_ref;
+            } else {
+                out << rules[i].rule_id;
+            }
+        }
+        return out.str();
     }
 
     static bool copy_security_path(const std::string &src,
@@ -2102,6 +2181,7 @@ private:
         std::uint32_t key = 0;
         SecurityPolicyConfig config;
         config.enforce = mode_ == "enforce" ? 1 : 0;
+        config.target_count = static_cast<std::uint32_t>(rules_.size());
         if (bpf_map_update_elem(config_fd, &key, &config, BPF_ANY) != 0) {
             last_error_ = "security-policy-config-map-update-failed";
             return false;
@@ -2113,18 +2193,23 @@ private:
             return false;
         }
 
-        SecurityPolicyTarget target;
-        if (!copy_security_path(target_path_, target.file_path, sizeof(target.file_path),
-                                last_error_, "file-path")) {
-            return false;
-        }
-        if (!copy_security_path(exec_target_path_, target.exec_path, sizeof(target.exec_path),
-                                last_error_, "exec-path")) {
-            return false;
-        }
-        if (bpf_map_update_elem(target_fd, &key, &target, BPF_ANY) != 0) {
-            last_error_ = "security-policy-target-map-update-failed";
-            return false;
+        for (std::size_t i = 0; i < kSecurityPolicyMaxTargets; ++i) {
+            SecurityPolicyTarget target;
+            if (i < rules_.size()) {
+                if (!copy_security_path(rules_[i].file_path, target.file_path, sizeof(target.file_path),
+                                        last_error_, "file-path")) {
+                    return false;
+                }
+                if (!copy_security_path(rules_[i].exec_path, target.exec_path, sizeof(target.exec_path),
+                                        last_error_, "exec-path")) {
+                    return false;
+                }
+            }
+            std::uint32_t target_key = static_cast<std::uint32_t>(i);
+            if (bpf_map_update_elem(target_fd, &target_key, &target, BPF_ANY) != 0) {
+                last_error_ = "security-policy-target-map-update-failed";
+                return false;
+            }
         }
 
         hit_count_.store(0);
@@ -2266,6 +2351,7 @@ private:
             {"target_ref", target_ref_},
             {"path", target_path_},
             {"exec_path", exec_target_path_},
+            {"target_count", std::to_string(rules_.size())},
         };
         event.operation = operation;
         event.evidence = {
@@ -2296,6 +2382,7 @@ private:
             {"hook", hook_},
             {"target_ref", target_ref_},
             {"rule_id", rule_id_},
+            {"target_count", std::to_string(rules_.size())},
             {"path", target_path_},
             {"exec_path", exec_target_path_},
             {"action", action},
@@ -2322,6 +2409,7 @@ private:
     std::string action_ = "deny";
     std::string target_ref_ = "legacy_path";
     std::string rule_id_ = "deny-demo-secret-open";
+    std::vector<SecurityPolicyRule> rules_;
     std::atomic<std::uint64_t> hit_count_{0};
     std::atomic<std::uint64_t> deny_count_{0};
     std::atomic<bool> event_thread_stop_{false};
