@@ -17,6 +17,7 @@ DYNAMIC_SECOND_EXEC_TARGET_FILE=""
 DYNAMIC_SCOPED_TARGET_FILE=""
 DYNAMIC_SCOPED_EXEC_TARGET_FILE=""
 SCOPED_CGROUP_PATH=""
+SCOPED_PID=""
 
 log() {
     if [ "$RESULT_READY" = "true" ]; then
@@ -64,6 +65,14 @@ cleanup_scoped_cgroup() {
     fi
 }
 
+cleanup_scoped_pid() {
+    if [ -n "${SCOPED_PID:-}" ]; then
+        kill "$SCOPED_PID" 2>/dev/null || true
+        wait "$SCOPED_PID" 2>/dev/null || true
+        SCOPED_PID=""
+    fi
+}
+
 restore() {
     set +e
     if [ -n "${AGENT_PID:-}" ] && kill -0 "$AGENT_PID" 2>/dev/null; then
@@ -71,6 +80,7 @@ restore() {
         wait "$AGENT_PID" 2>/dev/null || true
     fi
     run_cleanup_script
+    cleanup_scoped_pid
     cleanup_scoped_cgroup
     if [ -n "${DYNAMIC_DIR:-}" ] && [ -d "$DYNAMIC_DIR" ]; then
         rm -rf "$DYNAMIC_DIR"
@@ -775,6 +785,134 @@ if ! run_in_scoped_cgroup "$RESULT_DIR/scoped-post-cleanup-exec.txt" \
     "$DYNAMIC_SCOPED_EXEC_TARGET_FILE"; then
     fail "scoped exec target is still denied after rollback/cleanup; see $RESULT_DIR/scoped-post-cleanup-exec.err"
 fi
+
+sleep 60 &
+SCOPED_PID="$!"
+echo "$SCOPED_PID" > "$SCOPED_CGROUP_PATH/cgroup.procs"
+
+cat > "$RESULT_DIR/agent.pid.yaml" <<'YAML'
+skills_config_path: skills.pid.yaml
+exporter:
+  prometheus:
+    enabled: false
+YAML
+
+cat > "$RESULT_DIR/skills.pid.yaml" <<YAML
+schema_version: 2
+skills:
+- name: resource_control
+  kind: runtime
+  enabled: true
+  config: {}
+- name: psi_gate
+  kind: runtime
+  enabled: true
+  config: {}
+- name: security_policy
+  kind: runtime
+  enabled: true
+  config:
+    mode: enforce
+    targets:
+      pid_secret:
+        type: pid
+        pid: $SCOPED_PID
+        path: $DYNAMIC_SCOPED_TARGET_FILE
+        exec_path: $DYNAMIC_SCOPED_EXEC_TARGET_FILE
+    rules:
+      - name: deny_pid_secret_open
+        hook: lsm_file_open
+        target_ref: pid_secret
+        action: deny
+YAML
+
+rm -f "$ROOT/reports/events/security_policy.jsonl"
+
+timeout 20s "$AGENT_BIN" \
+    --config "$RESULT_DIR/agent.pid.yaml" \
+    --duration-s 8 \
+    --interval-ms 1000 \
+    --jsonl \
+    > "$RESULT_DIR/agent-pid.log" 2>&1 &
+AGENT_PID="$!"
+
+pid_blocked="false"
+for _ in $(seq 1 40); do
+    if ! kill -0 "$AGENT_PID" 2>/dev/null; then
+        set +e
+        wait "$AGENT_PID"
+        agent_rc="$?"
+        set -e
+        AGENT_PID=""
+        fail "pid target agent exited before cgroup denial was observed, rc=$agent_rc; see $RESULT_DIR/agent-pid.log"
+    fi
+
+    if ! cat "$DYNAMIC_SCOPED_TARGET_FILE" > "$RESULT_DIR/pid-outside-secret.txt" 2> "$RESULT_DIR/pid-outside-secret.err"; then
+        fail "pid target file was denied outside resolved cgroup; see $RESULT_DIR/pid-outside-secret.err"
+    fi
+
+    set +e
+    run_in_scoped_cgroup "$RESULT_DIR/pid-blocked-secret.txt" \
+        "$RESULT_DIR/pid-blocked-secret.err" \
+        cat "$DYNAMIC_SCOPED_TARGET_FILE"
+    pid_cat_rc="$?"
+    set -e
+    if [ "$pid_cat_rc" -ne 0 ]; then
+        pid_blocked="true"
+        break
+    fi
+    sleep 0.2
+done
+
+if [ "$pid_blocked" != "true" ]; then
+    fail "pid target file was not denied inside resolved cgroup; see $RESULT_DIR/agent-pid.log"
+fi
+
+if ! "$DYNAMIC_SCOPED_EXEC_TARGET_FILE" > "$RESULT_DIR/pid-outside-exec.txt" 2> "$RESULT_DIR/pid-outside-exec.err"; then
+    fail "pid exec target was denied outside resolved cgroup; see $RESULT_DIR/pid-outside-exec.err"
+fi
+
+set +e
+run_in_scoped_cgroup "$RESULT_DIR/pid-blocked-exec.txt" \
+    "$RESULT_DIR/pid-blocked-exec.err" \
+    "$DYNAMIC_SCOPED_EXEC_TARGET_FILE"
+pid_exec_rc="$?"
+set -e
+if [ "$pid_exec_rc" -eq 0 ]; then
+    fail "pid exec target was not denied inside resolved cgroup; see $RESULT_DIR/pid-blocked-exec.txt"
+fi
+
+set +e
+wait "$AGENT_PID"
+agent_rc="$?"
+set -e
+AGENT_PID=""
+if [ "$agent_rc" -ne 0 ]; then
+    fail "pid target agent exited non-zero, rc=$agent_rc; see $RESULT_DIR/agent-pid.log"
+fi
+
+assert_blocked_rule_event "$DYNAMIC_SCOPED_TARGET_FILE" "lsm_file_open" \
+    "deny_pid_secret_open" "pid_secret"
+assert_blocked_rule_event "$DYNAMIC_SCOPED_EXEC_TARGET_FILE" "lsm_bprm_check_security" \
+    "deny_pid_secret_open" "pid_secret"
+assert_blocked_rule_event_has_cgroup "$DYNAMIC_SCOPED_TARGET_FILE" "lsm_file_open" \
+    "deny_pid_secret_open" "pid_secret"
+cp "$ROOT/reports/events/security_policy.jsonl" "$RESULT_DIR/security_policy_events.pid.jsonl"
+log "PASS: security_policy pid target resolves to cgroup scoped enforcement"
+
+run_cleanup_script
+
+if ! run_in_scoped_cgroup "$RESULT_DIR/pid-post-cleanup-secret.txt" \
+    "$RESULT_DIR/pid-post-cleanup-secret.err" \
+    cat "$DYNAMIC_SCOPED_TARGET_FILE"; then
+    fail "pid target file is still denied after rollback/cleanup; see $RESULT_DIR/pid-post-cleanup-secret.err"
+fi
+if ! run_in_scoped_cgroup "$RESULT_DIR/pid-post-cleanup-exec.txt" \
+    "$RESULT_DIR/pid-post-cleanup-exec.err" \
+    "$DYNAMIC_SCOPED_EXEC_TARGET_FILE"; then
+    fail "pid exec target is still denied after rollback/cleanup; see $RESULT_DIR/pid-post-cleanup-exec.err"
+fi
+cleanup_scoped_pid
 cleanup_scoped_cgroup
 
 if bpftool link show 2>/dev/null | grep -q "security_policy_demo"; then

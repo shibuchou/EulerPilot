@@ -23,6 +23,7 @@
 - [x] `security_policy` 最多 8 项 BPF `target_map` 由 YAML `path/exec_path` 下发，并通过双 `/tmp` 动态目标验证
 - [x] `security_policy` LSM blocked 事件通过 BPF `target_index` 映射到单条 YAML `rule_id/target_ref`
 - [x] `security_policy` 显式 `cgroup_path` target scope：目标 cgroup 内阻断、scope 外允许
+- [x] `security_policy` `type: pid` target 自动解析到 cgroup scope：目标 PID 所在 cgroup 内阻断、scope 外允许
 - [x] `security_policy_demo` BPF LSM file_open 最小闭环
 - [x] `security_policy_demo` BPF LSM attach/deny/rollback 集成测试 121/122 均通过
 - [x] Runtime 生命周期收拢与 ActionJournal/AuditBus 最小接入
@@ -61,6 +62,8 @@
 - Security 规则级事件标识 122：`results/security_policy/integration-20260621-171957`
 - Security cgroup scope 121：`results/security_policy/integration-20260621-173942`
 - Security cgroup scope 122：`results/security_policy/integration-20260621-174042`
+- Security PID target 121：`results/security_policy/integration-20260621-175927`
+- Security PID target 122：`results/security_policy/integration-20260621-180029`
 
 ## 当前核心文档
 
@@ -77,9 +80,9 @@
 ## 质量与安全审计
 
 - `scripts/final_quality_gate.sh`：TAP 风格 17 项 P0 质量门禁脚本
-- `reports/final_quality_gate_20260621_security_cgroup_scope.log`：121 最新门禁通过记录
+- `reports/final_quality_gate_20260621_security_pid_target.log`：121 最新门禁通过记录
 - `docs/final_security_audit.md`：最终安全与质量审计报告
 
 ## 当前结论
 
-项目仍处于争奖增强阶段，不应停留在“最终材料整理”。下一步重点是补强 Network/Security/Resource 的成品化深度：Pod veth、Security Pod/container 自动解析、更多 LSM hook 与异常规则、Resource CPU+Memory 自动闭环。
+项目仍处于争奖增强阶段，不应停留在“最终材料整理”。下一步重点是补强 Network/Security/Resource 的成品化深度：Pod veth、Security container ID / Pod 名称自动解析、更多 LSM hook 与异常规则、Resource CPU+Memory 自动闭环。

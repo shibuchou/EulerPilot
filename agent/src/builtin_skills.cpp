@@ -73,6 +73,18 @@ bool parse_tcp_port(const std::string &value, std::uint16_t &port) {
     return true;
 }
 
+bool parse_pid_value(const std::string &value, int &pid) {
+    char *end = nullptr;
+    errno = 0;
+    const long parsed = std::strtol(value.c_str(), &end, 10);
+    if (errno != 0 || end == value.c_str() || *end != '\0' ||
+        parsed <= 0 || parsed > 4194304) {
+        return false;
+    }
+    pid = static_cast<int>(parsed);
+    return true;
+}
+
 const std::string *find_config_value(const SkillSpec &spec, const std::string &key) {
     auto it = spec.config.find(key);
     return it == spec.config.end() ? nullptr : &it->second;
@@ -1824,8 +1836,8 @@ public:
                 }
                 const std::string target_prefix = "targets." + rule.target_ref + ".";
                 const std::string target_type = config_value_or(spec, target_prefix + "type", "");
-                if (target_type != "path") {
-                    last_error_ = "security-policy-v2-target-not-path";
+                if (target_type != "path" && target_type != "pid") {
+                    last_error_ = "security-policy-v2-target-not-path-or-pid";
                     return false;
                 }
                 rule.file_path = config_value_or(spec, target_prefix + "path", "");
@@ -1838,14 +1850,29 @@ public:
                     last_error_ = "security-policy-v2-target-exec-path-missing";
                     return false;
                 }
-                rule.cgroup_path = config_value_or(spec, target_prefix + "cgroup_path", "");
-                if (!rule.cgroup_path.empty()) {
-                    const auto target = resolve_cgroup_target(rule.target_ref, rule.cgroup_path);
-                    if (!target.resolved) {
-                        last_error_ = "security-policy-target-cgroup-resolve-failed:" + target.reason;
+                if (target_type == "pid") {
+                    int target_pid = 0;
+                    if (!parse_pid_value(config_value_or(spec, target_prefix + "pid", ""), target_pid)) {
+                        last_error_ = "security-policy-v2-target-pid-invalid";
                         return false;
                     }
+                    const auto target = resolve_pid_target(target_pid);
+                    if (!target.resolved) {
+                        last_error_ = "security-policy-target-pid-resolve-failed:" + target.reason;
+                        return false;
+                    }
+                    rule.cgroup_path = target.cgroup_path;
                     rule.cgroup_id = target.cgroup_id;
+                } else {
+                    rule.cgroup_path = config_value_or(spec, target_prefix + "cgroup_path", "");
+                    if (!rule.cgroup_path.empty()) {
+                        const auto target = resolve_cgroup_target(rule.target_ref, rule.cgroup_path);
+                        if (!target.resolved) {
+                            last_error_ = "security-policy-target-cgroup-resolve-failed:" + target.reason;
+                            return false;
+                        }
+                        rule.cgroup_id = target.cgroup_id;
+                    }
                 }
                 if (!valid_security_path(rule.file_path)) {
                     last_error_ = "invalid-target-path";
