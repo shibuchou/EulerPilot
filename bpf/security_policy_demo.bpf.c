@@ -14,6 +14,8 @@ char LICENSE[] SEC("license") = "GPL";
 #define EVENT_LSM_FILE_OPEN 1
 #define EVENT_EXECVE 2
 #define EVENT_OPENAT 3
+#define EVENT_CONNECT 4
+#define EVENT_PTRACE 5
 
 struct security_policy_config {
     __u32 enforce;
@@ -140,6 +142,42 @@ int trace_openat(struct trace_event_raw_sys_enter *ctx)
     fill_common_event(event, EVENT_OPENAT, 0, 0);
     if (bpf_probe_read_user_str(event->path, sizeof(event->path), filename) <= 0)
         event->path[0] = '\0';
+    bpf_ringbuf_submit(event, 0);
+    return 0;
+}
+
+SEC("tracepoint/syscalls/sys_enter_connect")
+int trace_connect(struct trace_event_raw_sys_enter *ctx)
+{
+    struct security_policy_event *event;
+
+    if (is_self_agent())
+        return 0;
+
+    event = bpf_ringbuf_reserve(&events, sizeof(*event), 0);
+    if (!event)
+        return 0;
+
+    fill_common_event(event, EVENT_CONNECT, 0, 0);
+    __builtin_memcpy(event->path, "connect", sizeof("connect"));
+    bpf_ringbuf_submit(event, 0);
+    return 0;
+}
+
+SEC("tracepoint/syscalls/sys_enter_ptrace")
+int trace_ptrace(struct trace_event_raw_sys_enter *ctx)
+{
+    struct security_policy_event *event;
+
+    if (is_self_agent())
+        return 0;
+
+    event = bpf_ringbuf_reserve(&events, sizeof(*event), 0);
+    if (!event)
+        return 0;
+
+    fill_common_event(event, EVENT_PTRACE, 0, 0);
+    __builtin_memcpy(event->path, "ptrace", sizeof("ptrace"));
     bpf_ringbuf_submit(event, 0);
     return 0;
 }

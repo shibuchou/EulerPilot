@@ -2017,6 +2017,30 @@ private:
             return false;
         }
         links.push_back(openat_link);
+
+        bpf_program *connect_prog = bpf_object__find_program_by_name(obj, "trace_connect");
+        if (!connect_prog) {
+            error = "security-policy-connect-program-missing";
+            return false;
+        }
+        bpf_link *connect_link = bpf_program__attach(connect_prog);
+        if (!connect_link) {
+            error = "security-policy-connect-attach-failed";
+            return false;
+        }
+        links.push_back(connect_link);
+
+        bpf_program *ptrace_prog = bpf_object__find_program_by_name(obj, "trace_ptrace");
+        if (!ptrace_prog) {
+            error = "security-policy-ptrace-program-missing";
+            return false;
+        }
+        bpf_link *ptrace_link = bpf_program__attach(ptrace_prog);
+        if (!ptrace_link) {
+            error = "security-policy-ptrace-attach-failed";
+            return false;
+        }
+        links.push_back(ptrace_link);
         return true;
     }
 
@@ -2109,6 +2133,8 @@ private:
         case 1: return "lsm_file_open";
         case 2: return "sys_enter_execve";
         case 3: return "sys_enter_openat";
+        case 4: return "sys_enter_connect";
+        case 5: return "sys_enter_ptrace";
         default: return "unknown";
         }
     }

@@ -67,6 +67,33 @@ require_cmd bpftool
 require_cmd timeout
 require_cmd sed
 require_cmd grep
+require_cmd python3
+
+trigger_audit_syscalls() {
+    python3 - <<'PY'
+import ctypes
+import socket
+
+try:
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.settimeout(0.1)
+    try:
+        sock.connect(("127.0.0.1", 9))
+    except OSError:
+        pass
+    sock.close()
+except Exception:
+    pass
+
+try:
+    libc = ctypes.CDLL(None, use_errno=True)
+    # PTRACE_TRACEME is enough to generate sys_enter_ptrace; the return
+    # value is not part of this audit-only validation.
+    libc.ptrace(0, 0, None, None)
+except Exception:
+    pass
+PY
+}
 
 if [ ! -r /sys/kernel/security/lsm ]; then
     skip "/sys/kernel/security/lsm is not readable; securityfs or LSM support may be missing"
@@ -174,6 +201,7 @@ fi
 if ! cat "$TARGET_FILE" > "$RESULT_DIR/audit-secret.txt" 2> "$RESULT_DIR/audit-secret.err"; then
     fail "audit mode blocked target file; see $RESULT_DIR/audit-secret.err"
 fi
+trigger_audit_syscalls
 
 set +e
 wait "$AGENT_PID"
@@ -198,11 +226,17 @@ fi
 if ! grep -q '"event_hook":"sys_enter_openat"' "$ROOT/reports/events/security_policy.jsonl" 2>/dev/null; then
     fail "audit mode did not write openat trace event"
 fi
+if ! grep -q '"event_hook":"sys_enter_connect"' "$ROOT/reports/events/security_policy.jsonl" 2>/dev/null; then
+    fail "audit mode did not write connect trace event"
+fi
+if ! grep -q '"event_hook":"sys_enter_ptrace"' "$ROOT/reports/events/security_policy.jsonl" 2>/dev/null; then
+    fail "audit mode did not write ptrace trace event"
+fi
 if ! grep -q '"result":"observed"' "$ROOT/reports/events/security_policy.jsonl" 2>/dev/null; then
     fail "audit mode hit event was not observed/allowed"
 fi
 cp "$ROOT/reports/events/security_policy.jsonl" "$RESULT_DIR/security_policy_events.audit.jsonl"
-log "PASS: security_policy audit mode writes LSM, execve and openat hit events"
+log "PASS: security_policy audit mode writes LSM and four syscall hit events"
 
 cat > "$RESULT_DIR/agent.enforce.yaml" <<'YAML'
 skills_config_path: skills.enforce.yaml

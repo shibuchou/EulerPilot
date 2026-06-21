@@ -23,17 +23,16 @@
 当前 `security_policy` 的能力边界：
 
 - BPF 程序：`bpf/security_policy_demo.bpf.c`
-- Hook：`lsm/file_open`，以及 `tracepoint/syscalls/sys_enter_execve`、`tracepoint/syscalls/sys_enter_openat`
-- 行为：`lsm/file_open` 可在 enforce 模式拒绝读取 `/root/EulerPilot/demo/security_policy_demo/secret.txt`；`execve/openat` 当前只做 audit 观测，不参与阻断
+- Hook：`lsm/file_open`，以及 `tracepoint/syscalls/sys_enter_execve`、`tracepoint/syscalls/sys_enter_openat`、`tracepoint/syscalls/sys_enter_connect`、`tracepoint/syscalls/sys_enter_ptrace`
+- 行为：`lsm/file_open` 可在 enforce 模式拒绝读取 `/root/EulerPilot/demo/security_policy_demo/secret.txt`；四类 syscall 当前只做 audit 观测，不参与阻断
 - 用户态：`SecurityPolicyDemoSkill` 同时服务 `security_policy` 和 `security_policy_demo`；正式名读取 YAML v2 `targets + rules + target_ref`
-- audit：attach BPF LSM + execve/openat tracepoint，但通过 `policy_map.enforce=0` 保持允许，命中后通过 ringbuf 写入 `reports/events/security_policy.jsonl`
+- audit：attach BPF LSM + 四类 syscall tracepoint，但通过 `policy_map.enforce=0` 保持允许，命中后通过 ringbuf 写入 `reports/events/security_policy.jsonl`
 - enforce：通过 libbpf 打开 `/root/EulerPilot/build/security_policy_demo.bpf.o` 并 attach LSM + tracepoint；当前只有 `lsm/file_open` 会返回拒绝
 - 回滚：Agent stop/rollback 销毁所有 BPF link 和 object；正常路径不 pin link
 
 当前尚未完成：
 
 - 动态 path/process/container target map
-- `connect/ptrace` syscall tracing
 - `bprm_check_security` 程序执行强制控制
 - syscall 事件与动态规则、target map 的绑定
 
@@ -49,6 +48,6 @@
 sudo tests/integration/test_security_policy.sh
 ```
 
-脚本会构建 Agent 和 demo BPF 对象，先启动正式 `security_policy` 的 audit 模式，确认目标文件不被阻断，且写入 `lsm_file_open`、`sys_enter_execve`、`sys_enter_openat` 三类 BPF ringbuf hit 事件；再启动 enforce 模式，验证目标文件在策略生效期间被拒绝并写入 blocked hit 事件，并在 Agent 退出后恢复可读。当前 BPF demo 硬编码 `/root/EulerPilot`，因此脚本会在其他路径下安全跳过并给出原因。
+脚本会构建 Agent 和 demo BPF 对象，先启动正式 `security_policy` 的 audit 模式，确认目标文件不被阻断，且写入 `lsm_file_open`、`sys_enter_execve`、`sys_enter_openat`、`sys_enter_connect`、`sys_enter_ptrace` 五类 BPF ringbuf hit 事件；再启动 enforce 模式，验证目标文件在策略生效期间被拒绝并写入 blocked hit 事件，并在 Agent 退出后恢复可读。当前 BPF demo 硬编码 `/root/EulerPilot`，因此脚本会在其他路径下安全跳过并给出原因。
 
 更完整的设计、验收口径和下一步清单见 `docs/security_policy_skill.md`。

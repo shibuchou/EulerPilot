@@ -56,4 +56,4 @@ Security demo 快速构建：
 make security-policy-demo
 ```
 
-`security_policy_demo.bpf.c` 是当前 SecurityPolicySkill 的最小 BPF 演示程序，包含 `lsm/file_open` 强制控制和 `sys_enter_execve/sys_enter_openat` tracepoint 观测。它已经提供 `policy_map.enforce` 和 ringbuf 命中事件：audit 模式允许访问并记录 `observed`，同时输出 `lsm_file_open`、`sys_enter_execve`、`sys_enter_openat` 事件；enforce 模式在固定 demo secret 文件上拒绝访问并记录 `blocked`。它尚未实现动态 target map、`connect/ptrace` tracing 和 `bprm_check_security` 强制控制；正式说明和最小测试入口见 `docs/security_policy_skill.md` 与 `tests/integration/test_security_policy.sh`。
+`security_policy_demo.bpf.c` 是当前 SecurityPolicySkill 的最小 BPF 演示程序，包含 `lsm/file_open` 强制控制和 `sys_enter_execve/sys_enter_openat/sys_enter_connect/sys_enter_ptrace` tracepoint 观测。它已经提供 `policy_map.enforce` 和 ringbuf 命中事件：audit 模式允许访问并记录 `observed`，同时输出 `lsm_file_open` 与四类 syscall 事件；enforce 模式在固定 demo secret 文件上拒绝访问并记录 `blocked`。它尚未实现动态 target map 和 `bprm_check_security` 强制控制；正式说明和最小测试入口见 `docs/security_policy_skill.md` 与 `tests/integration/test_security_policy.sh`。
