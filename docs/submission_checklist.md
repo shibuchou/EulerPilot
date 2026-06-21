@@ -18,7 +18,7 @@
 - [x] `network_xdp` isolated-veth generic XDP ICMP + TCP 多规则闭环
 - [x] `TargetResolver` netdev + `k8s_pod` 诊断型入口自测通过
 - [x] `security_policy` 正式注册名 + YAML v2 path target
-- [x] `security_policy` audit 模式 attach BPF 不阻断并写 ringbuf observed hit
+- [x] `security_policy` audit 模式 attach BPF 不阻断并写 `lsm_file_open/sys_enter_execve/sys_enter_openat` ringbuf observed hit
 - [x] `security_policy` enforce 模式复用 BPF LSM file_open 完成 blocked hit、拒绝、恢复、无残留闭环
 - [x] `security_policy_demo` BPF LSM file_open 最小闭环
 - [x] `security_policy_demo` BPF LSM attach/deny/rollback 集成测试 121/122 均通过
@@ -44,6 +44,8 @@
 - Security 正式 audit/enforce 122：`results/security_policy/integration-20260621-103431`
 - Security BPF ringbuf hit 121：`results/security_policy/integration-20260621-104254`
 - Security BPF ringbuf hit 122：`results/security_policy/integration-20260621-105602`
+- Security syscall tracing 121：`results/security_policy/integration-20260621-110631`
+- Security syscall tracing 122：`results/security_policy/integration-20260621-113455`
 
 ## 当前核心文档
 
@@ -60,9 +62,9 @@
 ## 质量与安全审计
 
 - `scripts/final_quality_gate.sh`：TAP 风格 17 项 P0 质量门禁脚本
-- `reports/final_quality_gate_20260621_security_ringbuf.log`：121 最新门禁通过记录
+- `reports/final_quality_gate_20260621_security_syscall.log`：121 最新门禁通过记录
 - `docs/final_security_audit.md`：最终安全与质量审计报告
 
 ## 当前结论
 
-项目仍处于争奖增强阶段，不应停留在“最终材料整理”。下一步重点是补强 Network/Security/Resource 的成品化深度：TC QoS Benchmark、XDP TCP/UDP 多规则与 Pod veth、Security syscall tracing/BPF LSM、Resource CPU+Memory 自动闭环。
+项目仍处于争奖增强阶段，不应停留在“最终材料整理”。下一步重点是补强 Network/Security/Resource 的成品化深度：Pod veth、Security connect/ptrace tracing 与 bprm enforce、动态 target map、Resource CPU+Memory 自动闭环。

@@ -157,6 +157,7 @@ struct SecurityPolicyConfig {
 };
 
 struct SecurityPolicyEvent {
+    std::uint32_t event_type = 0;
     std::uint32_t pid = 0;
     std::uint32_t tgid = 0;
     std::uint32_t enforce = 0;
@@ -184,7 +185,7 @@ static_assert(sizeof(NetworkXdpStats) == 24,
               "network xdp stats map layout must match BPF");
 static_assert(sizeof(SecurityPolicyConfig) == 4,
               "security policy config map layout must match BPF");
-static_assert(sizeof(SecurityPolicyEvent) == 288,
+static_assert(sizeof(SecurityPolicyEvent) == 292,
               "security policy ringbuf event layout must match BPF");
 
 bool valid_tc_token(const std::string &value) {
@@ -1867,14 +1868,17 @@ public:
             last_error_ = "probe-bpf-load-failed";
             return false;
         }
-        bpf_program *prog = bpf_object__next_program(obj, nullptr);
-        bpf_link *link = bpf_program__attach_lsm(prog);
-        if (!link) {
+        std::vector<bpf_link *> probe_links;
+        if (!attach_security_programs(obj, probe_links, last_error_)) {
+            for (auto *probe_link : probe_links) {
+                bpf_link__destroy(probe_link);
+            }
             bpf_object__close(obj);
-            last_error_ = "probe-bpf-attach-failed";
             return false;
         }
-        bpf_link__destroy(link);
+        for (auto *probe_link : probe_links) {
+            bpf_link__destroy(probe_link);
+        }
         bpf_object__close(obj);
         available_ = true;
         last_error_.clear();
@@ -1906,11 +1910,8 @@ public:
             rollback();
             return false;
         }
-        bpf_program *prog = bpf_object__next_program(bpf_object_, nullptr);
-        link_ = bpf_program__attach_lsm(prog);
-        if (!link_) {
+        if (!attach_security_programs(bpf_object_, links_, last_error_)) {
             rollback();
-            last_error_ = "demo-bpf-attach-failed";
             return false;
         }
         // Do NOT pin link — LSM should not persist after agent exit
@@ -1957,10 +1958,10 @@ public:
                                  "fd-owned-link");
         }
         stop_event_reader();
-        if (link_) {
-            bpf_link__destroy(link_);
-            link_ = nullptr;
+        for (auto *link : links_) {
+            bpf_link__destroy(link);
         }
+        links_.clear();
         if (bpf_object_) {
             bpf_object__close(bpf_object_);
             bpf_object_ = nullptr;
@@ -1978,6 +1979,47 @@ public:
     std::string last_error() const override { return last_error_; }
 
 private:
+    static bool attach_security_programs(bpf_object *obj,
+                                         std::vector<bpf_link *> &links,
+                                         std::string &error) {
+        bpf_program *lsm_prog = bpf_object__find_program_by_name(obj, "security_policy_demo");
+        if (!lsm_prog) {
+            error = "security-policy-lsm-program-missing";
+            return false;
+        }
+        bpf_link *lsm_link = bpf_program__attach_lsm(lsm_prog);
+        if (!lsm_link) {
+            error = "security-policy-lsm-attach-failed";
+            return false;
+        }
+        links.push_back(lsm_link);
+
+        bpf_program *execve_prog = bpf_object__find_program_by_name(obj, "trace_execve");
+        if (!execve_prog) {
+            error = "security-policy-execve-program-missing";
+            return false;
+        }
+        bpf_link *execve_link = bpf_program__attach(execve_prog);
+        if (!execve_link) {
+            error = "security-policy-execve-attach-failed";
+            return false;
+        }
+        links.push_back(execve_link);
+
+        bpf_program *openat_prog = bpf_object__find_program_by_name(obj, "trace_openat");
+        if (!openat_prog) {
+            error = "security-policy-openat-program-missing";
+            return false;
+        }
+        bpf_link *openat_link = bpf_program__attach(openat_prog);
+        if (!openat_link) {
+            error = "security-policy-openat-attach-failed";
+            return false;
+        }
+        links.push_back(openat_link);
+        return true;
+    }
+
     bool install_policy_config() {
         const int config_fd = bpf_object__find_map_fd_by_name(bpf_object_, "policy_map");
         if (config_fd < 0) {
@@ -2062,11 +2104,21 @@ private:
         return std::string(value, len);
     }
 
+    static std::string security_event_hook(std::uint32_t event_type) {
+        switch (event_type) {
+        case 1: return "lsm_file_open";
+        case 2: return "sys_enter_execve";
+        case 3: return "sys_enter_openat";
+        default: return "unknown";
+        }
+    }
+
     void write_hit_event(const SecurityPolicyEvent &hit) {
         const auto hit_index = hit_count_.fetch_add(1) + 1;
         if (hit.decision < 0) {
             deny_count_.fetch_add(1);
         }
+        const std::string hook_name = security_event_hook(hit.event_type);
 
         const fs::path audit_path = "reports/events/security_policy.jsonl";
         ensure_parent_dir(audit_path);
@@ -2086,6 +2138,8 @@ private:
         event.evidence = {
             {"hook", hook_},
             {"action", action_},
+            {"event_type", std::to_string(hit.event_type)},
+            {"event_hook", hook_name},
             {"pid", std::to_string(hit.pid)},
             {"tgid", std::to_string(hit.tgid)},
             {"comm", bounded_string(hit.comm, sizeof(hit.comm))},
@@ -2172,7 +2226,7 @@ private:
     std::atomic<bool> event_thread_stop_{false};
     std::thread event_thread_;
     bpf_object *bpf_object_ = nullptr;
-    bpf_link *link_ = nullptr;
+    std::vector<bpf_link *> links_;
     ring_buffer *ring_buffer_ = nullptr;
 };
 

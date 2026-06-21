@@ -88,6 +88,7 @@ if [ ! -f "$TARGET_FILE" ]; then
 fi
 
 run_cleanup_script
+rm -f "$ROOT/reports/events/security_policy.jsonl"
 
 log "INFO: building agent and security-policy-demo BPF object"
 if ! make agent security-policy-demo > "$RESULT_DIR/build.log" 2>&1; then
@@ -188,11 +189,20 @@ fi
 if ! grep -q '"operation":"hit"' "$ROOT/reports/events/security_policy.jsonl" 2>/dev/null; then
     fail "audit mode did not write BPF hit event"
 fi
+if ! grep -q '"event_hook":"lsm_file_open"' "$ROOT/reports/events/security_policy.jsonl" 2>/dev/null; then
+    fail "audit mode did not write lsm_file_open hit event"
+fi
+if ! grep -q '"event_hook":"sys_enter_execve"' "$ROOT/reports/events/security_policy.jsonl" 2>/dev/null; then
+    fail "audit mode did not write execve trace event"
+fi
+if ! grep -q '"event_hook":"sys_enter_openat"' "$ROOT/reports/events/security_policy.jsonl" 2>/dev/null; then
+    fail "audit mode did not write openat trace event"
+fi
 if ! grep -q '"result":"observed"' "$ROOT/reports/events/security_policy.jsonl" 2>/dev/null; then
     fail "audit mode hit event was not observed/allowed"
 fi
 cp "$ROOT/reports/events/security_policy.jsonl" "$RESULT_DIR/security_policy_events.audit.jsonl"
-log "PASS: security_policy audit mode does not block and writes BPF hit event"
+log "PASS: security_policy audit mode writes LSM, execve and openat hit events"
 
 cat > "$RESULT_DIR/agent.enforce.yaml" <<'YAML'
 skills_config_path: skills.enforce.yaml
@@ -281,6 +291,9 @@ log "PASS: agent exits cleanly"
 
 if ! grep -q '"operation":"hit"' "$ROOT/reports/events/security_policy.jsonl" 2>/dev/null; then
     fail "enforce mode did not write BPF hit event"
+fi
+if ! grep -q '"event_hook":"lsm_file_open"' "$ROOT/reports/events/security_policy.jsonl" 2>/dev/null; then
+    fail "enforce mode did not write lsm_file_open hit event"
 fi
 if ! grep -q '"result":"blocked"' "$ROOT/reports/events/security_policy.jsonl" 2>/dev/null; then
     fail "enforce mode hit event was not blocked"
