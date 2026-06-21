@@ -179,6 +179,7 @@
 - 121 最新 Security demo 集成测试证据目录：`results/security_policy/integration-20260621-095537/`。
 - 122 最新 Security demo 集成测试证据目录：`results/security_policy/integration-20260621-100937/`。
 - 121 最新正式 `security_policy` audit/enforce 集成测试证据目录：`results/security_policy/integration-20260621-101929/`。
+- 122 最新正式 `security_policy` audit/enforce 集成测试证据目录：`results/security_policy/integration-20260621-103431/`。
 - audit 模式证据：目标文件保持可读，`reports/events/security_policy.jsonl` 写入 `skill=security_policy` 生命周期事件。
 - enforce 模式证据：目标文件被 BPF LSM 拒绝，Agent 退出后恢复可读，无 BPF link/pin 残留。
 - `scripts/cleanup_security_policy_demo.sh` 已修复无残留时因 `grep`/`pipefail` 返回非零的问题，cleanup 空跑现在正常返回 0。

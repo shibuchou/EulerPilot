@@ -41,6 +41,7 @@
 - Security BPF LSM demo 121：`results/security_policy/integration-20260621-095537`
 - Security BPF LSM demo 122：`results/security_policy/integration-20260621-100937`
 - Security 正式 audit/enforce 121：`results/security_policy/integration-20260621-101929`
+- Security 正式 audit/enforce 122：`results/security_policy/integration-20260621-103431`
 
 ## 当前核心文档
 
