@@ -1,0 +1,13 @@
+INFO: result dir: /root/EulerPilot/results/security_policy/integration-20260621-095439
+WARN: cleanup_security_policy_demo.sh returned non-zero; continuing with manual pin cleanup
+INFO: building agent and security-policy-demo BPF object
+PASS: build succeeds
+PASS: security_policy_demo skill is registered
+PASS: target file is readable before policy attach
+PASS: target file is denied while policy is active
+PASS: agent exits cleanly
+WARN: cleanup_security_policy_demo.sh returned non-zero; continuing with manual pin cleanup
+PASS: target file is readable after agent rollback
+PASS: cleanup leaves no known security_policy_demo BPF residue
+=== SecurityPolicyDemoSkill integration test complete ===
+WARN: cleanup_security_policy_demo.sh returned non-zero; continuing with manual pin cleanup

@@ -1,6 +1,6 @@
 # EulerPilot 最终安全与质量审计报告
 
-更新时间：`2026-06-15`
+更新时间：`2026-06-21`
 
 ## 审计范围
 
@@ -27,7 +27,7 @@
 | sched_ext state | `disabled` | `disabled` | PASS |
 | sched_ext nr_rejected | `0` | `0` | PASS |
 
-security_policy_demo 默认不 pin link，LSM 程序随 Agent 进程退出自动消亡。network_policy_demo 在 rollback 时 unpin + destroy，退出后无残留。
+security_policy_demo 默认不 pin link，LSM 程序随 Agent 进程退出自动消亡。`tests/integration/test_security_policy.sh` 已在 121 验证 attach、deny、Agent 退出恢复和 cleanup 无残留，结果目录为 `results/security_policy/integration-20260621-095537`。network_policy_demo 在 rollback 时 unpin + destroy，退出后无残留。
 
 ## 3. 内存泄漏审计
 
@@ -57,6 +57,8 @@ security_policy_demo 默认不 pin link，LSM 程序随 Agent 进程退出自动
 | 121 | make network-qos-tc | PASS |
 | 121 | make network-xdp-demo | PASS |
 | 121 | make security-policy-demo | PASS |
+| 121 | tests/integration/test_target_resolver.sh | PASS |
+| 121 | tests/integration/test_security_policy.sh | PASS |
 | 121 | --list-skills 输出正式 network_policy/network_qos/network_xdp | PASS |
 | 121 | --doctor-skills 返回 0 | PASS |
 | 122 | make agent | PASS |
@@ -64,6 +66,8 @@ security_policy_demo 默认不 pin link，LSM 程序随 Agent 进程退出自动
 | 122 | --doctor-skills 返回 0 | PASS |
 
 ## 6. TAP 质量门禁结果（16/16）
+
+最新日志：`reports/final_quality_gate_20260621_security_target.log`
 
 ```
 ok 1 - make agent
@@ -95,4 +99,4 @@ ok 16 - no BPF/LSM/TC/XDP residue
 | 构建/回归 | PASS |
 | 质量门禁 | PASS (16/16) |
 
-**最终结论：EulerPilot v0.1-rc2 通过最终安全与质量审计，可作为提交版本。**
+**当前结论：EulerPilot 通过最新安全与质量审计，可作为当前争奖增强阶段的稳定基线。Security 仍需继续从 `security_policy_demo` 升级为正式 `security_policy`，补齐 audit 事件、动态 target map 和 syscall tracing。**

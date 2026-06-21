@@ -10,6 +10,8 @@
 - `progress_status.md`：当前阶段进度状态看板。
 - `public_control_plane_design.md`：TargetResolver、AuditBus、ActionJournal、CapabilityDetector 公共控制面设计。
 - `network_policy_skill.md`：NetworkPolicySkill 阶段 B 设计、YAML、hook 作用域、审计与回滚口径。
+- `network_pod_veth_target.md`：Network Pod/veth target 解析预备能力、reason code 和安全边界。
+- `security_policy_skill.md`：SecurityPolicySkill 正式化设计、复用边界、最小验证入口和下一步清单。
 - `design_proposal.md`：总体设计方案。
 - `final_report_submission.md`：已有阶段最终报告草稿。
 

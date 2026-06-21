@@ -1,6 +1,6 @@
 # EulerPilot 提交清单
 
-更新时间：`2026-06-19`
+更新时间：`2026-06-21`
 
 ## 已完成
 
@@ -16,9 +16,11 @@
 - [x] `network_qos` TC egress classifier + TBF 限速最小闭环
 - [x] `network_qos` TC QoS 速率误差 Benchmark 双机通过
 - [x] `network_xdp` isolated-veth generic XDP ICMP + TCP 多规则闭环
+- [x] `TargetResolver` netdev + `k8s_pod` 诊断型入口自测通过
 - [x] `security_policy_demo` BPF LSM file_open 最小闭环
+- [x] `security_policy_demo` BPF LSM attach/deny/rollback 集成测试通过
 - [x] Runtime 生命周期收拢与 ActionJournal/AuditBus 最小接入
-- [x] 121 SP3 编译、集成测试和 16 项质量门禁通过
+- [x] 121 SP3 编译、集成测试和 16 项质量门禁通过，最新 100 轮 smoke 与 5 轮 doctor 通过
 - [x] 静态 Dashboard：`reports/dashboard/index.html`
 - [x] Prometheus `/metrics` 端点：默认关闭，监听 `127.0.0.1:9108`
 - [x] 中文最终报告主稿与答辩材料
@@ -33,12 +35,15 @@
 - Network TC QoS Benchmark 122：`results/network_policy/qos-rate-20260620-181755`
 - Network XDP 多规则 121：`results/network_policy/xdp-20260620-183031`
 - Network XDP 多规则 122：`results/network_policy/xdp-20260620-184212`
+- Security BPF LSM demo 121：`results/security_policy/integration-20260621-095537`
 
 ## 当前核心文档
 
 - `docs/final_report_submission.md`：最终报告主稿
 - `docs/progress_status.md`：当前进度看板
 - `docs/network_policy_skill.md`：Network Policy 设计与实施说明
+- `docs/network_pod_veth_target.md`：Pod/veth target 解析预备能力说明
+- `docs/security_policy_skill.md`：Security Policy 正式化设计与最小验收入口
 - `docs/skills_yaml_plan.md`：Skills/YAML 控制面规划
 - `docs/final_quality_gate.md`：质量门禁说明
 - `docs/reference_repos.md`：参考仓库与复用边界
@@ -47,7 +52,7 @@
 ## 质量与安全审计
 
 - `scripts/final_quality_gate.sh`：TAP 风格 16 项 P0 质量门禁脚本
-- `reports/final_quality_gate_20260619_xdp.log`：121 最新门禁通过记录
+- `reports/final_quality_gate_20260621_security_target.log`：121 最新门禁通过记录
 - `docs/final_security_audit.md`：最终安全与质量审计报告
 
 ## 当前结论

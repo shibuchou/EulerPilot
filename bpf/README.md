@@ -49,3 +49,11 @@ Network 子能力快速构建：
 ```bash
 make network-policy-demo network-qos-tc network-xdp-demo
 ```
+
+Security demo 快速构建：
+
+```bash
+make security-policy-demo
+```
+
+`security_policy_demo.bpf.c` 是当前 SecurityPolicySkill 的最小 BPF LSM 演示程序，只在 `lsm/file_open` 上拒绝固定 demo secret 文件。它尚未实现 audit/enforce 动态切换、ringbuf 事件或动态 target map；正式说明和最小测试入口见 `docs/security_policy_skill.md` 与 `tests/integration/test_security_policy.sh`。
