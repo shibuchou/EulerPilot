@@ -13,9 +13,10 @@
 ## 当前完成状态
 
 - `skills.yaml` 已升级到 `schema_version: 2`，当前 Agent 仍兼容旧 `schema_version: 1` flat config。
-- `skills.yaml` 中 `network_policy`、`network_qos`、`network_xdp`、`network_policy_demo` 和 `security_policy_demo` 默认均为 disabled。
+- `skills.yaml` 中 `network_policy`、`network_qos`、`network_xdp`、`security_policy`、`network_policy_demo` 和 `security_policy_demo` 默认均为 disabled。
 - `network_qos` 默认目标为 lab veth `ep-veth-qos0`，不能作为真实业务网卡默认配置使用。
 - `network_xdp` 默认目标为 lab veth `ep-veth-xdp0`，包含 ICMP drop 与 TCP:19092 drop 两条 lab 规则，只能用于 isolated veth/netns 或后续 lab Pod veth。
+- `security_policy` 默认目标为 demo secret 文件路径，只允许在 `/root/EulerPilot/demo/security_policy_demo/secret.txt` 上验证 audit/enforce 最小闭环；正式业务路径需要后续动态 target map 和 allowlist。
 - 当前 `schema_version: 2` 已覆盖：
   - `targets`
   - `rules`
@@ -23,8 +24,9 @@
   - `network_policy` 的 `cgroup_connect4`
   - `network_qos` 的 `tc_egress`
   - `network_xdp` 的 `xdp`
+  - `security_policy` 的 `lsm_file_open` path target 最小闭环
 - 后续还需要补：
-  - `security_policy.rules`
+  - `security_policy` 的动态 path/process/container target map 和 syscall tracing 规则
   - `resource_control.controllers`
   - `policy_engine.rules`
 

@@ -1,6 +1,6 @@
 # security_policy Skill
 
-职责：把 EulerPilot 的安全策略能力从 demo 扩展为可审计、可强制、可回滚的运行时 Skill。当前仓库内实际注册的是 `security_policy_demo`，不是完整的正式 `security_policy`。
+职责：把 EulerPilot 的安全策略能力从 demo 扩展为可审计、可强制、可回滚的运行时 Skill。当前仓库已注册正式 `security_policy`，并保留 `security_policy_demo` 作为兼容回归入口。
 
 ## 目标形态
 
@@ -20,21 +20,20 @@
 
 ## 当前完成度
 
-当前 `security_policy_demo` 的能力边界：
+当前 `security_policy` 的能力边界：
 
 - BPF 程序：`bpf/security_policy_demo.bpf.c`
 - Hook：`lsm/file_open`
 - 行为：拒绝读取 `/root/EulerPilot/demo/security_policy_demo/secret.txt`
-- 用户态：`SecurityPolicyDemoSkill` 通过 libbpf 打开 `/root/EulerPilot/build/security_policy_demo.bpf.o` 并 attach LSM
+- 用户态：`SecurityPolicyDemoSkill` 同时服务 `security_policy` 和 `security_policy_demo`；正式名读取 YAML v2 `targets + rules + target_ref`
+- audit：不 attach BPF、不阻断，写入 `reports/events/security_policy.jsonl` 和 `run/eulerpilot/action_journal.jsonl`
+- enforce：通过 libbpf 打开 `/root/EulerPilot/build/security_policy_demo.bpf.o` 并 attach LSM
 - 回滚：Agent stop/rollback 销毁 BPF link 和 object；正常路径不 pin link
 
 当前尚未完成：
 
-- 正式 `security_policy` 注册名
-- audit/enforce 动态切换
 - 动态 path/process/container target map
-- ringbuf 安全事件
-- ActionJournal 回滚证据
+- ringbuf 安全事件和真实 syscall/LSM 命中审计
 - syscall tracing 覆盖 `execve/openat/connect/ptrace`
 
 ## 参考复用
@@ -49,6 +48,6 @@
 sudo tests/integration/test_security_policy.sh
 ```
 
-脚本会构建 Agent 和 demo BPF 对象，启动 `security_policy_demo`，验证目标文件在策略生效期间被拒绝，并在 Agent 退出后恢复可读。当前 demo 硬编码 `/root/EulerPilot`，因此脚本会在其他路径下安全跳过并给出原因。
+脚本会构建 Agent 和 demo BPF 对象，先启动正式 `security_policy` 的 audit 模式，确认目标文件不被阻断且写入 AuditBus；再启动 enforce 模式，验证目标文件在策略生效期间被拒绝，并在 Agent 退出后恢复可读。当前 BPF demo 硬编码 `/root/EulerPilot`，因此脚本会在其他路径下安全跳过并给出原因。
 
 更完整的设计、验收口径和下一步清单见 `docs/security_policy_skill.md`。

@@ -1742,19 +1742,64 @@ private:
 
 class SecurityPolicyDemoSkill final : public Skill {
 public:
-    std::string name() const override { return "security_policy_demo"; }
+    explicit SecurityPolicyDemoSkill(std::string skill_name = "security_policy_demo")
+        : skill_name_(std::move(skill_name)) {}
+
+    std::string name() const override { return skill_name_; }
 
     bool configure(const RuntimeConfig &, const SkillSpec &spec) override {
-        auto hook = spec.config.find("hook");
-        auto mode = spec.config.find("mode");
-        auto target_path = spec.config.find("target_path");
-        if (hook == spec.config.end() || mode == spec.config.end() || target_path == spec.config.end()) {
-            last_error_ = "security-policy-demo-missing-required-config";
+        const int rule_index = find_rule_by_hook(spec, "lsm_file_open");
+        if (rule_index >= 0) {
+            const std::string rule_prefix = "rules." + std::to_string(rule_index) + ".";
+            hook_ = config_value_or(spec, rule_prefix + "hook", "lsm_file_open");
+            mode_ = config_value_or(spec, rule_prefix + "mode",
+                                    config_value_or(spec, "mode", "audit"));
+            action_ = config_value_or(spec, rule_prefix + "action", "deny");
+            rule_id_ = config_value_or(spec, rule_prefix + "name", "deny-demo-secret-open");
+            target_ref_ = config_value_or(spec, rule_prefix + "target_ref", "");
+            if (target_ref_.empty()) {
+                last_error_ = "security-policy-v2-missing-target-ref";
+                return false;
+            }
+            const std::string target_prefix = "targets." + target_ref_ + ".";
+            const std::string target_type = config_value_or(spec, target_prefix + "type", "");
+            if (target_type != "path") {
+                last_error_ = "security-policy-v2-target-not-path";
+                return false;
+            }
+            target_path_ = config_value_or(spec, target_prefix + "path", "");
+            if (target_path_.empty()) {
+                last_error_ = "security-policy-v2-target-path-missing";
+                return false;
+            }
+        } else {
+            auto hook = spec.config.find("hook");
+            auto mode = spec.config.find("mode");
+            auto target_path = spec.config.find("target_path");
+            if (hook == spec.config.end() || mode == spec.config.end() ||
+                target_path == spec.config.end()) {
+                last_error_ = "security-policy-demo-missing-required-config";
+                return false;
+            }
+            hook_ = hook->second;
+            mode_ = mode->second;
+            target_path_ = target_path->second;
+            action_ = config_value_or(spec, "action", "deny");
+            target_ref_ = config_value_or(spec, "target_ref", "legacy_path");
+            rule_id_ = config_value_or(spec, "rule_id", "deny-demo-secret-open");
+        }
+        if (mode_ != "audit" && mode_ != "enforce") {
+            last_error_ = "unsupported-mode";
             return false;
         }
-        hook_ = hook->second;
-        mode_ = mode->second;
-        target_path_ = target_path->second;
+        if (hook_ != "lsm_file_open") {
+            last_error_ = "unsupported-hook";
+            return false;
+        }
+        if (action_ != "deny") {
+            last_error_ = "unsupported-action";
+            return false;
+        }
         // Must match BPF hardcoded path
         if (target_path_ != "/root/EulerPilot/demo/security_policy_demo/secret.txt") {
             last_error_ = "target-path-mismatch: expected /root/EulerPilot/demo/security_policy_demo/secret.txt";
@@ -1765,6 +1810,15 @@ public:
 
     bool probe() override {
         available_ = false;
+        if (mode_ == "audit") {
+            // Current audit mode is a safe control-plane check: it records the
+            // configured policy but intentionally does not attach BPF LSM yet.
+            // This keeps the formal security_policy default harmless while the
+            // ringbuf-based audit implementation is being added.
+            available_ = true;
+            last_error_.clear();
+            return true;
+        }
         // Check LSM BPF capability
         std::ifstream lsm("/sys/kernel/security/lsm");
         if (!lsm.good()) {
@@ -1822,12 +1876,12 @@ public:
     }
 
     bool start() override {
-        if (!available_ && !probe()) {
-            return false;
-        }
-        if (hook_ != "lsm_file_open") {
-            last_error_ = "unsupported-hook";
-            return false;
+        if (mode_ == "audit") {
+            running_ = true;
+            state_ = "audit-only";
+            write_audit_event("start", "audit-only", "success");
+            write_journal_action("start-audit", "audit-only", "none");
+            return true;
         }
         bpf_object_ = bpf_object__open_file("/root/EulerPilot/build/security_policy_demo.bpf.o", nullptr);
         if (!bpf_object_) {
@@ -1850,6 +1904,8 @@ public:
         // Do NOT pin link — LSM should not persist after agent exit
         running_ = true;
         state_ = "started";
+        write_audit_event("start", "attach-lsm-file-open", "success");
+        write_journal_action("start-enforce", "attach-lsm-file-open", "fd-owned-link");
         return true;
     }
 
@@ -1862,11 +1918,18 @@ public:
         snapshot.evidence["hook"] = hook_;
         snapshot.evidence["target_path"] = target_path_;
         snapshot.evidence["mode"] = mode_;
+        snapshot.evidence["target_ref"] = target_ref_;
+        snapshot.evidence["rule_id"] = rule_id_;
+        snapshot.evidence["action"] = action_;
         snapshot.evidence["reason"] = last_error_.empty() ? "ok" : last_error_;
         return snapshot;
     }
 
     bool rollback() override {
+        if (running_) {
+            write_audit_event("rollback", mode_ == "audit" ? "audit-only" : "detach-lsm-file-open", "success");
+            write_journal_action("rollback", mode_ == "audit" ? "audit-only" : "detach-lsm-file-open", "fd-owned-link");
+        }
         if (link_) {
             bpf_link__destroy(link_);
             link_ = nullptr;
@@ -1888,6 +1951,64 @@ public:
     std::string last_error() const override { return last_error_; }
 
 private:
+    void write_audit_event(const std::string &operation,
+                           const std::string &action,
+                           const std::string &result) const {
+        const fs::path audit_path = "reports/events/security_policy.jsonl";
+        ensure_parent_dir(audit_path);
+
+        AuditEvent event;
+        event.timestamp = now_event_timestamp();
+        event.event_id = skill_name_ + "-" + operation + "-" + event.timestamp;
+        event.skill = skill_name_;
+        event.policy_id = "security_policy";
+        event.rule_id = rule_id_;
+        event.mode = mode_;
+        event.target = {
+            {"target_ref", target_ref_},
+            {"path", target_path_},
+        };
+        event.operation = operation;
+        event.evidence = {
+            {"hook", hook_},
+            {"action", action_},
+            {"current_scope", "fixed-demo-path"},
+        };
+        event.action = action;
+        event.result = result;
+        event.severity = mode_ == "enforce" ? "warning" : "info";
+        std::string error;
+        append_audit_event(audit_path.string(), event, &error);
+    }
+
+    void write_journal_action(const std::string &operation,
+                              const std::string &action,
+                              const std::string &handle) const {
+        const fs::path journal_path = "run/eulerpilot/action_journal.jsonl";
+        ensure_parent_dir(journal_path);
+
+        JournalAction entry;
+        entry.action_id = skill_name_ + "-" + operation + "-" + now_event_timestamp();
+        entry.skill = skill_name_;
+        entry.target = target_path_;
+        entry.operation = operation;
+        entry.new_values = {
+            {"mode", mode_},
+            {"hook", hook_},
+            {"target_ref", target_ref_},
+            {"rule_id", rule_id_},
+            {"action", action},
+        };
+        entry.handles = {
+            {"path", target_path_},
+            {"bpf_link", handle},
+        };
+        entry.restored = operation == "rollback";
+        std::string error;
+        append_journal_action(journal_path.string(), entry, &error);
+    }
+
+    std::string skill_name_;
     bool available_ = false;
     bool running_ = false;
     std::string state_ = "created";
@@ -1895,6 +2016,9 @@ private:
     std::string hook_ = "lsm_file_open";
     std::string target_path_ = "/root/EulerPilot/demo/security_policy_demo/secret.txt";
     std::string mode_ = "enforce";
+    std::string action_ = "deny";
+    std::string target_ref_ = "legacy_path";
+    std::string rule_id_ = "deny-demo-secret-open";
     bpf_object *bpf_object_ = nullptr;
     bpf_link *link_ = nullptr;
 };
@@ -1919,6 +2043,9 @@ void register_builtin_skills(SkillRegistry &registry) {
     });
     registry.register_factory("network_xdp", [] {
         return std::make_unique<NetworkXdpSkill>();
+    });
+    registry.register_factory("security_policy", [] {
+        return std::make_unique<SecurityPolicyDemoSkill>("security_policy");
     });
     registry.register_factory("security_policy_demo", [] {
         return std::make_unique<SecurityPolicyDemoSkill>();

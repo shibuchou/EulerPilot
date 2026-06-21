@@ -4,7 +4,7 @@
 
 ## 1. 当前判断
 
-`Skill / SkillRegistry / SkillManager / builtin_skills` 已经完成第一阶段闭环，`resource_control / psi_gate / network_policy / network_qos / network_xdp / network_policy_demo / security_policy_demo` 也已进入统一 Agent 管理。
+`Skill / SkillRegistry / SkillManager / builtin_skills` 已经完成第一阶段闭环，`resource_control / psi_gate / network_policy / network_qos / network_xdp / security_policy / network_policy_demo / security_policy_demo` 也已进入统一 Agent 管理。
 
 当前 `configs/skills.yaml` 已升级为 `schema_version: 2`。解析层通过 flatten 嵌套 YAML 的方式兼容现有 `SkillSpec.config`，因此旧 `schema_version: 1` flat config 仍可使用。
 
@@ -277,6 +277,33 @@ eBPF TC classifier
 
 Security 使用统一目标引用和 observe/audit/enforce 模式。
 
+当前已落地的最小 schema 使用 `targets + rules + target_ref` 描述固定 demo path target，默认 `audit` 且默认 disabled：
+
+```yaml
+- name: security_policy
+  kind: runtime
+  enabled: false
+  config:
+    mode: audit
+    targets:
+      demo_secret:
+        type: path
+        path: /root/EulerPilot/demo/security_policy_demo/secret.txt
+    rules:
+      - name: deny_demo_secret_open
+        hook: lsm_file_open
+        target_ref: demo_secret
+        action: deny
+```
+
+当前语义：
+
+- `audit` 模式不 attach BPF、不阻断目标文件，只写 `AuditBus` 和 `ActionJournal` 生命周期事件。
+- `enforce` 模式复用 `bpf/security_policy_demo.bpf.c`，在 `lsm/file_open` 上拒绝固定 demo secret 文件。
+- `security_policy_demo` 保留为兼容回归入口，最终答辩口径应优先使用正式 `security_policy`。
+
+完整目标态仍按下面结构扩展：
+
 ```yaml
 security_policy:
   enabled: false
@@ -486,7 +513,7 @@ policy_engine:
 4. 实现 AuditBus JSONL 写入。
 5. 实现 ActionJournal 写入与恢复。
 6. 将 `network_policy_demo` 包装或迁移为 `network_policy`。
-7. 将 `security_policy_demo` 包装或迁移为 `security_policy`。
+7. 将 `security_policy_demo` 包装或迁移为 `security_policy`。（已完成正式注册名与最小 audit/enforce 语义）
 8. 扩展 `resource_control` 的 CPU/Memory/IO 配置模型。
 9. 增加 Policy Engine 联动配置。
 10. 将最终质量门禁从 demo target 切换到正式 Skill target。

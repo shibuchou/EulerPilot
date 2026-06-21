@@ -1,6 +1,6 @@
 # EulerPilot 最终质量门禁
 
-更新时间：`2026-06-19`
+更新时间：`2026-06-21`
 
 ## 目的
 
@@ -19,7 +19,7 @@ make agent
 ./build/eulerpilot-agent --doctor-skills --config configs/agent.yaml
 ```
 
-## P0 阻塞项（16 项）
+## P0 阻塞项（17 项）
 
 | # | 检查 | 判定 |
 |---|------|------|
@@ -28,17 +28,18 @@ make agent
 | 3 | `make network-qos-tc` | exit code=0 |
 | 4 | `make network-xdp-demo` | exit code=0 |
 | 5 | `make security-policy-demo` | exit code=0 |
-| 6 | `--list-skills` | 至少输出正式 `network_policy/network_qos/network_xdp` |
+| 6 | `--list-skills` | 至少输出正式 `network_policy/network_qos/network_xdp/security_policy` |
 | 7 | `--doctor-skills` | exit code=0 |
 | 8 | agent 15s smoke | timeout 内正常退出 |
 | 9 | `network_policy` | 默认 `enabled: false` |
 | 10 | `network_qos` | 默认 `enabled: false` |
 | 11 | `network_xdp` | 默认 `enabled: false` |
-| 12 | `security_policy_demo` | 默认 `enabled: false` |
-| 13 | metrics exporter | 默认关闭 + 监听 127.0.0.1:9108 |
-| 14 | Dashboard | `reports/dashboard/index.html` 存在且非空 |
-| 15 | 冻结结果目录 | Redis/Nginx 各 ≥1 个目录 |
-| 16 | 无 BPF/LSM/TC/XDP 残留 | security LSM link 不存在，demo-net cgroup 无 attached BPF，lab veth 不残留 |
+| 12 | `security_policy` | 默认 `enabled: false` |
+| 13 | `security_policy_demo` | 默认 `enabled: false` |
+| 14 | metrics exporter | 默认关闭 + 监听 127.0.0.1:9108 |
+| 15 | Dashboard | `reports/dashboard/index.html` 存在且非空 |
+| 16 | 冻结结果目录 | Redis/Nginx 各 ≥1 个目录 |
+| 17 | 无 BPF/LSM/TC/XDP 残留 | security LSM link 不存在，demo-net cgroup 无 attached BPF，lab veth 不残留 |
 
 ## P1 可选项（不阻塞）
 
@@ -66,6 +67,6 @@ make agent
 
 ## 通过标准
 
-- 16 项 P0 全部 `ok`
+- 17 项 P0 全部 `ok`
 - P1 记录结果但不影响通过
 - 122 编译 + CLI 通过

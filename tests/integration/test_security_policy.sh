@@ -102,19 +102,23 @@ if [ ! -f "$ROOT/build/security_policy_demo.bpf.o" ]; then
     fail "BPF object missing after build: $ROOT/build/security_policy_demo.bpf.o"
 fi
 
-if ! "$AGENT_BIN" --list-skills | sed 's/\x1b\[[0-9;]*m//g' | grep -qx "security_policy_demo"; then
-    fail "security_policy_demo skill is not registered"
+SKILLS_OUT="$("$AGENT_BIN" --list-skills | sed 's/\x1b\[[0-9;]*m//g')"
+if ! echo "$SKILLS_OUT" | grep -qx "security_policy"; then
+    fail "security_policy skill is not registered"
 fi
-log "PASS: security_policy_demo skill is registered"
+if ! echo "$SKILLS_OUT" | grep -qx "security_policy_demo"; then
+    fail "security_policy_demo compatibility skill is not registered"
+fi
+log "PASS: security_policy and compatibility demo skills are registered"
 
-cat > "$RESULT_DIR/agent.security.yaml" <<'YAML'
-skills_config_path: skills.security.yaml
+cat > "$RESULT_DIR/agent.audit.yaml" <<'YAML'
+skills_config_path: skills.audit.yaml
 exporter:
   prometheus:
     enabled: false
 YAML
 
-cat > "$RESULT_DIR/skills.security.yaml" <<'YAML'
+cat > "$RESULT_DIR/skills.audit.yaml" <<'YAML'
 schema_version: 2
 skills:
 - name: resource_control
@@ -125,13 +129,20 @@ skills:
   kind: runtime
   enabled: true
   config: {}
-- name: security_policy_demo
+- name: security_policy
   kind: runtime
   enabled: true
   config:
-    hook: lsm_file_open
-    mode: enforce
-    target_path: /root/EulerPilot/demo/security_policy_demo/secret.txt
+    mode: audit
+    targets:
+      demo_secret:
+        type: path
+        path: /root/EulerPilot/demo/security_policy_demo/secret.txt
+    rules:
+      - name: deny_demo_secret_open
+        hook: lsm_file_open
+        target_ref: demo_secret
+        action: deny
 YAML
 
 if ! cat "$TARGET_FILE" > "$RESULT_DIR/baseline-secret.txt" 2> "$RESULT_DIR/baseline-secret.err"; then
@@ -139,12 +150,84 @@ if ! cat "$TARGET_FILE" > "$RESULT_DIR/baseline-secret.txt" 2> "$RESULT_DIR/base
 fi
 log "PASS: target file is readable before policy attach"
 
+rm -f "$ROOT/reports/events/security_policy.jsonl"
+
+timeout 12s "$AGENT_BIN" \
+    --config "$RESULT_DIR/agent.audit.yaml" \
+    --duration-s 4 \
+    --interval-ms 1000 \
+    --jsonl \
+    > "$RESULT_DIR/agent-audit.log" 2>&1 &
+AGENT_PID="$!"
+sleep 1
+
+if ! kill -0 "$AGENT_PID" 2>/dev/null; then
+    set +e
+    wait "$AGENT_PID"
+    agent_rc="$?"
+    set -e
+    AGENT_PID=""
+    fail "audit agent exited early, rc=$agent_rc; see $RESULT_DIR/agent-audit.log"
+fi
+
+if ! cat "$TARGET_FILE" > "$RESULT_DIR/audit-secret.txt" 2> "$RESULT_DIR/audit-secret.err"; then
+    fail "audit mode blocked target file; see $RESULT_DIR/audit-secret.err"
+fi
+
+set +e
+wait "$AGENT_PID"
+agent_rc="$?"
+set -e
+AGENT_PID=""
+if [ "$agent_rc" -ne 0 ]; then
+    fail "audit agent exited non-zero, rc=$agent_rc; see $RESULT_DIR/agent-audit.log"
+fi
+if ! grep -q '"skill":"security_policy"' "$ROOT/reports/events/security_policy.jsonl" 2>/dev/null; then
+    fail "audit mode did not write security_policy audit event"
+fi
+cp "$ROOT/reports/events/security_policy.jsonl" "$RESULT_DIR/security_policy_events.audit.jsonl"
+log "PASS: security_policy audit mode does not block and writes AuditBus event"
+
+cat > "$RESULT_DIR/agent.enforce.yaml" <<'YAML'
+skills_config_path: skills.enforce.yaml
+exporter:
+  prometheus:
+    enabled: false
+YAML
+
+cat > "$RESULT_DIR/skills.enforce.yaml" <<'YAML'
+schema_version: 2
+skills:
+- name: resource_control
+  kind: runtime
+  enabled: true
+  config: {}
+- name: psi_gate
+  kind: runtime
+  enabled: true
+  config: {}
+- name: security_policy
+  kind: runtime
+  enabled: true
+  config:
+    mode: enforce
+    targets:
+      demo_secret:
+        type: path
+        path: /root/EulerPilot/demo/security_policy_demo/secret.txt
+    rules:
+      - name: deny_demo_secret_open
+        hook: lsm_file_open
+        target_ref: demo_secret
+        action: deny
+YAML
+
 timeout 20s "$AGENT_BIN" \
-    --config "$RESULT_DIR/agent.security.yaml" \
+    --config "$RESULT_DIR/agent.enforce.yaml" \
     --duration-s 8 \
     --interval-ms 1000 \
     --jsonl \
-    > "$RESULT_DIR/agent.log" 2>&1 &
+    > "$RESULT_DIR/agent-enforce.log" 2>&1 &
 AGENT_PID="$!"
 
 blocked="false"
@@ -155,7 +238,7 @@ for _ in $(seq 1 40); do
         agent_rc="$?"
         set -e
         AGENT_PID=""
-        fail "agent exited before policy denial was observed, rc=$agent_rc; see $RESULT_DIR/agent.log"
+        fail "agent exited before policy denial was observed, rc=$agent_rc; see $RESULT_DIR/agent-enforce.log"
     fi
 
     set +e
@@ -170,9 +253,9 @@ for _ in $(seq 1 40); do
 done
 
 if [ "$blocked" != "true" ]; then
-    fail "target file was not denied while agent was running; see $RESULT_DIR/agent.log"
+    fail "target file was not denied while agent was running; see $RESULT_DIR/agent-enforce.log"
 fi
-log "PASS: target file is denied while policy is active"
+log "PASS: target file is denied while security_policy enforce is active"
 
 if ! grep -Eqi "Operation not permitted|Permission denied|权限|不允许" "$RESULT_DIR/blocked-secret.err"; then
     log "WARN: denial stderr did not contain the usual permission text; see $RESULT_DIR/blocked-secret.err"
@@ -184,7 +267,7 @@ agent_rc="$?"
 set -e
 AGENT_PID=""
 if [ "$agent_rc" -ne 0 ]; then
-    fail "agent exited non-zero after policy test, rc=$agent_rc; see $RESULT_DIR/agent.log"
+    fail "agent exited non-zero after policy test, rc=$agent_rc; see $RESULT_DIR/agent-enforce.log"
 fi
 log "PASS: agent exits cleanly"
 

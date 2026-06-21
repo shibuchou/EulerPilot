@@ -17,10 +17,13 @@
 - [x] `network_qos` TC QoS 速率误差 Benchmark 双机通过
 - [x] `network_xdp` isolated-veth generic XDP ICMP + TCP 多规则闭环
 - [x] `TargetResolver` netdev + `k8s_pod` 诊断型入口自测通过
+- [x] `security_policy` 正式注册名 + YAML v2 path target
+- [x] `security_policy` audit 模式不阻断并写 AuditBus
+- [x] `security_policy` enforce 模式复用 BPF LSM file_open 完成拒绝/恢复/无残留闭环
 - [x] `security_policy_demo` BPF LSM file_open 最小闭环
 - [x] `security_policy_demo` BPF LSM attach/deny/rollback 集成测试 121/122 均通过
 - [x] Runtime 生命周期收拢与 ActionJournal/AuditBus 最小接入
-- [x] 121 SP3 编译、集成测试和 16 项质量门禁通过，最新 100 轮 smoke 与 5 轮 doctor 通过
+- [x] 121 SP3 编译、集成测试和 17 项质量门禁通过，最新 100 轮 smoke 与 5 轮 doctor 通过
 - [x] 静态 Dashboard：`reports/dashboard/index.html`
 - [x] Prometheus `/metrics` 端点：默认关闭，监听 `127.0.0.1:9108`
 - [x] 中文最终报告主稿与答辩材料
@@ -37,6 +40,7 @@
 - Network XDP 多规则 122：`results/network_policy/xdp-20260620-184212`
 - Security BPF LSM demo 121：`results/security_policy/integration-20260621-095537`
 - Security BPF LSM demo 122：`results/security_policy/integration-20260621-100937`
+- Security 正式 audit/enforce 121：`results/security_policy/integration-20260621-101929`
 
 ## 当前核心文档
 
@@ -52,8 +56,8 @@
 
 ## 质量与安全审计
 
-- `scripts/final_quality_gate.sh`：TAP 风格 16 项 P0 质量门禁脚本
-- `reports/final_quality_gate_20260621_security_target.log`：121 最新门禁通过记录
+- `scripts/final_quality_gate.sh`：TAP 风格 17 项 P0 质量门禁脚本
+- `reports/final_quality_gate_20260621_security_policy.log`：121 最新门禁通过记录
 - `docs/final_security_audit.md`：最终安全与质量审计报告
 
 ## 当前结论

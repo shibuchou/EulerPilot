@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 # EulerPilot Final Quality Gate — TAP-style
-# P0: 16 blocking checks. P1: optional checks (not in TAP count).
+# P0: 17 blocking checks. P1: optional checks (not in TAP count).
 # Run on 121. For 122: minimal regression only.
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -12,7 +12,7 @@ AGENT_YAML="configs/agent.yaml"
 AGENT_BIN="build/eulerpilot-agent"
 TMPLOG="/tmp/eulerpilot-quality-gate.tmp"
 
-TOTAL=16
+TOTAL=17
 N=1
 
 echo "1..$TOTAL"
@@ -101,13 +101,14 @@ fi
 # 6. list skills
 SKILLS_OUT=$("$AGENT_BIN" --list-skills 2>/dev/null)
 SKILL_COUNT=$(echo "$SKILLS_OUT" | wc -l)
-if [ "$SKILL_COUNT" -ge 7 ] &&
+if [ "$SKILL_COUNT" -ge 8 ] &&
    echo "$SKILLS_OUT" | grep -q '^network_policy$' &&
    echo "$SKILLS_OUT" | grep -q '^network_qos$' &&
-   echo "$SKILLS_OUT" | grep -q '^network_xdp$'; then
-    ok "--list-skills outputs formal network policy sub-skills"
+   echo "$SKILLS_OUT" | grep -q '^network_xdp$' &&
+   echo "$SKILLS_OUT" | grep -q '^security_policy$'; then
+    ok "--list-skills outputs formal network and security policy skills"
 else
-    not_ok "--list-skills missing formal network policy sub-skill (count=$SKILL_COUNT)"
+    not_ok "--list-skills missing formal network/security policy skill (count=$SKILL_COUNT)"
 fi
 
 # 7. doctor skills
@@ -148,14 +149,21 @@ else
     not_ok "network_xdp not disabled"
 fi
 
-# 12. security_policy_demo disabled
+# 12. security_policy disabled
+if ensure_skill_disabled "security_policy"; then
+    ok "security_policy default disabled"
+else
+    not_ok "security_policy not disabled"
+fi
+
+# 13. security_policy_demo disabled
 if ensure_skill_disabled "security_policy_demo"; then
     ok "security_policy_demo default disabled"
 else
     not_ok "security_policy_demo not disabled"
 fi
 
-# 13. metrics default off + 127.0.0.1
+# 14. metrics default off + 127.0.0.1
 if grep -A4 'prometheus:' "$AGENT_YAML" | grep -q 'enabled: false'; then
     if grep -A4 'prometheus:' "$AGENT_YAML" | grep -q '127.0.0.1'; then
         ok "metrics default disabled on 127.0.0.1"
@@ -166,14 +174,14 @@ else
     not_ok "metrics not default disabled"
 fi
 
-# 14. dashboard exists
+# 15. dashboard exists
 if [ -s "reports/dashboard/index.html" ]; then
     ok "dashboard index.html exists and non-empty"
 else
     not_ok "dashboard index.html missing or empty"
 fi
 
-# 15. frozen result dirs
+# 16. frozen result dirs
 REDIS_DIRS=$(find results/final/ -maxdepth 1 -type d -name 'redis-*' 2>/dev/null | wc -l)
 NGINX_DIRS=$(find results/final/ -maxdepth 1 -type d -name 'nginx-*' 2>/dev/null | wc -l)
 if [ "$REDIS_DIRS" -ge 1 ] && [ "$NGINX_DIRS" -ge 1 ]; then
@@ -182,7 +190,7 @@ else
     not_ok "frozen result dirs missing (Redis=$REDIS_DIRS, Nginx=$NGINX_DIRS)"
 fi
 
-# 16. no BPF/LSM/TC/XDP residue
+# 17. no BPF/LSM/TC/XDP residue
 RESIDUE_OK=true
 if [ -e /sys/fs/bpf/security_policy_demo_link ]; then
     echo "  ERROR: /sys/fs/bpf/security_policy_demo_link still pinned"

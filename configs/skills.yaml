@@ -73,6 +73,20 @@ skills:
         protocol: tcp
         dst_port: '19092'
         action: drop
+- name: security_policy
+  kind: runtime
+  enabled: false
+  config:
+    mode: audit
+    targets:
+      demo_secret:
+        type: path
+        path: /root/EulerPilot/demo/security_policy_demo/secret.txt
+    rules:
+      - name: deny_demo_secret_open
+        hook: lsm_file_open
+        target_ref: demo_secret
+        action: deny
 - name: security_policy_demo
   kind: runtime
   enabled: false

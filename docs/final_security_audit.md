@@ -11,6 +11,7 @@
 | 检查项 | 期望值 | 实际值 | 结果 |
 |--------|--------|--------|------|
 | `network_policy_demo` 默认状态 | `enabled: false` | `enabled: false` | PASS |
+| `security_policy` 默认状态 | `enabled: false` | `enabled: false` | PASS |
 | `security_policy_demo` 默认状态 | `enabled: false` | `enabled: false` | PASS |
 | metrics exporter 默认状态 | `enabled: false` | `enabled: false` | PASS |
 | metrics exporter 监听地址 | `127.0.0.1:9108` | `127.0.0.1:9108` | PASS |
@@ -27,7 +28,7 @@
 | sched_ext state | `disabled` | `disabled` | PASS |
 | sched_ext nr_rejected | `0` | `0` | PASS |
 
-security_policy_demo 默认不 pin link，LSM 程序随 Agent 进程退出自动消亡。`tests/integration/test_security_policy.sh` 已在 121/122 验证 attach、deny、Agent 退出恢复和 cleanup 无残留，结果目录分别为 `results/security_policy/integration-20260621-095537` 和 `results/security_policy/integration-20260621-100937`。network_policy_demo 在 rollback 时 unpin + destroy，退出后无残留。
+正式 `security_policy` 默认 disabled，audit 模式不 attach BPF、不阻断目标文件，只写 `AuditBus` 和 `ActionJournal` 生命周期事件。enforce 模式当前复用 `security_policy_demo` 的固定路径 BPF LSM，默认不 pin link，LSM 程序随 Agent 进程退出自动消亡。`tests/integration/test_security_policy.sh` 已在 121 验证正式 `security_policy` audit/enforce，结果目录为 `results/security_policy/integration-20260621-101929`；兼容 demo 路径已在 121/122 验证 attach、deny、Agent 退出恢复和 cleanup 无残留，结果目录分别为 `results/security_policy/integration-20260621-095537` 和 `results/security_policy/integration-20260621-100937`。network_policy_demo 在 rollback 时 unpin + destroy，退出后无残留。
 
 ## 3. 内存泄漏审计
 
@@ -58,19 +59,19 @@ security_policy_demo 默认不 pin link，LSM 程序随 Agent 进程退出自动
 | 121 | make network-xdp-demo | PASS |
 | 121 | make security-policy-demo | PASS |
 | 121 | tests/integration/test_target_resolver.sh | PASS |
-| 121 | tests/integration/test_security_policy.sh | PASS |
+| 121 | tests/integration/test_security_policy.sh（正式 `security_policy` audit/enforce） | PASS |
 | 122 | make agent + make security-policy-demo | PASS |
 | 122 | tests/integration/test_target_resolver.sh | PASS |
 | 122 | tests/integration/test_security_policy.sh | PASS |
-| 121 | --list-skills 输出正式 network_policy/network_qos/network_xdp | PASS |
+| 121 | --list-skills 输出正式 network_policy/network_qos/network_xdp/security_policy | PASS |
 | 121 | --doctor-skills 返回 0 | PASS |
 | 122 | make agent | PASS |
 | 122 | --list-skills 输出正式 Network 子能力 | PASS |
 | 122 | --doctor-skills 返回 0 | PASS |
 
-## 6. TAP 质量门禁结果（16/16）
+## 6. TAP 质量门禁结果（17/17）
 
-最新日志：`reports/final_quality_gate_20260621_security_target.log`
+最新日志：`reports/final_quality_gate_20260621_security_policy.log`
 
 ```
 ok 1 - make agent
@@ -84,11 +85,12 @@ ok 8 - agent 15s smoke
 ok 9 - network_policy default disabled
 ok 10 - network_qos default disabled
 ok 11 - network_xdp default disabled
-ok 12 - security_policy_demo default disabled
-ok 13 - metrics default disabled on 127.0.0.1
-ok 14 - dashboard index.html exists and non-empty
-ok 15 - frozen result dirs exist
-ok 16 - no BPF/LSM/TC/XDP residue
+ok 12 - security_policy default disabled
+ok 13 - security_policy_demo default disabled
+ok 14 - metrics default disabled on 127.0.0.1
+ok 15 - dashboard index.html exists and non-empty
+ok 16 - frozen result dirs exist
+ok 17 - no BPF/LSM/TC/XDP residue
 ```
 
 ## 7. 最终判定
@@ -100,6 +102,6 @@ ok 16 - no BPF/LSM/TC/XDP residue
 | 内存泄漏 | WARN (Valgrind 工具限制，100 轮 smoke 替代) |
 | 死锁/卡死 | PASS |
 | 构建/回归 | PASS |
-| 质量门禁 | PASS (16/16) |
+| 质量门禁 | PASS (17/17) |
 
 **当前结论：EulerPilot 通过最新安全与质量审计，可作为当前争奖增强阶段的稳定基线。Security 仍需继续从 `security_policy_demo` 升级为正式 `security_policy`，补齐 audit 事件、动态 target map 和 syscall tracing。**
