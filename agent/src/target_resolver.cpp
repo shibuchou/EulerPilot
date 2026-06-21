@@ -2,10 +2,12 @@
 
 #include <cctype>
 #include <cstdlib>
+#include <filesystem>
 #include <fstream>
 #include <net/if.h>
 #include <sstream>
 #include <string>
+#include <system_error>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <vector>
@@ -13,6 +15,8 @@
 namespace eulerpilot {
 
 namespace {
+
+namespace fs = std::filesystem;
 
 bool path_exists(const std::string &path) {
     return access(path.c_str(), F_OK) == 0;
@@ -73,6 +77,19 @@ bool valid_ifname(const std::string &ifname) {
         const auto uch = static_cast<unsigned char>(ch);
         if (!(std::isalnum(uch) || ch == '_' || ch == '-' ||
               ch == '.' || ch == ':')) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool valid_container_id(const std::string &container_id) {
+    if (container_id.size() < 8 || container_id.size() > 128) {
+        return false;
+    }
+    for (const char ch : container_id) {
+        const auto uch = static_cast<unsigned char>(ch);
+        if (!(std::isalnum(uch) || ch == '_' || ch == '-' || ch == '.')) {
             return false;
         }
     }
@@ -153,6 +170,70 @@ TargetIdentity resolve_cgroup_target(const std::string &name, const std::string 
     target.type = "cgroup";
     target.cgroup_path = path;
     target.cgroup_id = inode_as_stable_id(path);
+    target.resolved = target.cgroup_id != 0;
+    target.reason = target.resolved ? "ok" : "cgroup-path-not-found";
+    return target;
+}
+
+TargetIdentity resolve_container_target(const std::string &name,
+                                        const std::string &container_id,
+                                        const std::string &cgroup_root) {
+    TargetIdentity target;
+    target.name = name;
+    target.type = "container_id";
+    target.container_id = container_id;
+
+    if (!valid_container_id(container_id)) {
+        target.reason = "invalid-container-id";
+        return target;
+    }
+    if (!path_exists(cgroup_root)) {
+        target.reason = "cgroup-root-not-found";
+        return target;
+    }
+
+    std::error_code ec;
+    fs::recursive_directory_iterator it(
+        cgroup_root,
+        fs::directory_options::skip_permission_denied,
+        ec);
+    fs::recursive_directory_iterator end;
+    if (ec) {
+        target.reason = "cgroup-scan-failed";
+        return target;
+    }
+
+    std::string best_path;
+    int visited = 0;
+    constexpr int kMaxCgroupScanEntries = 4096;
+    for (; it != end && visited < kMaxCgroupScanEntries; it.increment(ec)) {
+        if (ec) {
+            ec.clear();
+            continue;
+        }
+        ++visited;
+        if (!it->is_directory(ec)) {
+            ec.clear();
+            continue;
+        }
+        const std::string path = it->path().string();
+        if (path.find(container_id) == std::string::npos) {
+            continue;
+        }
+        if (best_path.empty() || path.size() < best_path.size()) {
+            best_path = path;
+        }
+    }
+
+    if (best_path.empty()) {
+        target.reason = visited >= kMaxCgroupScanEntries
+                            ? "container-cgroup-scan-limit"
+                            : "container-cgroup-not-found";
+        return target;
+    }
+
+    target.cgroup_path = best_path;
+    target.cgroup_id = inode_as_stable_id(best_path);
     target.resolved = target.cgroup_id != 0;
     target.reason = target.resolved ? "ok" : "cgroup-path-not-found";
     return target;

@@ -19,7 +19,7 @@ eBPF Observer
 
 ## 当前状态
 
-截至 `2026-06-19`，项目已经完成：
+截至 `2026-06-21`，项目已经完成：
 
 - `SP3 + cgroup v2` 主闭环
 - `OLK-6.6 + sched_ext` 正式对照线
@@ -32,11 +32,19 @@ eBPF Observer
   - `network_qos`：TC egress classifier + TBF 限速闭环
   - `network_qos` Benchmark：2 Mbit/s 目标下 121/122 实测误差约 -1.22% / -1.45%
   - `network_xdp`：isolated-veth generic XDP ICMP + TCP 多规则闭环
+- Security Policy 阶段 C 最小闭环：
+  - `security_policy`：YAML v2 `targets + rules + target_ref`
+  - BPF LSM：`file_open` 与 `bprm_check_security` enforce
+  - syscall tracing：`execve/openat/connect/ptrace` audit 观测
+  - target scope：path、显式 cgroup、PID 自动解析、container_id cgroup tree 解析
+  - 121/122 集成测试和 121 质量门禁通过
 
 当前最重要的候选结果目录为：
 
 - Redis：`/root/EulerPilot/results/final/redis-scx-compare-20260612-191543`
 - Nginx：`/root/EulerPilot/results/final/nginx-scx-compare-20260612-194018`
+- Security container_id target 121：`/root/EulerPilot/results/security_policy/integration-20260621-211502`
+- Security container_id target 122：`/root/EulerPilot/results/security_policy/integration-20260621-211701`
 
 当前图表目录为：
 
@@ -45,7 +53,7 @@ eBPF Observer
 说明：
 
 - 上述最终结果目录与图表目录已经回收到主交付仓库 `192.168.1.121:/root/EulerPilot`。
-- `192.168.1.122` 当前保留为 `OLK-6.6 / sched_ext` 验证环境。
+- `192.168.1.122` 当前作为第二台 openEuler 24.03 LTS SP3 验证环境，保留 `OLK-6.6 / sched_ext` 验证能力，并同步 Network/Security 关键结果。
 - 本地当前主要保存代码镜像、脚本与中文文档入口。
 
 ---
@@ -62,6 +70,8 @@ eBPF Observer
 - Network TC QoS 集成测试：`/root/EulerPilot/tests/integration/test_network_qos_tc.sh`
 - Network TC QoS 速率 Benchmark：`/root/EulerPilot/tests/benchmark/test_network_qos_rate.sh`
 - Network XDP 集成测试：`/root/EulerPilot/tests/integration/test_network_xdp.sh`
+- Security Policy 集成测试：`/root/EulerPilot/tests/integration/test_security_policy.sh`
+- 质量门禁：`/root/EulerPilot/scripts/final_quality_gate.sh`
 
 ### 最终候选结果
 
@@ -88,9 +98,10 @@ eBPF Observer
 2. `/root/EulerPilot/docs/next_phase_plan_v2_1.md`
 3. `/root/EulerPilot/docs/progress_status.md`
 4. `/root/EulerPilot/docs/network_policy_skill.md`
-5. `/root/EulerPilot/docs/skills_yaml_plan.md`
-6. `/root/EulerPilot/docs/final_report_submission.md`
-7. `/root/EulerPilot/docs/design_proposal.md`
+5. `/root/EulerPilot/docs/security_policy_skill.md`
+6. `/root/EulerPilot/docs/skills_yaml_plan.md`
+7. `/root/EulerPilot/docs/final_report_submission.md`
+8. `/root/EulerPilot/docs/design_proposal.md`
 
 如果要继续实现下一阶段功能，以 `docs/next_phase_plan_v2_1.md` 为当前执行口径；`docs/next_phase_plan_v2.md` 仅作为历史版本保留。
 
@@ -115,4 +126,4 @@ eBPF Observer
 
 也就是说，当前项目已经进入：
 
-> 最终报告、图表与答辩材料整理阶段。
+> 正式能力增强、最终报告与答辩材料并行收口阶段。

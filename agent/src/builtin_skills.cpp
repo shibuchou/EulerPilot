@@ -1836,8 +1836,9 @@ public:
                 }
                 const std::string target_prefix = "targets." + rule.target_ref + ".";
                 const std::string target_type = config_value_or(spec, target_prefix + "type", "");
-                if (target_type != "path" && target_type != "pid") {
-                    last_error_ = "security-policy-v2-target-not-path-or-pid";
+                if (target_type != "path" && target_type != "pid" &&
+                    target_type != "container_id" && target_type != "container") {
+                    last_error_ = "security-policy-v2-target-not-path-pid-or-container";
                     return false;
                 }
                 rule.file_path = config_value_or(spec, target_prefix + "path", "");
@@ -1859,6 +1860,20 @@ public:
                     const auto target = resolve_pid_target(target_pid);
                     if (!target.resolved) {
                         last_error_ = "security-policy-target-pid-resolve-failed:" + target.reason;
+                        return false;
+                    }
+                    rule.cgroup_path = target.cgroup_path;
+                    rule.cgroup_id = target.cgroup_id;
+                } else if (target_type == "container_id" || target_type == "container") {
+                    const std::string container_id =
+                        config_value_or(spec, target_prefix + "container_id", "");
+                    const std::string cgroup_root =
+                        config_value_or(spec, target_prefix + "cgroup_root", "/sys/fs/cgroup");
+                    const auto target = resolve_container_target(rule.target_ref,
+                                                                 container_id,
+                                                                 cgroup_root);
+                    if (!target.resolved) {
+                        last_error_ = "security-policy-target-container-resolve-failed:" + target.reason;
                         return false;
                     }
                     rule.cgroup_path = target.cgroup_path;

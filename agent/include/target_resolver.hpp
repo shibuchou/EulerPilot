@@ -42,6 +42,9 @@ struct TargetResolverOptions {
 
 TargetIdentity resolve_pid_target(int pid);
 TargetIdentity resolve_cgroup_target(const std::string &name, const std::string &path);
+TargetIdentity resolve_container_target(const std::string &name,
+                                        const std::string &container_id,
+                                        const std::string &cgroup_root = "/sys/fs/cgroup");
 TargetIdentity resolve_netdev_target(const std::string &name, const std::string &ifname);
 TargetIdentity resolve_k8s_pod_target(
     const K8sPodTargetSpec &spec,
