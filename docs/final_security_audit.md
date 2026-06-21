@@ -27,7 +27,7 @@
 | sched_ext state | `disabled` | `disabled` | PASS |
 | sched_ext nr_rejected | `0` | `0` | PASS |
 
-security_policy_demo 默认不 pin link，LSM 程序随 Agent 进程退出自动消亡。`tests/integration/test_security_policy.sh` 已在 121 验证 attach、deny、Agent 退出恢复和 cleanup 无残留，结果目录为 `results/security_policy/integration-20260621-095537`。network_policy_demo 在 rollback 时 unpin + destroy，退出后无残留。
+security_policy_demo 默认不 pin link，LSM 程序随 Agent 进程退出自动消亡。`tests/integration/test_security_policy.sh` 已在 121/122 验证 attach、deny、Agent 退出恢复和 cleanup 无残留，结果目录分别为 `results/security_policy/integration-20260621-095537` 和 `results/security_policy/integration-20260621-100937`。network_policy_demo 在 rollback 时 unpin + destroy，退出后无残留。
 
 ## 3. 内存泄漏审计
 
@@ -59,6 +59,9 @@ security_policy_demo 默认不 pin link，LSM 程序随 Agent 进程退出自动
 | 121 | make security-policy-demo | PASS |
 | 121 | tests/integration/test_target_resolver.sh | PASS |
 | 121 | tests/integration/test_security_policy.sh | PASS |
+| 122 | make agent + make security-policy-demo | PASS |
+| 122 | tests/integration/test_target_resolver.sh | PASS |
+| 122 | tests/integration/test_security_policy.sh | PASS |
 | 121 | --list-skills 输出正式 network_policy/network_qos/network_xdp | PASS |
 | 121 | --doctor-skills 返回 0 | PASS |
 | 122 | make agent | PASS |

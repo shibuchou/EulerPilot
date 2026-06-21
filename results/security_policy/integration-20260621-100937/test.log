@@ -1,0 +1,10 @@
+INFO: result dir: /root/EulerPilot/results/security_policy/integration-20260621-100937
+INFO: building agent and security-policy-demo BPF object
+PASS: build succeeds
+PASS: security_policy_demo skill is registered
+PASS: target file is readable before policy attach
+PASS: target file is denied while policy is active
+PASS: agent exits cleanly
+PASS: target file is readable after agent rollback
+PASS: cleanup leaves no known security_policy_demo BPF residue
+=== SecurityPolicyDemoSkill integration test complete ===

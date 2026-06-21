@@ -173,8 +173,9 @@
 - `docs/security_policy_skill.md` 已补 SecurityPolicySkill 正式化说明，明确 audit/enforce、BPF LSM 安全边界、target 过滤、事件输出、回滚清理和参考代码复用边界。
 - `agent/skills/security_policy/README.md` 已说明当前仍是 `security_policy_demo`，正式 `security_policy` 注册名、动态 target map、ringbuf 事件和 syscall tracing 尚未完成。
 - `demo/security_policy_demo/README.md` 已补最小 BPF LSM demo 的运行手册和风险边界。
-- `tests/integration/test_security_policy.sh` 已在 121 真实验证 `make agent security-policy-demo`、BPF LSM attach、目标文件拒绝、Agent 退出恢复和 cleanup 无残留。
+- `tests/integration/test_security_policy.sh` 已在 121/122 真实验证 `make agent security-policy-demo`、BPF LSM attach、目标文件拒绝、Agent 退出恢复和 cleanup 无残留。
 - 121 最新 Security demo 集成测试证据目录：`results/security_policy/integration-20260621-095537/`。
+- 122 最新 Security demo 集成测试证据目录：`results/security_policy/integration-20260621-100937/`。
 - `scripts/cleanup_security_policy_demo.sh` 已修复无残留时因 `grep`/`pipefail` 返回非零的问题，cleanup 空跑现在正常返回 0。
 
 ## 阶段 A 后续随阶段接入项
