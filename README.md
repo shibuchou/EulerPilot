@@ -36,15 +36,15 @@ eBPF Observer
   - `security_policy`：YAML v2 `targets + rules + target_ref`
   - BPF LSM：`file_open` 与 `bprm_check_security` enforce
   - syscall tracing：`execve/openat/connect/ptrace` audit 观测
-  - target scope：path、显式 cgroup、PID 自动解析、container_id cgroup tree 解析
+  - target scope：path、显式 cgroup、PID 自动解析、container_id cgroup tree 解析、container runtime name 解析、Kubernetes Pod 名称解析
   - 121/122 集成测试和 121 质量门禁通过
 
 当前最重要的候选结果目录为：
 
 - Redis：`/root/EulerPilot/results/final/redis-scx-compare-20260612-191543`
 - Nginx：`/root/EulerPilot/results/final/nginx-scx-compare-20260612-194018`
-- Security container_id target 121：`/root/EulerPilot/results/security_policy/integration-20260621-211502`
-- Security container_id target 122：`/root/EulerPilot/results/security_policy/integration-20260621-211701`
+- Security runtime/Pod target 121：`/root/EulerPilot/results/security_policy/integration-20260621-214903`
+- Security runtime/Pod target 122：`/root/EulerPilot/results/security_policy/integration-20260621-215158`
 
 当前图表目录为：
 

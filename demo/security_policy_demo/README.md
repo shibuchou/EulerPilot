@@ -1,6 +1,6 @@
 # security_policy_demo
 
-本目录是 SecurityPolicySkill 的最小 BPF 演示场景，不依赖 Kubernetes。当前 demo 验证六件事：Agent attach `bpf/security_policy_demo.bpf.c` 后，用户态从 YAML target path、exec path、可选 cgroup_path、`type: pid` 和 `type: container_id` 解析结果填充最多 8 项 BPF `target_map`，`lsm/file_open` 可以在 enforce 模式拒绝读取目标文件；`lsm/bprm_check_security` 可以在 enforce 模式拒绝执行 demo 脚本；带 cgroup_path 的 target 只在目标 cgroup 内阻断；PID target 可自动解析到 cgroup scope；container_id target 可在限定 cgroup tree 下解析到 cgroup scope；audit 模式同时通过 ringbuf 输出 `lsm_file_open`、`lsm_bprm_check_security`、`sys_enter_execve`、`sys_enter_openat`、`sys_enter_connect`、`sys_enter_ptrace` 命中事件。
+本目录是 SecurityPolicySkill 的最小 BPF 演示场景。当前 demo 验证七件事：Agent attach `bpf/security_policy_demo.bpf.c` 后，用户态从 YAML target path、exec path、可选 cgroup_path、`type: pid`、`type: container_id`、`type: container` 和 `type: k8s_pod` 解析结果填充最多 8 项 BPF `target_map`，`lsm/file_open` 可以在 enforce 模式拒绝读取目标文件；`lsm/bprm_check_security` 可以在 enforce 模式拒绝执行 demo 脚本；带 cgroup_path 的 target 只在目标 cgroup 内阻断；PID target 可自动解析到 cgroup scope；container_id target 可在限定 cgroup tree 下解析到 cgroup scope；container runtime name 与 Kubernetes Pod 名称可解析到 cgroup scope；audit 模式同时通过 ringbuf 输出 `lsm_file_open`、`lsm_bprm_check_security`、`sys_enter_execve`、`sys_enter_openat`、`sys_enter_connect`、`sys_enter_ptrace` 命中事件。
 
 ```text
 /root/EulerPilot/demo/security_policy_demo/secret.txt
@@ -11,9 +11,9 @@
 
 - BPF LSM hook：`lsm/file_open`、`lsm/bprm_check_security`
 - BPF tracepoint hook：`tracepoint/syscalls/sys_enter_execve`、`tracepoint/syscalls/sys_enter_openat`、`tracepoint/syscalls/sys_enter_connect`、`tracepoint/syscalls/sys_enter_ptrace`
-- 当前行为：`lsm/file_open` 命中 `target_map` 中任一文件路径后按 mode 决定 allow 或返回 `-EPERM`；`lsm/bprm_check_security` 命中 `target_map` 中任一执行路径后按 mode 决定 allow 或返回 `-EPERM`；如果 target 带 `cgroup_id`，BPF 会同时要求当前进程 cgroup id 命中；`type: pid` 和 `type: container_id` 由用户态解析为 cgroup id 后复用同一 BPF 路径；四类 syscall 只观测不阻断
+- 当前行为：`lsm/file_open` 命中 `target_map` 中任一文件路径后按 mode 决定 allow 或返回 `-EPERM`；`lsm/bprm_check_security` 命中 `target_map` 中任一执行路径后按 mode 决定 allow 或返回 `-EPERM`；如果 target 带 `cgroup_id`，BPF 会同时要求当前进程 cgroup id 命中；`type: pid`、`type: container_id`、`type: container` 和 `type: k8s_pod` 由用户态解析为 cgroup id 后复用同一 BPF 路径；四类 syscall 只观测不阻断
 - 当前模式：`audit` 通过 `policy_map.enforce=0` 允许访问并记录 observed hit；`enforce` 通过 `policy_map.enforce=1` 阻断 demo secret 文件和 demo 执行脚本并记录 blocked hit
-- 当前输出：写入 `reports/events/security_policy.jsonl`，测试会归档为 `security_policy_events.audit.jsonl`、`security_policy_events.enforce.jsonl`、`security_policy_events.dynamic.jsonl`、`security_policy_events.scoped.jsonl`、`security_policy_events.pid.jsonl` 和 `security_policy_events.container.jsonl`
+- 当前输出：写入 `reports/events/security_policy.jsonl`，测试会归档为 `security_policy_events.audit.jsonl`、`security_policy_events.enforce.jsonl`、`security_policy_events.dynamic.jsonl`、`security_policy_events.scoped.jsonl`、`security_policy_events.pid.jsonl`、`security_policy_events.container.jsonl`、`security_policy_events.runtime-container.jsonl` 和 `security_policy_events.pod.jsonl`
 - 当前回滚：Agent `stop/rollback` 销毁所有 BPF link 和 object；正常退出不应留下 pin
 
 ## 快速验证
@@ -42,4 +42,4 @@ sudo scripts/cleanup_security_policy_demo.sh
 
 ## 风险边界
 
-这是正式 `security_policy` 的最小兼容 demo，不是完整 SecurityPolicySkill。当前 `target_map` 已能由 YAML 填充最多 8 组文件/执行路径和可选 cgroup 作用域，并在集成测试中验证两组 `/tmp/eulerpilot-security-policy.*` 动态目标、一组显式 cgroup scoped target、一组 PID 自动解析 target，以及一组 container_id cgroup tree 解析 target；但它仍不是生产级路径/进程/Pod/container 过滤矩阵，也不能扩大成全局文件拒绝策略。下一步需要补真实 container runtime / Pod 名称解析、更多 LSM hook 和更完整的 ActionJournal 回滚证据。121 最新通过结果为 `results/security_policy/integration-20260621-211502`，122 最新通过结果为 `results/security_policy/integration-20260621-211701`。
+这是正式 `security_policy` 的最小兼容 demo，不是完整 SecurityPolicySkill。当前 `target_map` 已能由 YAML 填充最多 8 组文件/执行路径和可选 cgroup 作用域，并在集成测试中验证两组 `/tmp/eulerpilot-security-policy.*` 动态目标、一组显式 cgroup scoped target、一组 PID 自动解析 target、一组 container_id cgroup tree 解析 target、一组 runtime container name 解析 target，以及一组 k8s pod name 解析 target；但它仍不是生产级路径/进程/Pod/container 过滤矩阵，也不能扩大成全局文件拒绝策略。下一步需要补更多 LSM hook、异常规则和更完整的 ActionJournal 回滚证据。121 最新通过结果为 `results/security_policy/integration-20260621-214903`，122 最新通过结果为 `results/security_policy/integration-20260621-215158`。

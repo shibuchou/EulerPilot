@@ -13,8 +13,10 @@ struct TargetIdentity {
     std::uint64_t cgroup_id = 0;
     std::string cgroup_path;
     std::string container_id;
+    std::string container_name;
     std::string pod_namespace;
     std::string pod_name;
+    std::string pod_uid;
     std::string netns_path;
     std::string ifname;
     int ifindex = 0;
@@ -26,6 +28,21 @@ struct K8sPodTargetSpec {
     std::string name;
     std::string pod_namespace;
     std::string pod_name;
+    std::string pod_uid;
+    std::string container_id;
+    std::string container_name;
+    std::string cgroup_root = "/sys/fs/cgroup";
+};
+
+struct ContainerTargetSpec {
+    std::string name;
+    std::string container_id;
+    std::string container_name;
+    std::string runtime = "auto";
+    std::string cgroup_root = "/sys/fs/cgroup";
+    std::string crictl_path = "crictl";
+    std::string docker_path = "docker";
+    std::string podman_path = "podman";
 };
 
 struct TargetResolverOptions {
@@ -45,7 +62,11 @@ TargetIdentity resolve_cgroup_target(const std::string &name, const std::string 
 TargetIdentity resolve_container_target(const std::string &name,
                                         const std::string &container_id,
                                         const std::string &cgroup_root = "/sys/fs/cgroup");
+TargetIdentity resolve_container_target(const ContainerTargetSpec &spec);
 TargetIdentity resolve_netdev_target(const std::string &name, const std::string &ifname);
+TargetIdentity resolve_k8s_pod_cgroup_target(
+    const K8sPodTargetSpec &spec,
+    const TargetResolverOptions &options = TargetResolverOptions{});
 TargetIdentity resolve_k8s_pod_target(
     const K8sPodTargetSpec &spec,
     const TargetResolverOptions &options = TargetResolverOptions{});

@@ -1045,6 +1045,306 @@ if ! run_in_scoped_cgroup "$RESULT_DIR/container-post-cleanup-exec.txt" \
 fi
 cleanup_scoped_cgroup
 
+RUNTIME_CONTAINER_ID="epruntime$$abcdef"
+RUNTIME_CONTAINER_NAME="eulerpilot-runtime-$$"
+SCOPED_CGROUP_PATH="/sys/fs/cgroup/eulerpilot/cri-containerd-${RUNTIME_CONTAINER_ID}.scope"
+FAKE_CRICTL="$DYNAMIC_DIR/fake-crictl"
+mkdir -p /sys/fs/cgroup/eulerpilot
+mkdir "$SCOPED_CGROUP_PATH"
+cat > "$FAKE_CRICTL" <<SH
+#!/usr/bin/env bash
+if [ "\$1" = "ps" ] && [ "\$2" = "-a" ] && [ "\$3" = "--name" ] && \
+   [ "\$4" = "$RUNTIME_CONTAINER_NAME" ]; then
+    echo "$RUNTIME_CONTAINER_ID"
+    exit 0
+fi
+exit 1
+SH
+chmod +x "$FAKE_CRICTL"
+
+cat > "$RESULT_DIR/agent.runtime-container.yaml" <<'YAML'
+skills_config_path: skills.runtime-container.yaml
+exporter:
+  prometheus:
+    enabled: false
+YAML
+
+cat > "$RESULT_DIR/skills.runtime-container.yaml" <<YAML
+schema_version: 2
+skills:
+- name: resource_control
+  kind: runtime
+  enabled: true
+  config: {}
+- name: psi_gate
+  kind: runtime
+  enabled: true
+  config: {}
+- name: security_policy
+  kind: runtime
+  enabled: true
+  config:
+    mode: enforce
+    targets:
+      runtime_secret:
+        type: container
+        container_name: $RUNTIME_CONTAINER_NAME
+        runtime: crictl
+        crictl_path: $FAKE_CRICTL
+        cgroup_root: /sys/fs/cgroup/eulerpilot
+        path: $DYNAMIC_SCOPED_TARGET_FILE
+        exec_path: $DYNAMIC_SCOPED_EXEC_TARGET_FILE
+    rules:
+      - name: deny_runtime_secret_open
+        hook: lsm_file_open
+        target_ref: runtime_secret
+        action: deny
+YAML
+
+rm -f "$ROOT/reports/events/security_policy.jsonl"
+
+timeout 20s "$AGENT_BIN" \
+    --config "$RESULT_DIR/agent.runtime-container.yaml" \
+    --duration-s 15 \
+    --interval-ms 1000 \
+    --jsonl \
+    > "$RESULT_DIR/agent-runtime-container.log" 2>&1 &
+AGENT_PID="$!"
+
+runtime_blocked="false"
+for _ in $(seq 1 40); do
+    if ! kill -0 "$AGENT_PID" 2>/dev/null; then
+        set +e
+        wait "$AGENT_PID"
+        agent_rc="$?"
+        set -e
+        AGENT_PID=""
+        fail "runtime container target agent exited before cgroup denial was observed, rc=$agent_rc; see $RESULT_DIR/agent-runtime-container.log"
+    fi
+
+    if ! cat "$DYNAMIC_SCOPED_TARGET_FILE" > "$RESULT_DIR/runtime-container-outside-secret.txt" 2> "$RESULT_DIR/runtime-container-outside-secret.err"; then
+        fail "runtime container target file was denied outside resolved cgroup; see $RESULT_DIR/runtime-container-outside-secret.err"
+    fi
+
+    set +e
+    run_in_scoped_cgroup "$RESULT_DIR/runtime-container-blocked-secret.txt" \
+        "$RESULT_DIR/runtime-container-blocked-secret.err" \
+        cat "$DYNAMIC_SCOPED_TARGET_FILE"
+    runtime_cat_rc="$?"
+    set -e
+    if [ "$runtime_cat_rc" -ne 0 ]; then
+        runtime_blocked="true"
+        break
+    fi
+    sleep 0.2
+done
+
+if [ "$runtime_blocked" != "true" ]; then
+    fail "runtime container target file was not denied inside resolved cgroup; see $RESULT_DIR/agent-runtime-container.log"
+fi
+
+if ! kill -0 "$AGENT_PID" 2>/dev/null; then
+    set +e
+    wait "$AGENT_PID"
+    agent_rc="$?"
+    set -e
+    AGENT_PID=""
+    fail "runtime container target agent exited before exec denial was checked, rc=$agent_rc; see $RESULT_DIR/agent-runtime-container.log"
+fi
+
+set +e
+run_in_scoped_cgroup "$RESULT_DIR/runtime-container-blocked-exec.txt" \
+    "$RESULT_DIR/runtime-container-blocked-exec.err" \
+    "$DYNAMIC_SCOPED_EXEC_TARGET_FILE"
+runtime_exec_rc="$?"
+set -e
+if [ "$runtime_exec_rc" -eq 0 ]; then
+    fail "runtime container exec target was not denied inside resolved cgroup; see $RESULT_DIR/runtime-container-blocked-exec.txt"
+fi
+
+set +e
+wait "$AGENT_PID"
+agent_rc="$?"
+set -e
+AGENT_PID=""
+if [ "$agent_rc" -ne 0 ]; then
+    fail "runtime container target agent exited non-zero, rc=$agent_rc; see $RESULT_DIR/agent-runtime-container.log"
+fi
+
+assert_blocked_rule_event "$DYNAMIC_SCOPED_TARGET_FILE" "lsm_file_open" \
+    "deny_runtime_secret_open" "runtime_secret"
+assert_blocked_rule_event "$DYNAMIC_SCOPED_EXEC_TARGET_FILE" "lsm_bprm_check_security" \
+    "deny_runtime_secret_open" "runtime_secret"
+assert_blocked_rule_event_has_cgroup "$DYNAMIC_SCOPED_TARGET_FILE" "lsm_file_open" \
+    "deny_runtime_secret_open" "runtime_secret"
+cp "$ROOT/reports/events/security_policy.jsonl" "$RESULT_DIR/security_policy_events.runtime-container.jsonl"
+log "PASS: security_policy container runtime name target resolves to cgroup scoped enforcement"
+
+run_cleanup_script
+
+if ! run_in_scoped_cgroup "$RESULT_DIR/runtime-container-post-cleanup-secret.txt" \
+    "$RESULT_DIR/runtime-container-post-cleanup-secret.err" \
+    cat "$DYNAMIC_SCOPED_TARGET_FILE"; then
+    fail "runtime container target file is still denied after rollback/cleanup; see $RESULT_DIR/runtime-container-post-cleanup-secret.err"
+fi
+if ! run_in_scoped_cgroup "$RESULT_DIR/runtime-container-post-cleanup-exec.txt" \
+    "$RESULT_DIR/runtime-container-post-cleanup-exec.err" \
+    "$DYNAMIC_SCOPED_EXEC_TARGET_FILE"; then
+    fail "runtime container exec target is still denied after rollback/cleanup; see $RESULT_DIR/runtime-container-post-cleanup-exec.err"
+fi
+cleanup_scoped_cgroup
+
+POD_UID="12345678-abcd-4ef0-8123-$(printf '%012d' "$$")"
+POD_UID_SYSTEMD="${POD_UID//-/_}"
+POD_NAME="web-demo"
+POD_NAMESPACE="eulerpilot-lab"
+SCOPED_CGROUP_PATH="/sys/fs/cgroup/eulerpilot/kubepods-burstable-pod${POD_UID_SYSTEMD}.slice"
+FAKE_KUBECTL="$DYNAMIC_DIR/fake-kubectl"
+mkdir -p /sys/fs/cgroup/eulerpilot
+mkdir "$SCOPED_CGROUP_PATH"
+cat > "$FAKE_KUBECTL" <<SH
+#!/usr/bin/env bash
+if [ "\$1" = "-n" ] && [ "\$2" = "$POD_NAMESPACE" ] && \
+   [ "\$3" = "get" ] && [ "\$4" = "pod" ] && [ "\$5" = "$POD_NAME" ]; then
+    printf '%s' "$POD_UID"
+    exit 0
+fi
+exit 1
+SH
+chmod +x "$FAKE_KUBECTL"
+
+cat > "$RESULT_DIR/agent.pod.yaml" <<'YAML'
+skills_config_path: skills.pod.yaml
+exporter:
+  prometheus:
+    enabled: false
+YAML
+
+cat > "$RESULT_DIR/skills.pod.yaml" <<YAML
+schema_version: 2
+skills:
+- name: resource_control
+  kind: runtime
+  enabled: true
+  config: {}
+- name: psi_gate
+  kind: runtime
+  enabled: true
+  config: {}
+- name: security_policy
+  kind: runtime
+  enabled: true
+  config:
+    mode: enforce
+    targets:
+      pod_secret:
+        type: k8s_pod
+        namespace: $POD_NAMESPACE
+        pod_name: $POD_NAME
+        kubectl_path: $FAKE_KUBECTL
+        cgroup_root: /sys/fs/cgroup/eulerpilot
+        path: $DYNAMIC_SCOPED_TARGET_FILE
+        exec_path: $DYNAMIC_SCOPED_EXEC_TARGET_FILE
+    rules:
+      - name: deny_pod_secret_open
+        hook: lsm_file_open
+        target_ref: pod_secret
+        action: deny
+YAML
+
+rm -f "$ROOT/reports/events/security_policy.jsonl"
+
+timeout 40s "$AGENT_BIN" \
+    --config "$RESULT_DIR/agent.pod.yaml" \
+    --duration-s 30 \
+    --interval-ms 1000 \
+    --jsonl \
+    > "$RESULT_DIR/agent-pod.log" 2>&1 &
+AGENT_PID="$!"
+
+pod_blocked="false"
+for _ in $(seq 1 40); do
+    if ! kill -0 "$AGENT_PID" 2>/dev/null; then
+        set +e
+        wait "$AGENT_PID"
+        agent_rc="$?"
+        set -e
+        AGENT_PID=""
+        fail "pod target agent exited before cgroup denial was observed, rc=$agent_rc; see $RESULT_DIR/agent-pod.log"
+    fi
+
+    if ! cat "$DYNAMIC_SCOPED_TARGET_FILE" > "$RESULT_DIR/pod-outside-secret.txt" 2> "$RESULT_DIR/pod-outside-secret.err"; then
+        fail "pod target file was denied outside resolved cgroup; see $RESULT_DIR/pod-outside-secret.err"
+    fi
+
+    set +e
+    run_in_scoped_cgroup "$RESULT_DIR/pod-blocked-secret.txt" \
+        "$RESULT_DIR/pod-blocked-secret.err" \
+        cat "$DYNAMIC_SCOPED_TARGET_FILE"
+    pod_cat_rc="$?"
+    set -e
+    if [ "$pod_cat_rc" -ne 0 ]; then
+        pod_blocked="true"
+        break
+    fi
+    sleep 0.2
+done
+
+if [ "$pod_blocked" != "true" ]; then
+    fail "pod target file was not denied inside resolved cgroup; see $RESULT_DIR/agent-pod.log"
+fi
+
+if ! kill -0 "$AGENT_PID" 2>/dev/null; then
+    set +e
+    wait "$AGENT_PID"
+    agent_rc="$?"
+    set -e
+    AGENT_PID=""
+    fail "pod target agent exited before exec denial was checked, rc=$agent_rc; see $RESULT_DIR/agent-pod.log"
+fi
+
+set +e
+run_in_scoped_cgroup "$RESULT_DIR/pod-blocked-exec.txt" \
+    "$RESULT_DIR/pod-blocked-exec.err" \
+    "$DYNAMIC_SCOPED_EXEC_TARGET_FILE"
+pod_exec_rc="$?"
+set -e
+if [ "$pod_exec_rc" -eq 0 ]; then
+    fail "pod exec target was not denied inside resolved cgroup; see $RESULT_DIR/pod-blocked-exec.txt"
+fi
+
+set +e
+wait "$AGENT_PID"
+agent_rc="$?"
+set -e
+AGENT_PID=""
+if [ "$agent_rc" -ne 0 ]; then
+    fail "pod target agent exited non-zero, rc=$agent_rc; see $RESULT_DIR/agent-pod.log"
+fi
+
+assert_blocked_rule_event "$DYNAMIC_SCOPED_TARGET_FILE" "lsm_file_open" \
+    "deny_pod_secret_open" "pod_secret"
+assert_blocked_rule_event "$DYNAMIC_SCOPED_EXEC_TARGET_FILE" "lsm_bprm_check_security" \
+    "deny_pod_secret_open" "pod_secret"
+assert_blocked_rule_event_has_cgroup "$DYNAMIC_SCOPED_TARGET_FILE" "lsm_file_open" \
+    "deny_pod_secret_open" "pod_secret"
+cp "$ROOT/reports/events/security_policy.jsonl" "$RESULT_DIR/security_policy_events.pod.jsonl"
+log "PASS: security_policy k8s pod name target resolves to cgroup scoped enforcement"
+
+run_cleanup_script
+
+if ! run_in_scoped_cgroup "$RESULT_DIR/pod-post-cleanup-secret.txt" \
+    "$RESULT_DIR/pod-post-cleanup-secret.err" \
+    cat "$DYNAMIC_SCOPED_TARGET_FILE"; then
+    fail "pod target file is still denied after rollback/cleanup; see $RESULT_DIR/pod-post-cleanup-secret.err"
+fi
+if ! run_in_scoped_cgroup "$RESULT_DIR/pod-post-cleanup-exec.txt" \
+    "$RESULT_DIR/pod-post-cleanup-exec.err" \
+    "$DYNAMIC_SCOPED_EXEC_TARGET_FILE"; then
+    fail "pod exec target is still denied after rollback/cleanup; see $RESULT_DIR/pod-post-cleanup-exec.err"
+fi
+cleanup_scoped_cgroup
+
 if bpftool link show 2>/dev/null | grep -q "security_policy_demo"; then
     bpftool link show > "$RESULT_DIR/bpftool-link-after-cleanup.txt" 2>&1 || true
     fail "security_policy_demo BPF link residue found; see $RESULT_DIR/bpftool-link-after-cleanup.txt"

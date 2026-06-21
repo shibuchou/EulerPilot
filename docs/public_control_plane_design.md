@@ -69,8 +69,10 @@ struct TargetIdentity {
     uint64_t cgroup_id = 0;
     std::string cgroup_path;
     std::string container_id;
+    std::string container_name;
     std::string pod_namespace;
     std::string pod_name;
+    std::string pod_uid;
     std::string netns_path;
     std::string ifname;
     int ifindex = 0;
@@ -81,8 +83,10 @@ struct TargetIdentity {
 
 - `pid -> /proc/<pid>/cgroup -> cgroup_path`
 - `cgroup_path -> stat/fhandle or helper -> cgroup_id`
+- `container_id/container_name -> cgroup_path -> cgroup_id`
+- `k8s_pod namespace/name -> Pod UID -> cgroup_path -> cgroup_id`
 - `netdev ifname -> if_nametoindex`
-- `k8s_pod` 第一版只允许 `eulerpilot-lab`，缺少集群环境时返回 `unsupported`
+- `k8s_pod` 默认只允许 `eulerpilot-lab`；Security cgroup scope 已支持 fake/真实 `kubectl` Pod UID 路径，Network veth/ifindex 解析仍保持诊断型入口
 
 ### 3.3 安全边界
 
@@ -138,13 +142,15 @@ struct CapabilitySnapshot {
   "policy_id": "",
   "rule_id": "",
   "mode": "audit",
-  "target": {
-    "pid": 0,
-    "cgroup_id": 0,
-    "container_id": "",
-    "namespace": "",
-    "pod": ""
-  },
+    "target": {
+      "pid": 0,
+      "cgroup_id": 0,
+      "container_id": "",
+      "container_name": "",
+      "namespace": "",
+      "pod": "",
+      "pod_uid": ""
+    },
   "operation": "",
   "evidence": {},
   "action": "",

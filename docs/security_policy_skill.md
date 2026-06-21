@@ -1,6 +1,6 @@
 # SecurityPolicySkill 正式化说明
 
-本文面向比赛评委和后续 Agent，说明 EulerPilot Security Agent 的能力定位、当前完成度、参考代码复用边界和最小验收入口。当前仓库已经注册正式 `security_policy` Skill，并保留 `security_policy_demo` 兼容入口。正式入口已支持 YAML v2 `targets + rules + target_ref`，`audit` 与 `enforce` 都会 attach 最小 BPF LSM 程序并消费 ringbuf 命中事件；同时 audit 路径已补入 `sys_enter_execve`、`sys_enter_openat`、`sys_enter_connect` 与 `sys_enter_ptrace` tracepoint 观测事件。用户态已从最多 8 条 `rules.*.target_ref` 解析 `targets.<target_ref>.path`、`exec_path`、可选 `cgroup_path`、`type: pid` 自动解析出的 cgroup scope，以及 `type: container_id` 通过 `cgroup_root` 扫描解析出的 cgroup scope，再写入 `BPF_ARRAY target_map`；BPF 不再硬编码 demo secret 或 demo exec 路径。`audit` 模式通过 map 配置 `enforce=0`，只记录命中、不阻断；`enforce` 模式通过 `enforce=1` 对当前 YAML 声明目标执行拒绝，并在 Agent 退出时通过 BPF link fd 自动 detach。
+本文面向比赛评委和后续 Agent，说明 EulerPilot Security Agent 的能力定位、当前完成度、参考代码复用边界和最小验收入口。当前仓库已经注册正式 `security_policy` Skill，并保留 `security_policy_demo` 兼容入口。正式入口已支持 YAML v2 `targets + rules + target_ref`，`audit` 与 `enforce` 都会 attach 最小 BPF LSM 程序并消费 ringbuf 命中事件；同时 audit 路径已补入 `sys_enter_execve`、`sys_enter_openat`、`sys_enter_connect` 与 `sys_enter_ptrace` tracepoint 观测事件。用户态已从最多 8 条 `rules.*.target_ref` 解析 `targets.<target_ref>.path`、`exec_path`、可选 `cgroup_path`、`type: pid` 自动解析出的 cgroup scope、`type: container_id` 通过 `cgroup_root` 扫描解析出的 cgroup scope、`type: container` 通过 runtime CLI 解析出的 container ID/cgroup scope，以及 `type: k8s_pod` 通过 `kubectl` 查询 Pod UID 后解析出的 cgroup scope，再写入 `BPF_ARRAY target_map`；BPF 不再硬编码 demo secret 或 demo exec 路径。`audit` 模式通过 map 配置 `enforce=0`，只记录命中、不阻断；`enforce` 模式通过 `enforce=1` 对当前 YAML 声明目标执行拒绝，并在 Agent 退出时通过 BPF link fd 自动 detach。
 
 ## 能力定位
 
@@ -27,7 +27,7 @@ BPF LSM 的边界需要写清楚：它运行在内核 LSM hook 链中，只能�
 /root/EulerPilot/demo/security_policy_demo/deny_exec.sh
 ```
 
-它已经有最小 `policy_map`、最多 8 项 `target_map` 和 ringbuf 命中事件。当前 `mode` 已由 BPF map 生效：`audit` attach BPF 但返回 allow；`enforce` attach BPF LSM 并触发 YAML 文件路径和可执行路径拒绝。`target_map` 每项还可带 `cgroup_id`：未配置时保持路径全局匹配，配置 `cgroup_path` 后只在当前进程 cgroup id 命中时阻断；配置 `type: pid` 时，用户态会通过 `TargetResolver` 从 PID 自动解析 cgroup id 后写入 BPF；配置 `type: container_id` 时，用户态会在限定 `cgroup_root` 下扫描包含该 container ID 的 cgroup 目录，并把解析出的 cgroup id 写入 BPF。当前 tracepoint 观测已覆盖 `sys_enter_execve`、`sys_enter_openat`、`sys_enter_connect` 与 `sys_enter_ptrace`，并在 BPF 侧过滤 Agent 自身写审计日志产生的递归事件；这些 syscall 事件目前只做观测和证据输出，不参与 enforce。文档和验收时应把当前阶段称为正式 `security_policy` file_open + bprm + 四类 syscall + 多目标 target_map + cgroup/pid/container_id scope 最小闭环，而不是完整 SecurityPolicySkill 成品。Pod 名称自动解析和复杂规则矩阵仍未完成。
+它已经有最小 `policy_map`、最多 8 项 `target_map` 和 ringbuf 命中事件。当前 `mode` 已由 BPF map 生效：`audit` attach BPF 但返回 allow；`enforce` attach BPF LSM 并触发 YAML 文件路径和可执行路径拒绝。`target_map` 每项还可带 `cgroup_id`：未配置时保持路径全局匹配，配置 `cgroup_path` 后只在当前进程 cgroup id 命中时阻断；配置 `type: pid` 时，用户态会通过 `TargetResolver` 从 PID 自动解析 cgroup id 后写入 BPF；配置 `type: container_id` 时，用户态会在限定 `cgroup_root` 下扫描包含该 container ID 的 cgroup 目录；配置 `type: container` 且给出 `container_name` 时，用户态会优先通过 `crictl/docker/podman` 解析真实 container ID；配置 `type: k8s_pod` 时，用户态会通过 `kubectl -n <namespace> get pod <name> -o jsonpath={.metadata.uid}` 查询 Pod UID，再匹配 systemd/cgroupfs 风格的 Pod cgroup。当前 tracepoint 观测已覆盖 `sys_enter_execve`、`sys_enter_openat`、`sys_enter_connect` 与 `sys_enter_ptrace`，并在 BPF 侧过滤 Agent 自身写审计日志产生的递归事件；这些 syscall 事件目前只做观测和证据输出，不参与 enforce。文档和验收时应把当前阶段称为正式 `security_policy` file_open + bprm + 四类 syscall + 多目标 target_map + cgroup/pid/container/runtime/pod scope 最小闭环，而不是完整 SecurityPolicySkill 成品。复杂规则矩阵和更多 LSM hook 仍未完成。
 
 ## 事件输出
 
@@ -38,7 +38,7 @@ BPF LSM 的边界需要写清楚：它运行在内核 LSM hook 链中，只能�
 - `target_ref`、`pid`、`tgid`、`comm`、`cgroup`、`mnt_ns`
 - `path` 或 `exec_path`、`errno`、`rule_id`、`reason`
 
-当前 BPF demo 已输出 ringbuf 命中事件；用户态 `security_policy` 消费事件并写入 `reports/events/security_policy.jsonl`。当前事件已区分 `event_hook=lsm_file_open`、`event_hook=lsm_bprm_check_security`、`event_hook=sys_enter_execve`、`event_hook=sys_enter_openat`、`event_hook=sys_enter_connect` 和 `event_hook=sys_enter_ptrace`。LSM file/bprm 阻断事件已携带 BPF `target_index`，用户态会映射回 YAML 中的单条 `rule_id` 和 `target_ref`；当 target 配置 `cgroup_path`、`type: pid` 或 `type: container_id` 时，blocked 事件还会输出 `cgroup_id/cgroup_path`。tracepoint 观测事件不参与规则匹配，统一写 `target_index=unknown` 并保留合并规则上下文。最小验收以“audit 不阻断且存在 `operation=hit/result=observed`、audit 事件覆盖 file_open、bprm_check_security 与四类 syscall tracepoint、enforce attach 后 target_map 中的目标文件和 demo 可执行文件被拒绝且 blocked 事件带上具体规则、显式 cgroup target、pid target 和 container_id target 都只在解析出的目标 cgroup 内阻断、Agent 退出后恢复访问、无 BPF link/pin 残留”为准。下一步成品化时需要把当前 container_id 扫描解析扩展到真实 runtime/Pod 名称解析和更多 LSM hook。
+当前 BPF demo 已输出 ringbuf 命中事件；用户态 `security_policy` 消费事件并写入 `reports/events/security_policy.jsonl`。当前事件已区分 `event_hook=lsm_file_open`、`event_hook=lsm_bprm_check_security`、`event_hook=sys_enter_execve`、`event_hook=sys_enter_openat`、`event_hook=sys_enter_connect` 和 `event_hook=sys_enter_ptrace`。LSM file/bprm 阻断事件已携带 BPF `target_index`，用户态会映射回 YAML 中的单条 `rule_id` 和 `target_ref`；当 target 配置 `cgroup_path`、`type: pid`、`type: container_id`、`type: container` 或 `type: k8s_pod` 时，blocked 事件还会输出 `cgroup_id/cgroup_path`。tracepoint 观测事件不参与规则匹配，统一写 `target_index=unknown` 并保留合并规则上下文。最小验收以“audit 不阻断且存在 `operation=hit/result=observed`、audit 事件覆盖 file_open、bprm_check_security 与四类 syscall tracepoint、enforce attach 后 target_map 中的目标文件和 demo 可执行文件被拒绝且 blocked 事件带上具体规则、显式 cgroup target、pid target、container_id target、runtime container name target 和 k8s pod name target 都只在解析出的目标 cgroup 内阻断、Agent 退出后恢复访问、无 BPF link/pin 残留”为准。下一步成品化重点转向更多 LSM hook 和异常规则。
 
 ## 回滚与清理
 
@@ -85,9 +85,11 @@ sudo tests/integration/test_security_policy.sh
 7. 创建临时 cgroup，并使用带 `cgroup_path` 的 target 验证同一敏感文件在目标 cgroup 外可访问、在目标 cgroup 内被拒绝，事件带上 `cgroup_id/cgroup_path`。
 8. 创建一个位于目标 cgroup 内的临时 PID，并使用 `type: pid` target 验证用户态能自动从 PID 解析 cgroup scope，且 scope 外访问成功、scope 内访问拒绝。
 9. 创建带 container ID 字符串的临时 cgroup，并使用 `type: container_id` target 验证用户态能在限定 `cgroup_root` 下解析 cgroup scope，且 scope 外访问成功、scope 内访问拒绝。
-10. 等 Agent 正常退出，确认目标文件和 demo 可执行文件恢复可访问，并调用 cleanup 验证无 demo 残留。
+10. 创建 fake `crictl` 命令和带 container ID 的临时 cgroup，并使用 `type: container` + `container_name` 验证 runtime CLI 解析路径。
+11. 创建 fake `kubectl` 命令和带 Pod UID 的临时 cgroup，并使用 `type: k8s_pod` + `namespace/pod_name` 验证 Pod 名称解析路径。
+12. 等 Agent 正常退出，确认目标文件和 demo 可执行文件恢复可访问，并调用 cleanup 验证无 demo 残留。
 
-验收输出应包含 `PASS: security_policy audit mode writes file, bprm and four syscall hit events`、`PASS: security_policy enforce mode writes blocked file and bprm hit events`、`PASS: target file is denied while security_policy enforce is active`、`PASS: exec target is denied while security_policy enforce is active`、`PASS: security_policy target_map reports rule-specific dynamic YAML file and exec hits`、`PASS: security_policy cgroup scoped target only blocks inside target cgroup`、`PASS: security_policy pid target resolves to cgroup scoped enforcement`、`PASS: security_policy container_id target resolves to cgroup scoped enforcement` 和 rollback 恢复类 PASS。
+验收输出应包含 `PASS: security_policy audit mode writes file, bprm and four syscall hit events`、`PASS: security_policy enforce mode writes blocked file and bprm hit events`、`PASS: target file is denied while security_policy enforce is active`、`PASS: exec target is denied while security_policy enforce is active`、`PASS: security_policy target_map reports rule-specific dynamic YAML file and exec hits`、`PASS: security_policy cgroup scoped target only blocks inside target cgroup`、`PASS: security_policy pid target resolves to cgroup scoped enforcement`、`PASS: security_policy container_id target resolves to cgroup scoped enforcement`、`PASS: security_policy container runtime name target resolves to cgroup scoped enforcement`、`PASS: security_policy k8s pod name target resolves to cgroup scoped enforcement` 和 rollback 恢复类 PASS。
 
 ## 正式实现清单
 
@@ -95,7 +97,7 @@ sudo tests/integration/test_security_policy.sh
 - YAML schema v2 支持 `targets + rules + mode + target_ref`，默认 `mode: audit`。（已完成最小路径 target）
 - 用户态 audit/enforce 模式切换：audit 不阻断并写事件，enforce 执行 BPF LSM。（已完成最小闭环）
 - BPF 侧加入最小 config map 和 event ringbuf。（已完成 demo target、LSM file_open、LSM bprm_check_security、execve/openat/connect/ptrace tracepoint 事件）
-- BPF 侧加入动态 map：target map、path rule map、exec rule map、control map。（已完成最多 8 组 path/exec/cgroup scope `target_map`，用户态从 YAML target path、exec path、可选 cgroup_path、`type: pid` 和 `type: container_id` 解析结果填充；LSM file/bprm blocked 事件已支持规则级标识；Pod 名称自动解析未完成）
+- BPF 侧加入动态 map：target map、path rule map、exec rule map、control map。（已完成最多 8 组 path/exec/cgroup scope `target_map`，用户态从 YAML target path、exec path、可选 cgroup_path、`type: pid`、`type: container_id`、`type: container` 和 `type: k8s_pod` 解析结果填充；LSM file/bprm blocked 事件已支持规则级标识）
 - 最低覆盖 `execve/openat/connect/ptrace` syscall tracing，以及 `file_open` 和 `bprm_check_security` 两类 BPF LSM enforce。（已完成四类 syscall 观测、`file_open` 最小 enforce 和 `bprm_check_security` target_map exec path enforce）
 - 用户态接入 `TargetResolver`、`AuditBus`、`ActionJournal` 和 `CapabilityDetector`。
 - integration 分层：本地 demo、container namespace、Pod target；Pod 测试只作为增强，不作为最小入口。
@@ -103,6 +105,6 @@ sudo tests/integration/test_security_policy.sh
 
 ## 验收口径
 
-当前可验收：正式 `security_policy` 注册名、YAML v2 path/exec_path/cgroup_path/pid/container_id target、用户态向 BPF `target_map` 填充最多 8 组文件路径、执行路径和可选 cgroup id、audit 不阻断并写 BPF hit event、audit 事件覆盖 `lsm_file_open/lsm_bprm_check_security/sys_enter_execve/sys_enter_openat/sys_enter_connect/sys_enter_ptrace`、enforce BPF LSM attach、目标文件拒绝、demo 执行文件拒绝、双动态 `/tmp` 目标验证、LSM blocked hit event 可映射到单条 YAML 规则、显式 cgroup scope 内阻断且 scope 外允许、PID target 自动解析到 cgroup scope、container_id target 在限定 cgroup tree 下解析到 cgroup scope、Agent 退出恢复、cleanup 无残留。121 最新结果目录为 `results/security_policy/integration-20260621-211502`；122 最新结果目录为 `results/security_policy/integration-20260621-211701`。
+当前可验收：正式 `security_policy` 注册名、YAML v2 path/exec_path/cgroup_path/pid/container_id/container/k8s_pod target、用户态向 BPF `target_map` 填充最多 8 组文件路径、执行路径和可选 cgroup id、audit 不阻断并写 BPF hit event、audit 事件覆盖 `lsm_file_open/lsm_bprm_check_security/sys_enter_execve/sys_enter_openat/sys_enter_connect/sys_enter_ptrace`、enforce BPF LSM attach、目标文件拒绝、demo 执行文件拒绝、双动态 `/tmp` 目标验证、LSM blocked hit event 可映射到单条 YAML 规则、显式 cgroup scope 内阻断且 scope 外允许、PID target 自动解析到 cgroup scope、container_id target 在限定 cgroup tree 下解析到 cgroup scope、container runtime name target 通过 fake `crictl` 验证、k8s pod name target 通过 fake `kubectl` + Pod UID 验证、Agent 退出恢复、cleanup 无残留。121 最新结果目录为 `results/security_policy/integration-20260621-214903`；122 最新结果目录为 `results/security_policy/integration-20260621-215158`。
 
-下一阶段正式验收：把当前 container ID 的 cgroup tree 扫描解析升级为真实 container runtime / Pod 名称解析，补齐进程过滤和更多 LSM hook 的真实命中事件；enforce 模式只阻断命中的目标进程/路径/容器；退出、异常和手工 cleanup 后无 BPF link、pin、map 规则残留；所有证据可由 README、integration 日志和结果目录追踪。
+下一阶段正式验收：优先补 `lsm/socket_connect` 的真实 LSM 阻断，把现有 `sys_enter_connect` 观测升级为可审计、可 enforce 的网络外联控制；随后补 bprm 前缀/可写目录执行异常、file_open 权限维度和 ptrace LSM。所有新增 hook 都必须复用当前 target/cgroup scope，不要重新实现 Pod/container 解析。

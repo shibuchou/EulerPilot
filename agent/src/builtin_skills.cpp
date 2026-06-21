@@ -1837,8 +1837,9 @@ public:
                 const std::string target_prefix = "targets." + rule.target_ref + ".";
                 const std::string target_type = config_value_or(spec, target_prefix + "type", "");
                 if (target_type != "path" && target_type != "pid" &&
-                    target_type != "container_id" && target_type != "container") {
-                    last_error_ = "security-policy-v2-target-not-path-pid-or-container";
+                    target_type != "container_id" && target_type != "container" &&
+                    target_type != "k8s_pod" && target_type != "pod") {
+                    last_error_ = "security-policy-v2-target-not-path-pid-container-or-pod";
                     return false;
                 }
                 rule.file_path = config_value_or(spec, target_prefix + "path", "");
@@ -1865,15 +1866,53 @@ public:
                     rule.cgroup_path = target.cgroup_path;
                     rule.cgroup_id = target.cgroup_id;
                 } else if (target_type == "container_id" || target_type == "container") {
-                    const std::string container_id =
+                    ContainerTargetSpec target_spec;
+                    target_spec.name = rule.target_ref;
+                    target_spec.container_id =
                         config_value_or(spec, target_prefix + "container_id", "");
-                    const std::string cgroup_root =
+                    target_spec.container_name =
+                        config_value_or(spec, target_prefix + "container_name",
+                                        config_value_or(spec, target_prefix + "name", ""));
+                    target_spec.runtime =
+                        config_value_or(spec, target_prefix + "runtime", "auto");
+                    target_spec.cgroup_root =
                         config_value_or(spec, target_prefix + "cgroup_root", "/sys/fs/cgroup");
-                    const auto target = resolve_container_target(rule.target_ref,
-                                                                 container_id,
-                                                                 cgroup_root);
+                    target_spec.crictl_path =
+                        config_value_or(spec, target_prefix + "crictl_path", "crictl");
+                    target_spec.docker_path =
+                        config_value_or(spec, target_prefix + "docker_path", "docker");
+                    target_spec.podman_path =
+                        config_value_or(spec, target_prefix + "podman_path", "podman");
+                    const auto target = resolve_container_target(target_spec);
                     if (!target.resolved) {
                         last_error_ = "security-policy-target-container-resolve-failed:" + target.reason;
+                        return false;
+                    }
+                    rule.cgroup_path = target.cgroup_path;
+                    rule.cgroup_id = target.cgroup_id;
+                } else if (target_type == "k8s_pod" || target_type == "pod") {
+                    K8sPodTargetSpec target_spec;
+                    target_spec.name = rule.target_ref;
+                    target_spec.pod_namespace =
+                        config_value_or(spec, target_prefix + "namespace",
+                                        config_value_or(spec, target_prefix + "pod_namespace", ""));
+                    target_spec.pod_name =
+                        config_value_or(spec, target_prefix + "pod_name",
+                                        config_value_or(spec, target_prefix + "name", ""));
+                    target_spec.pod_uid =
+                        config_value_or(spec, target_prefix + "pod_uid", "");
+                    target_spec.container_id =
+                        config_value_or(spec, target_prefix + "container_id", "");
+                    target_spec.container_name =
+                        config_value_or(spec, target_prefix + "container_name", "");
+                    target_spec.cgroup_root =
+                        config_value_or(spec, target_prefix + "cgroup_root", "/sys/fs/cgroup");
+                    TargetResolverOptions options;
+                    options.kubectl_path =
+                        config_value_or(spec, target_prefix + "kubectl_path", "kubectl");
+                    const auto target = resolve_k8s_pod_cgroup_target(target_spec, options);
+                    if (!target.resolved) {
+                        last_error_ = "security-policy-target-pod-resolve-failed:" + target.reason;
                         return false;
                     }
                     rule.cgroup_path = target.cgroup_path;
