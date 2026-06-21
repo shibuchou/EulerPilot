@@ -1,0 +1,24 @@
+schema_version: 2
+skills:
+- name: resource_control
+  kind: runtime
+  enabled: true
+  config: {}
+- name: psi_gate
+  kind: runtime
+  enabled: true
+  config: {}
+- name: security_policy
+  kind: runtime
+  enabled: true
+  config:
+    mode: enforce
+    targets:
+      demo_secret:
+        type: path
+        path: /root/EulerPilot/demo/security_policy_demo/secret.txt
+    rules:
+      - name: deny_demo_secret_open
+        hook: lsm_file_open
+        target_ref: demo_secret
+        action: deny

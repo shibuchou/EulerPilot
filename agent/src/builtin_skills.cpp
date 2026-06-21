@@ -1994,6 +1994,18 @@ private:
         }
         links.push_back(lsm_link);
 
+        bpf_program *bprm_prog = bpf_object__find_program_by_name(obj, "security_policy_bprm");
+        if (!bprm_prog) {
+            error = "security-policy-bprm-program-missing";
+            return false;
+        }
+        bpf_link *bprm_link = bpf_program__attach_lsm(bprm_prog);
+        if (!bprm_link) {
+            error = "security-policy-bprm-attach-failed";
+            return false;
+        }
+        links.push_back(bprm_link);
+
         bpf_program *execve_prog = bpf_object__find_program_by_name(obj, "trace_execve");
         if (!execve_prog) {
             error = "security-policy-execve-program-missing";
@@ -2135,6 +2147,7 @@ private:
         case 3: return "sys_enter_openat";
         case 4: return "sys_enter_connect";
         case 5: return "sys_enter_ptrace";
+        case 6: return "lsm_bprm_check_security";
         default: return "unknown";
         }
     }

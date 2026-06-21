@@ -6,6 +6,7 @@ EXPECTED_ROOT="/root/EulerPilot"
 RESULT_DIR="$ROOT/results/security_policy/integration-$(date +%Y%m%d-%H%M%S)"
 AGENT_BIN="$ROOT/build/eulerpilot-agent"
 TARGET_FILE="$ROOT/demo/security_policy_demo/secret.txt"
+EXEC_TARGET_FILE="$ROOT/demo/security_policy_demo/deny_exec.sh"
 AGENT_PID=""
 RESULT_READY="false"
 
@@ -113,6 +114,9 @@ log "INFO: result dir: $RESULT_DIR"
 if [ ! -f "$TARGET_FILE" ]; then
     fail "target file missing: $TARGET_FILE"
 fi
+if [ ! -x "$EXEC_TARGET_FILE" ]; then
+    fail "exec target missing or not executable: $EXEC_TARGET_FILE"
+fi
 
 run_cleanup_script
 rm -f "$ROOT/reports/events/security_policy.jsonl"
@@ -178,6 +182,11 @@ if ! cat "$TARGET_FILE" > "$RESULT_DIR/baseline-secret.txt" 2> "$RESULT_DIR/base
 fi
 log "PASS: target file is readable before policy attach"
 
+if ! "$EXEC_TARGET_FILE" > "$RESULT_DIR/baseline-exec.txt" 2> "$RESULT_DIR/baseline-exec.err"; then
+    fail "exec target is not runnable before policy attach; see $RESULT_DIR/baseline-exec.err"
+fi
+log "PASS: exec target is runnable before policy attach"
+
 rm -f "$ROOT/reports/events/security_policy.jsonl"
 
 timeout 12s "$AGENT_BIN" \
@@ -200,6 +209,9 @@ fi
 
 if ! cat "$TARGET_FILE" > "$RESULT_DIR/audit-secret.txt" 2> "$RESULT_DIR/audit-secret.err"; then
     fail "audit mode blocked target file; see $RESULT_DIR/audit-secret.err"
+fi
+if ! "$EXEC_TARGET_FILE" > "$RESULT_DIR/audit-exec.txt" 2> "$RESULT_DIR/audit-exec.err"; then
+    fail "audit mode blocked exec target; see $RESULT_DIR/audit-exec.err"
 fi
 trigger_audit_syscalls
 
@@ -232,11 +244,14 @@ fi
 if ! grep -q '"event_hook":"sys_enter_ptrace"' "$ROOT/reports/events/security_policy.jsonl" 2>/dev/null; then
     fail "audit mode did not write ptrace trace event"
 fi
+if ! grep -q '"event_hook":"lsm_bprm_check_security"' "$ROOT/reports/events/security_policy.jsonl" 2>/dev/null; then
+    fail "audit mode did not write bprm_check_security hit event"
+fi
 if ! grep -q '"result":"observed"' "$ROOT/reports/events/security_policy.jsonl" 2>/dev/null; then
     fail "audit mode hit event was not observed/allowed"
 fi
 cp "$ROOT/reports/events/security_policy.jsonl" "$RESULT_DIR/security_policy_events.audit.jsonl"
-log "PASS: security_policy audit mode writes LSM and four syscall hit events"
+log "PASS: security_policy audit mode writes file, bprm and four syscall hit events"
 
 cat > "$RESULT_DIR/agent.enforce.yaml" <<'YAML'
 skills_config_path: skills.enforce.yaml
@@ -309,8 +324,24 @@ if [ "$blocked" != "true" ]; then
 fi
 log "PASS: target file is denied while security_policy enforce is active"
 
+exec_blocked="false"
+set +e
+"$EXEC_TARGET_FILE" > "$RESULT_DIR/blocked-exec.txt" 2> "$RESULT_DIR/blocked-exec.err"
+exec_rc="$?"
+set -e
+if [ "$exec_rc" -ne 0 ]; then
+    exec_blocked="true"
+fi
+if [ "$exec_blocked" != "true" ]; then
+    fail "exec target was not denied while security_policy enforce is active; see $RESULT_DIR/blocked-exec.txt"
+fi
+log "PASS: exec target is denied while security_policy enforce is active"
+
 if ! grep -Eqi "Operation not permitted|Permission denied|权限|不允许" "$RESULT_DIR/blocked-secret.err"; then
     log "WARN: denial stderr did not contain the usual permission text; see $RESULT_DIR/blocked-secret.err"
+fi
+if ! grep -Eqi "Operation not permitted|Permission denied|权限|不允许" "$RESULT_DIR/blocked-exec.err"; then
+    log "WARN: exec denial stderr did not contain the usual permission text; see $RESULT_DIR/blocked-exec.err"
 fi
 
 set +e
@@ -329,11 +360,14 @@ fi
 if ! grep -q '"event_hook":"lsm_file_open"' "$ROOT/reports/events/security_policy.jsonl" 2>/dev/null; then
     fail "enforce mode did not write lsm_file_open hit event"
 fi
+if ! grep -q '"event_hook":"lsm_bprm_check_security"' "$ROOT/reports/events/security_policy.jsonl" 2>/dev/null; then
+    fail "enforce mode did not write bprm_check_security hit event"
+fi
 if ! grep -q '"result":"blocked"' "$ROOT/reports/events/security_policy.jsonl" 2>/dev/null; then
     fail "enforce mode hit event was not blocked"
 fi
 cp "$ROOT/reports/events/security_policy.jsonl" "$RESULT_DIR/security_policy_events.enforce.jsonl"
-log "PASS: security_policy enforce mode writes blocked BPF hit event"
+log "PASS: security_policy enforce mode writes blocked file and bprm hit events"
 
 run_cleanup_script
 
@@ -341,6 +375,11 @@ if ! cat "$TARGET_FILE" > "$RESULT_DIR/post-cleanup-secret.txt" 2> "$RESULT_DIR/
     fail "target file is still denied after rollback/cleanup; see $RESULT_DIR/post-cleanup-secret.err"
 fi
 log "PASS: target file is readable after agent rollback"
+
+if ! "$EXEC_TARGET_FILE" > "$RESULT_DIR/post-cleanup-exec.txt" 2> "$RESULT_DIR/post-cleanup-exec.err"; then
+    fail "exec target is still denied after rollback/cleanup; see $RESULT_DIR/post-cleanup-exec.err"
+fi
+log "PASS: exec target is runnable after agent rollback"
 
 if bpftool link show 2>/dev/null | grep -q "security_policy_demo"; then
     bpftool link show > "$RESULT_DIR/bpftool-link-after-cleanup.txt" 2>&1 || true

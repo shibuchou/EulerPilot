@@ -11,11 +11,13 @@ char LICENSE[] SEC("license") = "GPL";
 #endif
 
 #define TARGET_PATH "/root/EulerPilot/demo/security_policy_demo/secret.txt"
+#define TARGET_EXEC_PATH "/root/EulerPilot/demo/security_policy_demo/deny_exec.sh"
 #define EVENT_LSM_FILE_OPEN 1
 #define EVENT_EXECVE 2
 #define EVENT_OPENAT 3
 #define EVENT_CONNECT 4
 #define EVENT_PTRACE 5
+#define EVENT_LSM_BPRM_CHECK 6
 
 struct security_policy_config {
     __u32 enforce;
@@ -99,6 +101,43 @@ int BPF_PROG(security_policy_demo, struct file *file, int ret)
         bpf_ringbuf_reserve(&events, sizeof(*event), 0);
     if (event) {
         fill_common_event(event, EVENT_LSM_FILE_OPEN, enforce, decision);
+        __builtin_memcpy(event->path, path, sizeof(event->path));
+        bpf_ringbuf_submit(event, 0);
+    }
+
+    return decision;
+}
+
+SEC("lsm/bprm_check_security")
+int BPF_PROG(security_policy_bprm, struct linux_binprm *bprm, int ret)
+{
+    if (ret != 0)
+        return ret;
+
+    const char *filename = BPF_CORE_READ(bprm, filename);
+    if (!filename)
+        return 0;
+
+    char path[256];
+    if (bpf_probe_read_kernel_str(path, sizeof(path), filename) <= 0)
+        return 0;
+
+    for (int i = 0; i < sizeof(TARGET_EXEC_PATH) - 1; i++) {
+        if (path[i] != TARGET_EXEC_PATH[i])
+            return 0;
+    }
+    if (path[sizeof(TARGET_EXEC_PATH) - 1] != '\0')
+        return 0;
+
+    __u32 key = 0;
+    struct security_policy_config *config = bpf_map_lookup_elem(&policy_map, &key);
+    __u32 enforce = config ? config->enforce : 1;
+    __s32 decision = enforce ? -EPERM : 0;
+
+    struct security_policy_event *event =
+        bpf_ringbuf_reserve(&events, sizeof(*event), 0);
+    if (event) {
+        fill_common_event(event, EVENT_LSM_BPRM_CHECK, enforce, decision);
         __builtin_memcpy(event->path, path, sizeof(event->path));
         bpf_ringbuf_submit(event, 0);
     }

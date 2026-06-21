@@ -298,9 +298,9 @@ Security 使用统一目标引用和 observe/audit/enforce 模式。
 
 当前语义：
 
-- `audit` 模式 attach BPF LSM + `execve/openat/connect/ptrace` tracepoint，但通过 `policy_map.enforce=0` 允许目标文件访问，并通过 ringbuf 输出 `result=observed` 命中事件。
-- `audit` 事件当前覆盖 `event_hook=lsm_file_open`、`event_hook=sys_enter_execve`、`event_hook=sys_enter_openat`、`event_hook=sys_enter_connect`、`event_hook=sys_enter_ptrace`。
-- `enforce` 模式复用 `bpf/security_policy_demo.bpf.c`，在 `lsm/file_open` 上拒绝固定 demo secret 文件，并通过 ringbuf 输出 `result=blocked` 命中事件；四类 syscall 当前只做观测，不阻断。
+- `audit` 模式 attach BPF LSM + `execve/openat/connect/ptrace` tracepoint，但通过 `policy_map.enforce=0` 允许目标文件访问和 demo 执行脚本运行，并通过 ringbuf 输出 `result=observed` 命中事件。
+- `audit` 事件当前覆盖 `event_hook=lsm_file_open`、`event_hook=lsm_bprm_check_security`、`event_hook=sys_enter_execve`、`event_hook=sys_enter_openat`、`event_hook=sys_enter_connect`、`event_hook=sys_enter_ptrace`。
+- `enforce` 模式复用 `bpf/security_policy_demo.bpf.c`，在 `lsm/file_open` 上拒绝固定 demo secret 文件，在 `lsm/bprm_check_security` 上拒绝固定 demo 执行脚本，并通过 ringbuf 输出 `result=blocked` 命中事件；四类 syscall 当前只做观测，不阻断。
 - `security_policy_demo` 保留为兼容回归入口，最终答辩口径应优先使用正式 `security_policy`。
 
 完整目标态仍按下面结构扩展：
@@ -349,7 +349,7 @@ security_policy:
 
 - syscall tracing 固定覆盖 `execve/openat/connect/ptrace` 四类。（已完成四类 audit 观测）
 - 异常检测在用户态完成，BPF 侧只做过滤和事件上报。
-- LSM 至少覆盖文件访问和程序执行两类强制控制。（已完成 `file_open`，`bprm_check_security` 待补）
+- LSM 至少覆盖文件访问和程序执行两类强制控制。（已完成 `file_open` 与 `bprm_check_security` 固定 demo target）
 - `enforce` 默认只允许 lab 目标，不允许直接作用于系统级 cgroup。
 
 ## 8. ResourceControlSkill YAML
@@ -514,7 +514,7 @@ policy_engine:
 4. 实现 AuditBus JSONL 写入。
 5. 实现 ActionJournal 写入与恢复。
 6. 将 `network_policy_demo` 包装或迁移为 `network_policy`。
-7. 将 `security_policy_demo` 包装或迁移为 `security_policy`。（已完成正式注册名、最小 audit/enforce 语义、固定 path ringbuf hit 事件和四类 syscall tracepoint 观测）
+7. 将 `security_policy_demo` 包装或迁移为 `security_policy`。（已完成正式注册名、最小 audit/enforce 语义、固定 path/file exec ringbuf hit 事件和四类 syscall tracepoint 观测）
 8. 扩展 `resource_control` 的 CPU/Memory/IO 配置模型。
 9. 增加 Policy Engine 联动配置。
 10. 将最终质量门禁从 demo target 切换到正式 Skill target。
