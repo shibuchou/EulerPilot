@@ -175,6 +175,7 @@ struct SecurityPolicyEvent {
     std::uint32_t tgid = 0;
     std::uint32_t enforce = 0;
     std::int32_t decision = 0;
+    std::uint32_t target_index = 0;
     char comm[16] = {};
     char path[256] = {};
 };
@@ -192,6 +193,7 @@ struct NetworkXdpRule {
 
 constexpr std::size_t kNetworkXdpMaxRules = 8;
 constexpr std::size_t kSecurityPolicyMaxTargets = 8;
+constexpr std::uint32_t kSecurityTargetUnknown = 0xffffffffu;
 
 static_assert(sizeof(NetworkXdpConfig) == 8,
               "network xdp config map layout must match BPF");
@@ -201,7 +203,7 @@ static_assert(sizeof(SecurityPolicyConfig) == 8,
               "security policy config map layout must match BPF");
 static_assert(sizeof(SecurityPolicyTarget) == 512,
               "security policy target map layout must match BPF");
-static_assert(sizeof(SecurityPolicyEvent) == 292,
+static_assert(sizeof(SecurityPolicyEvent) == 296,
               "security policy ringbuf event layout must match BPF");
 
 bool valid_tc_token(const std::string &value) {
@@ -2294,12 +2296,20 @@ private:
         }
     }
 
+    const SecurityPolicyRule *rule_for_target_index(std::uint32_t target_index) const {
+        if (target_index == kSecurityTargetUnknown || target_index >= rules_.size()) {
+            return nullptr;
+        }
+        return &rules_[target_index];
+    }
+
     void write_hit_event(const SecurityPolicyEvent &hit) {
         const auto hit_index = hit_count_.fetch_add(1) + 1;
         if (hit.decision < 0) {
             deny_count_.fetch_add(1);
         }
         const std::string hook_name = security_event_hook(hit.event_type);
+        const SecurityPolicyRule *matched_rule = rule_for_target_index(hit.target_index);
 
         const fs::path audit_path = "reports/events/security_policy.jsonl";
         ensure_parent_dir(audit_path);
@@ -2309,10 +2319,10 @@ private:
         event.event_id = skill_name_ + "-hit-" + std::to_string(hit_index) + "-" + event.timestamp;
         event.skill = skill_name_;
         event.policy_id = "security_policy";
-        event.rule_id = rule_id_;
+        event.rule_id = matched_rule ? matched_rule->rule_id : rule_id_;
         event.mode = mode_;
         event.target = {
-            {"target_ref", target_ref_},
+            {"target_ref", matched_rule ? matched_rule->target_ref : target_ref_},
             {"path", bounded_string(hit.path, sizeof(hit.path))},
         };
         event.operation = "hit";
@@ -2326,6 +2336,9 @@ private:
             {"comm", bounded_string(hit.comm, sizeof(hit.comm))},
             {"enforce", std::to_string(hit.enforce)},
             {"decision", std::to_string(hit.decision)},
+            {"target_index", hit.target_index == kSecurityTargetUnknown
+                                 ? "unknown"
+                                 : std::to_string(hit.target_index)},
         };
         event.action = hit.decision < 0 ? "deny" : "audit-hit";
         event.result = hit.decision < 0 ? "blocked" : "observed";

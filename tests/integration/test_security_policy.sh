@@ -104,6 +104,21 @@ except Exception:
 PY
 }
 
+assert_blocked_rule_event() {
+    local path="$1"
+    local hook="$2"
+    local rule_id="$3"
+    local target_ref="$4"
+
+    if ! grep -F "$path" "$ROOT/reports/events/security_policy.jsonl" 2>/dev/null \
+        | grep -F "\"event_hook\":\"$hook\"" \
+        | grep -F '"result":"blocked"' \
+        | grep -F "\"rule_id\":\"$rule_id\"" \
+        | grep -Fq "\"target_ref\":\"$target_ref\""; then
+        fail "blocked event for $path did not carry rule_id=$rule_id target_ref=$target_ref hook=$hook"
+    fi
+}
+
 if [ ! -r /sys/kernel/security/lsm ]; then
     skip "/sys/kernel/security/lsm is not readable; securityfs or LSM support may be missing"
 fi
@@ -559,8 +574,16 @@ fi
 if ! grep -q '"result":"blocked"' "$ROOT/reports/events/security_policy.jsonl" 2>/dev/null; then
     fail "dynamic target_map test did not write blocked events"
 fi
+assert_blocked_rule_event "$DYNAMIC_TARGET_FILE" "lsm_file_open" \
+    "deny_dynamic_secret_open" "dynamic_secret"
+assert_blocked_rule_event "$DYNAMIC_EXEC_TARGET_FILE" "lsm_bprm_check_security" \
+    "deny_dynamic_secret_open" "dynamic_secret"
+assert_blocked_rule_event "$DYNAMIC_SECOND_TARGET_FILE" "lsm_file_open" \
+    "deny_dynamic_second_open" "dynamic_second"
+assert_blocked_rule_event "$DYNAMIC_SECOND_EXEC_TARGET_FILE" "lsm_bprm_check_security" \
+    "deny_dynamic_second_open" "dynamic_second"
 cp "$ROOT/reports/events/security_policy.jsonl" "$RESULT_DIR/security_policy_events.dynamic.jsonl"
-log "PASS: security_policy target_map accepts multiple dynamic YAML file and exec paths"
+log "PASS: security_policy target_map reports rule-specific dynamic YAML file and exec hits"
 
 run_cleanup_script
 

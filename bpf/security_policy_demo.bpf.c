@@ -18,6 +18,7 @@ char LICENSE[] SEC("license") = "GPL";
 #define EVENT_LSM_BPRM_CHECK 6
 #define MAX_SECURITY_PATH 256
 #define MAX_SECURITY_TARGETS 8
+#define SECURITY_TARGET_UNKNOWN 0xffffffff
 
 struct security_policy_config {
     __u32 enforce;
@@ -35,6 +36,7 @@ struct security_policy_event {
     __u32 tgid;
     __u32 enforce;
     __s32 decision;
+    __u32 target_index;
     char comm[16];
     char path[256];
 };
@@ -61,7 +63,8 @@ struct {
 static __always_inline void fill_common_event(struct security_policy_event *event,
                                               __u32 event_type,
                                               __u32 enforce,
-                                              __s32 decision)
+                                              __s32 decision,
+                                              __u32 target_index)
 {
     __u64 pid_tgid = bpf_get_current_pid_tgid();
 
@@ -70,6 +73,7 @@ static __always_inline void fill_common_event(struct security_policy_event *even
     event->tgid = (__u32)(pid_tgid >> 32);
     event->enforce = enforce;
     event->decision = decision;
+    event->target_index = target_index;
     bpf_get_current_comm(&event->comm, sizeof(event->comm));
 }
 
@@ -97,7 +101,7 @@ static __always_inline __u32 clamp_target_count(const struct security_policy_con
     return count;
 }
 
-static __always_inline int file_path_matches(const char *path, __u32 target_count)
+static __always_inline int file_path_match_index(const char *path, __u32 target_count)
 {
     for (int i = 0; i < MAX_SECURITY_TARGETS; i++) {
         if ((__u32)i >= target_count)
@@ -107,12 +111,12 @@ static __always_inline int file_path_matches(const char *path, __u32 target_coun
         struct security_policy_target *target = bpf_map_lookup_elem(&target_map, &key);
         if (target && target->file_path[0] != '\0' &&
             path_equals(path, target->file_path))
-            return 1;
+            return i;
     }
-    return 0;
+    return -1;
 }
 
-static __always_inline int exec_path_matches(const char *path, __u32 target_count)
+static __always_inline int exec_path_match_index(const char *path, __u32 target_count)
 {
     for (int i = 0; i < MAX_SECURITY_TARGETS; i++) {
         if ((__u32)i >= target_count)
@@ -122,9 +126,9 @@ static __always_inline int exec_path_matches(const char *path, __u32 target_coun
         struct security_policy_target *target = bpf_map_lookup_elem(&target_map, &key);
         if (target && target->exec_path[0] != '\0' &&
             path_equals(path, target->exec_path))
-            return 1;
+            return i;
     }
-    return 0;
+    return -1;
 }
 
 static __always_inline int is_self_agent(void)
@@ -155,7 +159,8 @@ int BPF_PROG(security_policy_demo, struct file *file, int ret)
     __u32 key = 0;
     struct security_policy_config *config = bpf_map_lookup_elem(&policy_map, &key);
     __u32 target_count = clamp_target_count(config);
-    if (!file_path_matches(path, target_count))
+    int target_index = file_path_match_index(path, target_count);
+    if (target_index < 0)
         return 0;
 
     __u32 enforce = config ? config->enforce : 1;
@@ -164,7 +169,8 @@ int BPF_PROG(security_policy_demo, struct file *file, int ret)
     struct security_policy_event *event =
         bpf_ringbuf_reserve(&events, sizeof(*event), 0);
     if (event) {
-        fill_common_event(event, EVENT_LSM_FILE_OPEN, enforce, decision);
+        fill_common_event(event, EVENT_LSM_FILE_OPEN, enforce, decision,
+                          (__u32)target_index);
         __builtin_memcpy(event->path, path, sizeof(event->path));
         bpf_ringbuf_submit(event, 0);
     }
@@ -189,7 +195,8 @@ int BPF_PROG(security_policy_bprm, struct linux_binprm *bprm, int ret)
     __u32 key = 0;
     struct security_policy_config *config = bpf_map_lookup_elem(&policy_map, &key);
     __u32 target_count = clamp_target_count(config);
-    if (!exec_path_matches(path, target_count))
+    int target_index = exec_path_match_index(path, target_count);
+    if (target_index < 0)
         return 0;
 
     __u32 enforce = config ? config->enforce : 1;
@@ -198,7 +205,8 @@ int BPF_PROG(security_policy_bprm, struct linux_binprm *bprm, int ret)
     struct security_policy_event *event =
         bpf_ringbuf_reserve(&events, sizeof(*event), 0);
     if (event) {
-        fill_common_event(event, EVENT_LSM_BPRM_CHECK, enforce, decision);
+        fill_common_event(event, EVENT_LSM_BPRM_CHECK, enforce, decision,
+                          (__u32)target_index);
         __builtin_memcpy(event->path, path, sizeof(event->path));
         bpf_ringbuf_submit(event, 0);
     }
@@ -219,7 +227,7 @@ int trace_execve(struct trace_event_raw_sys_enter *ctx)
     if (!event)
         return 0;
 
-    fill_common_event(event, EVENT_EXECVE, 0, 0);
+    fill_common_event(event, EVENT_EXECVE, 0, 0, SECURITY_TARGET_UNKNOWN);
     if (bpf_probe_read_user_str(event->path, sizeof(event->path), filename) <= 0)
         event->path[0] = '\0';
     bpf_ringbuf_submit(event, 0);
@@ -239,7 +247,7 @@ int trace_openat(struct trace_event_raw_sys_enter *ctx)
     if (!event)
         return 0;
 
-    fill_common_event(event, EVENT_OPENAT, 0, 0);
+    fill_common_event(event, EVENT_OPENAT, 0, 0, SECURITY_TARGET_UNKNOWN);
     if (bpf_probe_read_user_str(event->path, sizeof(event->path), filename) <= 0)
         event->path[0] = '\0';
     bpf_ringbuf_submit(event, 0);
@@ -258,7 +266,7 @@ int trace_connect(struct trace_event_raw_sys_enter *ctx)
     if (!event)
         return 0;
 
-    fill_common_event(event, EVENT_CONNECT, 0, 0);
+    fill_common_event(event, EVENT_CONNECT, 0, 0, SECURITY_TARGET_UNKNOWN);
     __builtin_memcpy(event->path, "connect", sizeof("connect"));
     bpf_ringbuf_submit(event, 0);
     return 0;
@@ -276,7 +284,7 @@ int trace_ptrace(struct trace_event_raw_sys_enter *ctx)
     if (!event)
         return 0;
 
-    fill_common_event(event, EVENT_PTRACE, 0, 0);
+    fill_common_event(event, EVENT_PTRACE, 0, 0, SECURITY_TARGET_UNKNOWN);
     __builtin_memcpy(event->path, "ptrace", sizeof("ptrace"));
     bpf_ringbuf_submit(event, 0);
     return 0;

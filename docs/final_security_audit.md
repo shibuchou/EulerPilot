@@ -28,7 +28,7 @@
 | sched_ext state | `disabled` | `disabled` | PASS |
 | sched_ext nr_rejected | `0` | `0` | PASS |
 
-正式 `security_policy` 默认 disabled，audit 模式 attach BPF LSM + `execve/openat/connect/ptrace` tracepoint，但通过 `policy_map.enforce=0` 保持允许，命中后写 ringbuf observed hit；enforce 模式当前复用 `security_policy_demo` 的 BPF LSM，由用户态从 YAML `path/exec_path` 写入最多 8 项 `target_map`，写 blocked hit 后拒绝访问 map 中的文件路径和执行路径。BPF link 默认不 pin，LSM 与 tracepoint 程序随 Agent 进程退出自动消亡。`tests/integration/test_security_policy.sh` 已在 121/122 验证 `lsm_file_open/lsm_bprm_check_security/sys_enter_execve/sys_enter_openat/sys_enter_connect/sys_enter_ptrace` 六类 BPF ringbuf hit、双 LSM enforce、双动态 `/tmp` target_map 和 rollback 恢复，最新结果目录分别为 `results/security_policy/integration-20260621-164838` 和 `results/security_policy/integration-20260621-165001`；121/122 之前已验证单动态 target_map，结果目录分别为 `results/security_policy/integration-20260621-161943` 和 `results/security_policy/integration-20260621-162111`；121/122 之前已验证双 LSM enforce，结果目录分别为 `results/security_policy/integration-20260621-152838` 和 `results/security_policy/integration-20260621-153514`；121/122 之前已验证四类 syscall tracing，结果目录分别为 `results/security_policy/integration-20260621-150713` 和 `results/security_policy/integration-20260621-151229`；正式 `security_policy` audit/enforce 已在 121/122 通过，结果目录分别为 `results/security_policy/integration-20260621-101929` 和 `results/security_policy/integration-20260621-103431`；兼容 demo 路径已在 121/122 验证 attach、deny、Agent 退出恢复和 cleanup 无残留，结果目录分别为 `results/security_policy/integration-20260621-095537` 和 `results/security_policy/integration-20260621-100937`。network_policy_demo 在 rollback 时 unpin + destroy，退出后无残留。
+正式 `security_policy` 默认 disabled，audit 模式 attach BPF LSM + `execve/openat/connect/ptrace` tracepoint，但通过 `policy_map.enforce=0` 保持允许，命中后写 ringbuf observed hit；enforce 模式当前复用 `security_policy_demo` 的 BPF LSM，由用户态从 YAML `path/exec_path` 写入最多 8 项 `target_map`，写 blocked hit 后拒绝访问 map 中的文件路径和执行路径。LSM blocked hit 会携带 BPF `target_index`，用户态据此还原单条 YAML `rule_id/target_ref`；tracepoint 观测事件不参与规则匹配，写 `target_index=unknown`。BPF link 默认不 pin，LSM 与 tracepoint 程序随 Agent 进程退出自动消亡。`tests/integration/test_security_policy.sh` 已在 121/122 验证 `lsm_file_open/lsm_bprm_check_security/sys_enter_execve/sys_enter_openat/sys_enter_connect/sys_enter_ptrace` 六类 BPF ringbuf hit、双 LSM enforce、双动态 `/tmp` target_map、规则级 blocked 事件和 rollback 恢复，最新结果目录分别为 `results/security_policy/integration-20260621-171904` 和 `results/security_policy/integration-20260621-171957`；121/122 之前已验证多目标 target_map，结果目录分别为 `results/security_policy/integration-20260621-164838` 和 `results/security_policy/integration-20260621-165001`；121/122 之前已验证单动态 target_map，结果目录分别为 `results/security_policy/integration-20260621-161943` 和 `results/security_policy/integration-20260621-162111`；121/122 之前已验证双 LSM enforce，结果目录分别为 `results/security_policy/integration-20260621-152838` 和 `results/security_policy/integration-20260621-153514`；121/122 之前已验证四类 syscall tracing，结果目录分别为 `results/security_policy/integration-20260621-150713` 和 `results/security_policy/integration-20260621-151229`；正式 `security_policy` audit/enforce 已在 121/122 通过，结果目录分别为 `results/security_policy/integration-20260621-101929` 和 `results/security_policy/integration-20260621-103431`；兼容 demo 路径已在 121/122 验证 attach、deny、Agent 退出恢复和 cleanup 无残留，结果目录分别为 `results/security_policy/integration-20260621-095537` 和 `results/security_policy/integration-20260621-100937`。network_policy_demo 在 rollback 时 unpin + destroy，退出后无残留。
 
 ## 3. 内存泄漏审计
 
@@ -71,7 +71,7 @@
 
 ## 6. TAP 质量门禁结果（17/17）
 
-最新日志：`reports/final_quality_gate_20260621_security_multitarget.log`
+最新日志：`reports/final_quality_gate_20260621_security_rule_events.log`
 
 ```
 ok 1 - make agent
@@ -104,4 +104,4 @@ ok 17 - no BPF/LSM/TC/XDP residue
 | 构建/回归 | PASS |
 | 质量门禁 | PASS (17/17) |
 
-**当前结论：EulerPilot 通过最新安全与质量审计，可作为当前争奖增强阶段的稳定基线。Security 已具备正式 `security_policy` 最小 audit/enforce 闭环、双 LSM enforce、四类 syscall tracing 和最多 8 项 target_map；仍需继续补齐容器级 target 绑定和规则级事件标识。**
+**当前结论：EulerPilot 通过最新安全与质量审计，可作为当前争奖增强阶段的稳定基线。Security 已具备正式 `security_policy` 最小 audit/enforce 闭环、双 LSM enforce、四类 syscall tracing、最多 8 项 target_map 和规则级 LSM blocked 事件标识；仍需继续补齐容器级 target 绑定和更多 LSM hook。**
