@@ -33,6 +33,7 @@ struct security_policy_config {
 struct security_policy_target {
     char file_path[MAX_SECURITY_PATH];
     char exec_path[MAX_SECURITY_PATH];
+    char exec_prefix[MAX_SECURITY_PATH];
     __u64 cgroup_id;
     __u32 connect_daddr;
     __u16 connect_dport;
@@ -105,6 +106,19 @@ static __always_inline int path_equals(const char *actual, const char *expected)
     return 0;
 }
 
+static __always_inline int path_has_prefix(const char *actual, const char *prefix)
+{
+    for (int i = 0; i < MAX_SECURITY_PATH; i++) {
+        if (prefix[i] == '\0')
+            return 1;
+        if (actual[i] == '\0')
+            return 0;
+        if (actual[i] != prefix[i])
+            return 0;
+    }
+    return 1;
+}
+
 static __always_inline __u32 clamp_target_count(const struct security_policy_config *config)
 {
     __u32 count = config ? config->target_count : 1;
@@ -150,9 +164,12 @@ static __always_inline int exec_path_match_index(const char *path,
 
         __u32 key = i;
         struct security_policy_target *target = bpf_map_lookup_elem(&target_map, &key);
-        if (target && target->exec_path[0] != '\0' &&
-            target_scope_matches(target, current_cgroup_id) &&
-            path_equals(path, target->exec_path))
+        if (!target || !target_scope_matches(target, current_cgroup_id))
+            continue;
+        if (target->exec_path[0] != '\0' && path_equals(path, target->exec_path))
+            return i;
+        if (target->exec_prefix[0] != '\0' &&
+            path_has_prefix(path, target->exec_prefix))
             return i;
     }
     return -1;
@@ -232,12 +249,22 @@ int BPF_PROG(security_policy_bprm, struct linux_binprm *bprm, int ret)
     if (ret != 0)
         return ret;
 
+    __u32 key = 0;
+    struct security_policy_config *config = bpf_map_lookup_elem(&policy_map, &key);
+    __u32 target_count = clamp_target_count(config);
+    __u64 current_cgroup_id = bpf_get_current_cgroup_id();
+    int target_index = -1;
     char path[256];
+
     struct file *exec_file = bprm->file;
     if (exec_file) {
         long len = bpf_d_path(&exec_file->f_path, path, sizeof(path));
-        if (len > 0)
-            goto path_ready;
+        if (len > 0) {
+            target_index = exec_path_match_index(path, target_count,
+                                                 current_cgroup_id);
+            if (target_index >= 0)
+                goto matched;
+        }
     }
 
     const char *filename = BPF_CORE_READ(bprm, filename);
@@ -246,16 +273,12 @@ int BPF_PROG(security_policy_bprm, struct linux_binprm *bprm, int ret)
     if (bpf_probe_read_kernel_str(path, sizeof(path), filename) <= 0)
         return 0;
 
-path_ready:;
-
-    __u32 key = 0;
-    struct security_policy_config *config = bpf_map_lookup_elem(&policy_map, &key);
-    __u32 target_count = clamp_target_count(config);
-    __u64 current_cgroup_id = bpf_get_current_cgroup_id();
-    int target_index = exec_path_match_index(path, target_count,
-                                             current_cgroup_id);
+    target_index = exec_path_match_index(path, target_count,
+                                         current_cgroup_id);
     if (target_index < 0)
         return 0;
+
+matched:;
 
     __u32 enforce = config ? config->enforce : 1;
     __s32 decision = enforce ? -EPERM : 0;

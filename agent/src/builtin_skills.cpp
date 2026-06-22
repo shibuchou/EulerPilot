@@ -193,6 +193,7 @@ struct SecurityPolicyConfig {
 struct SecurityPolicyTarget {
     char file_path[256] = {};
     char exec_path[256] = {};
+    char exec_prefix[256] = {};
     std::uint64_t cgroup_id = 0;
     std::uint32_t connect_daddr = 0;
     std::uint16_t connect_dport = 0;
@@ -205,6 +206,7 @@ struct SecurityPolicyRule {
     std::string target_ref;
     std::string file_path;
     std::string exec_path;
+    std::string exec_prefix;
     std::string cgroup_path;
     std::string connect_ip;
     std::string connect_port;
@@ -249,7 +251,7 @@ static_assert(sizeof(NetworkXdpStats) == 24,
               "network xdp stats map layout must match BPF");
 static_assert(sizeof(SecurityPolicyConfig) == 8,
               "security policy config map layout must match BPF");
-static_assert(sizeof(SecurityPolicyTarget) == 528,
+static_assert(sizeof(SecurityPolicyTarget) == 784,
               "security policy target map layout must match BPF");
 static_assert(sizeof(SecurityPolicyEvent) == 304,
               "security policy ringbuf event layout must match BPF");
@@ -1880,6 +1882,7 @@ public:
                 }
                 rule.file_path = config_value_or(spec, target_prefix + "path", "");
                 rule.exec_path = config_value_or(spec, target_prefix + "exec_path", "");
+                rule.exec_prefix = config_value_or(spec, target_prefix + "exec_prefix", "");
                 if (hook == "lsm_socket_connect") {
                     rule.connect_ip =
                         config_value_or(spec, target_prefix + "dst_ip",
@@ -1900,6 +1903,11 @@ public:
                     rule.connect_dport = htons(host_port);
                     rule.connect_protocol = 6;
                     rule.connect_port = std::to_string(host_port);
+                } else if (hook == "lsm_bprm_check_security") {
+                    if (rule.exec_path.empty() && rule.exec_prefix.empty()) {
+                        last_error_ = "security-policy-v2-target-exec-matcher-missing";
+                        return false;
+                    }
                 } else {
                     if (rule.file_path.empty()) {
                         last_error_ = "security-policy-v2-target-path-missing";
@@ -1994,6 +2002,10 @@ public:
                     last_error_ = "invalid-exec-target-path";
                     return false;
                 }
+                if (!rule.exec_prefix.empty() && !valid_security_path(rule.exec_prefix)) {
+                    last_error_ = "invalid-exec-prefix";
+                    return false;
+                }
                 rules_.push_back(std::move(rule));
             }
             if (!config_value_or(spec, "rules." + std::to_string(kSecurityPolicyMaxTargets) + ".hook", "").empty()) {
@@ -2064,9 +2076,18 @@ public:
                 last_error_ = "invalid-exec-target-path";
                 return false;
             }
+            if (!rule.exec_prefix.empty() && !valid_security_path(rule.exec_prefix)) {
+                last_error_ = "invalid-exec-prefix";
+                return false;
+            }
             if (rule.hook == "lsm_file_open" &&
                 (rule.file_path.empty() || rule.exec_path.empty())) {
                 last_error_ = "security-policy-file-rule-target-missing";
+                return false;
+            }
+            if (rule.hook == "lsm_bprm_check_security" &&
+                rule.exec_path.empty() && rule.exec_prefix.empty()) {
+                last_error_ = "security-policy-bprm-rule-target-missing";
                 return false;
             }
             if (rule.hook == "lsm_socket_connect" &&
@@ -2083,6 +2104,9 @@ public:
             }
             if (exec_target_path_.empty() && !rule.exec_path.empty()) {
                 exec_target_path_ = rule.exec_path;
+            }
+            if (exec_prefix_.empty() && !rule.exec_prefix.empty()) {
+                exec_prefix_ = rule.exec_prefix;
             }
         }
         hook_ = join_security_field(rules_, "hook");
@@ -2199,6 +2223,7 @@ public:
         snapshot.evidence["hook"] = hook_;
         snapshot.evidence["target_path"] = target_path_;
         snapshot.evidence["exec_target_path"] = exec_target_path_;
+        snapshot.evidence["exec_prefix"] = exec_prefix_;
         snapshot.evidence["mode"] = mode_;
         snapshot.evidence["target_ref"] = target_ref_;
         snapshot.evidence["rule_id"] = rule_id_;
@@ -2248,7 +2273,8 @@ private:
     }
 
     static bool is_supported_security_hook(const std::string &hook) {
-        return hook == "lsm_file_open" || hook == "lsm_socket_connect";
+        return hook == "lsm_file_open" || hook == "lsm_bprm_check_security" ||
+               hook == "lsm_socket_connect";
     }
 
     static std::string join_security_field(const std::vector<SecurityPolicyRule> &rules,
@@ -2410,6 +2436,13 @@ private:
                         return false;
                     }
                 }
+                if (!rules_[i].exec_prefix.empty()) {
+                    if (!copy_security_path(rules_[i].exec_prefix, target.exec_prefix,
+                                            sizeof(target.exec_prefix),
+                                            last_error_, "exec-prefix")) {
+                        return false;
+                    }
+                }
                 target.cgroup_id = rules_[i].cgroup_id;
                 target.connect_daddr = rules_[i].connect_daddr;
                 target.connect_dport = rules_[i].connect_dport;
@@ -2550,6 +2583,9 @@ private:
             event.target["dst_ip"] = matched_rule->connect_ip;
             event.target["dst_port"] = matched_rule->connect_port;
         }
+        if (matched_rule && !matched_rule->exec_prefix.empty()) {
+            event.target["exec_prefix"] = matched_rule->exec_prefix;
+        }
         event.operation = "hit";
         event.evidence = {
             {"hook", matched_rule ? matched_rule->hook : hook_},
@@ -2597,6 +2633,7 @@ private:
             {"target_ref", target_ref_},
             {"path", target_path_},
             {"exec_path", exec_target_path_},
+            {"exec_prefix", exec_prefix_},
             {"target_count", std::to_string(rules_.size())},
         };
         event.operation = operation;
@@ -2631,11 +2668,13 @@ private:
             {"target_count", std::to_string(rules_.size())},
             {"path", target_path_},
             {"exec_path", exec_target_path_},
+            {"exec_prefix", exec_prefix_},
             {"action", action},
         };
         entry.handles = {
             {"path", target_path_},
             {"exec_path", exec_target_path_},
+            {"exec_prefix", exec_prefix_},
             {"bpf_link", handle},
         };
         entry.restored = operation == "rollback";
@@ -2651,6 +2690,7 @@ private:
     std::string hook_ = "lsm_file_open";
     std::string target_path_ = "/root/EulerPilot/demo/security_policy_demo/secret.txt";
     std::string exec_target_path_ = "/root/EulerPilot/demo/security_policy_demo/deny_exec.sh";
+    std::string exec_prefix_;
     std::string mode_ = "enforce";
     std::string action_ = "deny";
     std::string target_ref_ = "legacy_path";

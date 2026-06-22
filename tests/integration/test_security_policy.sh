@@ -16,6 +16,7 @@ DYNAMIC_SECOND_TARGET_FILE=""
 DYNAMIC_SECOND_EXEC_TARGET_FILE=""
 DYNAMIC_SCOPED_TARGET_FILE=""
 DYNAMIC_SCOPED_EXEC_TARGET_FILE=""
+DYNAMIC_PREFIX_EXEC_FILE=""
 SCOPED_CGROUP_PATH=""
 SCOPED_PID=""
 SOCKET_SERVER_PID=""
@@ -172,6 +173,20 @@ assert_blocked_rule_event_has_cgroup() {
     fi
 }
 
+audit_hook_seen() {
+    local hook="$1"
+    grep -q "\"event_hook\":\"$hook\"" "$ROOT/reports/events/security_policy.jsonl" 2>/dev/null
+}
+
+audit_required_hooks_seen() {
+    audit_hook_seen "lsm_file_open" &&
+        audit_hook_seen "sys_enter_execve" &&
+        audit_hook_seen "sys_enter_openat" &&
+        audit_hook_seen "sys_enter_connect" &&
+        audit_hook_seen "sys_enter_ptrace" &&
+        audit_hook_seen "lsm_bprm_check_security"
+}
+
 run_in_scoped_cgroup() {
     local stdout_path="$1"
     local stderr_path="$2"
@@ -325,9 +340,9 @@ log "PASS: exec target is runnable before policy attach"
 
 rm -f "$ROOT/reports/events/security_policy.jsonl"
 
-timeout 12s "$AGENT_BIN" \
+timeout 18s "$AGENT_BIN" \
     --config "$RESULT_DIR/agent.audit.yaml" \
-    --duration-s 4 \
+    --duration-s 8 \
     --interval-ms 1000 \
     --jsonl \
     > "$RESULT_DIR/agent-audit.log" 2>&1 &
@@ -343,13 +358,35 @@ if ! kill -0 "$AGENT_PID" 2>/dev/null; then
     fail "audit agent exited early, rc=$agent_rc; see $RESULT_DIR/agent-audit.log"
 fi
 
-if ! cat "$TARGET_FILE" > "$RESULT_DIR/audit-secret.txt" 2> "$RESULT_DIR/audit-secret.err"; then
-    fail "audit mode blocked target file; see $RESULT_DIR/audit-secret.err"
+audit_ready="false"
+for _ in $(seq 1 30); do
+    if ! kill -0 "$AGENT_PID" 2>/dev/null; then
+        set +e
+        wait "$AGENT_PID"
+        agent_rc="$?"
+        set -e
+        AGENT_PID=""
+        fail "audit agent exited before required events were observed, rc=$agent_rc; see $RESULT_DIR/agent-audit.log"
+    fi
+
+    if ! cat "$TARGET_FILE" > "$RESULT_DIR/audit-secret.txt" 2> "$RESULT_DIR/audit-secret.err"; then
+        fail "audit mode blocked target file; see $RESULT_DIR/audit-secret.err"
+    fi
+    if ! "$EXEC_TARGET_FILE" > "$RESULT_DIR/audit-exec.txt" 2> "$RESULT_DIR/audit-exec.err"; then
+        fail "audit mode blocked exec target; see $RESULT_DIR/audit-exec.err"
+    fi
+    trigger_audit_syscalls
+
+    if audit_required_hooks_seen; then
+        audit_ready="true"
+        break
+    fi
+    sleep 0.1
+done
+
+if [ "$audit_ready" != "true" ]; then
+    fail "audit mode did not observe all required LSM and syscall hooks before agent timeout"
 fi
-if ! "$EXEC_TARGET_FILE" > "$RESULT_DIR/audit-exec.txt" 2> "$RESULT_DIR/audit-exec.err"; then
-    fail "audit mode blocked exec target; see $RESULT_DIR/audit-exec.err"
-fi
-trigger_audit_syscalls
 
 set +e
 wait "$AGENT_PID"
@@ -525,6 +562,7 @@ DYNAMIC_SECOND_TARGET_FILE="$DYNAMIC_DIR/dynamic-second-secret.txt"
 DYNAMIC_SECOND_EXEC_TARGET_FILE="$DYNAMIC_DIR/dynamic-second-deny-exec.sh"
 DYNAMIC_SCOPED_TARGET_FILE="$DYNAMIC_DIR/dynamic-scoped-secret.txt"
 DYNAMIC_SCOPED_EXEC_TARGET_FILE="$DYNAMIC_DIR/dynamic-scoped-deny-exec.sh"
+DYNAMIC_PREFIX_EXEC_FILE="$DYNAMIC_DIR/prefix-deny-exec.sh"
 printf 'dynamic security policy target\n' > "$DYNAMIC_TARGET_FILE"
 printf 'second dynamic security policy target\n' > "$DYNAMIC_SECOND_TARGET_FILE"
 printf 'scoped dynamic security policy target\n' > "$DYNAMIC_SCOPED_TARGET_FILE"
@@ -540,8 +578,12 @@ cat > "$DYNAMIC_SCOPED_EXEC_TARGET_FILE" <<'SH'
 #!/usr/bin/env bash
 echo scoped dynamic security policy exec target
 SH
+cat > "$DYNAMIC_PREFIX_EXEC_FILE" <<'SH'
+#!/usr/bin/env bash
+echo writable directory prefix exec target
+SH
 chmod +x "$DYNAMIC_EXEC_TARGET_FILE" "$DYNAMIC_SECOND_EXEC_TARGET_FILE" \
-    "$DYNAMIC_SCOPED_EXEC_TARGET_FILE"
+    "$DYNAMIC_SCOPED_EXEC_TARGET_FILE" "$DYNAMIC_PREFIX_EXEC_FILE"
 
 cat > "$RESULT_DIR/agent.dynamic.yaml" <<'YAML'
 skills_config_path: skills.dynamic.yaml
@@ -958,6 +1000,114 @@ if ! run_in_scoped_cgroup "$RESULT_DIR/socket-post-cleanup.txt" \
     fail "socket connect is still denied after rollback/cleanup; see $RESULT_DIR/socket-post-cleanup.err"
 fi
 cleanup_socket_server
+
+cat > "$RESULT_DIR/agent.exec-prefix.yaml" <<'YAML'
+skills_config_path: skills.exec-prefix.yaml
+exporter:
+  prometheus:
+    enabled: false
+YAML
+
+cat > "$RESULT_DIR/skills.exec-prefix.yaml" <<YAML
+schema_version: 2
+skills:
+- name: resource_control
+  kind: runtime
+  enabled: true
+  config: {}
+- name: psi_gate
+  kind: runtime
+  enabled: true
+  config: {}
+- name: security_policy
+  kind: runtime
+  enabled: true
+  config:
+    mode: enforce
+    targets:
+      writable_exec:
+        type: cgroup
+        cgroup_path: $SCOPED_CGROUP_PATH
+        exec_prefix: $DYNAMIC_DIR/
+    rules:
+      - name: deny_writable_dir_exec
+        hook: lsm_bprm_check_security
+        target_ref: writable_exec
+        action: deny
+YAML
+
+rm -f "$ROOT/reports/events/security_policy.jsonl"
+
+timeout 20s "$AGENT_BIN" \
+    --config "$RESULT_DIR/agent.exec-prefix.yaml" \
+    --duration-s 8 \
+    --interval-ms 1000 \
+    --jsonl \
+    > "$RESULT_DIR/agent-exec-prefix.log" 2>&1 &
+AGENT_PID="$!"
+
+prefix_blocked="false"
+for _ in $(seq 1 40); do
+    if ! kill -0 "$AGENT_PID" 2>/dev/null; then
+        set +e
+        wait "$AGENT_PID"
+        agent_rc="$?"
+        set -e
+        AGENT_PID=""
+        fail "exec-prefix agent exited before bprm denial was observed, rc=$agent_rc; see $RESULT_DIR/agent-exec-prefix.log"
+    fi
+
+    if ! "$DYNAMIC_PREFIX_EXEC_FILE" > "$RESULT_DIR/exec-prefix-outside.txt" \
+        2> "$RESULT_DIR/exec-prefix-outside.err"; then
+        fail "exec-prefix target was denied outside target cgroup; see $RESULT_DIR/exec-prefix-outside.err"
+    fi
+
+    set +e
+    run_in_scoped_cgroup "$RESULT_DIR/exec-prefix-blocked.txt" \
+        "$RESULT_DIR/exec-prefix-blocked.err" \
+        "$DYNAMIC_PREFIX_EXEC_FILE"
+    prefix_rc="$?"
+    set -e
+    if [ "$prefix_rc" -ne 0 ]; then
+        prefix_blocked="true"
+        break
+    fi
+    sleep 0.2
+done
+
+if [ "$prefix_blocked" != "true" ]; then
+    fail "exec-prefix target was not denied inside target cgroup; see $RESULT_DIR/agent-exec-prefix.log"
+fi
+
+set +e
+wait "$AGENT_PID"
+agent_rc="$?"
+set -e
+AGENT_PID=""
+if [ "$agent_rc" -ne 0 ]; then
+    fail "exec-prefix agent exited non-zero, rc=$agent_rc; see $RESULT_DIR/agent-exec-prefix.log"
+fi
+
+assert_blocked_rule_event "$DYNAMIC_PREFIX_EXEC_FILE" "lsm_bprm_check_security" \
+    "deny_writable_dir_exec" "writable_exec"
+assert_blocked_rule_event_has_cgroup "$DYNAMIC_PREFIX_EXEC_FILE" "lsm_bprm_check_security" \
+    "deny_writable_dir_exec" "writable_exec"
+if ! grep -F "$DYNAMIC_PREFIX_EXEC_FILE" "$ROOT/reports/events/security_policy.jsonl" 2>/dev/null \
+    | grep -F '"event_hook":"lsm_bprm_check_security"' \
+    | grep -F '"result":"blocked"' \
+    | grep -Fq "\"exec_prefix\":\"$DYNAMIC_DIR/\""; then
+    fail "exec-prefix blocked event did not carry exec_prefix evidence"
+fi
+cp "$ROOT/reports/events/security_policy.jsonl" "$RESULT_DIR/security_policy_events.exec-prefix.jsonl"
+log "PASS: security_policy bprm exec_prefix blocks writable-dir execution inside target cgroup"
+
+run_cleanup_script
+
+if ! run_in_scoped_cgroup "$RESULT_DIR/exec-prefix-post-cleanup.txt" \
+    "$RESULT_DIR/exec-prefix-post-cleanup.err" \
+    "$DYNAMIC_PREFIX_EXEC_FILE"; then
+    fail "exec-prefix target is still denied after rollback/cleanup; see $RESULT_DIR/exec-prefix-post-cleanup.err"
+fi
 
 sleep 60 &
 SCOPED_PID="$!"

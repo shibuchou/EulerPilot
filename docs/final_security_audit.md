@@ -28,7 +28,7 @@
 | sched_ext state | `disabled` | `disabled` | PASS |
 | sched_ext nr_rejected | `0` | `0` | PASS |
 
-正式 `security_policy` 默认 disabled，audit 模式 attach BPF LSM + `execve/openat/connect/ptrace` tracepoint，但通过 `policy_map.enforce=0` 保持允许，命中后写 ringbuf observed hit；enforce 模式当前复用 `security_policy_demo` 的 BPF LSM，由用户态从 YAML `path/exec_path/dst_ip/dst_port/cgroup_path/pid/container_id/container/k8s_pod` 写入最多 8 项 `target_map`，写 blocked hit 后拒绝访问 map 中的文件路径、执行路径和 scoped IPv4 socket endpoint。LSM blocked hit 会携带 BPF `target_index`，用户态据此还原单条 YAML `rule_id/target_ref`；配置 `cgroup_path`、`type: pid`、`type: container_id`、`type: container` 或 `type: k8s_pod` 时，BPF 还要求当前进程 cgroup id 命中，事件会写 `cgroup_id/cgroup_path`；socket blocked 事件额外写 `dst_ip/dst_port/protocol`；tracepoint 观测事件不参与规则匹配，写 `target_index=unknown`。BPF link 默认不 pin，LSM 与 tracepoint 程序随 Agent 进程退出自动消亡。`tests/integration/test_security_policy.sh` 已在 121/122 验证 `lsm_file_open/lsm_bprm_check_security/lsm_socket_connect/sys_enter_execve/sys_enter_openat/sys_enter_connect/sys_enter_ptrace` BPF ringbuf hit、三类 LSM enforce、双动态 `/tmp` target_map、规则级 blocked 事件、显式 cgroup scope、PID target 自动解析、container_id target cgroup 解析、runtime container name 解析、k8s pod name 解析和 rollback 恢复，最新结果目录分别为 `results/security_policy/integration-20260622-105820` 和 `results/security_policy/integration-20260622-110120`；上一轮 runtime/Pod target 结果目录分别为 `results/security_policy/integration-20260621-214903` 和 `results/security_policy/integration-20260621-215158`。network_policy_demo 在 rollback 时 unpin + destroy，退出后无残留。
+正式 `security_policy` 默认 disabled，audit 模式 attach BPF LSM + `execve/openat/connect/ptrace` tracepoint，但通过 `policy_map.enforce=0` 保持允许，命中后写 ringbuf observed hit；enforce 模式当前复用 `security_policy_demo` 的 BPF LSM，由用户态从 YAML `path/exec_path/exec_prefix/dst_ip/dst_port/cgroup_path/pid/container_id/container/k8s_pod` 写入最多 8 项 `target_map`，写 blocked hit 后拒绝访问 map 中的文件路径、精确执行路径、执行路径前缀和 scoped IPv4 socket endpoint。LSM blocked hit 会携带 BPF `target_index`，用户态据此还原单条 YAML `rule_id/target_ref`；配置 `cgroup_path`、`type: pid`、`type: container_id`、`type: container` 或 `type: k8s_pod` 时，BPF 还要求当前进程 cgroup id 命中，事件会写 `cgroup_id/cgroup_path`；socket blocked 事件额外写 `dst_ip/dst_port/protocol`，exec_prefix blocked 事件额外写 `exec_prefix`；tracepoint 观测事件不参与规则匹配，写 `target_index=unknown`。BPF link 默认不 pin，LSM 与 tracepoint 程序随 Agent 进程退出自动消亡。`tests/integration/test_security_policy.sh` 已在 121/122 验证 `lsm_file_open/lsm_bprm_check_security/lsm_socket_connect/sys_enter_execve/sys_enter_openat/sys_enter_connect/sys_enter_ptrace` BPF ringbuf hit、三类 LSM enforce、双动态 `/tmp` target_map、scoped writable-dir exec_prefix、规则级 blocked 事件、显式 cgroup scope、PID target 自动解析、container_id target cgroup 解析、runtime container name 解析、k8s pod name 解析和 rollback 恢复，最新结果目录分别为 `results/security_policy/integration-20260622-145403` 和 `results/security_policy/integration-20260622-145716`；上一轮 socket_connect 结果目录分别为 `results/security_policy/integration-20260622-105820` 和 `results/security_policy/integration-20260622-110120`。network_policy_demo 在 rollback 时 unpin + destroy，退出后无残留。
 
 ## 3. 内存泄漏审计
 
@@ -71,7 +71,7 @@
 
 ## 6. TAP 质量门禁结果（17/17）
 
-最新日志：`reports/final_quality_gate_20260622_security_socket_connect.log`
+最新日志：`reports/final_quality_gate_20260622_security_exec_prefix.log`
 
 ```
 ok 1 - make agent
@@ -104,4 +104,4 @@ ok 17 - no BPF/LSM/TC/XDP residue
 | 构建/回归 | PASS |
 | 质量门禁 | PASS (17/17) |
 
-**当前结论：EulerPilot 通过最新安全与质量审计，可作为当前争奖增强阶段的稳定基线。Security 已具备正式 `security_policy` 最小 audit/enforce 闭环、file_open/bprm/socket_connect 三类 LSM enforce、四类 syscall tracing、最多 8 项 target_map、规则级 LSM blocked 事件标识、显式 cgroup scope、PID target 自动解析、container_id target cgroup 解析、runtime container name 解析、k8s pod name 解析和 scoped IPv4 endpoint 阻断；仍需继续补齐 bprm/file/ptrace/capability 异常规则和更完整进程过滤。**
+**当前结论：EulerPilot 通过最新安全与质量审计，可作为当前争奖增强阶段的稳定基线。Security 已具备正式 `security_policy` 最小 audit/enforce 闭环、file_open/bprm/socket_connect 三类 LSM enforce、四类 syscall tracing、最多 8 项 target_map、规则级 LSM blocked 事件标识、显式 cgroup scope、PID target 自动解析、container_id target cgroup 解析、runtime container name 解析、k8s pod name 解析、scoped IPv4 endpoint 阻断和 scoped writable-dir exec_prefix 执行阻断；仍需继续补齐 file/ptrace/capability 异常规则和更完整进程过滤。**

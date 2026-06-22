@@ -28,6 +28,7 @@
 - [x] `security_policy` `type: container` target 通过 runtime CLI 解析 container name 到 cgroup scope：目标 cgroup 内阻断、scope 外允许
 - [x] `security_policy` `type: k8s_pod` target 通过 kubectl 查询 Pod UID 并解析 cgroup scope：目标 Pod cgroup 内阻断、scope 外允许
 - [x] `security_policy` `lsm_socket_connect` 通过 `dst_ip/dst_port/cgroup_id` 阻断目标 cgroup 内 IPv4 connect，scope 外允许，事件携带 endpoint 证据
+- [x] `security_policy` `lsm_bprm_check_security` 通过 `exec_prefix/cgroup_id` 阻断目标 cgroup 内可写目录前缀执行，scope 外允许，事件携带 `exec_prefix` 证据
 - [x] `security_policy_demo` BPF LSM file_open 最小闭环
 - [x] `security_policy_demo` BPF LSM attach/deny/rollback 集成测试 121/122 均通过
 - [x] Runtime 生命周期收拢与 ActionJournal/AuditBus 最小接入
@@ -74,6 +75,8 @@
 - Security runtime/Pod target 122：`results/security_policy/integration-20260621-215158`
 - Security socket_connect LSM 121：`results/security_policy/integration-20260622-105820`
 - Security socket_connect LSM 122：`results/security_policy/integration-20260622-110120`
+- Security bprm exec_prefix LSM 121：`results/security_policy/integration-20260622-145403`
+- Security bprm exec_prefix LSM 122：`results/security_policy/integration-20260622-145716`
 
 ## 当前核心文档
 
@@ -90,9 +93,9 @@
 ## 质量与安全审计
 
 - `scripts/final_quality_gate.sh`：TAP 风格 17 项 P0 质量门禁脚本
-- `reports/final_quality_gate_20260622_security_socket_connect.log`：121 最新门禁通过记录
+- `reports/final_quality_gate_20260622_security_exec_prefix.log`：121 最新门禁通过记录
 - `docs/final_security_audit.md`：最终安全与质量审计报告
 
 ## 当前结论
 
-项目仍处于争奖增强阶段，不应停留在“最终材料整理”。下一步重点是补强 Network/Security/Resource 的成品化深度：Pod veth、Security bprm/file/ptrace/capability 异常规则、Resource CPU+Memory 自动闭环。
+项目仍处于争奖增强阶段，不应停留在“最终材料整理”。下一步重点是补强 Network/Security/Resource 的成品化深度：Pod veth、Security file/ptrace/capability 异常规则、Resource CPU+Memory 自动闭环。
