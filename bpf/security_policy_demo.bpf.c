@@ -16,9 +16,14 @@ char LICENSE[] SEC("license") = "GPL";
 #define EVENT_CONNECT 4
 #define EVENT_PTRACE 5
 #define EVENT_LSM_BPRM_CHECK 6
+#define EVENT_LSM_SOCKET_CONNECT 7
 #define MAX_SECURITY_PATH 256
 #define MAX_SECURITY_TARGETS 8
 #define SECURITY_TARGET_UNKNOWN 0xffffffff
+
+#ifndef AF_INET
+#define AF_INET 2
+#endif
 
 struct security_policy_config {
     __u32 enforce;
@@ -29,6 +34,9 @@ struct security_policy_target {
     char file_path[MAX_SECURITY_PATH];
     char exec_path[MAX_SECURITY_PATH];
     __u64 cgroup_id;
+    __u32 connect_daddr;
+    __u16 connect_dport;
+    __u16 connect_protocol;
 };
 
 struct security_policy_event {
@@ -40,6 +48,9 @@ struct security_policy_event {
     __u32 target_index;
     char comm[16];
     char path[256];
+    __u32 daddr;
+    __u16 dport;
+    __u16 protocol;
 };
 
 struct {
@@ -75,6 +86,9 @@ static __always_inline void fill_common_event(struct security_policy_event *even
     event->enforce = enforce;
     event->decision = decision;
     event->target_index = target_index;
+    event->daddr = 0;
+    event->dport = 0;
+    event->protocol = 0;
     bpf_get_current_comm(&event->comm, sizeof(event->comm));
 }
 
@@ -144,6 +158,25 @@ static __always_inline int exec_path_match_index(const char *path,
     return -1;
 }
 
+static __always_inline int connect_match_index(__u32 daddr,
+                                               __u16 dport,
+                                               __u32 target_count,
+                                               __u64 current_cgroup_id)
+{
+    for (int i = 0; i < MAX_SECURITY_TARGETS; i++) {
+        if ((__u32)i >= target_count)
+            break;
+
+        __u32 key = i;
+        struct security_policy_target *target = bpf_map_lookup_elem(&target_map, &key);
+        if (target && target->connect_daddr != 0 && target->connect_dport != 0 &&
+            target_scope_matches(target, current_cgroup_id) &&
+            target->connect_daddr == daddr && target->connect_dport == dport)
+            return i;
+    }
+    return -1;
+}
+
 static __always_inline int is_self_agent(void)
 {
     const char self_comm[] = "eulerpilot-agen";
@@ -199,13 +232,21 @@ int BPF_PROG(security_policy_bprm, struct linux_binprm *bprm, int ret)
     if (ret != 0)
         return ret;
 
+    char path[256];
+    struct file *exec_file = bprm->file;
+    if (exec_file) {
+        long len = bpf_d_path(&exec_file->f_path, path, sizeof(path));
+        if (len > 0)
+            goto path_ready;
+    }
+
     const char *filename = BPF_CORE_READ(bprm, filename);
     if (!filename)
         return 0;
-
-    char path[256];
     if (bpf_probe_read_kernel_str(path, sizeof(path), filename) <= 0)
         return 0;
+
+path_ready:;
 
     __u32 key = 0;
     struct security_policy_config *config = bpf_map_lookup_elem(&policy_map, &key);
@@ -225,6 +266,50 @@ int BPF_PROG(security_policy_bprm, struct linux_binprm *bprm, int ret)
         fill_common_event(event, EVENT_LSM_BPRM_CHECK, enforce, decision,
                           (__u32)target_index);
         __builtin_memcpy(event->path, path, sizeof(event->path));
+        bpf_ringbuf_submit(event, 0);
+    }
+
+    return decision;
+}
+
+SEC("lsm/socket_connect")
+int BPF_PROG(security_policy_socket_connect, struct socket *sock,
+             struct sockaddr *address, int addrlen, int ret)
+{
+    if (ret != 0)
+        return ret;
+    if (!address || addrlen < sizeof(struct sockaddr_in))
+        return 0;
+
+    __u16 family = BPF_CORE_READ(address, sa_family);
+    if (family != AF_INET)
+        return 0;
+
+    struct sockaddr_in *addr = (struct sockaddr_in *)address;
+    __u32 daddr = BPF_CORE_READ(addr, sin_addr.s_addr);
+    __u16 dport = BPF_CORE_READ(addr, sin_port);
+
+    __u32 key = 0;
+    struct security_policy_config *config = bpf_map_lookup_elem(&policy_map, &key);
+    __u32 target_count = clamp_target_count(config);
+    __u64 current_cgroup_id = bpf_get_current_cgroup_id();
+    int target_index = connect_match_index(daddr, dport, target_count,
+                                           current_cgroup_id);
+    if (target_index < 0)
+        return 0;
+
+    __u32 enforce = config ? config->enforce : 1;
+    __s32 decision = enforce ? -EPERM : 0;
+
+    struct security_policy_event *event =
+        bpf_ringbuf_reserve(&events, sizeof(*event), 0);
+    if (event) {
+        fill_common_event(event, EVENT_LSM_SOCKET_CONNECT, enforce, decision,
+                          (__u32)target_index);
+        __builtin_memcpy(event->path, "socket_connect", sizeof("socket_connect"));
+        event->daddr = daddr;
+        event->dport = dport;
+        event->protocol = 6;
         bpf_ringbuf_submit(event, 0);
     }
 

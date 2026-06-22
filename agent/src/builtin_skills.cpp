@@ -17,6 +17,7 @@
 #include <cstring>
 #include <iterator>
 
+#include <arpa/inet.h>
 #include <cstdlib>
 #include <filesystem>
 #include <fcntl.h>
@@ -25,6 +26,7 @@
 #include <linux/if_link.h>
 #include <map>
 #include <net/if.h>
+#include <netinet/in.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <string>
@@ -73,6 +75,15 @@ bool parse_tcp_port(const std::string &value, std::uint16_t &port) {
     return true;
 }
 
+bool parse_ipv4_address(const std::string &value, std::uint32_t &addr) {
+    in_addr parsed{};
+    if (inet_pton(AF_INET, value.c_str(), &parsed) != 1) {
+        return false;
+    }
+    addr = parsed.s_addr;
+    return true;
+}
+
 bool parse_pid_value(const std::string &value, int &pid) {
     char *end = nullptr;
     errno = 0;
@@ -105,6 +116,16 @@ int find_rule_by_hook(const SkillSpec &spec, const std::string &hook) {
             continue;
         }
         if (*rule_hook == hook) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+int find_first_rule(const SkillSpec &spec) {
+    for (int i = 0; i < 128; ++i) {
+        const std::string prefix = "rules." + std::to_string(i) + ".";
+        if (find_config_value(spec, prefix + "hook")) {
             return i;
         }
     }
@@ -173,15 +194,24 @@ struct SecurityPolicyTarget {
     char file_path[256] = {};
     char exec_path[256] = {};
     std::uint64_t cgroup_id = 0;
+    std::uint32_t connect_daddr = 0;
+    std::uint16_t connect_dport = 0;
+    std::uint16_t connect_protocol = 0;
 };
 
 struct SecurityPolicyRule {
     std::string rule_id;
+    std::string hook;
     std::string target_ref;
     std::string file_path;
     std::string exec_path;
     std::string cgroup_path;
+    std::string connect_ip;
+    std::string connect_port;
     std::uint64_t cgroup_id = 0;
+    std::uint32_t connect_daddr = 0;
+    std::uint16_t connect_dport = 0;
+    std::uint16_t connect_protocol = 0;
 };
 
 struct SecurityPolicyEvent {
@@ -193,6 +223,9 @@ struct SecurityPolicyEvent {
     std::uint32_t target_index = 0;
     char comm[16] = {};
     char path[256] = {};
+    std::uint32_t daddr = 0;
+    std::uint16_t dport = 0;
+    std::uint16_t protocol = 0;
 };
 
 struct NetworkXdpRule {
@@ -216,9 +249,9 @@ static_assert(sizeof(NetworkXdpStats) == 24,
               "network xdp stats map layout must match BPF");
 static_assert(sizeof(SecurityPolicyConfig) == 8,
               "security policy config map layout must match BPF");
-static_assert(sizeof(SecurityPolicyTarget) == 520,
+static_assert(sizeof(SecurityPolicyTarget) == 528,
               "security policy target map layout must match BPF");
-static_assert(sizeof(SecurityPolicyEvent) == 296,
+static_assert(sizeof(SecurityPolicyEvent) == 304,
               "security policy ringbuf event layout must match BPF");
 
 bool valid_tc_token(const std::string &value) {
@@ -1803,10 +1836,11 @@ public:
 
     bool configure(const RuntimeConfig &, const SkillSpec &spec) override {
         rules_.clear();
-        const int rule_index = find_rule_by_hook(spec, "lsm_file_open");
+        const int rule_index = find_first_rule(spec);
         if (rule_index >= 0) {
             mode_ = config_value_or(spec, "mode", "audit");
-            hook_ = "lsm_file_open";
+            hook_ = config_value_or(spec, "rules." + std::to_string(rule_index) + ".hook",
+                                    "lsm_file_open");
             action_ = "deny";
 
             for (std::size_t i = 0; i < kSecurityPolicyMaxTargets; ++i) {
@@ -1815,7 +1849,7 @@ public:
                 if (hook.empty()) {
                     continue;
                 }
-                if (hook != "lsm_file_open") {
+                if (!is_supported_security_hook(hook)) {
                     last_error_ = "unsupported-hook";
                     return false;
                 }
@@ -1827,6 +1861,7 @@ public:
                 mode_ = config_value_or(spec, rule_prefix + "mode", mode_);
 
                 SecurityPolicyRule rule;
+                rule.hook = hook;
                 rule.rule_id = config_value_or(spec, rule_prefix + "name",
                                                "deny-security-target-" + std::to_string(i));
                 rule.target_ref = config_value_or(spec, rule_prefix + "target_ref", "");
@@ -1836,21 +1871,44 @@ public:
                 }
                 const std::string target_prefix = "targets." + rule.target_ref + ".";
                 const std::string target_type = config_value_or(spec, target_prefix + "type", "");
-                if (target_type != "path" && target_type != "pid" &&
+                if (target_type != "path" && target_type != "cgroup" &&
+                    target_type != "pid" &&
                     target_type != "container_id" && target_type != "container" &&
                     target_type != "k8s_pod" && target_type != "pod") {
-                    last_error_ = "security-policy-v2-target-not-path-pid-container-or-pod";
+                    last_error_ = "security-policy-v2-target-not-path-cgroup-pid-container-or-pod";
                     return false;
                 }
                 rule.file_path = config_value_or(spec, target_prefix + "path", "");
-                if (rule.file_path.empty()) {
-                    last_error_ = "security-policy-v2-target-path-missing";
-                    return false;
-                }
                 rule.exec_path = config_value_or(spec, target_prefix + "exec_path", "");
-                if (rule.exec_path.empty()) {
-                    last_error_ = "security-policy-v2-target-exec-path-missing";
-                    return false;
+                if (hook == "lsm_socket_connect") {
+                    rule.connect_ip =
+                        config_value_or(spec, target_prefix + "dst_ip",
+                                        config_value_or(spec, target_prefix + "connect_ip", ""));
+                    if (rule.connect_ip.empty() ||
+                        !parse_ipv4_address(rule.connect_ip, rule.connect_daddr)) {
+                        last_error_ = "security-policy-v2-target-dst-ip-invalid";
+                        return false;
+                    }
+                    rule.connect_port =
+                        config_value_or(spec, target_prefix + "dst_port",
+                                        config_value_or(spec, target_prefix + "connect_port", ""));
+                    std::uint16_t host_port = 0;
+                    if (!parse_tcp_port(rule.connect_port, host_port)) {
+                        last_error_ = "security-policy-v2-target-dst-port-invalid";
+                        return false;
+                    }
+                    rule.connect_dport = htons(host_port);
+                    rule.connect_protocol = 6;
+                    rule.connect_port = std::to_string(host_port);
+                } else {
+                    if (rule.file_path.empty()) {
+                        last_error_ = "security-policy-v2-target-path-missing";
+                        return false;
+                    }
+                    if (rule.exec_path.empty()) {
+                        last_error_ = "security-policy-v2-target-exec-path-missing";
+                        return false;
+                    }
                 }
                 if (target_type == "pid") {
                     int target_pid = 0;
@@ -1928,11 +1986,11 @@ public:
                         rule.cgroup_id = target.cgroup_id;
                     }
                 }
-                if (!valid_security_path(rule.file_path)) {
+                if (!rule.file_path.empty() && !valid_security_path(rule.file_path)) {
                     last_error_ = "invalid-target-path";
                     return false;
                 }
-                if (!valid_security_path(rule.exec_path)) {
+                if (!rule.exec_path.empty() && !valid_security_path(rule.exec_path)) {
                     last_error_ = "invalid-exec-target-path";
                     return false;
                 }
@@ -1964,6 +2022,7 @@ public:
             target_ref_ = config_value_or(spec, "target_ref", "legacy_path");
             rule_id_ = config_value_or(spec, "rule_id", "deny-demo-secret-open");
             SecurityPolicyRule rule;
+            rule.hook = hook_;
             rule.rule_id = rule_id_;
             rule.target_ref = target_ref_;
             rule.file_path = target_path_;
@@ -1984,10 +2043,6 @@ public:
             last_error_ = "unsupported-mode";
             return false;
         }
-        if (hook_ != "lsm_file_open") {
-            last_error_ = "unsupported-hook";
-            return false;
-        }
         if (action_ != "deny") {
             last_error_ = "unsupported-action";
             return false;
@@ -1997,17 +2052,40 @@ public:
             return false;
         }
         for (const auto &rule : rules_) {
-            if (!valid_security_path(rule.file_path)) {
+            if (!is_supported_security_hook(rule.hook)) {
+                last_error_ = "unsupported-hook";
+                return false;
+            }
+            if (!rule.file_path.empty() && !valid_security_path(rule.file_path)) {
                 last_error_ = "invalid-target-path";
                 return false;
             }
-            if (!valid_security_path(rule.exec_path)) {
+            if (!rule.exec_path.empty() && !valid_security_path(rule.exec_path)) {
                 last_error_ = "invalid-exec-target-path";
+                return false;
+            }
+            if (rule.hook == "lsm_file_open" &&
+                (rule.file_path.empty() || rule.exec_path.empty())) {
+                last_error_ = "security-policy-file-rule-target-missing";
+                return false;
+            }
+            if (rule.hook == "lsm_socket_connect" &&
+                (rule.connect_daddr == 0 || rule.connect_dport == 0)) {
+                last_error_ = "security-policy-socket-rule-target-missing";
                 return false;
             }
         }
         target_path_ = rules_.front().file_path;
         exec_target_path_ = rules_.front().exec_path;
+        for (const auto &rule : rules_) {
+            if (target_path_.empty() && !rule.file_path.empty()) {
+                target_path_ = rule.file_path;
+            }
+            if (exec_target_path_.empty() && !rule.exec_path.empty()) {
+                exec_target_path_ = rule.exec_path;
+            }
+        }
+        hook_ = join_security_field(rules_, "hook");
         target_ref_ = join_security_field(rules_, "target_ref");
         rule_id_ = join_security_field(rules_, "rule_id");
         return true;
@@ -2102,12 +2180,12 @@ public:
         running_ = true;
         state_ = mode_ == "audit" ? "audit-attached" : "started";
         write_audit_event("start",
-                          mode_ == "audit" ? "attach-lsm-file-open-audit"
-                                           : "attach-lsm-file-open",
+                          mode_ == "audit" ? "attach-security-policy-audit"
+                                           : "attach-security-policy",
                           "success");
         write_journal_action(mode_ == "audit" ? "start-audit" : "start-enforce",
-                             mode_ == "audit" ? "attach-lsm-file-open-audit"
-                                              : "attach-lsm-file-open",
+                             mode_ == "audit" ? "attach-security-policy-audit"
+                                              : "attach-security-policy",
                              "fd-owned-link");
         return true;
     }
@@ -2135,12 +2213,12 @@ public:
     bool rollback() override {
         if (running_) {
             write_audit_event("rollback",
-                              mode_ == "audit" ? "detach-lsm-file-open-audit"
-                                               : "detach-lsm-file-open",
+                              mode_ == "audit" ? "detach-security-policy-audit"
+                                               : "detach-security-policy",
                               "success");
             write_journal_action("rollback",
-                                 mode_ == "audit" ? "detach-lsm-file-open-audit"
-                                                  : "detach-lsm-file-open",
+                                 mode_ == "audit" ? "detach-security-policy-audit"
+                                                  : "detach-security-policy",
                                  "fd-owned-link");
         }
         stop_event_reader();
@@ -2169,6 +2247,10 @@ private:
         return !path.empty() && path[0] == '/' && path.size() < 256;
     }
 
+    static bool is_supported_security_hook(const std::string &hook) {
+        return hook == "lsm_file_open" || hook == "lsm_socket_connect";
+    }
+
     static std::string join_security_field(const std::vector<SecurityPolicyRule> &rules,
                                            const char *field) {
         std::ostringstream out;
@@ -2176,7 +2258,9 @@ private:
             if (i > 0) {
                 out << ",";
             }
-            if (std::string(field) == "target_ref") {
+            if (std::string(field) == "hook") {
+                out << rules[i].hook;
+            } else if (std::string(field) == "target_ref") {
                 out << rules[i].target_ref;
             } else {
                 out << rules[i].rule_id;
@@ -2225,6 +2309,19 @@ private:
             return false;
         }
         links.push_back(bprm_link);
+
+        bpf_program *socket_connect_prog =
+            bpf_object__find_program_by_name(obj, "security_policy_socket_connect");
+        if (!socket_connect_prog) {
+            error = "security-policy-socket-connect-program-missing";
+            return false;
+        }
+        bpf_link *socket_connect_link = bpf_program__attach_lsm(socket_connect_prog);
+        if (!socket_connect_link) {
+            error = "security-policy-socket-connect-attach-failed";
+            return false;
+        }
+        links.push_back(socket_connect_link);
 
         bpf_program *execve_prog = bpf_object__find_program_by_name(obj, "trace_execve");
         if (!execve_prog) {
@@ -2301,15 +2398,22 @@ private:
         for (std::size_t i = 0; i < kSecurityPolicyMaxTargets; ++i) {
             SecurityPolicyTarget target;
             if (i < rules_.size()) {
-                if (!copy_security_path(rules_[i].file_path, target.file_path, sizeof(target.file_path),
-                                        last_error_, "file-path")) {
-                    return false;
+                if (!rules_[i].file_path.empty()) {
+                    if (!copy_security_path(rules_[i].file_path, target.file_path, sizeof(target.file_path),
+                                            last_error_, "file-path")) {
+                        return false;
+                    }
                 }
-                if (!copy_security_path(rules_[i].exec_path, target.exec_path, sizeof(target.exec_path),
-                                        last_error_, "exec-path")) {
-                    return false;
+                if (!rules_[i].exec_path.empty()) {
+                    if (!copy_security_path(rules_[i].exec_path, target.exec_path, sizeof(target.exec_path),
+                                            last_error_, "exec-path")) {
+                        return false;
+                    }
                 }
                 target.cgroup_id = rules_[i].cgroup_id;
+                target.connect_daddr = rules_[i].connect_daddr;
+                target.connect_dport = rules_[i].connect_dport;
+                target.connect_protocol = rules_[i].connect_protocol;
             }
             std::uint32_t target_key = static_cast<std::uint32_t>(i);
             if (bpf_map_update_elem(target_fd, &target_key, &target, BPF_ANY) != 0) {
@@ -2388,6 +2492,14 @@ private:
         return std::string(value, len);
     }
 
+    static std::string ipv4_to_string(std::uint32_t daddr) {
+        char text[INET_ADDRSTRLEN] = {};
+        if (inet_ntop(AF_INET, &daddr, text, sizeof(text)) == nullptr) {
+            return "";
+        }
+        return std::string(text);
+    }
+
     static std::string security_event_hook(std::uint32_t event_type) {
         switch (event_type) {
         case 1: return "lsm_file_open";
@@ -2396,6 +2508,7 @@ private:
         case 4: return "sys_enter_connect";
         case 5: return "sys_enter_ptrace";
         case 6: return "lsm_bprm_check_security";
+        case 7: return "lsm_socket_connect";
         default: return "unknown";
         }
     }
@@ -2433,9 +2546,13 @@ private:
             event.target["cgroup_id"] = std::to_string(matched_rule->cgroup_id);
             event.target["cgroup_path"] = matched_rule->cgroup_path;
         }
+        if (matched_rule && !matched_rule->connect_ip.empty()) {
+            event.target["dst_ip"] = matched_rule->connect_ip;
+            event.target["dst_port"] = matched_rule->connect_port;
+        }
         event.operation = "hit";
         event.evidence = {
-            {"hook", hook_},
+            {"hook", matched_rule ? matched_rule->hook : hook_},
             {"action", action_},
             {"event_type", std::to_string(hit.event_type)},
             {"event_hook", hook_name},
@@ -2448,6 +2565,14 @@ private:
                                  ? "unknown"
                                  : std::to_string(hit.target_index)},
         };
+        if (hit.daddr != 0) {
+            const std::string dst_ip = ipv4_to_string(hit.daddr);
+            if (!dst_ip.empty()) {
+                event.evidence["dst_ip"] = dst_ip;
+            }
+            event.evidence["dst_port"] = std::to_string(ntohs(hit.dport));
+            event.evidence["protocol"] = hit.protocol == 6 ? "tcp" : std::to_string(hit.protocol);
+        }
         event.action = hit.decision < 0 ? "deny" : "audit-hit";
         event.result = hit.decision < 0 ? "blocked" : "observed";
         event.severity = hit.decision < 0 ? "warning" : "info";

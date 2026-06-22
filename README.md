@@ -19,7 +19,7 @@ eBPF Observer
 
 ## 当前状态
 
-截至 `2026-06-21`，项目已经完成：
+截至 `2026-06-22`，项目已经完成：
 
 - `SP3 + cgroup v2` 主闭环
 - `OLK-6.6 + sched_ext` 正式对照线
@@ -34,17 +34,17 @@ eBPF Observer
   - `network_xdp`：isolated-veth generic XDP ICMP + TCP 多规则闭环
 - Security Policy 阶段 C 最小闭环：
   - `security_policy`：YAML v2 `targets + rules + target_ref`
-  - BPF LSM：`file_open` 与 `bprm_check_security` enforce
+  - BPF LSM：`file_open`、`bprm_check_security` 与 `socket_connect` enforce
   - syscall tracing：`execve/openat/connect/ptrace` audit 观测
-  - target scope：path、显式 cgroup、PID 自动解析、container_id cgroup tree 解析、container runtime name 解析、Kubernetes Pod 名称解析
+  - target scope：path、socket endpoint、显式 cgroup、PID 自动解析、container_id cgroup tree 解析、container runtime name 解析、Kubernetes Pod 名称解析
   - 121/122 集成测试和 121 质量门禁通过
 
 当前最重要的候选结果目录为：
 
 - Redis：`/root/EulerPilot/results/final/redis-scx-compare-20260612-191543`
 - Nginx：`/root/EulerPilot/results/final/nginx-scx-compare-20260612-194018`
-- Security runtime/Pod target 121：`/root/EulerPilot/results/security_policy/integration-20260621-214903`
-- Security runtime/Pod target 122：`/root/EulerPilot/results/security_policy/integration-20260621-215158`
+- Security socket_connect LSM 121：`/root/EulerPilot/results/security_policy/integration-20260622-105820`
+- Security socket_connect LSM 122：`/root/EulerPilot/results/security_policy/integration-20260622-110120`
 
 当前图表目录为：
 

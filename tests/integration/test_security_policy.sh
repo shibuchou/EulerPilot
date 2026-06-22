@@ -18,6 +18,7 @@ DYNAMIC_SCOPED_TARGET_FILE=""
 DYNAMIC_SCOPED_EXEC_TARGET_FILE=""
 SCOPED_CGROUP_PATH=""
 SCOPED_PID=""
+SOCKET_SERVER_PID=""
 
 log() {
     if [ "$RESULT_READY" = "true" ]; then
@@ -73,6 +74,14 @@ cleanup_scoped_pid() {
     fi
 }
 
+cleanup_socket_server() {
+    if [ -n "${SOCKET_SERVER_PID:-}" ]; then
+        kill "$SOCKET_SERVER_PID" 2>/dev/null || true
+        wait "$SOCKET_SERVER_PID" 2>/dev/null || true
+        SOCKET_SERVER_PID=""
+    fi
+}
+
 restore() {
     set +e
     if [ -n "${AGENT_PID:-}" ] && kill -0 "$AGENT_PID" 2>/dev/null; then
@@ -80,6 +89,7 @@ restore() {
         wait "$AGENT_PID" 2>/dev/null || true
     fi
     run_cleanup_script
+    cleanup_socket_server
     cleanup_scoped_pid
     cleanup_scoped_cgroup
     if [ -n "${DYNAMIC_DIR:-}" ] && [ -d "$DYNAMIC_DIR" ]; then
@@ -168,6 +178,57 @@ run_in_scoped_cgroup() {
     shift 2
     bash -c 'echo $$ > "$1/cgroup.procs"; shift; exec "$@"' \
         _ "$SCOPED_CGROUP_PATH" "$@" > "$stdout_path" 2> "$stderr_path"
+}
+
+start_socket_server() {
+    local port="$1"
+
+    cat > "$RESULT_DIR/socket_server.py" <<'PY'
+import socket
+import sys
+import time
+
+port = int(sys.argv[1])
+server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+server.bind(("127.0.0.1", port))
+server.listen(32)
+server.settimeout(0.5)
+deadline = time.time() + 90
+while time.time() < deadline:
+    try:
+        conn, _ = server.accept()
+        conn.close()
+    except socket.timeout:
+        pass
+server.close()
+PY
+
+    cat > "$RESULT_DIR/connect_ipv4.py" <<'PY'
+import socket
+import sys
+
+port = int(sys.argv[1])
+client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+client.settimeout(1.0)
+client.connect(("127.0.0.1", port))
+client.close()
+PY
+
+    python3 "$RESULT_DIR/socket_server.py" "$port" > "$RESULT_DIR/socket-server.log" 2>&1 &
+    SOCKET_SERVER_PID="$!"
+
+    local ready="false"
+    for _ in $(seq 1 50); do
+        if python3 "$RESULT_DIR/connect_ipv4.py" "$port" >/dev/null 2>&1; then
+            ready="true"
+            break
+        fi
+        sleep 0.1
+    done
+    if [ "$ready" != "true" ]; then
+        fail "socket test server did not become ready; see $RESULT_DIR/socket-server.log"
+    fi
 }
 
 if [ ! -r /sys/kernel/security/lsm ]; then
@@ -785,6 +846,118 @@ if ! run_in_scoped_cgroup "$RESULT_DIR/scoped-post-cleanup-exec.txt" \
     "$DYNAMIC_SCOPED_EXEC_TARGET_FILE"; then
     fail "scoped exec target is still denied after rollback/cleanup; see $RESULT_DIR/scoped-post-cleanup-exec.err"
 fi
+
+SOCKET_PORT=$((19000 + ($$ % 2000)))
+start_socket_server "$SOCKET_PORT"
+
+cat > "$RESULT_DIR/agent.socket.yaml" <<'YAML'
+skills_config_path: skills.socket.yaml
+exporter:
+  prometheus:
+    enabled: false
+YAML
+
+cat > "$RESULT_DIR/skills.socket.yaml" <<YAML
+schema_version: 2
+skills:
+- name: resource_control
+  kind: runtime
+  enabled: true
+  config: {}
+- name: psi_gate
+  kind: runtime
+  enabled: true
+  config: {}
+- name: security_policy
+  kind: runtime
+  enabled: true
+  config:
+    mode: enforce
+    targets:
+      socket_scope:
+        type: cgroup
+        cgroup_path: $SCOPED_CGROUP_PATH
+        dst_ip: 127.0.0.1
+        dst_port: $SOCKET_PORT
+    rules:
+      - name: deny_socket_connect
+        hook: lsm_socket_connect
+        target_ref: socket_scope
+        action: deny
+YAML
+
+rm -f "$ROOT/reports/events/security_policy.jsonl"
+
+timeout 20s "$AGENT_BIN" \
+    --config "$RESULT_DIR/agent.socket.yaml" \
+    --duration-s 8 \
+    --interval-ms 1000 \
+    --jsonl \
+    > "$RESULT_DIR/agent-socket.log" 2>&1 &
+AGENT_PID="$!"
+
+socket_blocked="false"
+for _ in $(seq 1 40); do
+    if ! kill -0 "$AGENT_PID" 2>/dev/null; then
+        set +e
+        wait "$AGENT_PID"
+        agent_rc="$?"
+        set -e
+        AGENT_PID=""
+        fail "socket target agent exited before connect denial was observed, rc=$agent_rc; see $RESULT_DIR/agent-socket.log"
+    fi
+
+    if ! python3 "$RESULT_DIR/connect_ipv4.py" "$SOCKET_PORT" \
+        > "$RESULT_DIR/socket-outside.txt" 2> "$RESULT_DIR/socket-outside.err"; then
+        fail "socket connect was denied outside target cgroup; see $RESULT_DIR/socket-outside.err"
+    fi
+
+    set +e
+    run_in_scoped_cgroup "$RESULT_DIR/socket-blocked.txt" \
+        "$RESULT_DIR/socket-blocked.err" \
+        python3 "$RESULT_DIR/connect_ipv4.py" "$SOCKET_PORT"
+    socket_rc="$?"
+    set -e
+    if [ "$socket_rc" -ne 0 ]; then
+        socket_blocked="true"
+        break
+    fi
+    sleep 0.2
+done
+
+if [ "$socket_blocked" != "true" ]; then
+    fail "socket connect was not denied inside target cgroup; see $RESULT_DIR/agent-socket.log"
+fi
+
+set +e
+wait "$AGENT_PID"
+agent_rc="$?"
+set -e
+AGENT_PID=""
+if [ "$agent_rc" -ne 0 ]; then
+    fail "socket target agent exited non-zero, rc=$agent_rc; see $RESULT_DIR/agent-socket.log"
+fi
+
+assert_blocked_rule_event "socket_connect" "lsm_socket_connect" \
+    "deny_socket_connect" "socket_scope"
+if ! grep -F "socket_connect" "$ROOT/reports/events/security_policy.jsonl" 2>/dev/null \
+    | grep -F '"event_hook":"lsm_socket_connect"' \
+    | grep -F '"result":"blocked"' \
+    | grep -F '"dst_ip":"127.0.0.1"' \
+    | grep -Fq "\"dst_port\":\"$SOCKET_PORT\""; then
+    fail "socket connect blocked event did not carry dst_ip/dst_port evidence"
+fi
+cp "$ROOT/reports/events/security_policy.jsonl" "$RESULT_DIR/security_policy_events.socket.jsonl"
+log "PASS: security_policy lsm_socket_connect blocks scoped IPv4 target and reports endpoint evidence"
+
+run_cleanup_script
+
+if ! run_in_scoped_cgroup "$RESULT_DIR/socket-post-cleanup.txt" \
+    "$RESULT_DIR/socket-post-cleanup.err" \
+    python3 "$RESULT_DIR/connect_ipv4.py" "$SOCKET_PORT"; then
+    fail "socket connect is still denied after rollback/cleanup; see $RESULT_DIR/socket-post-cleanup.err"
+fi
+cleanup_socket_server
 
 sleep 60 &
 SCOPED_PID="$!"

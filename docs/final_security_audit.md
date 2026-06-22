@@ -1,6 +1,6 @@
 # EulerPilot 最终安全与质量审计报告
 
-更新时间：`2026-06-21`
+更新时间：`2026-06-22`
 
 ## 审计范围
 
@@ -28,7 +28,7 @@
 | sched_ext state | `disabled` | `disabled` | PASS |
 | sched_ext nr_rejected | `0` | `0` | PASS |
 
-正式 `security_policy` 默认 disabled，audit 模式 attach BPF LSM + `execve/openat/connect/ptrace` tracepoint，但通过 `policy_map.enforce=0` 保持允许，命中后写 ringbuf observed hit；enforce 模式当前复用 `security_policy_demo` 的 BPF LSM，由用户态从 YAML `path/exec_path/cgroup_path/pid/container_id/container/k8s_pod` 写入最多 8 项 `target_map`，写 blocked hit 后拒绝访问 map 中的文件路径和执行路径。LSM blocked hit 会携带 BPF `target_index`，用户态据此还原单条 YAML `rule_id/target_ref`；配置 `cgroup_path`、`type: pid`、`type: container_id`、`type: container` 或 `type: k8s_pod` 时，BPF 还要求当前进程 cgroup id 命中，事件会写 `cgroup_id/cgroup_path`；tracepoint 观测事件不参与规则匹配，写 `target_index=unknown`。BPF link 默认不 pin，LSM 与 tracepoint 程序随 Agent 进程退出自动消亡。`tests/integration/test_security_policy.sh` 已在 121/122 验证 `lsm_file_open/lsm_bprm_check_security/sys_enter_execve/sys_enter_openat/sys_enter_connect/sys_enter_ptrace` 六类 BPF ringbuf hit、双 LSM enforce、双动态 `/tmp` target_map、规则级 blocked 事件、显式 cgroup scope、PID target 自动解析、container_id target cgroup 解析、runtime container name 解析、k8s pod name 解析和 rollback 恢复，最新结果目录分别为 `results/security_policy/integration-20260621-214903` 和 `results/security_policy/integration-20260621-215158`；121/122 之前已验证 container_id target，结果目录分别为 `results/security_policy/integration-20260621-211502` 和 `results/security_policy/integration-20260621-211701`；121/122 之前已验证 PID target，结果目录分别为 `results/security_policy/integration-20260621-175927` 和 `results/security_policy/integration-20260621-180029`；121/122 之前已验证显式 cgroup scope，结果目录分别为 `results/security_policy/integration-20260621-173942` 和 `results/security_policy/integration-20260621-174042`；121/122 之前已验证规则级 blocked 事件，结果目录分别为 `results/security_policy/integration-20260621-171904` 和 `results/security_policy/integration-20260621-171957`；121/122 之前已验证多目标 target_map，结果目录分别为 `results/security_policy/integration-20260621-164838` 和 `results/security_policy/integration-20260621-165001`；121/122 之前已验证单动态 target_map，结果目录分别为 `results/security_policy/integration-20260621-161943` 和 `results/security_policy/integration-20260621-162111`；121/122 之前已验证双 LSM enforce，结果目录分别为 `results/security_policy/integration-20260621-152838` 和 `results/security_policy/integration-20260621-153514`；121/122 之前已验证四类 syscall tracing，结果目录分别为 `results/security_policy/integration-20260621-150713` 和 `results/security_policy/integration-20260621-151229`；正式 `security_policy` audit/enforce 已在 121/122 通过，结果目录分别为 `results/security_policy/integration-20260621-101929` 和 `results/security_policy/integration-20260621-103431`；兼容 demo 路径已在 121/122 验证 attach、deny、Agent 退出恢复和 cleanup 无残留，结果目录分别为 `results/security_policy/integration-20260621-095537` 和 `results/security_policy/integration-20260621-100937`。network_policy_demo 在 rollback 时 unpin + destroy，退出后无残留。
+正式 `security_policy` 默认 disabled，audit 模式 attach BPF LSM + `execve/openat/connect/ptrace` tracepoint，但通过 `policy_map.enforce=0` 保持允许，命中后写 ringbuf observed hit；enforce 模式当前复用 `security_policy_demo` 的 BPF LSM，由用户态从 YAML `path/exec_path/dst_ip/dst_port/cgroup_path/pid/container_id/container/k8s_pod` 写入最多 8 项 `target_map`，写 blocked hit 后拒绝访问 map 中的文件路径、执行路径和 scoped IPv4 socket endpoint。LSM blocked hit 会携带 BPF `target_index`，用户态据此还原单条 YAML `rule_id/target_ref`；配置 `cgroup_path`、`type: pid`、`type: container_id`、`type: container` 或 `type: k8s_pod` 时，BPF 还要求当前进程 cgroup id 命中，事件会写 `cgroup_id/cgroup_path`；socket blocked 事件额外写 `dst_ip/dst_port/protocol`；tracepoint 观测事件不参与规则匹配，写 `target_index=unknown`。BPF link 默认不 pin，LSM 与 tracepoint 程序随 Agent 进程退出自动消亡。`tests/integration/test_security_policy.sh` 已在 121/122 验证 `lsm_file_open/lsm_bprm_check_security/lsm_socket_connect/sys_enter_execve/sys_enter_openat/sys_enter_connect/sys_enter_ptrace` BPF ringbuf hit、三类 LSM enforce、双动态 `/tmp` target_map、规则级 blocked 事件、显式 cgroup scope、PID target 自动解析、container_id target cgroup 解析、runtime container name 解析、k8s pod name 解析和 rollback 恢复，最新结果目录分别为 `results/security_policy/integration-20260622-105820` 和 `results/security_policy/integration-20260622-110120`；上一轮 runtime/Pod target 结果目录分别为 `results/security_policy/integration-20260621-214903` 和 `results/security_policy/integration-20260621-215158`。network_policy_demo 在 rollback 时 unpin + destroy，退出后无残留。
 
 ## 3. 内存泄漏审计
 
@@ -71,7 +71,7 @@
 
 ## 6. TAP 质量门禁结果（17/17）
 
-最新日志：`reports/final_quality_gate_20260621_security_runtime_pod_target.log`
+最新日志：`reports/final_quality_gate_20260622_security_socket_connect.log`
 
 ```
 ok 1 - make agent
@@ -79,7 +79,7 @@ ok 2 - make network-policy-demo
 ok 3 - make network-qos-tc
 ok 4 - make network-xdp-demo
 ok 5 - make security-policy-demo
-ok 6 - --list-skills outputs formal network policy sub-skills
+ok 6 - --list-skills outputs formal network and security policy skills
 ok 7 - --doctor-skills exit 0
 ok 8 - agent 15s smoke
 ok 9 - network_policy default disabled
@@ -89,7 +89,7 @@ ok 12 - security_policy default disabled
 ok 13 - security_policy_demo default disabled
 ok 14 - metrics default disabled on 127.0.0.1
 ok 15 - dashboard index.html exists and non-empty
-ok 16 - frozen result dirs exist
+ok 16 - frozen result dirs exist (Redis=7, Nginx=3)
 ok 17 - no BPF/LSM/TC/XDP residue
 ```
 
@@ -104,4 +104,4 @@ ok 17 - no BPF/LSM/TC/XDP residue
 | 构建/回归 | PASS |
 | 质量门禁 | PASS (17/17) |
 
-**当前结论：EulerPilot 通过最新安全与质量审计，可作为当前争奖增强阶段的稳定基线。Security 已具备正式 `security_policy` 最小 audit/enforce 闭环、双 LSM enforce、四类 syscall tracing、最多 8 项 target_map、规则级 LSM blocked 事件标识、显式 cgroup scope、PID target 自动解析、container_id target cgroup 解析、runtime container name 解析和 k8s pod name 解析；仍需继续补齐更多 LSM hook、异常规则和进程过滤。**
+**当前结论：EulerPilot 通过最新安全与质量审计，可作为当前争奖增强阶段的稳定基线。Security 已具备正式 `security_policy` 最小 audit/enforce 闭环、file_open/bprm/socket_connect 三类 LSM enforce、四类 syscall tracing、最多 8 项 target_map、规则级 LSM blocked 事件标识、显式 cgroup scope、PID target 自动解析、container_id target cgroup 解析、runtime container name 解析、k8s pod name 解析和 scoped IPv4 endpoint 阻断；仍需继续补齐 bprm/file/ptrace/capability 异常规则和更完整进程过滤。**

@@ -1,0 +1,29 @@
+schema_version: 2
+skills:
+- name: resource_control
+  kind: runtime
+  enabled: true
+  config: {}
+- name: psi_gate
+  kind: runtime
+  enabled: true
+  config: {}
+- name: security_policy
+  kind: runtime
+  enabled: true
+  config:
+    mode: enforce
+    targets:
+      pod_secret:
+        type: k8s_pod
+        namespace: eulerpilot-lab
+        pod_name: web-demo
+        kubectl_path: /tmp/eulerpilot-security-policy.m2oBuH/fake-kubectl
+        cgroup_root: /sys/fs/cgroup/eulerpilot
+        path: /tmp/eulerpilot-security-policy.m2oBuH/dynamic-scoped-secret.txt
+        exec_path: /tmp/eulerpilot-security-policy.m2oBuH/dynamic-scoped-deny-exec.sh
+    rules:
+      - name: deny_pod_secret_open
+        hook: lsm_file_open
+        target_ref: pod_secret
+        action: deny
