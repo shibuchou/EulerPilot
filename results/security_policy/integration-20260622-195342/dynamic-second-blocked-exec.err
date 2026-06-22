@@ -1,0 +1,1 @@
+tests/integration/test_security_policy.sh: /tmp/eulerpilot-security-policy.o3tN7P/dynamic-second-deny-exec.sh: /usr/bin/env: 错误的解释器: Operation not permitted

@@ -73,5 +73,5 @@ make agent
 
 ## 最新记录
 
-- 121 最新完整门禁：`reports/final_quality_gate_20260622_security_exec_prefix.log`
+- 121 最新完整门禁：`reports/final_quality_gate_20260622_security_file_access.log`
 - 结果：17/17 P0 通过，P1 `agent 100-round stress smoke` 和 `doctor 5-round stable` 通过

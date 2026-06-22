@@ -20,6 +20,19 @@ char LICENSE[] SEC("license") = "GPL";
 #define MAX_SECURITY_PATH 256
 #define MAX_SECURITY_TARGETS 8
 #define SECURITY_TARGET_UNKNOWN 0xffffffff
+#define SECURITY_FILE_ACCESS_ANY 0
+#define SECURITY_FILE_ACCESS_READ 1
+#define SECURITY_FILE_ACCESS_WRITE 2
+
+#ifndef O_ACCMODE
+#define O_ACCMODE 00000003
+#endif
+#ifndef O_WRONLY
+#define O_WRONLY 00000001
+#endif
+#ifndef O_RDWR
+#define O_RDWR 00000002
+#endif
 
 #ifndef AF_INET
 #define AF_INET 2
@@ -38,6 +51,7 @@ struct security_policy_target {
     __u32 connect_daddr;
     __u16 connect_dport;
     __u16 connect_protocol;
+    __u32 file_access;
 };
 
 struct security_policy_event {
@@ -52,6 +66,8 @@ struct security_policy_event {
     __u32 daddr;
     __u16 dport;
     __u16 protocol;
+    __u32 file_flags;
+    __u32 file_access;
 };
 
 struct {
@@ -90,6 +106,8 @@ static __always_inline void fill_common_event(struct security_policy_event *even
     event->daddr = 0;
     event->dport = 0;
     event->protocol = 0;
+    event->file_flags = 0;
+    event->file_access = SECURITY_FILE_ACCESS_ANY;
     bpf_get_current_comm(&event->comm, sizeof(event->comm));
 }
 
@@ -136,9 +154,22 @@ static __always_inline int target_scope_matches(const struct security_policy_tar
     return target->cgroup_id == 0 || target->cgroup_id == current_cgroup_id;
 }
 
+static __always_inline int file_access_matches(__u32 required_access,
+                                               __u32 file_flags)
+{
+    __u32 accmode = file_flags & O_ACCMODE;
+
+    if (required_access == SECURITY_FILE_ACCESS_WRITE)
+        return accmode == O_WRONLY || accmode == O_RDWR;
+    if (required_access == SECURITY_FILE_ACCESS_READ)
+        return accmode != O_WRONLY;
+    return 1;
+}
+
 static __always_inline int file_path_match_index(const char *path,
                                                  __u32 target_count,
-                                                 __u64 current_cgroup_id)
+                                                 __u64 current_cgroup_id,
+                                                 __u32 file_flags)
 {
     for (int i = 0; i < MAX_SECURITY_TARGETS; i++) {
         if ((__u32)i >= target_count)
@@ -148,6 +179,7 @@ static __always_inline int file_path_match_index(const char *path,
         struct security_policy_target *target = bpf_map_lookup_elem(&target_map, &key);
         if (target && target->file_path[0] != '\0' &&
             target_scope_matches(target, current_cgroup_id) &&
+            file_access_matches(target->file_access, file_flags) &&
             path_equals(path, target->file_path))
             return i;
     }
@@ -223,8 +255,10 @@ int BPF_PROG(security_policy_demo, struct file *file, int ret)
     struct security_policy_config *config = bpf_map_lookup_elem(&policy_map, &key);
     __u32 target_count = clamp_target_count(config);
     __u64 current_cgroup_id = bpf_get_current_cgroup_id();
+    __u32 file_flags = BPF_CORE_READ(file, f_flags);
     int target_index = file_path_match_index(path, target_count,
-                                             current_cgroup_id);
+                                             current_cgroup_id,
+                                             file_flags);
     if (target_index < 0)
         return 0;
 
@@ -237,6 +271,12 @@ int BPF_PROG(security_policy_demo, struct file *file, int ret)
         fill_common_event(event, EVENT_LSM_FILE_OPEN, enforce, decision,
                           (__u32)target_index);
         __builtin_memcpy(event->path, path, sizeof(event->path));
+        event->file_flags = file_flags;
+        __u32 target_key = (__u32)target_index;
+        struct security_policy_target *target =
+            bpf_map_lookup_elem(&target_map, &target_key);
+        if (target)
+            event->file_access = target->file_access;
         bpf_ringbuf_submit(event, 0);
     }
 

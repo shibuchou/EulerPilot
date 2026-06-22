@@ -8,7 +8,7 @@
 
 阶段 B：Network Policy 完整实现，状态：`收尾 / Pod veth 预备`
 
-阶段 C：Security Agent 正式化，状态：`BPF LSM + socket_connect + bprm exec_prefix + syscall tracing + 多目标 target_map + 规则级事件标识 + cgroup/pid/container/runtime/pod scope 最小闭环已完成`
+阶段 C：Security Agent 正式化，状态：`BPF LSM + socket_connect + bprm exec_prefix + file_access + syscall tracing + 多目标 target_map + 规则级事件标识 + cgroup/pid/container/runtime/pod scope 最小闭环已完成`
 
 目标：
 
@@ -24,7 +24,7 @@
 |------|------|----------|----------|
 | A. 公共基础设施 | 已完成 | 远端 Git、文档规则、README 覆盖、公共控制面最小代码和现有质量门禁已完成；后续随正式 Skill 深度接入 | `AGENTS.md`、本文件、各目录 README、`docs/public_control_plane_design.md`、`reports/final_quality_gate_20260618_control_plane.log` |
 | B. Network Policy | 收尾 / Pod veth 预备 | 正式 `network_policy` 注册名已落地；connect4 audit/enforce 已完成；TC QoS 最小闭环与速率误差 Benchmark 已完成；isolated-veth XDP 多规则闭环已完成；schema v2 `targets + rules + target_ref` 已落地；`TargetResolver` 已补 netdev 与 `k8s_pod` 诊断型入口；下一步实现真实 Pod sandbox/netns/veth 映射并接入 `network_qos/network_xdp` | `docs/network_policy_skill.md`、`docs/network_pod_veth_target.md`、`tests/integration/test_network_policy.sh`、`tests/integration/test_network_qos_tc.sh`、`tests/integration/test_network_xdp.sh`、`tests/integration/test_target_resolver.sh`、`tests/benchmark/test_network_qos_rate.sh` |
-| C. Security Agent | 三类 LSM + 四类 syscall tracing + 多目标 target_map + 规则级事件标识 + cgroup/pid/container/runtime/pod scope 最小闭环已完成 | 正式 `security_policy` 注册名已落地；YAML v2 path/exec_path/exec_prefix/dst_ip/dst_port/cgroup_path/pid/container_id/container/k8s_pod target、用户态下发最多 8 项 BPF `target_map`、audit BPF attach 不阻断 + `lsm_file_open/lsm_bprm_check_security/sys_enter_execve/sys_enter_openat/sys_enter_connect/sys_enter_ptrace` ringbuf observed hit、enforce BPF LSM blocked hit、`lsm_socket_connect` scoped IPv4 endpoint 阻断、`lsm_bprm_check_security` scoped writable-dir exec_prefix 阻断、双动态 `/tmp` 目标验证、LSM blocked 事件按 `target_index` 映射到单条 YAML `rule_id/target_ref`、显式 cgroup scope 内阻断且 scope 外允许、PID target 自动解析到 cgroup scope、container_id target 在限定 cgroup tree 下解析到 cgroup scope、container runtime name target 通过 runtime CLI 解析、k8s pod name target 通过 Pod UID 解析、rollback 无残留已在 121/122 通过；`security_policy_demo` 保留兼容；下一步转向 file/ptrace/capability 等异常规则 | `docs/security_policy_skill.md`、`agent/skills/security_policy/README.md`、`tests/integration/test_security_policy.sh`、`demo/security_policy_demo/README.md` |
+| C. Security Agent | 三类 LSM + 四类 syscall tracing + 多目标 target_map + 规则级事件标识 + cgroup/pid/container/runtime/pod scope 最小闭环已完成 | 正式 `security_policy` 注册名已落地；YAML v2 path/file_access/exec_path/exec_prefix/dst_ip/dst_port/cgroup_path/pid/container_id/container/k8s_pod target、用户态下发最多 8 项 BPF `target_map`、audit BPF attach 不阻断 + `lsm_file_open/lsm_bprm_check_security/sys_enter_execve/sys_enter_openat/sys_enter_connect/sys_enter_ptrace` ringbuf observed hit、enforce BPF LSM blocked hit、`lsm_socket_connect` scoped IPv4 endpoint 阻断、`lsm_bprm_check_security` scoped writable-dir exec_prefix 阻断、`lsm_file_open` scoped `file_access=write` 写打开阻断且读打开放行、双动态 `/tmp` 目标验证、LSM blocked 事件按 `target_index` 映射到单条 YAML `rule_id/target_ref`、显式 cgroup scope 内阻断且 scope 外允许、PID target 自动解析到 cgroup scope、container_id target 在限定 cgroup tree 下解析到 cgroup scope、container runtime name target 通过 runtime CLI 解析、k8s pod name target 通过 Pod UID 解析、rollback 无残留已在 121/122 通过；`security_policy_demo` 保留兼容；下一步转向 ptrace/capability/只读目录保护等异常规则 | `docs/security_policy_skill.md`、`agent/skills/security_policy/README.md`、`tests/integration/test_security_policy.sh`、`demo/security_policy_demo/README.md` |
 | D. Resource Control | 未开始 | 需要扩展到 CPU + Memory 自动闭环，IO 可演示可回滚 | `docs/next_phase_plan_v2_1.md` |
 | E. SP4/sched_ext 复核 | 未开始 | 等待 SP4/123 环境 | `docs/next_phase_plan_v2_1.md` |
 | F. Kubernetes 与跨 Agent 联动 | 未开始 | 等待 Network/Security/Resource 正式 Skill | `docs/next_phase_plan_v2_1.md` |
@@ -95,7 +95,7 @@
   - Agent 退出后 `/sys/fs/bpf/eulerpilot_network_policy_link` 和 cgroup BPF attachment 无残留。
 - 121 最新集成测试证据目录：`results/network_policy/integration-20260619-142347/`。
 - 122 最新集成测试证据目录：`results/network_policy/integration-20260619-122352/`。
-- 121 完整质量门禁已通过：`reports/final_quality_gate_20260622_security_exec_prefix.log`。
+- 121 完整质量门禁已通过：`reports/final_quality_gate_20260622_security_file_access.log`。
 
 ### YAML v2 证据
 
@@ -159,7 +159,7 @@
   - Agent 退出后无 XDP attachment 残留，连通性恢复。
 - 121 最新 XDP 多规则集成测试证据目录：`results/network_policy/xdp-20260620-183031/`。
 - 122 最新 XDP 多规则集成测试证据目录：`results/network_policy/xdp-20260620-184212/`。
-- 121 最新完整质量门禁已通过：`reports/final_quality_gate_20260622_security_exec_prefix.log`，17/17 P0、100 轮 Agent smoke 和 5 轮 doctor 均通过。
+- 121 最新完整质量门禁已通过：`reports/final_quality_gate_20260622_security_file_access.log`，17/17 P0、100 轮 Agent smoke 和 5 轮 doctor 均通过。
 
 ### TargetResolver / Pod veth 预备证据
 
@@ -175,7 +175,7 @@
 - `docs/security_policy_skill.md` 已补 SecurityPolicySkill 正式化说明，明确 audit/enforce、BPF LSM 安全边界、target 过滤、事件输出、回滚清理和参考代码复用边界。
 - `agent/skills/security_policy/README.md` 已说明当前正式入口最小能力和后续未完成项：容器 target 绑定、规则级事件标识和进程过滤。
 - `demo/security_policy_demo/README.md` 已补最小 BPF LSM demo 的运行手册和风险边界，覆盖 YAML 下发的 demo secret 文件、demo deny_exec 脚本和最多 8 项 target_map。
-- `tests/integration/test_security_policy.sh` 已在 121/122 真实验证 `make agent security-policy-demo`、BPF LSM attach、四类 syscall tracepoint 事件、目标文件拒绝、demo 执行拒绝、scoped IPv4 socket connect 拒绝、scoped writable-dir exec_prefix 执行拒绝、双动态 `/tmp` YAML target_map、Agent 退出恢复和 cleanup 无残留。
+- `tests/integration/test_security_policy.sh` 已在 121/122 真实验证 `make agent security-policy-demo`、BPF LSM attach、四类 syscall tracepoint 事件、目标文件拒绝、demo 执行拒绝、scoped IPv4 socket connect 拒绝、scoped writable-dir exec_prefix 执行拒绝、scoped `file_access=write` 写打开拒绝且读打开放行、双动态 `/tmp` YAML target_map、Agent 退出恢复和 cleanup 无残留。
 - 121 最新 Security demo 集成测试证据目录：`results/security_policy/integration-20260621-095537/`。
 - 122 最新 Security demo 集成测试证据目录：`results/security_policy/integration-20260621-100937/`。
 - 121 最新正式 `security_policy` audit/enforce 集成测试证据目录：`results/security_policy/integration-20260621-101929/`。
@@ -206,8 +206,10 @@
 - 122 最新正式 `security_policy` socket_connect LSM 集成测试证据目录：`results/security_policy/integration-20260622-110120/`。
 - 121 最新正式 `security_policy` bprm exec_prefix LSM 集成测试证据目录：`results/security_policy/integration-20260622-145403/`。
 - 122 最新正式 `security_policy` bprm exec_prefix LSM 集成测试证据目录：`results/security_policy/integration-20260622-145716/`。
+- 121 最新正式 `security_policy` file_access LSM 集成测试证据目录：`results/security_policy/integration-20260622-195342/`。
+- 122 最新正式 `security_policy` file_access LSM 集成测试证据目录：`results/security_policy/integration-20260622-195627/`。
 - audit 模式证据：目标文件和 demo 执行脚本保持可访问，`security_policy_events.audit.jsonl` 包含 `operation=hit`、`result=observed`、`enforce=0`，并覆盖 `event_hook=lsm_file_open/lsm_bprm_check_security/sys_enter_execve/sys_enter_openat/sys_enter_connect/sys_enter_ptrace`。
-- enforce 模式证据：目标文件和 demo 执行脚本被 BPF LSM 拒绝，`security_policy_events.enforce.jsonl` 包含 `operation=hit`、`result=blocked`、`enforce=1`；动态多目标 blocked 事件会携带单条 `rule_id/target_ref` 和 `target_index`；cgroup scoped、PID scoped、container_id scoped、runtime container scoped 与 k8s pod scoped 事件会携带 `cgroup_id/cgroup_path`，且 scope 外访问保持成功；`security_policy_events.socket.jsonl` 包含 `event_hook=lsm_socket_connect`、`dst_ip=127.0.0.1`、`dst_port`、`protocol=tcp` 和 `result=blocked`；`security_policy_events.exec-prefix.jsonl` 包含 `event_hook=lsm_bprm_check_security`、形如 `/tmp/eulerpilot-security-policy.<suffix>/` 的 `exec_prefix`、`cgroup_id` 和 `result=blocked`；Agent 退出后恢复可访问，无 BPF link/pin 残留。
+- enforce 模式证据：目标文件和 demo 执行脚本被 BPF LSM 拒绝，`security_policy_events.enforce.jsonl` 包含 `operation=hit`、`result=blocked`、`enforce=1`；动态多目标 blocked 事件会携带单条 `rule_id/target_ref` 和 `target_index`；cgroup scoped、PID scoped、container_id scoped、runtime container scoped 与 k8s pod scoped 事件会携带 `cgroup_id/cgroup_path`，且 scope 外访问保持成功；`security_policy_events.socket.jsonl` 包含 `event_hook=lsm_socket_connect`、`dst_ip=127.0.0.1`、`dst_port`、`protocol=tcp` 和 `result=blocked`；`security_policy_events.exec-prefix.jsonl` 包含 `event_hook=lsm_bprm_check_security`、形如 `/tmp/eulerpilot-security-policy.<suffix>/` 的 `exec_prefix`、`cgroup_id` 和 `result=blocked`；`security_policy_events.file-access.jsonl` 包含 `event_hook=lsm_file_open`、`file_access=write`、`file_flags`、`cgroup_id` 和 `result=blocked`，同时测试脚本验证同一目标在 scoped cgroup 内读打开成功、写打开失败；Agent 退出后恢复可访问，无 BPF link/pin 残留。
 - `scripts/cleanup_security_policy_demo.sh` 已修复无残留时因 `grep`/`pipefail` 返回非零的问题，cleanup 空跑现在正常返回 0。
 
 ## 阶段 A 后续随阶段接入项

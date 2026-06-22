@@ -1,6 +1,6 @@
 # EulerPilot：面向 openEuler 的自适应资源管控 Agent
 
-更新时间：`2026-06-15`
+更新时间：`2026-06-22`
 
 ## 摘要
 
@@ -199,20 +199,23 @@ EulerPilot 实现了一套轻量 Skills 插件化能力框架，通过 YAML 驱�
 TC QoS 还完成了速率误差 Benchmark：在 2 Mbit/s 目标下，121 实测 1.976 Mbit/s（误差 -1.22%），122 实测 1.971 Mbit/s（误差 -1.45%）。这证明 Network Skill 不只是 attach 演示，也能输出可量化的策略效果数据。
 
 这些演示证明：新增一个 eBPF Skill 只需补充 BPF 程序、Skill 适配器和 `skills.yaml` 配置，无需改动 Agent 核心 Runtime 流程。
-### 3.6 Security Policy Demo — BPF LSM 安全策略演示
+### 3.6 Security Policy Skill — BPF LSM 安全策略 Agent
 
-为补齐赛题对 "eBPF 作为 hook 实现 security policy agent" 的要求，项目实现了一个基于 BPF LSM 的最小安全策略演示：
+为补齐赛题对 "eBPF 作为 hook 实现 security policy agent" 的要求，项目已经从单路径 demo 扩展为正式 `security_policy` Skill，并保留 `security_policy_demo` 作为兼容回归入口。
 
 | 组件 | 内容 |
 |------|------|
-| BPF 程序 | `lsm/file_open`，使用 `bpf_d_path` 对目标文件路径精确匹配 |
-| 控制方式 | 全局生效，不依赖 cgroup，精确拦截对指定路径的 `open()` 调用 |
-| 演示目标 | `/root/EulerPilot/demo/security_policy_demo/secret.txt` |
-| 生命周期 | YAML 驱动启用 -> LSM attach -> deny 验证 -> rollback detach -> 恢复 |
-| 验证结果 | 启动前 `cat` 成功，启动后 `Operation not permitted`，退出后恢复 |
-| 安全设计 | 不 pin link 到 BPF 文件系统，LSM 程序随 Agent 进程退出自动消亡 |
+| BPF 程序 | `lsm/file_open`、`lsm/bprm_check_security`、`lsm/socket_connect`，并补充 `execve/openat/connect/ptrace` tracepoint audit |
+| 控制方式 | YAML v2 `targets + rules + target_ref` 下发，用户态填充最多 8 项 BPF `target_map` |
+| 文件策略 | `path + file_access=any/read/write`，已验证目标 cgroup 内读打开成功、写打开被拒绝 |
+| 执行策略 | 精确 `exec_path` 和字面 `exec_prefix`，已验证目标 cgroup 内可写目录前缀执行被拒绝 |
+| 网络安全策略 | `dst_ip + dst_port + cgroup_id`，已验证 scoped IPv4 socket connect 被拒绝 |
+| Scope | 显式 cgroup、PID 自动解析、container_id cgroup tree 扫描、runtime container name、Kubernetes Pod 名称解析 |
+| 生命周期 | YAML 驱动启用 -> LSM/tracepoint attach -> audit/enforce 验证 -> rollback detach -> 恢复 |
+| 验证结果 | 121/122 均通过完整集成测试；最新证据目录为 `results/security_policy/integration-20260622-195342` 和 `results/security_policy/integration-20260622-195627` |
+| 安全设计 | 默认 disabled，audit 默认不阻断；enforce 只对显式 target 生效，不 pin link 到 BPF 文件系统，Agent 退出即 detach |
 
-该演示与 `network_policy_demo` 保持相同的 Skill 适配器模式，证明 Security 类 eBPF hook 同样可以通过 Skills 框架实现最小闭环的 attach、deny、rollback、recover。
+该能力证明 Security 类 eBPF hook 可以复用 EulerPilot Skills 框架完成策略声明、目标解析、内核 hook attach、事件审计、阻断验证和可回滚恢复。事件文件 `reports/events/security_policy.jsonl` 会记录 `rule_id/target_ref/target_index/cgroup_id`，并对 socket、exec_prefix、file_access 分别输出 endpoint、前缀和 `file_flags` 证据。
 
 
 ---

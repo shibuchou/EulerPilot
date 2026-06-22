@@ -17,6 +17,7 @@ DYNAMIC_SECOND_EXEC_TARGET_FILE=""
 DYNAMIC_SCOPED_TARGET_FILE=""
 DYNAMIC_SCOPED_EXEC_TARGET_FILE=""
 DYNAMIC_PREFIX_EXEC_FILE=""
+DYNAMIC_WRITE_TARGET_FILE=""
 SCOPED_CGROUP_PATH=""
 SCOPED_PID=""
 SOCKET_SERVER_PID=""
@@ -563,9 +564,11 @@ DYNAMIC_SECOND_EXEC_TARGET_FILE="$DYNAMIC_DIR/dynamic-second-deny-exec.sh"
 DYNAMIC_SCOPED_TARGET_FILE="$DYNAMIC_DIR/dynamic-scoped-secret.txt"
 DYNAMIC_SCOPED_EXEC_TARGET_FILE="$DYNAMIC_DIR/dynamic-scoped-deny-exec.sh"
 DYNAMIC_PREFIX_EXEC_FILE="$DYNAMIC_DIR/prefix-deny-exec.sh"
+DYNAMIC_WRITE_TARGET_FILE="$DYNAMIC_DIR/write-only-target.txt"
 printf 'dynamic security policy target\n' > "$DYNAMIC_TARGET_FILE"
 printf 'second dynamic security policy target\n' > "$DYNAMIC_SECOND_TARGET_FILE"
 printf 'scoped dynamic security policy target\n' > "$DYNAMIC_SCOPED_TARGET_FILE"
+printf 'write scoped target\n' > "$DYNAMIC_WRITE_TARGET_FILE"
 cat > "$DYNAMIC_EXEC_TARGET_FILE" <<'SH'
 #!/usr/bin/env bash
 echo dynamic security policy exec target
@@ -1107,6 +1110,121 @@ if ! run_in_scoped_cgroup "$RESULT_DIR/exec-prefix-post-cleanup.txt" \
     "$RESULT_DIR/exec-prefix-post-cleanup.err" \
     "$DYNAMIC_PREFIX_EXEC_FILE"; then
     fail "exec-prefix target is still denied after rollback/cleanup; see $RESULT_DIR/exec-prefix-post-cleanup.err"
+fi
+
+cat > "$RESULT_DIR/agent.file-access.yaml" <<'YAML'
+skills_config_path: skills.file-access.yaml
+exporter:
+  prometheus:
+    enabled: false
+YAML
+
+cat > "$RESULT_DIR/skills.file-access.yaml" <<YAML
+schema_version: 2
+skills:
+- name: resource_control
+  kind: runtime
+  enabled: true
+  config: {}
+- name: psi_gate
+  kind: runtime
+  enabled: true
+  config: {}
+- name: security_policy
+  kind: runtime
+  enabled: true
+  config:
+    mode: enforce
+    targets:
+      write_secret:
+        type: cgroup
+        cgroup_path: $SCOPED_CGROUP_PATH
+        path: $DYNAMIC_WRITE_TARGET_FILE
+        file_access: write
+    rules:
+      - name: deny_write_open
+        hook: lsm_file_open
+        target_ref: write_secret
+        action: deny
+YAML
+
+rm -f "$ROOT/reports/events/security_policy.jsonl"
+
+timeout 20s "$AGENT_BIN" \
+    --config "$RESULT_DIR/agent.file-access.yaml" \
+    --duration-s 8 \
+    --interval-ms 1000 \
+    --jsonl \
+    > "$RESULT_DIR/agent-file-access.log" 2>&1 &
+AGENT_PID="$!"
+
+write_blocked="false"
+for _ in $(seq 1 40); do
+    if ! kill -0 "$AGENT_PID" 2>/dev/null; then
+        set +e
+        wait "$AGENT_PID"
+        agent_rc="$?"
+        set -e
+        AGENT_PID=""
+        fail "file_access agent exited before write denial was observed, rc=$agent_rc; see $RESULT_DIR/agent-file-access.log"
+    fi
+
+    if ! printf 'outside write\n' >> "$DYNAMIC_WRITE_TARGET_FILE"; then
+        fail "file_access target write was denied outside target cgroup"
+    fi
+
+    if ! run_in_scoped_cgroup "$RESULT_DIR/file-access-read.txt" \
+        "$RESULT_DIR/file-access-read.err" \
+        cat "$DYNAMIC_WRITE_TARGET_FILE"; then
+        fail "file_access=write denied read inside target cgroup; see $RESULT_DIR/file-access-read.err"
+    fi
+
+    set +e
+    run_in_scoped_cgroup "$RESULT_DIR/file-access-write.txt" \
+        "$RESULT_DIR/file-access-write.err" \
+        bash -c 'printf "inside scoped write\n" >> "$1"' _ "$DYNAMIC_WRITE_TARGET_FILE"
+    write_rc="$?"
+    set -e
+    if [ "$write_rc" -ne 0 ]; then
+        write_blocked="true"
+        break
+    fi
+    sleep 0.2
+done
+
+if [ "$write_blocked" != "true" ]; then
+    fail "file_access=write target was not denied inside target cgroup; see $RESULT_DIR/agent-file-access.log"
+fi
+
+set +e
+wait "$AGENT_PID"
+agent_rc="$?"
+set -e
+AGENT_PID=""
+if [ "$agent_rc" -ne 0 ]; then
+    fail "file_access agent exited non-zero, rc=$agent_rc; see $RESULT_DIR/agent-file-access.log"
+fi
+
+assert_blocked_rule_event "$DYNAMIC_WRITE_TARGET_FILE" "lsm_file_open" \
+    "deny_write_open" "write_secret"
+assert_blocked_rule_event_has_cgroup "$DYNAMIC_WRITE_TARGET_FILE" "lsm_file_open" \
+    "deny_write_open" "write_secret"
+if ! grep -F "$DYNAMIC_WRITE_TARGET_FILE" "$ROOT/reports/events/security_policy.jsonl" 2>/dev/null \
+    | grep -F '"event_hook":"lsm_file_open"' \
+    | grep -F '"result":"blocked"' \
+    | grep -F '"file_access":"write"' \
+    | grep -Fq '"file_flags":"'; then
+    fail "file_access blocked event did not carry write access and file_flags evidence"
+fi
+cp "$ROOT/reports/events/security_policy.jsonl" "$RESULT_DIR/security_policy_events.file-access.jsonl"
+log "PASS: security_policy file_access=write only blocks write opens inside target cgroup"
+
+run_cleanup_script
+
+if ! run_in_scoped_cgroup "$RESULT_DIR/file-access-post-cleanup.txt" \
+    "$RESULT_DIR/file-access-post-cleanup.err" \
+    bash -c 'printf "post cleanup write\n" >> "$1"' _ "$DYNAMIC_WRITE_TARGET_FILE"; then
+    fail "file_access target is still denied after rollback/cleanup; see $RESULT_DIR/file-access-post-cleanup.err"
 fi
 
 sleep 60 &

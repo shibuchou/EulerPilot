@@ -96,6 +96,30 @@ bool parse_pid_value(const std::string &value, int &pid) {
     return true;
 }
 
+bool parse_security_file_access(const std::string &value, std::uint32_t &access) {
+    if (value.empty() || value == "any" || value == "all") {
+        access = 0;
+        return true;
+    }
+    if (value == "read" || value == "read_only" || value == "readonly") {
+        access = 1;
+        return true;
+    }
+    if (value == "write" || value == "write_only" || value == "writeonly") {
+        access = 2;
+        return true;
+    }
+    return false;
+}
+
+std::string security_file_access_name(std::uint32_t access) {
+    switch (access) {
+    case 1: return "read";
+    case 2: return "write";
+    default: return "any";
+    }
+}
+
 const std::string *find_config_value(const SkillSpec &spec, const std::string &key) {
     auto it = spec.config.find(key);
     return it == spec.config.end() ? nullptr : &it->second;
@@ -198,6 +222,7 @@ struct SecurityPolicyTarget {
     std::uint32_t connect_daddr = 0;
     std::uint16_t connect_dport = 0;
     std::uint16_t connect_protocol = 0;
+    std::uint32_t file_access = 0;
 };
 
 struct SecurityPolicyRule {
@@ -207,10 +232,12 @@ struct SecurityPolicyRule {
     std::string file_path;
     std::string exec_path;
     std::string exec_prefix;
+    std::string file_access = "any";
     std::string cgroup_path;
     std::string connect_ip;
     std::string connect_port;
     std::uint64_t cgroup_id = 0;
+    std::uint32_t file_access_value = 0;
     std::uint32_t connect_daddr = 0;
     std::uint16_t connect_dport = 0;
     std::uint16_t connect_protocol = 0;
@@ -228,6 +255,8 @@ struct SecurityPolicyEvent {
     std::uint32_t daddr = 0;
     std::uint16_t dport = 0;
     std::uint16_t protocol = 0;
+    std::uint32_t file_flags = 0;
+    std::uint32_t file_access = 0;
 };
 
 struct NetworkXdpRule {
@@ -251,9 +280,9 @@ static_assert(sizeof(NetworkXdpStats) == 24,
               "network xdp stats map layout must match BPF");
 static_assert(sizeof(SecurityPolicyConfig) == 8,
               "security policy config map layout must match BPF");
-static_assert(sizeof(SecurityPolicyTarget) == 784,
+static_assert(sizeof(SecurityPolicyTarget) == 792,
               "security policy target map layout must match BPF");
-static_assert(sizeof(SecurityPolicyEvent) == 304,
+static_assert(sizeof(SecurityPolicyEvent) == 312,
               "security policy ringbuf event layout must match BPF");
 
 bool valid_tc_token(const std::string &value) {
@@ -1838,6 +1867,8 @@ public:
 
     bool configure(const RuntimeConfig &, const SkillSpec &spec) override {
         rules_.clear();
+        exec_prefix_.clear();
+        file_access_ = "any";
         const int rule_index = find_first_rule(spec);
         if (rule_index >= 0) {
             mode_ = config_value_or(spec, "mode", "audit");
@@ -1883,6 +1914,13 @@ public:
                 rule.file_path = config_value_or(spec, target_prefix + "path", "");
                 rule.exec_path = config_value_or(spec, target_prefix + "exec_path", "");
                 rule.exec_prefix = config_value_or(spec, target_prefix + "exec_prefix", "");
+                rule.file_access =
+                    config_value_or(spec, target_prefix + "file_access",
+                                    config_value_or(spec, rule_prefix + "file_access", "any"));
+                if (!parse_security_file_access(rule.file_access, rule.file_access_value)) {
+                    last_error_ = "security-policy-v2-target-file-access-invalid";
+                    return false;
+                }
                 if (hook == "lsm_socket_connect") {
                     rule.connect_ip =
                         config_value_or(spec, target_prefix + "dst_ip",
@@ -1911,10 +1949,6 @@ public:
                 } else {
                     if (rule.file_path.empty()) {
                         last_error_ = "security-policy-v2-target-path-missing";
-                        return false;
-                    }
-                    if (rule.exec_path.empty()) {
-                        last_error_ = "security-policy-v2-target-exec-path-missing";
                         return false;
                     }
                 }
@@ -2039,6 +2073,11 @@ public:
             rule.target_ref = target_ref_;
             rule.file_path = target_path_;
             rule.exec_path = exec_target_path_;
+            rule.file_access = config_value_or(spec, "file_access", "any");
+            if (!parse_security_file_access(rule.file_access, rule.file_access_value)) {
+                last_error_ = "security-policy-target-file-access-invalid";
+                return false;
+            }
             rule.cgroup_path = config_value_or(spec, "target_cgroup_path",
                                                config_value_or(spec, "cgroup_path", ""));
             if (!rule.cgroup_path.empty()) {
@@ -2080,8 +2119,7 @@ public:
                 last_error_ = "invalid-exec-prefix";
                 return false;
             }
-            if (rule.hook == "lsm_file_open" &&
-                (rule.file_path.empty() || rule.exec_path.empty())) {
+            if (rule.hook == "lsm_file_open" && rule.file_path.empty()) {
                 last_error_ = "security-policy-file-rule-target-missing";
                 return false;
             }
@@ -2107,6 +2145,9 @@ public:
             }
             if (exec_prefix_.empty() && !rule.exec_prefix.empty()) {
                 exec_prefix_ = rule.exec_prefix;
+            }
+            if (file_access_ == "any" && rule.file_access != "any") {
+                file_access_ = rule.file_access;
             }
         }
         hook_ = join_security_field(rules_, "hook");
@@ -2224,6 +2265,7 @@ public:
         snapshot.evidence["target_path"] = target_path_;
         snapshot.evidence["exec_target_path"] = exec_target_path_;
         snapshot.evidence["exec_prefix"] = exec_prefix_;
+        snapshot.evidence["file_access"] = file_access_;
         snapshot.evidence["mode"] = mode_;
         snapshot.evidence["target_ref"] = target_ref_;
         snapshot.evidence["rule_id"] = rule_id_;
@@ -2447,6 +2489,7 @@ private:
                 target.connect_daddr = rules_[i].connect_daddr;
                 target.connect_dport = rules_[i].connect_dport;
                 target.connect_protocol = rules_[i].connect_protocol;
+                target.file_access = rules_[i].file_access_value;
             }
             std::uint32_t target_key = static_cast<std::uint32_t>(i);
             if (bpf_map_update_elem(target_fd, &target_key, &target, BPF_ANY) != 0) {
@@ -2586,6 +2629,9 @@ private:
         if (matched_rule && !matched_rule->exec_prefix.empty()) {
             event.target["exec_prefix"] = matched_rule->exec_prefix;
         }
+        if (matched_rule && matched_rule->hook == "lsm_file_open") {
+            event.target["file_access"] = matched_rule->file_access;
+        }
         event.operation = "hit";
         event.evidence = {
             {"hook", matched_rule ? matched_rule->hook : hook_},
@@ -2608,6 +2654,10 @@ private:
             }
             event.evidence["dst_port"] = std::to_string(ntohs(hit.dport));
             event.evidence["protocol"] = hit.protocol == 6 ? "tcp" : std::to_string(hit.protocol);
+        }
+        if (hit.event_type == 1) {
+            event.evidence["file_access"] = security_file_access_name(hit.file_access);
+            event.evidence["file_flags"] = std::to_string(hit.file_flags);
         }
         event.action = hit.decision < 0 ? "deny" : "audit-hit";
         event.result = hit.decision < 0 ? "blocked" : "observed";
@@ -2634,6 +2684,7 @@ private:
             {"path", target_path_},
             {"exec_path", exec_target_path_},
             {"exec_prefix", exec_prefix_},
+            {"file_access", file_access_},
             {"target_count", std::to_string(rules_.size())},
         };
         event.operation = operation;
@@ -2669,12 +2720,14 @@ private:
             {"path", target_path_},
             {"exec_path", exec_target_path_},
             {"exec_prefix", exec_prefix_},
+            {"file_access", file_access_},
             {"action", action},
         };
         entry.handles = {
             {"path", target_path_},
             {"exec_path", exec_target_path_},
             {"exec_prefix", exec_prefix_},
+            {"file_access", file_access_},
             {"bpf_link", handle},
         };
         entry.restored = operation == "rollback";
@@ -2691,6 +2744,7 @@ private:
     std::string target_path_ = "/root/EulerPilot/demo/security_policy_demo/secret.txt";
     std::string exec_target_path_ = "/root/EulerPilot/demo/security_policy_demo/deny_exec.sh";
     std::string exec_prefix_;
+    std::string file_access_ = "any";
     std::string mode_ = "enforce";
     std::string action_ = "deny";
     std::string target_ref_ = "legacy_path";
