@@ -6,7 +6,7 @@
 
 ## 当前阶段
 
-阶段 B：Network Policy 完整实现，状态：`收尾 / Pod veth 真实解析预备已完成`
+阶段 B：Network Policy 完整实现，状态：`收尾 / container + Pod veth 真实解析预备已完成`
 
 阶段 C：Security Agent 正式化，状态：`BPF LSM + socket_connect + bprm exec_prefix + file_access + ptrace_traceme + syscall tracing + 多目标 target_map + 规则级事件标识 + cgroup/pid/container/runtime/pod scope 最小闭环已完成`
 
@@ -15,7 +15,7 @@
 - 将 `network_policy_demo` 升级为正式 `network_policy` Skill。
 - 先完成 `cgroup/connect4` 的 `audit/enforce/status/rollback` 正式口径。
 - 再补 TC QoS 和 isolated-veth XDP，并继续扩展 Benchmark、多规则和 Pod veth。
-- `TargetResolver` 已从 netdev 与 `k8s_pod` 诊断入口推进到 Pod UID、runtime PID、netns 和 host veth/ifindex 真实解析；后续重点是把真实集群 lab Pod 接入 TC/XDP 演示。
+- `TargetResolver` 已从 netdev 与 `k8s_pod` 诊断入口推进到 container name/ID、Pod UID、runtime PID、netns 和 host veth/ifindex 真实解析；后续重点是把真实集群 lab Pod 接入 TC/XDP 演示。
 - 所有 Network 事件接入 `AuditBus`，所有挂载/卸载动作接入 `ActionJournal`。
 
 ## 阶段完成情况
@@ -23,7 +23,7 @@
 | 阶段 | 状态 | 当前结论 | 主要证据 |
 |------|------|----------|----------|
 | A. 公共基础设施 | 已完成 | 远端 Git、文档规则、README 覆盖、公共控制面最小代码和现有质量门禁已完成；后续随正式 Skill 深度接入 | `AGENTS.md`、本文件、各目录 README、`docs/public_control_plane_design.md`、`reports/final_quality_gate_20260618_control_plane.log` |
-| B. Network Policy | 收尾 / Pod veth 真实解析预备已完成 | 正式 `network_policy` 注册名已落地；connect4 audit/enforce 已完成；TC QoS 最小闭环与速率误差 Benchmark 已完成；isolated-veth XDP 多规则闭环已完成；schema v2 `targets + rules + target_ref` 已落地；`TargetResolver` 已支持 netdev、Pod UID、runtime container ID/PID、netns path 和 host veth/ifindex 解析；`network_qos` 与 `network_xdp` 已可接受 `type: k8s_pod` target 并解析成 host veth ifname；下一步在真实 Kubernetes lab Pod 上跑 TC/XDP 演示 | `docs/network_policy_skill.md`、`docs/network_pod_veth_target.md`、`tests/integration/test_network_policy.sh`、`tests/integration/test_network_qos_tc.sh`、`tests/integration/test_network_xdp.sh`、`tests/integration/test_target_resolver.sh`、`tests/benchmark/test_network_qos_rate.sh` |
+| B. Network Policy | 收尾 / container + Pod veth 真实解析预备已完成 | 正式 `network_policy` 注册名已落地；connect4 audit/enforce 已完成；TC QoS 最小闭环与速率误差 Benchmark 已完成；isolated-veth XDP 多规则闭环已完成；schema v2 `targets + rules + target_ref` 已落地；`TargetResolver` 已支持 netdev、container name/ID、Pod UID、runtime container ID/PID、netns path 和 host veth/ifindex 解析；`network_qos` 与 `network_xdp` 已可接受 `type: container` / `type: k8s_pod` target 并解析成 host veth ifname；下一步在真实 Kubernetes lab Pod 上跑 TC/XDP 演示 | `docs/network_policy_skill.md`、`docs/network_pod_veth_target.md`、`tests/integration/test_network_policy.sh`、`tests/integration/test_network_qos_tc.sh`、`tests/integration/test_network_xdp.sh`、`tests/integration/test_target_resolver.sh`、`tests/benchmark/test_network_qos_rate.sh` |
 | C. Security Agent | 四类 LSM + 四类 syscall tracing + 多目标 target_map + 规则级事件标识 + cgroup/pid/container/runtime/pod scope 最小闭环已完成 | 正式 `security_policy` 注册名已落地；YAML v2 path/file_access/exec_path/exec_prefix/dst_ip/dst_port/cgroup_path/pid/container_id/container/k8s_pod target、用户态下发最多 8 项 BPF `target_map`、audit BPF attach 不阻断 + `lsm_file_open/lsm_bprm_check_security/sys_enter_execve/sys_enter_openat/sys_enter_connect/sys_enter_ptrace` ringbuf observed hit、enforce BPF LSM blocked hit、`lsm_socket_connect` scoped IPv4 endpoint 阻断、`lsm_bprm_check_security` scoped writable-dir exec_prefix 阻断、`lsm_file_open` scoped `file_access=write` 写打开阻断且读打开放行、`lsm_ptrace_traceme` scoped cgroup 阻断、双动态 `/tmp` 目标验证、LSM blocked 事件按 `target_index` 映射到单条 YAML `rule_id/target_ref`、显式 cgroup scope 内阻断且 scope 外允许、PID target 自动解析到 cgroup scope、container_id target 在限定 cgroup tree 下解析到 cgroup scope、container runtime name target 通过 runtime CLI 解析、k8s pod name target 通过 Pod UID 解析、rollback 无残留已在 121/122 通过；`security_policy_demo` 保留兼容；下一步转向 capability/只读目录保护等异常规则 | `docs/security_policy_skill.md`、`agent/skills/security_policy/README.md`、`tests/integration/test_security_policy.sh`、`demo/security_policy_demo/README.md` |
 | D. Resource Control | 未开始 | 需要扩展到 CPU + Memory 自动闭环，IO 可演示可回滚 | `docs/next_phase_plan_v2_1.md` |
 | E. SP4/sched_ext 复核 | 未开始 | 等待 SP4/123 环境 | `docs/next_phase_plan_v2_1.md` |
@@ -76,6 +76,7 @@
 | B6 | isolated-veth XDP | 已完成多规则闭环 | `network_xdp` 使用 generic XDP 在专用 lab veth 上执行 ICMP drop 与 TCP:19092 drop；已验证 audit/enforce、多规则 drop 统计和 rollback 后连通性恢复 |
 | B7 | TC QoS 速率误差 Benchmark | 已完成 | `tests/benchmark/test_network_qos_rate.sh` 使用 Python TCP rate probe 验证 2 Mbit/s TBF 限速；121 误差 -1.22%，122 误差 -1.45% |
 | B8 | Pod veth target 解析预备 | 已完成真实解析预备 | `TargetResolver` 已支持 netdev ifname 校验、ifindex 解析、`kubectl` Pod UID/container ID 查询、runtime PID 查询、`/proc/<pid>/ns/net` 记录和 host veth/ifindex 反查；`tests/integration/test_target_resolver.sh` 使用临时 netns/veth + fake `kubectl/crictl` 验证成功路径，不依赖真实 Kubernetes |
+| B9 | Container veth target 解析预备 | 已完成真实解析预备 | `resolve_container_netdev_target` 已支持 container ID 或 runtime container name 解析 PID、netns path 和 host veth/ifindex；`network_qos/network_xdp` v2 target 已接受 `type: container` |
 
 ## 阶段 B 当前证据
 
@@ -95,14 +96,14 @@
   - Agent 退出后 `/sys/fs/bpf/eulerpilot_network_policy_link` 和 cgroup BPF attachment 无残留。
 - 121 最新集成测试证据目录：`results/network_policy/integration-20260619-142347/`。
 - 122 最新集成测试证据目录：`results/network_policy/integration-20260619-122352/`。
-- 121 完整质量门禁已通过：`reports/final_quality_gate_20260623_target_resolver.log`。
+- 121 完整质量门禁已通过：`reports/final_quality_gate_20260623_container_target.log`。
 
 ### YAML v2 证据
 
 - `SkillManager` 已支持 `schema_version: 1/2`，并将嵌套 YAML flatten 为现有 `SkillSpec.config`，避免大改 Skill 接口。
 - `network_policy` 已优先读取 `rules.*.hook=cgroup_connect4` 和 `targets.<target_ref>.type=cgroup`。
-- `network_qos` 已优先读取 `rules.*.hook=tc_egress` 和 `targets.<target_ref>.type=netdev`。
-- `network_xdp` 已优先读取 `rules.*.hook=xdp` 和 `targets.<target_ref>.type=netdev`。
+- `network_qos` 已优先读取 `rules.*.hook=tc_egress`，并支持 `targets.<target_ref>.type=netdev/container/k8s_pod`。
+- `network_xdp` 已优先读取 `rules.*.hook=xdp`，并支持 `targets.<target_ref>.type=netdev/container/k8s_pod`。
 - 审计事件已带上 v2 规则和目标：
   - connect4：`rule_id=deny_demo_port`，`target_ref=demo_cgroup`。
   - TC QoS：`rule_id=limit_lab_egress`，`target_ref=lab_veth`。
@@ -159,15 +160,17 @@
   - Agent 退出后无 XDP attachment 残留，连通性恢复。
 - 121 最新 XDP 多规则集成测试证据目录：`results/network_policy/xdp-20260620-183031/`。
 - 122 最新 XDP 多规则集成测试证据目录：`results/network_policy/xdp-20260620-184212/`。
-- 121 最新完整质量门禁已通过：`reports/final_quality_gate_20260623_target_resolver.log`，17/17 P0、100 轮 Agent smoke 和 5 轮 doctor 均通过。
+- 121 最新完整质量门禁已通过：`reports/final_quality_gate_20260623_container_target.log`，17/17 P0、100 轮 Agent smoke 和 5 轮 doctor 均通过。
 
-### TargetResolver / Pod veth 预备证据
+### TargetResolver / container + Pod veth 预备证据
 
 - `resolve_netdev_target` 已增加 ifname 安全校验和 ifindex 解析，非法 ifname 返回 `invalid-ifname`，不存在的设备返回 `netdev-not-found`。
+- `resolve_container_netdev_target` 已提供 runtime container name/ID 到 PID、netns path 和 host veth/ifindex 的真实解析入口，默认不要求 Kubernetes 存在。
 - `resolve_k8s_pod_target` 已提供默认安全的真实解析入口，默认只接受 `eulerpilot-lab` namespace；会通过 `kubectl` 查询 Pod UID/container ID，通过 runtime CLI 查询 PID，读取 netns path，并用 `nsenter + ip -o link` 解析 host veth/ifindex。
-- `network_qos` 与 `network_xdp` 的 v2 target 解析已接受 `type: k8s_pod` / `type: pod`，成功解析后复用 host veth ifname 执行后续 TC/XDP 逻辑。
+- `network_qos` 与 `network_xdp` 的 v2 target 解析已接受 `type: container`、`type: k8s_pod` / `type: pod`，成功解析后复用 host veth ifname 执行后续 TC/XDP 逻辑。
 - `docs/network_pod_veth_target.md` 已记录 reason code、安全边界和接入要求。
-- `tests/integration/test_target_resolver.sh` 已在 121 通过，覆盖 netdev 成功/失败路径、`k8s_pod` 的 `unsupported-namespace`、`missing-kubectl`、`missing-runtime` 诊断路径，以及临时 netns/veth + fake `kubectl/crictl` 的 host veth 解析成功路径。
+- `tests/integration/test_target_resolver.sh` 已在 121 通过，覆盖 netdev 成功/失败路径、`k8s_pod` 的 `unsupported-namespace`、`missing-kubectl`、`missing-runtime` 诊断路径，以及临时 netns/veth + fake `kubectl/crictl` 的 container 和 Pod host veth 解析成功路径。
+- 121 container veth 解析预备证据目录：`results/network_policy/target-resolver-container-20260623-112000/`。
 - 121/122 Pod veth 解析预备证据目录已同步：
   - `results/network_policy/target-resolver-20260623-103436/`
   - `results/network_policy/target-resolver-20260623-103729/`

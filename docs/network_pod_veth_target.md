@@ -1,16 +1,17 @@
-# Network Pod/veth TargetResolver 增强说明
+# Network container/Pod veth TargetResolver 增强说明
 
 更新时间：`2026-06-23`
 
-阶段：`阶段 B / Network Pod veth target 真实解析预备能力`
+阶段：`阶段 B / Network container + Pod veth target 真实解析预备能力`
 
 ## 1. 目标
 
-为后续 `network_qos` 和 `network_xdp` 从 isolated lab veth 扩展到 Kubernetes Pod veth 提供统一 target 解析入口。
+为后续 `network_qos` 和 `network_xdp` 从 isolated lab veth 扩展到容器 veth、Kubernetes Pod veth 提供统一 target 解析入口。
 
 本阶段完成默认安全的最小真实解析能力：
 
 - 继续支持 `type: netdev` 的 ifname/ifindex 解析。
+- `type: container` 支持通过 container ID 或 runtime container name 查询容器 PID。
 - `type: k8s_pod` 会先做 lab namespace 安全校验，再通过 `kubectl` 查询 Pod UID 和 container runtime ID。
 - 通过 `crictl/docker/podman` 查询容器 PID，读取 `/proc/<pid>/ns/net`，并用 veth peer ifindex 反查 host 侧 veth。
 - 对缺少 Kubernetes 或容器 runtime 的环境返回明确 reason code。
@@ -50,6 +51,10 @@ struct TargetResolverOptions {
 新增解析入口：
 
 ```cpp
+TargetIdentity resolve_container_netdev_target(
+    const ContainerTargetSpec &spec,
+    const TargetResolverOptions &options = TargetResolverOptions{});
+
 TargetIdentity resolve_k8s_pod_target(
     const K8sPodTargetSpec &spec,
     const TargetResolverOptions &options = TargetResolverOptions{});
@@ -73,6 +78,12 @@ TargetIdentity resolve_netdev_target(const std::string &name,
 | `netdev` | ifname 为空、过长或包含不安全字符 | `false` | `invalid-ifname` |
 | `netdev` | ifname 合法但本机不存在 | `false` | `netdev-not-found` |
 | `netdev` | ifname 存在且有 ifindex | `true` | `ok` |
+| `container` | container ID 为空且未提供 container name | `false` | `missing-container-id` |
+| `container` | runtime name 查询不到 container ID | `false` | `container-runtime-id-not-found` / `*-container-id-not-found` |
+| `container` | runtime CLI 无法解析容器 PID | `false` | `runtime-container-pid-not-found` |
+| `container` | 容器使用 host network 且未显式允许 | `false` | `host-network-not-allowed` |
+| `container` | 找不到 host 侧 veth | `false` | `container-veth-not-found` |
+| `container` | 成功解析 host veth | `true` | `ok` |
 | `k8s_pod` | namespace 为空 | `false` | `missing-pod-namespace` |
 | `k8s_pod` | pod name 为空 | `false` | `missing-pod-name` |
 | `k8s_pod` | 默认安全模式下 namespace 不是 `eulerpilot-lab` | `false` | `unsupported-namespace` |
@@ -88,7 +99,8 @@ TargetIdentity resolve_netdev_target(const std::string &name,
 ## 4. 默认安全边界
 
 - `k8s_pod` 默认只接受 `eulerpilot-lab` namespace；其他 namespace 必须通过 `TargetResolverOptions::allow_non_lab_pods` 显式放开。
-- 当前实现会短暂进入目标容器 netns 读取接口 ifindex/iflink，并立即切回原 netns；不执行任何网络修改。
+- 当前实现通过 `nsenter -t <pid> -n ip -o link show` 读取目标 netns 接口 ifindex/iflink，不执行任何网络修改。
+- `container` target 默认不要求 runtime socket 存在，但必须通过 runtime CLI 解析出真实 PID；生产环境应配合 container name/namespace allowlist 使用。
 - `network_xdp` 后续仍必须拿到已解析的 ifname/ifindex 且通过 lab/allowlist 后才允许 attach，不能从 cgroup 或 Pod 名称隐式推断生产网卡。
 - `network_qos` 后续接入 Pod veth 时，应先检查 `TargetIdentity::resolved` 和 `reason == "ok"`，并继续保留 lab/allowlist 约束。
 
@@ -108,6 +120,6 @@ tests/integration/test_target_resolver.sh
 - 非 lab namespace 返回 `unsupported-namespace`。
 - 空 PATH 下返回 `missing-kubectl`。
 - fake `kubectl` 且 runtime socket 不存在时返回 `missing-runtime`。
-- root + `ip` 可用时，脚本会创建临时 netns/veth，使用 fake `kubectl/crictl` 解析容器 PID，并验证 `type: k8s_pod` 能解析到 host 侧 veth ifname/ifindex。
+- root + `ip` 可用时，脚本会创建临时 netns/veth，使用 fake `kubectl/crictl` 解析容器 PID，并验证 `type: container` 和 `type: k8s_pod` 都能解析到 host 侧 veth ifname/ifindex。
 
 脚本不依赖真实 Kubernetes；root 环境会创建并清理临时 netns/veth，非 root 环境跳过成功 veth 路径，只保留错误路径自测。

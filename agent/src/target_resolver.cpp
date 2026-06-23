@@ -818,6 +818,72 @@ TargetIdentity resolve_container_target(const ContainerTargetSpec &spec) {
     return target;
 }
 
+TargetIdentity resolve_container_netdev_target(const ContainerTargetSpec &spec,
+                                               const TargetResolverOptions &options) {
+    TargetIdentity target;
+    target.name = spec.name.empty() ? "container" : spec.name;
+    target.type = "container";
+    target.container_id = spec.container_id;
+    target.container_name = spec.container_name;
+
+    TargetResolverOptions runtime_options = options;
+    runtime_options.crictl_path = spec.crictl_path;
+    runtime_options.docker_path = spec.docker_path;
+    runtime_options.podman_path = spec.podman_path;
+
+    if (target.container_id.empty() && !spec.container_name.empty()) {
+        std::string reason;
+        target.container_id = runtime_container_id(spec, reason);
+        if (target.container_id.empty()) {
+            target.reason = reason.empty() ? "container-runtime-id-not-found" : reason;
+            return target;
+        }
+    }
+    if (!valid_container_id(target.container_id)) {
+        target.reason = target.container_id.empty()
+                            ? "missing-container-id"
+                            : "invalid-container-id";
+        return target;
+    }
+    if (runtime_options.require_runtime_socket && !has_runtime_socket(runtime_options)) {
+        target.reason = "missing-runtime";
+        return target;
+    }
+
+    std::string reason;
+    const int pid = runtime_container_pid(target.container_id, runtime_options, reason);
+    if (pid <= 0) {
+        target.reason = reason.empty() ? "runtime-container-pid-not-found" : reason;
+        return target;
+    }
+    target.pid = pid;
+    target.netns_path = netns_path_for_pid(pid);
+    if (target.netns_path.empty()) {
+        target.reason = "container-netns-not-found";
+        return target;
+    }
+
+    const TargetIdentity pid_target = resolve_pid_target(pid);
+    if (pid_target.resolved) {
+        target.cgroup_id = pid_target.cgroup_id;
+        target.cgroup_path = pid_target.cgroup_path;
+    }
+
+    const NetdevCandidate host_veth = find_host_veth_for_pid_netns(
+        pid, runtime_options.allow_host_network_pods, runtime_options.ip_path,
+        runtime_options.nsenter_path, reason);
+    if (host_veth.ifindex <= 0) {
+        target.reason = reason.empty() ? "container-veth-not-found" : reason;
+        return target;
+    }
+
+    target.ifname = host_veth.ifname;
+    target.ifindex = host_veth.ifindex;
+    target.resolved = true;
+    target.reason = "ok";
+    return target;
+}
+
 TargetIdentity resolve_netdev_target(const std::string &name, const std::string &ifname) {
     TargetIdentity target;
     target.name = name;

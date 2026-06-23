@@ -70,6 +70,9 @@ TargetIdentity resolve_container_target(const std::string &name,
                                         const std::string &container_id,
                                         const std::string &cgroup_root = "/sys/fs/cgroup");
 TargetIdentity resolve_container_target(const ContainerTargetSpec &spec);
+TargetIdentity resolve_container_netdev_target(
+    const ContainerTargetSpec &spec,
+    const TargetResolverOptions &options = TargetResolverOptions{});
 TargetIdentity resolve_netdev_target(const std::string &name, const std::string &ifname);
 TargetIdentity resolve_k8s_pod_cgroup_target(
     const K8sPodTargetSpec &spec,

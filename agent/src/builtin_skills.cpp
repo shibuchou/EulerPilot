@@ -231,7 +231,50 @@ bool resolve_network_target_ifname(const SkillSpec &spec,
         return true;
     }
 
-    last_error = error_prefix + "-v2-target-not-netdev-or-pod";
+    if (target_type == "container_id" || target_type == "container") {
+        ContainerTargetSpec target_spec;
+        target_spec.name = target_ref;
+        target_spec.container_id =
+            config_value_or(spec, target_prefix + "container_id", "");
+        target_spec.container_name =
+            config_value_or(spec, target_prefix + "container_name",
+                            config_value_or(spec, target_prefix + "name", ""));
+        target_spec.runtime =
+            config_value_or(spec, target_prefix + "runtime", "auto");
+        target_spec.cgroup_root =
+            config_value_or(spec, target_prefix + "cgroup_root", "/sys/fs/cgroup");
+        target_spec.crictl_path =
+            config_value_or(spec, target_prefix + "crictl_path", "crictl");
+        target_spec.docker_path =
+            config_value_or(spec, target_prefix + "docker_path", "docker");
+        target_spec.podman_path =
+            config_value_or(spec, target_prefix + "podman_path", "podman");
+
+        TargetResolverOptions options;
+        options.require_runtime_socket =
+            config_bool_or(spec, target_prefix + "require_runtime_socket", false);
+        options.allow_host_network_pods =
+            config_bool_or(spec, target_prefix + "allow_host_network",
+                           config_bool_or(spec,
+                                          target_prefix + "allow_host_network_containers",
+                                          false));
+        options.crictl_path = target_spec.crictl_path;
+        options.docker_path = target_spec.docker_path;
+        options.podman_path = target_spec.podman_path;
+        options.ip_path = config_value_or(spec, target_prefix + "ip_path", "ip");
+        options.nsenter_path =
+            config_value_or(spec, target_prefix + "nsenter_path", "nsenter");
+
+        const auto target = resolve_container_netdev_target(target_spec, options);
+        if (!target.resolved || target.ifname.empty()) {
+            last_error = error_prefix + "-container-veth-" + target.reason;
+            return false;
+        }
+        ifname = target.ifname;
+        return true;
+    }
+
+    last_error = error_prefix + "-v2-target-not-netdev-container-or-pod";
     return false;
 }
 

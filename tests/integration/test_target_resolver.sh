@@ -51,6 +51,10 @@ chmod +x "$FAKE_KUBECTL"
 
 cat >"$FAKE_CRICTL" <<'SH'
 #!/bin/sh
+if [ "$1" = "ps" ]; then
+    printf '%s\n' 'abcdef1234567890'
+    exit 0
+fi
 if [ "$1" = "inspect" ]; then
     printf '{"info":{"pid":%s}}\n' "${EULERPILOT_TEST_POD_PID:-0}"
     exit 0
@@ -188,12 +192,30 @@ int main(int argc, char **argv) {
                "pod container id is parsed from kubectl runtime URI");
         expect(pod_veth.pod_uid == "123e4567-e89b-12d3-a456-426614174000",
                "pod uid is parsed from kubectl");
+
+        eulerpilot::ContainerTargetSpec container_spec;
+        container_spec.name = "demo-container";
+        container_spec.container_name = "demo-container";
+        container_spec.crictl_path = argv[2];
+        const auto container_veth =
+            eulerpilot::resolve_container_netdev_target(container_spec, options);
+        expect(container_veth.resolved,
+               "container veth resolves with fake crictl, reason " +
+                   container_veth.reason);
+        expect(container_veth.reason == "ok",
+               "container veth reason is ok, got " + container_veth.reason);
+        expect(container_veth.ifname == expected_host_ifname,
+               "container veth host ifname matches expected, got " +
+                   container_veth.ifname + ", expected " + expected_host_ifname);
+        expect(container_veth.container_id == "abcdef1234567890",
+               "container id is parsed from runtime name lookup");
+        expect(container_veth.pid > 0, "container runtime pid is recorded");
     }
 
     if (failures != 0) {
         return 1;
     }
-    std::cout << "PASS: target resolver netdev and k8s_pod runtime/veth paths\n";
+    std::cout << "PASS: target resolver netdev, container and k8s_pod runtime/veth paths\n";
     return 0;
 }
 CPP

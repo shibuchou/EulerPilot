@@ -17,13 +17,13 @@
 - `tests/integration/test_network_qos_tc.sh` 已覆盖 YAML v2、lab netns/veth、TC clsact + TBF、BPF 命中统计和 rollback 无残留。
 - 已新增 `network_xdp` 子能力：在专用 isolated veth 上挂 generic XDP 程序，支持最多 8 条规则和 BPF 命中统计。
 - `tests/integration/test_network_xdp.sh` 已覆盖 YAML v2、lab netns/veth、audit 不挂 XDP、enforce 丢 ICMP、enforce 丢 TCP:19092、rollback 后连通性恢复。
-- `TargetResolver` 已支持 `type: k8s_pod` 到 host veth ifname/ifindex 的解析预备路径，`network_qos` 与 `network_xdp` 的 v2 target 可接受 Pod target。
+- `TargetResolver` 已支持 `type: container` 和 `type: k8s_pod` 到 host veth ifname/ifindex 的解析预备路径，`network_qos` 与 `network_xdp` 的 v2 target 可接受容器和 Pod target。
 
 ## 当前安全边界
 
 - 只允许作用于 `/sys/fs/cgroup/eulerpilot/demo-net` 这类 demo/lab cgroup。
 - TC QoS 默认只允许作用于 `ep-veth-qos0` 这类测试 veth；不默认修改真实业务网卡或管理网卡。
-- XDP 默认只允许作用于 `ep-veth-xdp0` 这类 isolated veth；扩展到 lab Pod veth 时必须先经过 target resolver 校验，并保持 namespace/allowlist 约束。
+- XDP 默认只允许作用于 `ep-veth-xdp0` 这类 isolated veth；扩展到显式容器 veth 或 lab Pod veth 时必须先经过 target resolver 校验，并保持 allowlist/namespace 约束。
 - 不允许把 XDP 默认挂到 SSH 或管理网卡所在接口。
 
 ## 后续任务

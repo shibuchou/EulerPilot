@@ -32,7 +32,7 @@ eBPF Observer
   - `network_qos`：TC egress classifier + TBF 限速闭环
   - `network_qos` Benchmark：2 Mbit/s 目标下 121/122 实测误差约 -1.22% / -1.45%
   - `network_xdp`：isolated-veth generic XDP ICMP + TCP 多规则闭环
-  - `TargetResolver`：`k8s_pod -> kubectl Pod UID/container ID -> runtime PID -> netns -> host veth/ifindex` 解析预备能力
+  - `TargetResolver`：`container/k8s_pod -> runtime PID -> netns -> host veth/ifindex` 解析预备能力
 - Security Policy 阶段 C 最小闭环：
   - `security_policy`：YAML v2 `targets + rules + target_ref`
   - BPF LSM：`file_open`、`bprm_check_security`、`socket_connect` 与 `ptrace_traceme` enforce
