@@ -1,0 +1,4 @@
+Traceback (most recent call last):
+  File "/root/EulerPilot/results/security_policy/integration-20260623-094924/connect_ipv4.py", line 7, in <module>
+    client.connect(("127.0.0.1", port))
+PermissionError: [Errno 1] Operation not permitted

@@ -327,6 +327,10 @@ skills:
         hook: lsm_file_open
         target_ref: demo_secret
         action: deny
+      - name: deny_demo_exec
+        hook: lsm_bprm_check_security
+        target_ref: demo_secret
+        action: deny
 YAML
 
 if ! cat "$TARGET_FILE" > "$RESULT_DIR/baseline-secret.txt" 2> "$RESULT_DIR/baseline-secret.err"; then
@@ -458,6 +462,10 @@ skills:
     rules:
       - name: deny_demo_secret_open
         hook: lsm_file_open
+        target_ref: demo_secret
+        action: deny
+      - name: deny_demo_exec
+        hook: lsm_bprm_check_security
         target_ref: demo_secret
         action: deny
 YAML
@@ -625,8 +633,16 @@ skills:
         hook: lsm_file_open
         target_ref: dynamic_secret
         action: deny
+      - name: deny_dynamic_exec
+        hook: lsm_bprm_check_security
+        target_ref: dynamic_secret
+        action: deny
       - name: deny_dynamic_second_open
         hook: lsm_file_open
+        target_ref: dynamic_second
+        action: deny
+      - name: deny_dynamic_second_exec
+        hook: lsm_bprm_check_security
         target_ref: dynamic_second
         action: deny
 YAML
@@ -742,11 +758,11 @@ fi
 assert_blocked_rule_event "$DYNAMIC_TARGET_FILE" "lsm_file_open" \
     "deny_dynamic_secret_open" "dynamic_secret"
 assert_blocked_rule_event "$DYNAMIC_EXEC_TARGET_FILE" "lsm_bprm_check_security" \
-    "deny_dynamic_secret_open" "dynamic_secret"
+    "deny_dynamic_exec" "dynamic_secret"
 assert_blocked_rule_event "$DYNAMIC_SECOND_TARGET_FILE" "lsm_file_open" \
     "deny_dynamic_second_open" "dynamic_second"
 assert_blocked_rule_event "$DYNAMIC_SECOND_EXEC_TARGET_FILE" "lsm_bprm_check_security" \
-    "deny_dynamic_second_open" "dynamic_second"
+    "deny_dynamic_second_exec" "dynamic_second"
 cp "$ROOT/reports/events/security_policy.jsonl" "$RESULT_DIR/security_policy_events.dynamic.jsonl"
 log "PASS: security_policy target_map reports rule-specific dynamic YAML file and exec hits"
 
@@ -796,11 +812,15 @@ skills:
       scoped_secret:
         type: path
         path: $DYNAMIC_SCOPED_TARGET_FILE
-        exec_path: $DYNAMIC_SCOPED_EXEC_TARGET_FILE
+        exec_prefix: $DYNAMIC_DIR/
         cgroup_path: $SCOPED_CGROUP_PATH
     rules:
       - name: deny_scoped_secret_open
         hook: lsm_file_open
+        target_ref: scoped_secret
+        action: deny
+      - name: deny_scoped_exec
+        hook: lsm_bprm_check_security
         target_ref: scoped_secret
         action: deny
 YAML
@@ -873,7 +893,7 @@ fi
 assert_blocked_rule_event "$DYNAMIC_SCOPED_TARGET_FILE" "lsm_file_open" \
     "deny_scoped_secret_open" "scoped_secret"
 assert_blocked_rule_event "$DYNAMIC_SCOPED_EXEC_TARGET_FILE" "lsm_bprm_check_security" \
-    "deny_scoped_secret_open" "scoped_secret"
+    "deny_scoped_exec" "scoped_secret"
 assert_blocked_rule_event_has_cgroup "$DYNAMIC_SCOPED_TARGET_FILE" "lsm_file_open" \
     "deny_scoped_secret_open" "scoped_secret"
 cp "$ROOT/reports/events/security_policy.jsonl" "$RESULT_DIR/security_policy_events.scoped.jsonl"
@@ -1227,6 +1247,121 @@ if ! run_in_scoped_cgroup "$RESULT_DIR/file-access-post-cleanup.txt" \
     fail "file_access target is still denied after rollback/cleanup; see $RESULT_DIR/file-access-post-cleanup.err"
 fi
 
+cat > "$RESULT_DIR/ptrace_traceme.py" <<'PY'
+import ctypes
+import errno
+import os
+import sys
+
+libc = ctypes.CDLL(None, use_errno=True)
+rc = libc.ptrace(0, 0, None, None)
+if rc != 0:
+    err = ctypes.get_errno()
+    print(os.strerror(err or errno.EPERM), file=sys.stderr)
+    sys.exit(1)
+PY
+
+cat > "$RESULT_DIR/agent.ptrace.yaml" <<'YAML'
+skills_config_path: skills.ptrace.yaml
+exporter:
+  prometheus:
+    enabled: false
+YAML
+
+cat > "$RESULT_DIR/skills.ptrace.yaml" <<YAML
+schema_version: 2
+skills:
+- name: resource_control
+  kind: runtime
+  enabled: true
+  config: {}
+- name: psi_gate
+  kind: runtime
+  enabled: true
+  config: {}
+- name: security_policy
+  kind: runtime
+  enabled: true
+  config:
+    mode: enforce
+    targets:
+      ptrace_scope:
+        type: cgroup
+        cgroup_path: $SCOPED_CGROUP_PATH
+    rules:
+      - name: deny_ptrace_traceme
+        hook: lsm_ptrace_traceme
+        target_ref: ptrace_scope
+        action: deny
+YAML
+
+rm -f "$ROOT/reports/events/security_policy.jsonl"
+
+timeout 20s "$AGENT_BIN" \
+    --config "$RESULT_DIR/agent.ptrace.yaml" \
+    --duration-s 8 \
+    --interval-ms 1000 \
+    --jsonl \
+    > "$RESULT_DIR/agent-ptrace.log" 2>&1 &
+AGENT_PID="$!"
+
+ptrace_blocked="false"
+for _ in $(seq 1 40); do
+    if ! kill -0 "$AGENT_PID" 2>/dev/null; then
+        set +e
+        wait "$AGENT_PID"
+        agent_rc="$?"
+        set -e
+        AGENT_PID=""
+        fail "ptrace agent exited before denial was observed, rc=$agent_rc; see $RESULT_DIR/agent-ptrace.log"
+    fi
+
+    if ! python3 "$RESULT_DIR/ptrace_traceme.py" > "$RESULT_DIR/ptrace-outside.txt" \
+        2> "$RESULT_DIR/ptrace-outside.err"; then
+        fail "ptrace_traceme was denied outside target cgroup; see $RESULT_DIR/ptrace-outside.err"
+    fi
+
+    set +e
+    run_in_scoped_cgroup "$RESULT_DIR/ptrace-blocked.txt" \
+        "$RESULT_DIR/ptrace-blocked.err" \
+        python3 "$RESULT_DIR/ptrace_traceme.py"
+    ptrace_rc="$?"
+    set -e
+    if [ "$ptrace_rc" -ne 0 ]; then
+        ptrace_blocked="true"
+        break
+    fi
+    sleep 0.2
+done
+
+if [ "$ptrace_blocked" != "true" ]; then
+    fail "ptrace_traceme was not denied inside target cgroup; see $RESULT_DIR/agent-ptrace.log"
+fi
+
+set +e
+wait "$AGENT_PID"
+agent_rc="$?"
+set -e
+AGENT_PID=""
+if [ "$agent_rc" -ne 0 ]; then
+    fail "ptrace agent exited non-zero, rc=$agent_rc; see $RESULT_DIR/agent-ptrace.log"
+fi
+
+assert_blocked_rule_event "ptrace_traceme" "lsm_ptrace_traceme" \
+    "deny_ptrace_traceme" "ptrace_scope"
+assert_blocked_rule_event_has_cgroup "ptrace_traceme" "lsm_ptrace_traceme" \
+    "deny_ptrace_traceme" "ptrace_scope"
+cp "$ROOT/reports/events/security_policy.jsonl" "$RESULT_DIR/security_policy_events.ptrace.jsonl"
+log "PASS: security_policy ptrace_traceme blocks scoped ptrace in target cgroup"
+
+run_cleanup_script
+
+if ! run_in_scoped_cgroup "$RESULT_DIR/ptrace-post-cleanup.txt" \
+    "$RESULT_DIR/ptrace-post-cleanup.err" \
+    python3 "$RESULT_DIR/ptrace_traceme.py"; then
+    fail "ptrace_traceme is still denied after rollback/cleanup; see $RESULT_DIR/ptrace-post-cleanup.err"
+fi
+
 sleep 60 &
 SCOPED_PID="$!"
 echo "$SCOPED_PID" > "$SCOPED_CGROUP_PATH/cgroup.procs"
@@ -1259,10 +1394,14 @@ skills:
         type: pid
         pid: $SCOPED_PID
         path: $DYNAMIC_SCOPED_TARGET_FILE
-        exec_path: $DYNAMIC_SCOPED_EXEC_TARGET_FILE
+        exec_prefix: $DYNAMIC_DIR/
     rules:
       - name: deny_pid_secret_open
         hook: lsm_file_open
+        target_ref: pid_secret
+        action: deny
+      - name: deny_pid_exec
+        hook: lsm_bprm_check_security
         target_ref: pid_secret
         action: deny
 YAML
@@ -1335,7 +1474,7 @@ fi
 assert_blocked_rule_event "$DYNAMIC_SCOPED_TARGET_FILE" "lsm_file_open" \
     "deny_pid_secret_open" "pid_secret"
 assert_blocked_rule_event "$DYNAMIC_SCOPED_EXEC_TARGET_FILE" "lsm_bprm_check_security" \
-    "deny_pid_secret_open" "pid_secret"
+    "deny_pid_exec" "pid_secret"
 assert_blocked_rule_event_has_cgroup "$DYNAMIC_SCOPED_TARGET_FILE" "lsm_file_open" \
     "deny_pid_secret_open" "pid_secret"
 cp "$ROOT/reports/events/security_policy.jsonl" "$RESULT_DIR/security_policy_events.pid.jsonl"
@@ -1390,10 +1529,14 @@ skills:
         container_id: $CONTAINER_ID
         cgroup_root: /sys/fs/cgroup/eulerpilot
         path: $DYNAMIC_SCOPED_TARGET_FILE
-        exec_path: $DYNAMIC_SCOPED_EXEC_TARGET_FILE
+        exec_prefix: $DYNAMIC_DIR/
     rules:
       - name: deny_container_secret_open
         hook: lsm_file_open
+        target_ref: container_secret
+        action: deny
+      - name: deny_container_exec
+        hook: lsm_bprm_check_security
         target_ref: container_secret
         action: deny
 YAML
@@ -1466,7 +1609,7 @@ fi
 assert_blocked_rule_event "$DYNAMIC_SCOPED_TARGET_FILE" "lsm_file_open" \
     "deny_container_secret_open" "container_secret"
 assert_blocked_rule_event "$DYNAMIC_SCOPED_EXEC_TARGET_FILE" "lsm_bprm_check_security" \
-    "deny_container_secret_open" "container_secret"
+    "deny_container_exec" "container_secret"
 assert_blocked_rule_event_has_cgroup "$DYNAMIC_SCOPED_TARGET_FILE" "lsm_file_open" \
     "deny_container_secret_open" "container_secret"
 cp "$ROOT/reports/events/security_policy.jsonl" "$RESULT_DIR/security_policy_events.container.jsonl"
@@ -1534,10 +1677,14 @@ skills:
         crictl_path: $FAKE_CRICTL
         cgroup_root: /sys/fs/cgroup/eulerpilot
         path: $DYNAMIC_SCOPED_TARGET_FILE
-        exec_path: $DYNAMIC_SCOPED_EXEC_TARGET_FILE
+        exec_prefix: $DYNAMIC_DIR/
     rules:
       - name: deny_runtime_secret_open
         hook: lsm_file_open
+        target_ref: runtime_secret
+        action: deny
+      - name: deny_runtime_exec
+        hook: lsm_bprm_check_security
         target_ref: runtime_secret
         action: deny
 YAML
@@ -1615,7 +1762,7 @@ fi
 assert_blocked_rule_event "$DYNAMIC_SCOPED_TARGET_FILE" "lsm_file_open" \
     "deny_runtime_secret_open" "runtime_secret"
 assert_blocked_rule_event "$DYNAMIC_SCOPED_EXEC_TARGET_FILE" "lsm_bprm_check_security" \
-    "deny_runtime_secret_open" "runtime_secret"
+    "deny_runtime_exec" "runtime_secret"
 assert_blocked_rule_event_has_cgroup "$DYNAMIC_SCOPED_TARGET_FILE" "lsm_file_open" \
     "deny_runtime_secret_open" "runtime_secret"
 cp "$ROOT/reports/events/security_policy.jsonl" "$RESULT_DIR/security_policy_events.runtime-container.jsonl"
@@ -1685,10 +1832,14 @@ skills:
         kubectl_path: $FAKE_KUBECTL
         cgroup_root: /sys/fs/cgroup/eulerpilot
         path: $DYNAMIC_SCOPED_TARGET_FILE
-        exec_path: $DYNAMIC_SCOPED_EXEC_TARGET_FILE
+        exec_prefix: $DYNAMIC_DIR/
     rules:
       - name: deny_pod_secret_open
         hook: lsm_file_open
+        target_ref: pod_secret
+        action: deny
+      - name: deny_pod_exec
+        hook: lsm_bprm_check_security
         target_ref: pod_secret
         action: deny
 YAML
@@ -1766,7 +1917,7 @@ fi
 assert_blocked_rule_event "$DYNAMIC_SCOPED_TARGET_FILE" "lsm_file_open" \
     "deny_pod_secret_open" "pod_secret"
 assert_blocked_rule_event "$DYNAMIC_SCOPED_EXEC_TARGET_FILE" "lsm_bprm_check_security" \
-    "deny_pod_secret_open" "pod_secret"
+    "deny_pod_exec" "pod_secret"
 assert_blocked_rule_event_has_cgroup "$DYNAMIC_SCOPED_TARGET_FILE" "lsm_file_open" \
     "deny_pod_secret_open" "pod_secret"
 cp "$ROOT/reports/events/security_policy.jsonl" "$RESULT_DIR/security_policy_events.pod.jsonl"

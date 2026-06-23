@@ -1,6 +1,6 @@
 # EulerPilot：面向 openEuler 的自适应资源管控 Agent
 
-更新时间：`2026-06-22`
+更新时间：`2026-06-23`
 
 ## 摘要
 
@@ -205,17 +205,18 @@ TC QoS 还完成了速率误差 Benchmark：在 2 Mbit/s 目标下，121 实测 
 
 | 组件 | 内容 |
 |------|------|
-| BPF 程序 | `lsm/file_open`、`lsm/bprm_check_security`、`lsm/socket_connect`，并补充 `execve/openat/connect/ptrace` tracepoint audit |
+| BPF 程序 | `lsm/file_open`、`lsm/bprm_check_security`、`lsm/socket_connect`、`lsm/ptrace_traceme`，并补充 `execve/openat/connect/ptrace` tracepoint audit |
 | 控制方式 | YAML v2 `targets + rules + target_ref` 下发，用户态填充最多 8 项 BPF `target_map` |
 | 文件策略 | `path + file_access=any/read/write`，已验证目标 cgroup 内读打开成功、写打开被拒绝 |
 | 执行策略 | 精确 `exec_path` 和字面 `exec_prefix`，已验证目标 cgroup 内可写目录前缀执行被拒绝 |
 | 网络安全策略 | `dst_ip + dst_port + cgroup_id`，已验证 scoped IPv4 socket connect 被拒绝 |
+| Ptrace 策略 | scope-only cgroup target，已验证目标 cgroup 内 `PTRACE_TRACEME` 被拒绝，scope 外允许 |
 | Scope | 显式 cgroup、PID 自动解析、container_id cgroup tree 扫描、runtime container name、Kubernetes Pod 名称解析 |
 | 生命周期 | YAML 驱动启用 -> LSM/tracepoint attach -> audit/enforce 验证 -> rollback detach -> 恢复 |
-| 验证结果 | 121/122 均通过完整集成测试；最新证据目录为 `results/security_policy/integration-20260622-195342` 和 `results/security_policy/integration-20260622-195627` |
+| 验证结果 | 121/122 均通过完整集成测试；最新证据目录为 `results/security_policy/integration-20260623-094234` 和 `results/security_policy/integration-20260623-094924` |
 | 安全设计 | 默认 disabled，audit 默认不阻断；enforce 只对显式 target 生效，不 pin link 到 BPF 文件系统，Agent 退出即 detach |
 
-该能力证明 Security 类 eBPF hook 可以复用 EulerPilot Skills 框架完成策略声明、目标解析、内核 hook attach、事件审计、阻断验证和可回滚恢复。事件文件 `reports/events/security_policy.jsonl` 会记录 `rule_id/target_ref/target_index/cgroup_id`，并对 socket、exec_prefix、file_access 分别输出 endpoint、前缀和 `file_flags` 证据。
+该能力证明 Security 类 eBPF hook 可以复用 EulerPilot Skills 框架完成策略声明、目标解析、内核 hook attach、事件审计、阻断验证和可回滚恢复。事件文件 `reports/events/security_policy.jsonl` 会记录 `rule_id/target_ref/target_index/cgroup_id`，并对 socket、exec_prefix、file_access 和 ptrace 分别输出 endpoint、前缀、`file_flags` 和 `ptrace_traceme` 证据。
 
 
 ---
@@ -407,7 +408,7 @@ EulerPilot 的价值不在于证明某一组参数在所有场景下都优于默
 
 1. EulerPilot 已在 `SP3` 上完成 cgroup v2 主闭环，具备正式交付能力。
 2. EulerPilot 已在 `OLK-6.6` 上完成 Redis 与 Nginx 的 `sched_ext` 正式 compare，并形成多轮候选结果目录。
-3. EulerPilot 已实现 Skills 插件化框架与 YAML v2 驱动，并通过 `network_policy`、`network_qos`、`network_xdp` 和 security eBPF demo 证明了 Agent 能力可扩展。
+3. EulerPilot 已实现 Skills 插件化框架与 YAML v2 驱动，并通过 `network_policy`、`network_qos`、`network_xdp` 和正式 `security_policy` 证明了 Agent 能力可扩展。
 4. 项目已通过最新质量门禁（17/17 P0 项）和安全审计，仍处于争奖增强阶段。
 
 补充说明：
@@ -418,4 +419,4 @@ EulerPilot 的价值不在于证明某一组参数在所有场景下都优于默
 
 项目代码已同步推送至 GitHub 私密仓库 `shibuchou/EulerPilot`。
 
-当前项目已覆盖 resource control、network policy、security policy 三类 OS Agent 扩展方向：其中 resource control 进入 Redis/Nginx 主实验路径，network policy 已具备 connect4、TC QoS、XDP 三个可验证子能力，XDP 已支持 ICMP/TCP 多规则，security policy 作为独立 eBPF hook demo 提供 attach、deny、rollback、recover 的可演示闭环。
+当前项目已覆盖 resource control、network policy、security policy 三类 OS Agent 扩展方向：其中 resource control 进入 Redis/Nginx 主实验路径，network policy 已具备 connect4、TC QoS、XDP 三个可验证子能力，XDP 已支持 ICMP/TCP 多规则，security policy 已从独立 demo 升级为正式 Skill，覆盖 file、exec、socket、ptrace 四类 eBPF/LSM hook 的 audit、deny、rollback、recover 可演示闭环。

@@ -1,0 +1,2 @@
+_: /tmp/eulerpilot-security-policy.sQ9ct0/dynamic-scoped-deny-exec.sh: /usr/bin/env: 错误的解释器: Operation not permitted
+_: 行 1: /tmp/eulerpilot-security-policy.sQ9ct0/dynamic-scoped-deny-exec.sh: Success

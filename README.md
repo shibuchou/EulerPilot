@@ -19,7 +19,7 @@ eBPF Observer
 
 ## 当前状态
 
-截至 `2026-06-22`，项目已经完成：
+截至 `2026-06-23`，项目已经完成：
 
 - `SP3 + cgroup v2` 主闭环
 - `OLK-6.6 + sched_ext` 正式对照线
@@ -34,18 +34,19 @@ eBPF Observer
   - `network_xdp`：isolated-veth generic XDP ICMP + TCP 多规则闭环
 - Security Policy 阶段 C 最小闭环：
   - `security_policy`：YAML v2 `targets + rules + target_ref`
-  - BPF LSM：`file_open`、`bprm_check_security` 与 `socket_connect` enforce
+  - BPF LSM：`file_open`、`bprm_check_security`、`socket_connect` 与 `ptrace_traceme` enforce
   - file policy：`file_access=any/read/write`，已验证目标 cgroup 内读放行、写阻断
+  - ptrace policy：`lsm/ptrace_traceme`，已验证仅目标 cgroup 内 `PTRACE_TRACEME` 被拒绝
   - syscall tracing：`execve/openat/connect/ptrace` audit 观测
-  - target scope：path、file_access、exec_path、exec_prefix、socket endpoint、显式 cgroup、PID 自动解析、container_id cgroup tree 解析、container runtime name 解析、Kubernetes Pod 名称解析
+  - target scope：path、file_access、exec_path、exec_prefix、socket endpoint、ptrace cgroup scope、显式 cgroup、PID 自动解析、container_id cgroup tree 解析、container runtime name 解析、Kubernetes Pod 名称解析
   - 121/122 集成测试和 121 质量门禁通过
 
 当前最重要的候选结果目录为：
 
 - Redis：`/root/EulerPilot/results/final/redis-scx-compare-20260612-191543`
 - Nginx：`/root/EulerPilot/results/final/nginx-scx-compare-20260612-194018`
-- Security file_access LSM 121：`/root/EulerPilot/results/security_policy/integration-20260622-195342`
-- Security file_access LSM 122：`/root/EulerPilot/results/security_policy/integration-20260622-195627`
+- Security ptrace LSM 121：`/root/EulerPilot/results/security_policy/integration-20260623-094234`
+- Security ptrace LSM 122：`/root/EulerPilot/results/security_policy/integration-20260623-094924`
 
 当前图表目录为：
 

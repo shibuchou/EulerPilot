@@ -1,0 +1,25 @@
+INFO: result dir: /root/EulerPilot/results/security_policy/integration-20260623-094924
+INFO: building agent and security-policy-demo BPF object
+PASS: build succeeds
+PASS: security_policy and compatibility demo skills are registered
+PASS: target file is readable before policy attach
+PASS: exec target is runnable before policy attach
+PASS: security_policy audit mode writes file, bprm and four syscall hit events
+PASS: target file is denied while security_policy enforce is active
+PASS: exec target is denied while security_policy enforce is active
+PASS: agent exits cleanly
+PASS: security_policy enforce mode writes blocked file and bprm hit events
+PASS: target file is readable after agent rollback
+PASS: exec target is runnable after agent rollback
+PASS: security_policy target_map reports rule-specific dynamic YAML file and exec hits
+PASS: security_policy cgroup scoped target only blocks inside target cgroup
+PASS: security_policy lsm_socket_connect blocks scoped IPv4 target and reports endpoint evidence
+PASS: security_policy bprm exec_prefix blocks writable-dir execution inside target cgroup
+PASS: security_policy file_access=write only blocks write opens inside target cgroup
+PASS: security_policy ptrace_traceme blocks scoped ptrace in target cgroup
+PASS: security_policy pid target resolves to cgroup scoped enforcement
+PASS: security_policy container_id target resolves to cgroup scoped enforcement
+PASS: security_policy container runtime name target resolves to cgroup scoped enforcement
+PASS: security_policy k8s pod name target resolves to cgroup scoped enforcement
+PASS: cleanup leaves no known security_policy_demo BPF residue
+=== SecurityPolicyDemoSkill integration test complete ===

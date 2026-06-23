@@ -1946,6 +1946,9 @@ public:
                         last_error_ = "security-policy-v2-target-exec-matcher-missing";
                         return false;
                     }
+                } else if (hook == "lsm_ptrace_traceme") {
+                    // Ptrace enforcement must be scoped. A global ptrace deny
+                    // would be too easy to use incorrectly on the host.
                 } else {
                     if (rule.file_path.empty()) {
                         last_error_ = "security-policy-v2-target-path-missing";
@@ -2133,6 +2136,10 @@ public:
                 last_error_ = "security-policy-socket-rule-target-missing";
                 return false;
             }
+            if (rule.hook == "lsm_ptrace_traceme" && rule.cgroup_id == 0) {
+                last_error_ = "security-policy-ptrace-rule-scope-missing";
+                return false;
+            }
         }
         target_path_ = rules_.front().file_path;
         exec_target_path_ = rules_.front().exec_path;
@@ -2316,7 +2323,7 @@ private:
 
     static bool is_supported_security_hook(const std::string &hook) {
         return hook == "lsm_file_open" || hook == "lsm_bprm_check_security" ||
-               hook == "lsm_socket_connect";
+               hook == "lsm_socket_connect" || hook == "lsm_ptrace_traceme";
     }
 
     static std::string join_security_field(const std::vector<SecurityPolicyRule> &rules,
@@ -2390,6 +2397,19 @@ private:
             return false;
         }
         links.push_back(socket_connect_link);
+
+        bpf_program *ptrace_traceme_prog =
+            bpf_object__find_program_by_name(obj, "security_policy_ptrace_traceme");
+        if (!ptrace_traceme_prog) {
+            error = "security-policy-ptrace-traceme-program-missing";
+            return false;
+        }
+        bpf_link *ptrace_traceme_link = bpf_program__attach_lsm(ptrace_traceme_prog);
+        if (!ptrace_traceme_link) {
+            error = "security-policy-ptrace-traceme-attach-failed";
+            return false;
+        }
+        links.push_back(ptrace_traceme_link);
 
         bpf_program *execve_prog = bpf_object__find_program_by_name(obj, "trace_execve");
         if (!execve_prog) {
@@ -2466,19 +2486,19 @@ private:
         for (std::size_t i = 0; i < kSecurityPolicyMaxTargets; ++i) {
             SecurityPolicyTarget target;
             if (i < rules_.size()) {
-                if (!rules_[i].file_path.empty()) {
+                if (rules_[i].hook == "lsm_file_open" && !rules_[i].file_path.empty()) {
                     if (!copy_security_path(rules_[i].file_path, target.file_path, sizeof(target.file_path),
                                             last_error_, "file-path")) {
                         return false;
                     }
                 }
-                if (!rules_[i].exec_path.empty()) {
+                if (rules_[i].hook == "lsm_bprm_check_security" && !rules_[i].exec_path.empty()) {
                     if (!copy_security_path(rules_[i].exec_path, target.exec_path, sizeof(target.exec_path),
                                             last_error_, "exec-path")) {
                         return false;
                     }
                 }
-                if (!rules_[i].exec_prefix.empty()) {
+                if (rules_[i].hook == "lsm_bprm_check_security" && !rules_[i].exec_prefix.empty()) {
                     if (!copy_security_path(rules_[i].exec_prefix, target.exec_prefix,
                                             sizeof(target.exec_prefix),
                                             last_error_, "exec-prefix")) {
@@ -2489,7 +2509,9 @@ private:
                 target.connect_daddr = rules_[i].connect_daddr;
                 target.connect_dport = rules_[i].connect_dport;
                 target.connect_protocol = rules_[i].connect_protocol;
-                target.file_access = rules_[i].file_access_value;
+                target.file_access = rules_[i].hook == "lsm_file_open"
+                                         ? rules_[i].file_access_value
+                                         : 0;
             }
             std::uint32_t target_key = static_cast<std::uint32_t>(i);
             if (bpf_map_update_elem(target_fd, &target_key, &target, BPF_ANY) != 0) {
@@ -2585,6 +2607,7 @@ private:
         case 5: return "sys_enter_ptrace";
         case 6: return "lsm_bprm_check_security";
         case 7: return "lsm_socket_connect";
+        case 8: return "lsm_ptrace_traceme";
         default: return "unknown";
         }
     }
