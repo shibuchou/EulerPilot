@@ -82,8 +82,8 @@ network_policy:
 | Hook | Target 要求 | 默认安全限制 |
 |------|-------------|--------------|
 | `cgroup_connect4` | `type: cgroup` | 只作用于 demo/lab cgroup |
-| `tc_ingress` / `tc_egress` | `type: netdev` 或 `type: k8s_pod` 解析出的 veth | 默认只允许 lab veth |
-| `xdp` | `type: netdev` | 默认只允许 isolated veth，不允许管理网卡 |
+| `tc_ingress` / `tc_egress` | `type: netdev` 或 `type: k8s_pod` 解析出的 host veth | 默认只允许 lab veth / lab namespace |
+| `xdp` | `type: netdev` 或 `type: k8s_pod` 解析出的 host veth | 默认只允许 isolated veth 或 lab Pod veth，不允许管理网卡 |
 
 XDP 不按进程或 cgroup 挂载。它只能按网卡/接口挂载，并通过 IP、协议、端口等包字段匹配规则。
 
@@ -140,7 +140,7 @@ eBPF TC classifier
 
 - 新增 `network_xdp` 独立注册名，默认 disabled。
 - 新增 `bpf/network_xdp_demo.bpf.c`，使用 XDP generic mode 在 isolated veth 上匹配协议和端口。
-- 当前集成测试验证 ICMP drop 与 TCP:19092 drop；后续扩展 UDP 和 Pod veth。
+- 当前集成测试验证 ICMP drop 与 TCP:19092 drop；`TargetResolver` 已能把 `k8s_pod` 解析到 host veth，后续扩展真实 lab Pod XDP/TC 演示和 UDP 规则。
 - `AuditBus` rollback 事件记录 `pass_count/drop_count/byte_count`。
 - `ActionJournal` 记录 ifname、XDP mode、rule id 和 target_ref。
 
@@ -204,7 +204,7 @@ results/network_policy/
 
 ## 9. 当前状态
 
-状态：`阶段 B 进行中，connect4 子能力已完成，TC QoS 最小闭环已完成，isolated-veth XDP 最小闭环已完成，YAML v2 target_ref 已落地`
+状态：`阶段 B 收尾，connect4 子能力已完成，TC QoS 最小闭环已完成，isolated-veth XDP 多规则闭环已完成，YAML v2 target_ref 已落地，Pod host veth 解析预备已完成`
 
 已具备：
 
@@ -231,6 +231,7 @@ results/network_policy/
 - `network_xdp` enforce 模式通过 libbpf `bpf_xdp_attach` 以 generic mode 挂载程序，rollback 通过 `bpf_xdp_detach` 卸载。
 - `tests/integration/test_network_xdp.sh` 已基于 YAML v2 验证 lab netns/veth、audit 不挂 XDP、enforce drop ICMP、enforce drop TCP:19092、rollback 后连通性恢复。
 - XDP 审计事件已包含 `rule_ids=drop_icmp_lab,drop_tcp_probe_lab`、`rule_count=2` 与 `target_ref=lab_xdp_veth`。
+- `tests/integration/test_target_resolver.sh` 已验证 `k8s_pod -> kubectl Pod UID/container ID -> runtime PID -> netns -> host veth ifname/ifindex` 的成功路径；`network_qos/network_xdp` 已可接受 `type: k8s_pod` target 并解析为 host veth。
 - 完整质量门禁已通过，日志为 `reports/final_quality_gate_20260619_xdp.log`。
 - 121 最新集成测试目录：`results/network_policy/integration-20260619-142347/`。
 - 122 最新集成测试目录：`results/network_policy/integration-20260619-122352/`。
@@ -245,5 +246,5 @@ results/network_policy/
 下一步：
 
 1. 为 TC QoS 增加多规则验证。
-2. 将 isolated-veth XDP 扩展到 UDP 和 lab Pod veth。
-3. 将 `TargetResolver` 从 cgroup/connect4 扩展到 netdev/k8s_pod 解析。
+2. 在真实 Kubernetes lab Pod 上验证 TC QoS / XDP 挂载到解析出的 host veth。
+3. 将 isolated-veth XDP 扩展到 UDP 和更多报文特征。

@@ -47,8 +47,15 @@ struct ContainerTargetSpec {
 
 struct TargetResolverOptions {
     bool allow_non_lab_pods = false;
+    bool allow_host_network_pods = false;
+    bool require_runtime_socket = true;
     std::string lab_namespace = "eulerpilot-lab";
     std::string kubectl_path = "kubectl";
+    std::string crictl_path = "crictl";
+    std::string docker_path = "docker";
+    std::string podman_path = "podman";
+    std::string ip_path = "ip";
+    std::string nsenter_path = "nsenter";
     std::vector<std::string> runtime_socket_paths = {
         "/run/containerd/containerd.sock",
         "/run/crio/crio.sock",

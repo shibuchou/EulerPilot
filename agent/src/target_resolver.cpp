@@ -97,6 +97,34 @@ bool valid_container_id(const std::string &container_id) {
     return true;
 }
 
+std::string trim_copy(const std::string &value);
+
+std::string runtime_container_id_from_output(const std::string &value) {
+    std::istringstream in(value);
+    std::string token;
+    while (in >> token) {
+        token = trim_copy(token);
+        const std::size_t scheme = token.find("://");
+        if (scheme != std::string::npos) {
+            token = token.substr(scheme + 3);
+        }
+        while (!token.empty() &&
+               (token.back() == '"' || token.back() == '\'' ||
+                token.back() == ',' || token.back() == ']')) {
+            token.pop_back();
+        }
+        while (!token.empty() &&
+               (token.front() == '"' || token.front() == '\'' ||
+                token.front() == '[')) {
+            token.erase(token.begin());
+        }
+        if (valid_container_id(token)) {
+            return token;
+        }
+    }
+    return {};
+}
+
 bool valid_name_token(const std::string &value) {
     if (value.empty() || value.size() > 128) {
         return false;
@@ -121,6 +149,37 @@ bool valid_lookup_token(const std::string &value) {
         }
     }
     return true;
+}
+
+int parse_pid_from_text(const std::string &value) {
+    const std::vector<std::string> keys = {"\"pid\"", "\"Pid\"", "pid", "Pid"};
+    for (const std::string &key : keys) {
+        std::size_t pos = 0;
+        while ((pos = value.find(key, pos)) != std::string::npos) {
+            std::size_t cursor = pos + key.size();
+            while (cursor < value.size() &&
+                   !std::isdigit(static_cast<unsigned char>(value[cursor]))) {
+                ++cursor;
+            }
+            std::size_t end = cursor;
+            while (end < value.size() &&
+                   std::isdigit(static_cast<unsigned char>(value[end]))) {
+                ++end;
+            }
+            if (end > cursor) {
+                try {
+                    const long pid = std::stol(value.substr(cursor, end - cursor));
+                    if (pid > 0 && pid <= 4194304) {
+                        return static_cast<int>(pid);
+                    }
+                } catch (...) {
+                    return -1;
+                }
+            }
+            pos = cursor;
+        }
+    }
+    return -1;
 }
 
 std::string trim_copy(const std::string &value) {
@@ -382,6 +441,47 @@ std::string kubectl_pod_uid(const K8sPodTargetSpec &spec,
     return uid;
 }
 
+std::string kubectl_pod_container_id(const K8sPodTargetSpec &spec,
+                                     const TargetResolverOptions &options,
+                                     std::string &reason) {
+    if (!spec.container_id.empty()) {
+        if (!valid_container_id(spec.container_id)) {
+            reason = "invalid-container-id";
+            return {};
+        }
+        return spec.container_id;
+    }
+    if (!spec.container_name.empty() && !valid_name_token(spec.container_name)) {
+        reason = "invalid-container-name";
+        return {};
+    }
+    if (!command_exists(options.kubectl_path)) {
+        reason = "missing-kubectl";
+        return {};
+    }
+
+    const std::string jsonpath = spec.container_name.empty()
+        ? "jsonpath={.status.containerStatuses[0].containerID}"
+        : "jsonpath={.status.containerStatuses[?(@.name==\"" +
+              spec.container_name + "\")].containerID}";
+
+    int rc = -1;
+    const std::string output = capture_command_stdout(
+        {options.kubectl_path, "-n", spec.pod_namespace, "get", "pod",
+         spec.pod_name, "-o", jsonpath},
+        rc);
+    if (rc != 0) {
+        reason = "kubectl-container-query-failed";
+        return {};
+    }
+
+    const std::string container_id = runtime_container_id_from_output(output);
+    if (container_id.empty()) {
+        reason = "kubectl-container-id-invalid";
+    }
+    return container_id;
+}
+
 bool socket_exists(const std::string &path) {
     struct stat st {};
     return stat(path.c_str(), &st) == 0 && S_ISSOCK(st.st_mode);
@@ -404,6 +504,60 @@ bool has_runtime_socket(const TargetResolverOptions &options) {
     return false;
 }
 
+int runtime_container_pid(const std::string &container_id,
+                          const TargetResolverOptions &options,
+                          std::string &reason) {
+    if (!valid_container_id(container_id)) {
+        reason = "invalid-container-id";
+        return -1;
+    }
+
+    if (command_exists(options.crictl_path)) {
+        int rc = -1;
+        const std::string output =
+            capture_command_stdout({options.crictl_path, "inspect", container_id}, rc);
+        if (rc == 0) {
+            const int pid = parse_pid_from_text(output);
+            if (pid > 0) {
+                return pid;
+            }
+        }
+    }
+
+    if (command_exists(options.docker_path)) {
+        int rc = -1;
+        const std::string output = capture_command_stdout(
+            {options.docker_path, "inspect", "-f", "{{.State.Pid}}", container_id}, rc);
+        if (rc == 0) {
+            try {
+                const int pid = std::stoi(trim_copy(output));
+                if (pid > 0) {
+                    return pid;
+                }
+            } catch (...) {
+            }
+        }
+    }
+
+    if (command_exists(options.podman_path)) {
+        int rc = -1;
+        const std::string output = capture_command_stdout(
+            {options.podman_path, "inspect", "-f", "{{.State.Pid}}", container_id}, rc);
+        if (rc == 0) {
+            try {
+                const int pid = std::stoi(trim_copy(output));
+                if (pid > 0) {
+                    return pid;
+                }
+            } catch (...) {
+            }
+        }
+    }
+
+    reason = "runtime-container-pid-not-found";
+    return -1;
+}
+
 std::string read_first_cgroup_path(int pid) {
     std::ifstream file("/proc/" + std::to_string(pid) + "/cgroup");
     std::string line;
@@ -422,6 +576,159 @@ std::uint64_t inode_as_stable_id(const std::string &path) {
         return 0;
     }
     return static_cast<std::uint64_t>(st.st_ino);
+}
+
+struct NetdevCandidate {
+    std::string ifname;
+    int ifindex = 0;
+    int iflink = 0;
+};
+
+int parse_positive_int_prefix(const std::string &value, std::size_t start = 0) {
+    while (start < value.size() &&
+           !std::isdigit(static_cast<unsigned char>(value[start]))) {
+        ++start;
+    }
+    std::size_t end = start;
+    while (end < value.size() &&
+           std::isdigit(static_cast<unsigned char>(value[end]))) {
+        ++end;
+    }
+    if (end == start) {
+        return 0;
+    }
+    try {
+        const long parsed = std::stol(value.substr(start, end - start));
+        return parsed > 0 && parsed <= 4194304 ? static_cast<int>(parsed) : 0;
+    } catch (...) {
+        return 0;
+    }
+}
+
+std::vector<NetdevCandidate> parse_ip_link_output(const std::string &output) {
+    std::vector<NetdevCandidate> items;
+    std::istringstream in(output);
+    std::string line;
+    while (std::getline(in, line)) {
+        line = trim_copy(line);
+        if (line.empty()) {
+            continue;
+        }
+        const std::size_t first_colon = line.find(':');
+        if (first_colon == std::string::npos) {
+            continue;
+        }
+        NetdevCandidate item;
+        item.ifindex = parse_positive_int_prefix(line);
+
+        std::size_t name_start = first_colon + 1;
+        while (name_start < line.size() &&
+               std::isspace(static_cast<unsigned char>(line[name_start]))) {
+            ++name_start;
+        }
+        const std::size_t name_end = line.find(':', name_start);
+        if (name_end == std::string::npos) {
+            continue;
+        }
+        std::string link_name = line.substr(name_start, name_end - name_start);
+        const std::size_t at_pos = link_name.find("@if");
+        if (at_pos != std::string::npos) {
+            item.iflink = parse_positive_int_prefix(link_name, at_pos + 3);
+            link_name = link_name.substr(0, at_pos);
+        }
+        item.ifname = link_name;
+        if (item.ifindex > 0 && valid_ifname(item.ifname)) {
+            items.push_back(item);
+        }
+    }
+    return items;
+}
+
+std::vector<NetdevCandidate> ip_link_candidates(const std::vector<std::string> &args,
+                                                std::string &reason) {
+    int rc = -1;
+    const std::string output = capture_command_stdout(args, rc);
+    if (rc != 0) {
+        reason = "ip-link-query-failed";
+        return {};
+    }
+    std::vector<NetdevCandidate> items = parse_ip_link_output(output);
+    if (items.empty()) {
+        reason = "ip-link-empty";
+    }
+    return items;
+}
+
+std::string netns_path_for_pid(int pid) {
+    const std::string path = "/proc/" + std::to_string(pid) + "/ns/net";
+    return path_exists(path) ? path : std::string{};
+}
+
+bool netns_is_current(const std::string &netns_path) {
+    std::error_code ec;
+    const fs::path target = fs::read_symlink(netns_path, ec);
+    if (ec) {
+        return false;
+    }
+    const fs::path current = fs::read_symlink("/proc/self/ns/net", ec);
+    return !ec && target == current;
+}
+
+NetdevCandidate find_host_veth_for_pid_netns(int pid,
+                                             bool allow_host_network,
+                                             const std::string &ip_path,
+                                             const std::string &nsenter_path,
+                                             std::string &reason) {
+    const std::string target_netns = netns_path_for_pid(pid);
+    if (target_netns.empty()) {
+        reason = "pod-netns-not-found";
+        return {};
+    }
+    if (netns_is_current(target_netns) && !allow_host_network) {
+        reason = "pod-host-network-not-allowed";
+        return {};
+    }
+    if (!command_exists(ip_path)) {
+        reason = "missing-ip";
+        return {};
+    }
+    if (!command_exists(nsenter_path)) {
+        reason = "missing-nsenter";
+        return {};
+    }
+
+    const std::vector<NetdevCandidate> host_devs =
+        ip_link_candidates({ip_path, "-o", "link", "show"}, reason);
+    if (host_devs.empty()) {
+        return {};
+    }
+    const std::vector<NetdevCandidate> pod_devs =
+        ip_link_candidates({nsenter_path, "-t", std::to_string(pid), "-n",
+                            ip_path, "-o", "link", "show"},
+                           reason);
+    if (pod_devs.empty()) {
+        return {};
+    }
+
+    for (const auto &pod_dev : pod_devs) {
+        if (pod_dev.ifname == "lo" || pod_dev.iflink <= 0 ||
+            pod_dev.iflink == pod_dev.ifindex) {
+            continue;
+        }
+        for (const auto &host_dev : host_devs) {
+            if (host_dev.ifname == "lo") {
+                continue;
+            }
+            if (host_dev.iflink != host_dev.ifindex &&
+                host_dev.ifindex == pod_dev.iflink &&
+                host_dev.iflink == pod_dev.ifindex) {
+                return host_dev;
+            }
+        }
+    }
+
+    reason = "pod-veth-not-found";
+    return {};
 }
 
 } // namespace
@@ -630,12 +937,61 @@ TargetIdentity resolve_k8s_pod_target(const K8sPodTargetSpec &spec,
         target.reason = "missing-kubectl";
         return target;
     }
-    if (!has_runtime_socket(options)) {
+    if (options.require_runtime_socket && !has_runtime_socket(options)) {
         target.reason = "missing-runtime";
         return target;
     }
 
-    target.reason = "unsupported-pod-veth-resolution";
+    std::string reason;
+    std::string pod_uid = spec.pod_uid;
+    if (pod_uid.empty()) {
+        pod_uid = kubectl_pod_uid(spec, options, reason);
+        if (pod_uid.empty()) {
+            target.reason = reason.empty() ? "missing-pod-uid" : reason;
+            return target;
+        }
+    }
+    target.pod_uid = pod_uid;
+
+    const std::string container_id =
+        kubectl_pod_container_id(spec, options, reason);
+    if (container_id.empty()) {
+        target.reason = reason.empty() ? "missing-container-id" : reason;
+        return target;
+    }
+    target.container_id = container_id;
+    target.container_name = spec.container_name;
+
+    const int pid = runtime_container_pid(container_id, options, reason);
+    if (pid <= 0) {
+        target.reason = reason.empty() ? "runtime-container-pid-not-found" : reason;
+        return target;
+    }
+    target.pid = pid;
+    target.netns_path = netns_path_for_pid(pid);
+    if (target.netns_path.empty()) {
+        target.reason = "pod-netns-not-found";
+        return target;
+    }
+
+    const TargetIdentity pid_target = resolve_pid_target(pid);
+    if (pid_target.resolved) {
+        target.cgroup_id = pid_target.cgroup_id;
+        target.cgroup_path = pid_target.cgroup_path;
+    }
+
+    const NetdevCandidate host_veth = find_host_veth_for_pid_netns(
+        pid, options.allow_host_network_pods, options.ip_path,
+        options.nsenter_path, reason);
+    if (host_veth.ifindex <= 0) {
+        target.reason = reason.empty() ? "pod-veth-not-found" : reason;
+        return target;
+    }
+
+    target.ifname = host_veth.ifname;
+    target.ifindex = host_veth.ifindex;
+    target.resolved = true;
+    target.reason = "ok";
     return target;
 }
 

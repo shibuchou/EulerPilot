@@ -1,0 +1,4 @@
+# command: make agent
+make: 对“agent”无需做任何事。
+# command: bash tests/integration/test_target_resolver.sh
+PASS: target resolver netdev and k8s_pod runtime/veth paths

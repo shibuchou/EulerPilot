@@ -193,6 +193,7 @@ EulerPilot 实现了一套轻量 Skills 插件化能力框架，通过 YAML 驱�
 | connect4 策略 | `cgroup/connect4`，对目标 cgroup 的动态端口执行 deny |
 | TC QoS | `tc_egress` BPF classifier 统计命中，TBF qdisc 执行限速 |
 | XDP 策略 | isolated veth 上挂 generic XDP，执行 ICMP + TCP 多规则 drop/pass 和统计 |
+| Pod target 解析 | `k8s_pod -> kubectl Pod UID/container ID -> runtime PID -> netns -> host veth/ifindex`，`network_qos/network_xdp` 可解析 Pod target 到 host veth |
 | 生命周期 | YAML v2 驱动启用 -> attach -> 验证 -> rollback detach -> 恢复 |
 | 验证结果 | connect4 deny/recover、TC QoS rollback、XDP drop/recover 均通过 |
 

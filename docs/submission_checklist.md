@@ -16,7 +16,7 @@
 - [x] `network_qos` TC egress classifier + TBF 限速最小闭环
 - [x] `network_qos` TC QoS 速率误差 Benchmark 双机通过
 - [x] `network_xdp` isolated-veth generic XDP ICMP + TCP 多规则闭环
-- [x] `TargetResolver` netdev + `k8s_pod` 诊断型入口自测通过
+- [x] `TargetResolver` netdev + `k8s_pod` host veth 真实解析预备自测通过
 - [x] `security_policy` 正式注册名 + YAML v2 path target
 - [x] `security_policy` audit 模式 attach BPF 不阻断并写 `lsm_file_open/lsm_bprm_check_security/sys_enter_execve/sys_enter_openat/sys_enter_connect/sys_enter_ptrace` ringbuf observed hit
 - [x] `security_policy` enforce 模式复用 BPF LSM file_open + bprm_check_security 完成 blocked hit、拒绝、恢复、无残留闭环
@@ -93,7 +93,7 @@
 ## 质量与安全审计
 
 - `scripts/final_quality_gate.sh`：TAP 风格 17 项 P0 质量门禁脚本
-- `reports/final_quality_gate_20260623_security_ptrace.log`：121 最新门禁通过记录
+- `reports/final_quality_gate_20260623_target_resolver.log`：121 最新门禁通过记录
 - `docs/final_security_audit.md`：最终安全与质量审计报告
 
 ## 当前结论

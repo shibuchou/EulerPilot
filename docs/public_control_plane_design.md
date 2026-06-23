@@ -86,7 +86,7 @@ struct TargetIdentity {
 - `container_id/container_name -> cgroup_path -> cgroup_id`
 - `k8s_pod namespace/name -> Pod UID -> cgroup_path -> cgroup_id`
 - `netdev ifname -> if_nametoindex`
-- `k8s_pod` 默认只允许 `eulerpilot-lab`；Security cgroup scope 已支持 fake/真实 `kubectl` Pod UID 路径，Network veth/ifindex 解析仍保持诊断型入口
+- `k8s_pod` 默认只允许 `eulerpilot-lab`；Security cgroup scope 已支持 fake/真实 `kubectl` Pod UID 路径，Network 已支持 `kubectl` Pod UID/container ID、runtime PID、netns path 到 host veth/ifindex 的解析预备能力
 
 ### 3.3 安全边界
 
@@ -242,14 +242,14 @@ SkillManager::stop_all()
 
 - 设计文档存在并与 `docs/skills_yaml_plan.md` 不冲突。
 - `--doctor-skills` 能输出公共能力探测摘要。已完成，见 `reports/final_quality_gate_20260618_control_plane.log`。
-- `CapabilityDetector` 已接入 doctor；`TargetResolver / AuditBus / ActionJournal` 已提供可编译最小接口，后续正式 Skill 接入时继续扩展。
+- `CapabilityDetector` 已接入 doctor；`TargetResolver / AuditBus / ActionJournal` 已提供可编译接口，且 TargetResolver 已覆盖 PID、cgroup、container、netdev 和 k8s_pod host veth 解析预备能力。
 - `--status --json` 尚未实现，保留为下一阶段 CLI 增强项。
 - `reports/final_quality_gate_20260618_stage_a.log` 和 `reports/final_quality_gate_20260618_control_plane.log` 作为当前基线门禁证据。
 
 ## 9. 下一步实现顺序
 
 1. 增加 `CapabilityDetector`，先接入 `--doctor-skills` 输出。
-2. 增加 `TargetResolver`，先支持 cgroup/netdev。
+2. 增加 `TargetResolver`，支持 cgroup/netdev/container/k8s_pod host veth 解析。
 3. 增加 `AuditBus`，先支持 JSONL 追加写入。
 4. 增加 `ActionJournal`，先支持 cgroup 旧值恢复和 BPF link 记录。
 5. 把 Network/Security/Resource 后续实现全部接入这四个公共模块。

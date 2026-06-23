@@ -156,6 +156,85 @@ int find_first_rule(const SkillSpec &spec) {
     return -1;
 }
 
+bool config_bool_or(const SkillSpec &spec,
+                    const std::string &key,
+                    bool fallback) {
+    const auto *value = find_config_value(spec, key);
+    if (!value) {
+        return fallback;
+    }
+    return *value == "1" || *value == "true" || *value == "yes" ||
+           *value == "on";
+}
+
+bool resolve_network_target_ifname(const SkillSpec &spec,
+                                   const std::string &target_prefix,
+                                   const std::string &target_ref,
+                                   const std::string &error_prefix,
+                                   std::string &ifname,
+                                   std::string &last_error) {
+    const std::string target_type =
+        config_value_or(spec, target_prefix + "type", "");
+    if (target_type == "netdev") {
+        ifname = config_value_or(spec, target_prefix + "ifname", "");
+        if (ifname.empty()) {
+            last_error = error_prefix + "-v2-ifname-missing";
+            return false;
+        }
+        return true;
+    }
+
+    if (target_type == "k8s_pod" || target_type == "pod") {
+        K8sPodTargetSpec target_spec;
+        target_spec.name = target_ref;
+        target_spec.pod_namespace =
+            config_value_or(spec, target_prefix + "namespace",
+                            config_value_or(spec, target_prefix + "pod_namespace", ""));
+        target_spec.pod_name =
+            config_value_or(spec, target_prefix + "pod_name",
+                            config_value_or(spec, target_prefix + "name", ""));
+        target_spec.pod_uid = config_value_or(spec, target_prefix + "pod_uid", "");
+        target_spec.container_id =
+            config_value_or(spec, target_prefix + "container_id", "");
+        target_spec.container_name =
+            config_value_or(spec, target_prefix + "container_name", "");
+        target_spec.cgroup_root =
+            config_value_or(spec, target_prefix + "cgroup_root", "/sys/fs/cgroup");
+
+        TargetResolverOptions options;
+        options.allow_non_lab_pods =
+            config_bool_or(spec, target_prefix + "allow_non_lab_pods", false);
+        options.allow_host_network_pods =
+            config_bool_or(spec, target_prefix + "allow_host_network_pods", false);
+        options.require_runtime_socket =
+            config_bool_or(spec, target_prefix + "require_runtime_socket", true);
+        options.lab_namespace =
+            config_value_or(spec, target_prefix + "lab_namespace", "eulerpilot-lab");
+        options.kubectl_path =
+            config_value_or(spec, target_prefix + "kubectl_path", "kubectl");
+        options.crictl_path =
+            config_value_or(spec, target_prefix + "crictl_path", "crictl");
+        options.docker_path =
+            config_value_or(spec, target_prefix + "docker_path", "docker");
+        options.podman_path =
+            config_value_or(spec, target_prefix + "podman_path", "podman");
+        options.ip_path = config_value_or(spec, target_prefix + "ip_path", "ip");
+        options.nsenter_path =
+            config_value_or(spec, target_prefix + "nsenter_path", "nsenter");
+
+        const auto target = resolve_k8s_pod_target(target_spec, options);
+        if (!target.resolved || target.ifname.empty()) {
+            last_error = error_prefix + "-pod-veth-" + target.reason;
+            return false;
+        }
+        ifname = target.ifname;
+        return true;
+    }
+
+    last_error = error_prefix + "-v2-target-not-netdev-or-pod";
+    return false;
+}
+
 struct NetworkPolicyMapConfig {
     std::uint16_t deny_port = 18080;
     std::uint8_t enforce = 1;
@@ -1009,14 +1088,8 @@ public:
                 return false;
             }
             const std::string target_prefix = "targets." + target_ref_ + ".";
-            const std::string target_type = config_value_or(spec, target_prefix + "type", "");
-            if (target_type != "netdev") {
-                last_error_ = "network-qos-v2-target-not-netdev";
-                return false;
-            }
-            ifname_ = config_value_or(spec, target_prefix + "ifname", "");
-            if (ifname_.empty()) {
-                last_error_ = "network-qos-v2-ifname-missing";
+            if (!resolve_network_target_ifname(spec, target_prefix, target_ref_,
+                                               "network-qos", ifname_, last_error_)) {
                 return false;
             }
         } else {
@@ -1444,14 +1517,9 @@ public:
                 return false;
             }
             const std::string target_prefix = "targets." + rule.target_ref + ".";
-            const std::string target_type = config_value_or(spec, target_prefix + "type", "");
-            if (target_type != "netdev") {
-                last_error_ = "network-xdp-v2-target-not-netdev";
-                return false;
-            }
-            const std::string ifname = config_value_or(spec, target_prefix + "ifname", "");
-            if (ifname.empty()) {
-                last_error_ = "network-xdp-v2-ifname-missing";
+            std::string ifname;
+            if (!resolve_network_target_ifname(spec, target_prefix, rule.target_ref,
+                                               "network-xdp", ifname, last_error_)) {
                 return false;
             }
             if (ifname_.empty()) {
