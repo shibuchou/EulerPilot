@@ -501,6 +501,10 @@ struct SecurityPolicyEvent {
     std::uint32_t file_flags = 0;
     std::uint32_t file_access = 0;
     std::int32_t capability = -1;
+    std::uint32_t uid = 0;
+    std::uint32_t euid = 0;
+    std::uint32_t suid = 0;
+    std::uint32_t setuid_flags = 0;
 };
 
 struct NetworkXdpRule {
@@ -526,7 +530,7 @@ static_assert(sizeof(SecurityPolicyConfig) == 8,
               "security policy config map layout must match BPF");
 static_assert(sizeof(SecurityPolicyTarget) == 1048,
               "security policy target map layout must match BPF");
-static_assert(sizeof(SecurityPolicyEvent) == 316,
+static_assert(sizeof(SecurityPolicyEvent) == 332,
               "security policy ringbuf event layout must match BPF");
 
 bool valid_tc_token(const std::string &value) {
@@ -2204,6 +2208,9 @@ public:
                 } else if (hook == "lsm_ptrace_traceme") {
                     // Ptrace enforcement must be scoped. A global ptrace deny
                     // would be too easy to use incorrectly on the host.
+                } else if (hook == "lsm_task_fix_setuid") {
+                    // Credential transition enforcement must be scoped. A
+                    // global setuid deny would break host administration paths.
                 } else if (hook == "lsm_capable") {
                     // Capability enforcement must be scoped. A global capable
                     // deny would break host administration paths.
@@ -2410,6 +2417,10 @@ public:
                 last_error_ = "security-policy-ptrace-rule-scope-missing";
                 return false;
             }
+            if (rule.hook == "lsm_task_fix_setuid" && rule.cgroup_id == 0) {
+                last_error_ = "security-policy-setuid-rule-scope-missing";
+                return false;
+            }
             if (rule.hook == "lsm_capable") {
                 if (rule.cgroup_id == 0) {
                     last_error_ = "security-policy-capable-rule-scope-missing";
@@ -2486,7 +2497,7 @@ public:
             return false;
         }
         std::vector<bpf_link *> probe_links;
-        if (!attach_security_programs(obj, probe_links, false, last_error_)) {
+        if (!attach_security_programs(obj, probe_links, false, false, last_error_)) {
             for (auto *probe_link : probe_links) {
                 bpf_link__destroy(probe_link);
             }
@@ -2528,6 +2539,7 @@ public:
             return false;
         }
         if (!attach_security_programs(bpf_object_, links_, has_rule_hook("lsm_capable"),
+                                      has_rule_hook("lsm_task_fix_setuid"),
                                       last_error_)) {
             rollback();
             return false;
@@ -2611,7 +2623,7 @@ private:
     static bool is_supported_security_hook(const std::string &hook) {
         return hook == "lsm_file_open" || hook == "lsm_bprm_check_security" ||
                hook == "lsm_socket_connect" || hook == "lsm_ptrace_traceme" ||
-               hook == "lsm_capable";
+               hook == "lsm_capable" || hook == "lsm_task_fix_setuid";
     }
 
     bool has_rule_hook(const std::string &hook) const {
@@ -2711,6 +2723,7 @@ private:
     static bool attach_security_programs(bpf_object *obj,
                                          std::vector<bpf_link *> &links,
                                          bool attach_capable,
+                                         bool attach_task_fix_setuid,
                                          std::string &error) {
         bpf_program *lsm_prog = bpf_object__find_program_by_name(obj, "security_policy_demo");
         if (!lsm_prog) {
@@ -2775,6 +2788,21 @@ private:
                 return false;
             }
             links.push_back(capable_link);
+        }
+
+        if (attach_task_fix_setuid) {
+            bpf_program *setuid_prog =
+                bpf_object__find_program_by_name(obj, "security_policy_task_fix_setuid");
+            if (!setuid_prog) {
+                error = "security-policy-task-fix-setuid-program-missing";
+                return false;
+            }
+            bpf_link *setuid_link = bpf_program__attach_lsm(setuid_prog);
+            if (!setuid_link) {
+                error = "security-policy-task-fix-setuid-attach-failed";
+                return false;
+            }
+            links.push_back(setuid_link);
         }
 
         bpf_program *execve_prog = bpf_object__find_program_by_name(obj, "trace_execve");
@@ -2985,6 +3013,7 @@ private:
         case 7: return "lsm_socket_connect";
         case 8: return "lsm_ptrace_traceme";
         case 9: return "lsm_capable";
+        case 10: return "lsm_task_fix_setuid";
         default: return "unknown";
         }
     }
@@ -3069,6 +3098,12 @@ private:
         if (hit.capability >= 0) {
             event.evidence["capability"] =
                 security_capability_name(hit.capability);
+        }
+        if (hit.event_type == 10) {
+            event.evidence["uid"] = std::to_string(hit.uid);
+            event.evidence["euid"] = std::to_string(hit.euid);
+            event.evidence["suid"] = std::to_string(hit.suid);
+            event.evidence["setuid_flags"] = std::to_string(hit.setuid_flags);
         }
         event.action = hit.decision < 0 ? "deny" : "audit-hit";
         event.result = hit.decision < 0 ? "blocked" : "observed";

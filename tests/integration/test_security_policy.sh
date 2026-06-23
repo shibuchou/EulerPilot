@@ -1708,6 +1708,135 @@ if ! run_in_scoped_cgroup "$RESULT_DIR/capable-post-cleanup.txt" \
     fail "CAP_SYS_ADMIN is still denied after rollback/cleanup; see $RESULT_DIR/capable-post-cleanup.err"
 fi
 
+cat > "$RESULT_DIR/setuid_transition.py" <<'PY'
+import errno
+import os
+import sys
+
+target_uid = int(sys.argv[1]) if len(sys.argv) > 1 else 65534
+try:
+    os.setuid(target_uid)
+except OSError as exc:
+    print(os.strerror(exc.errno or errno.EPERM), file=sys.stderr)
+    sys.exit(1)
+sys.exit(0)
+PY
+
+if ! python3 "$RESULT_DIR/setuid_transition.py" 65534 \
+    > "$RESULT_DIR/setuid-baseline.txt" \
+    2> "$RESULT_DIR/setuid-baseline.err"; then
+    fail "setuid baseline failed before policy; see $RESULT_DIR/setuid-baseline.err"
+fi
+
+cat > "$RESULT_DIR/agent.setuid.yaml" <<'YAML'
+skills_config_path: skills.setuid.yaml
+exporter:
+  prometheus:
+    enabled: false
+YAML
+
+cat > "$RESULT_DIR/skills.setuid.yaml" <<YAML
+schema_version: 2
+skills:
+- name: resource_control
+  kind: runtime
+  enabled: true
+  config: {}
+- name: psi_gate
+  kind: runtime
+  enabled: true
+  config: {}
+- name: security_policy
+  kind: runtime
+  enabled: true
+  config:
+    mode: enforce
+    targets:
+      setuid_scope:
+        type: cgroup
+        cgroup_path: $SCOPED_CGROUP_PATH
+    rules:
+      - name: deny_setuid_transition
+        hook: lsm_task_fix_setuid
+        target_ref: setuid_scope
+        action: deny
+YAML
+
+rm -f "$ROOT/reports/events/security_policy.jsonl"
+
+timeout 20s "$AGENT_BIN" \
+    --config "$RESULT_DIR/agent.setuid.yaml" \
+    --duration-s 8 \
+    --interval-ms 1000 \
+    --jsonl \
+    > "$RESULT_DIR/agent-setuid.log" 2>&1 &
+AGENT_PID="$!"
+
+setuid_blocked="false"
+for _ in $(seq 1 40); do
+    if ! kill -0 "$AGENT_PID" 2>/dev/null; then
+        set +e
+        wait "$AGENT_PID"
+        agent_rc="$?"
+        set -e
+        AGENT_PID=""
+        fail "setuid agent exited before denial was observed, rc=$agent_rc; see $RESULT_DIR/agent-setuid.log"
+    fi
+
+    if ! python3 "$RESULT_DIR/setuid_transition.py" 65534 \
+        > "$RESULT_DIR/setuid-outside.txt" \
+        2> "$RESULT_DIR/setuid-outside.err"; then
+        fail "setuid transition was denied outside target cgroup; see $RESULT_DIR/setuid-outside.err"
+    fi
+
+    set +e
+    run_in_scoped_cgroup "$RESULT_DIR/setuid-blocked.txt" \
+        "$RESULT_DIR/setuid-blocked.err" \
+        python3 "$RESULT_DIR/setuid_transition.py" 65534
+    setuid_rc="$?"
+    set -e
+    if [ "$setuid_rc" -ne 0 ]; then
+        setuid_blocked="true"
+        break
+    fi
+    sleep 0.2
+done
+
+if [ "$setuid_blocked" != "true" ]; then
+    fail "setuid transition was not denied inside target cgroup; see $RESULT_DIR/agent-setuid.log"
+fi
+
+set +e
+wait "$AGENT_PID"
+agent_rc="$?"
+set -e
+AGENT_PID=""
+if [ "$agent_rc" -ne 0 ]; then
+    fail "setuid agent exited non-zero, rc=$agent_rc; see $RESULT_DIR/agent-setuid.log"
+fi
+
+assert_blocked_rule_event "task_fix_setuid" "lsm_task_fix_setuid" \
+    "deny_setuid_transition" "setuid_scope"
+assert_blocked_rule_event_has_cgroup "task_fix_setuid" "lsm_task_fix_setuid" \
+    "deny_setuid_transition" "setuid_scope"
+if ! grep -F "task_fix_setuid" "$ROOT/reports/events/security_policy.jsonl" 2>/dev/null \
+    | grep -F '"event_hook":"lsm_task_fix_setuid"' \
+    | grep -F '"result":"blocked"' \
+    | grep -F '"uid":"65534"' \
+    | grep -F '"euid":"65534"' \
+    | grep -Fq '"setuid_flags":"'; then
+    fail "setuid blocked event did not carry uid/euid/setuid_flags evidence"
+fi
+cp "$ROOT/reports/events/security_policy.jsonl" "$RESULT_DIR/security_policy_events.setuid.jsonl"
+log "PASS: security_policy lsm_task_fix_setuid blocks scoped setuid transitions"
+
+run_cleanup_script
+
+if ! run_in_scoped_cgroup "$RESULT_DIR/setuid-post-cleanup.txt" \
+    "$RESULT_DIR/setuid-post-cleanup.err" \
+    python3 "$RESULT_DIR/setuid_transition.py" 65534; then
+    fail "setuid transition is still denied after rollback/cleanup; see $RESULT_DIR/setuid-post-cleanup.err"
+fi
 sleep 60 &
 SCOPED_PID="$!"
 echo "$SCOPED_PID" > "$SCOPED_CGROUP_PATH/cgroup.procs"
@@ -2077,22 +2206,31 @@ if [ "$runtime_blocked" != "true" ]; then
     fail "runtime container target file was not denied inside resolved cgroup; see $RESULT_DIR/agent-runtime-container.log"
 fi
 
-if ! kill -0 "$AGENT_PID" 2>/dev/null; then
-    set +e
-    wait "$AGENT_PID"
-    agent_rc="$?"
-    set -e
-    AGENT_PID=""
-    fail "runtime container target agent exited before exec denial was checked, rc=$agent_rc; see $RESULT_DIR/agent-runtime-container.log"
-fi
+runtime_exec_blocked="false"
+for _ in $(seq 1 40); do
+    if ! kill -0 "$AGENT_PID" 2>/dev/null; then
+        set +e
+        wait "$AGENT_PID"
+        agent_rc="$?"
+        set -e
+        AGENT_PID=""
+        fail "runtime container target agent exited before exec denial was checked, rc=$agent_rc; see $RESULT_DIR/agent-runtime-container.log"
+    fi
 
-set +e
-run_in_scoped_cgroup "$RESULT_DIR/runtime-container-blocked-exec.txt" \
-    "$RESULT_DIR/runtime-container-blocked-exec.err" \
-    "$DYNAMIC_SCOPED_EXEC_TARGET_FILE"
-runtime_exec_rc="$?"
-set -e
-if [ "$runtime_exec_rc" -eq 0 ]; then
+    set +e
+    run_in_scoped_cgroup "$RESULT_DIR/runtime-container-blocked-exec.txt" \
+        "$RESULT_DIR/runtime-container-blocked-exec.err" \
+        "$DYNAMIC_SCOPED_EXEC_TARGET_FILE"
+    runtime_exec_rc="$?"
+    set -e
+    if [ "$runtime_exec_rc" -ne 0 ]; then
+        runtime_exec_blocked="true"
+        break
+    fi
+    sleep 0.2
+done
+
+if [ "$runtime_exec_blocked" != "true" ]; then
     fail "runtime container exec target was not denied inside resolved cgroup; see $RESULT_DIR/runtime-container-blocked-exec.txt"
 fi
 

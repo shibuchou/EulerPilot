@@ -1,0 +1,31 @@
+schema_version: 2
+skills:
+- name: resource_control
+  kind: runtime
+  enabled: true
+  config: {}
+- name: psi_gate
+  kind: runtime
+  enabled: true
+  config: {}
+- name: security_policy
+  kind: runtime
+  enabled: true
+  config:
+    mode: enforce
+    targets:
+      container_secret:
+        type: container_id
+        container_id: epcontainer337023abcdef
+        cgroup_root: /sys/fs/cgroup/eulerpilot
+        path: /tmp/eulerpilot-security-policy.XHyxPL/dynamic-scoped-secret.txt
+        exec_prefix: /tmp/eulerpilot-security-policy.XHyxPL/
+    rules:
+      - name: deny_container_secret_open
+        hook: lsm_file_open
+        target_ref: container_secret
+        action: deny
+      - name: deny_container_exec
+        hook: lsm_bprm_check_security
+        target_ref: container_secret
+        action: deny
