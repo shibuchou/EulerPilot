@@ -1,0 +1,12 @@
+write scoped target
+outside write
+inside scoped write
+outside write
+inside scoped write
+outside write
+inside scoped write
+outside write
+inside scoped write
+outside write
+inside scoped write
+outside write

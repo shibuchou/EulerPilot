@@ -1837,6 +1837,135 @@ if ! run_in_scoped_cgroup "$RESULT_DIR/setuid-post-cleanup.txt" \
     python3 "$RESULT_DIR/setuid_transition.py" 65534; then
     fail "setuid transition is still denied after rollback/cleanup; see $RESULT_DIR/setuid-post-cleanup.err"
 fi
+cat > "$RESULT_DIR/setgid_transition.py" <<'PY'
+import errno
+import os
+import sys
+
+target_gid = int(sys.argv[1]) if len(sys.argv) > 1 else 65534
+try:
+    os.setgid(target_gid)
+except OSError as exc:
+    print(os.strerror(exc.errno or errno.EPERM), file=sys.stderr)
+    sys.exit(1)
+sys.exit(0)
+PY
+
+if ! python3 "$RESULT_DIR/setgid_transition.py" 65534 \
+    > "$RESULT_DIR/setgid-baseline.txt" \
+    2> "$RESULT_DIR/setgid-baseline.err"; then
+    fail "setgid baseline failed before policy; see $RESULT_DIR/setgid-baseline.err"
+fi
+
+cat > "$RESULT_DIR/agent.setgid.yaml" <<'YAML'
+skills_config_path: skills.setgid.yaml
+exporter:
+  prometheus:
+    enabled: false
+YAML
+
+cat > "$RESULT_DIR/skills.setgid.yaml" <<YAML
+schema_version: 2
+skills:
+- name: resource_control
+  kind: runtime
+  enabled: true
+  config: {}
+- name: psi_gate
+  kind: runtime
+  enabled: true
+  config: {}
+- name: security_policy
+  kind: runtime
+  enabled: true
+  config:
+    mode: enforce
+    targets:
+      setgid_scope:
+        type: cgroup
+        cgroup_path: $SCOPED_CGROUP_PATH
+    rules:
+      - name: deny_setgid_transition
+        hook: lsm_task_fix_setgid
+        target_ref: setgid_scope
+        action: deny
+YAML
+
+rm -f "$ROOT/reports/events/security_policy.jsonl"
+
+timeout 20s "$AGENT_BIN" \
+    --config "$RESULT_DIR/agent.setgid.yaml" \
+    --duration-s 8 \
+    --interval-ms 1000 \
+    --jsonl \
+    > "$RESULT_DIR/agent-setgid.log" 2>&1 &
+AGENT_PID="$!"
+
+setgid_blocked="false"
+for _ in $(seq 1 40); do
+    if ! kill -0 "$AGENT_PID" 2>/dev/null; then
+        set +e
+        wait "$AGENT_PID"
+        agent_rc="$?"
+        set -e
+        AGENT_PID=""
+        fail "setgid agent exited before denial was observed, rc=$agent_rc; see $RESULT_DIR/agent-setgid.log"
+    fi
+
+    if ! python3 "$RESULT_DIR/setgid_transition.py" 65534 \
+        > "$RESULT_DIR/setgid-outside.txt" \
+        2> "$RESULT_DIR/setgid-outside.err"; then
+        fail "setgid transition was denied outside target cgroup; see $RESULT_DIR/setgid-outside.err"
+    fi
+
+    set +e
+    run_in_scoped_cgroup "$RESULT_DIR/setgid-blocked.txt" \
+        "$RESULT_DIR/setgid-blocked.err" \
+        python3 "$RESULT_DIR/setgid_transition.py" 65534
+    setgid_rc="$?"
+    set -e
+    if [ "$setgid_rc" -ne 0 ]; then
+        setgid_blocked="true"
+        break
+    fi
+    sleep 0.2
+done
+
+if [ "$setgid_blocked" != "true" ]; then
+    fail "setgid transition was not denied inside target cgroup; see $RESULT_DIR/agent-setgid.log"
+fi
+
+set +e
+wait "$AGENT_PID"
+agent_rc="$?"
+set -e
+AGENT_PID=""
+if [ "$agent_rc" -ne 0 ]; then
+    fail "setgid agent exited non-zero, rc=$agent_rc; see $RESULT_DIR/agent-setgid.log"
+fi
+
+assert_blocked_rule_event "task_fix_setgid" "lsm_task_fix_setgid" \
+    "deny_setgid_transition" "setgid_scope"
+assert_blocked_rule_event_has_cgroup "task_fix_setgid" "lsm_task_fix_setgid" \
+    "deny_setgid_transition" "setgid_scope"
+if ! grep -F "task_fix_setgid" "$ROOT/reports/events/security_policy.jsonl" 2>/dev/null \
+    | grep -F '"event_hook":"lsm_task_fix_setgid"' \
+    | grep -F '"result":"blocked"' \
+    | grep -F '"gid":"65534"' \
+    | grep -F '"egid":"65534"' \
+    | grep -Fq '"setgid_flags":"'; then
+    fail "setgid blocked event did not carry gid/egid/setgid_flags evidence"
+fi
+cp "$ROOT/reports/events/security_policy.jsonl" "$RESULT_DIR/security_policy_events.setgid.jsonl"
+log "PASS: security_policy lsm_task_fix_setgid blocks scoped setgid transitions"
+
+run_cleanup_script
+
+if ! run_in_scoped_cgroup "$RESULT_DIR/setgid-post-cleanup.txt" \
+    "$RESULT_DIR/setgid-post-cleanup.err" \
+    python3 "$RESULT_DIR/setgid_transition.py" 65534; then
+    fail "setgid transition is still denied after rollback/cleanup; see $RESULT_DIR/setgid-post-cleanup.err"
+fi
 sleep 60 &
 SCOPED_PID="$!"
 echo "$SCOPED_PID" > "$SCOPED_CGROUP_PATH/cgroup.procs"

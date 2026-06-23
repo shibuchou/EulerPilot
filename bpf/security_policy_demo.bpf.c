@@ -20,6 +20,7 @@ char LICENSE[] SEC("license") = "GPL";
 #define EVENT_LSM_PTRACE_TRACEME 8
 #define EVENT_LSM_CAPABLE 9
 #define EVENT_LSM_TASK_FIX_SETUID 10
+#define EVENT_LSM_TASK_FIX_SETGID 11
 #define MAX_SECURITY_PATH 256
 #define MAX_SECURITY_TARGETS 8
 #define SECURITY_TARGET_UNKNOWN 0xffffffff
@@ -79,6 +80,10 @@ struct security_policy_event {
     __u32 euid;
     __u32 suid;
     __u32 setuid_flags;
+    __u32 gid;
+    __u32 egid;
+    __u32 sgid;
+    __u32 setgid_flags;
 };
 
 struct {
@@ -124,6 +129,10 @@ static __always_inline void fill_common_event(struct security_policy_event *even
     event->euid = 0;
     event->suid = 0;
     event->setuid_flags = 0;
+    event->gid = 0;
+    event->egid = 0;
+    event->sgid = 0;
+    event->setgid_flags = 0;
     bpf_get_current_comm(&event->comm, sizeof(event->comm));
 }
 
@@ -530,6 +539,38 @@ int BPF_PROG(security_policy_task_fix_setuid, struct cred *new,
         event->euid = BPF_CORE_READ(new, euid.val);
         event->suid = BPF_CORE_READ(new, suid.val);
         event->setuid_flags = (__u32)flags;
+        bpf_ringbuf_submit(event, 0);
+    }
+
+    return decision;
+}
+SEC("lsm/task_fix_setgid")
+int BPF_PROG(security_policy_task_fix_setgid, struct cred *new,
+             const struct cred *old, int flags)
+{
+    (void)old;
+
+    __u32 key = 0;
+    struct security_policy_config *config = bpf_map_lookup_elem(&policy_map, &key);
+    __u32 target_count = clamp_target_count(config);
+    __u64 current_cgroup_id = bpf_get_current_cgroup_id();
+    int target_index = scoped_cgroup_match_index(target_count, current_cgroup_id);
+    if (target_index < 0)
+        return 0;
+
+    __u32 enforce = config ? config->enforce : 1;
+    __s32 decision = enforce ? -EPERM : 0;
+
+    struct security_policy_event *event =
+        bpf_ringbuf_reserve(&events, sizeof(*event), 0);
+    if (event) {
+        fill_common_event(event, EVENT_LSM_TASK_FIX_SETGID, enforce, decision,
+                          (__u32)target_index);
+        __builtin_memcpy(event->path, "task_fix_setgid", sizeof("task_fix_setgid"));
+        event->gid = BPF_CORE_READ(new, gid.val);
+        event->egid = BPF_CORE_READ(new, egid.val);
+        event->sgid = BPF_CORE_READ(new, sgid.val);
+        event->setgid_flags = (__u32)flags;
         bpf_ringbuf_submit(event, 0);
     }
 
