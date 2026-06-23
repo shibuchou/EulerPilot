@@ -48,6 +48,7 @@ struct security_policy_config {
 
 struct security_policy_target {
     char file_path[MAX_SECURITY_PATH];
+    char file_prefix[MAX_SECURITY_PATH];
     char exec_path[MAX_SECURITY_PATH];
     char exec_prefix[MAX_SECURITY_PATH];
     __u64 cgroup_id;
@@ -183,10 +184,14 @@ static __always_inline int file_path_match_index(const char *path,
 
         __u32 key = i;
         struct security_policy_target *target = bpf_map_lookup_elem(&target_map, &key);
-        if (target && target->file_path[0] != '\0' &&
-            target_scope_matches(target, current_cgroup_id) &&
-            file_access_matches(target->file_access, file_flags) &&
+        if (!target || !target_scope_matches(target, current_cgroup_id) ||
+            !file_access_matches(target->file_access, file_flags))
+            continue;
+        if (target->file_path[0] != '\0' &&
             path_equals(path, target->file_path))
+            return i;
+        if (target->file_prefix[0] != '\0' &&
+            path_has_prefix(path, target->file_prefix))
             return i;
     }
     return -1;
@@ -243,6 +248,7 @@ static __always_inline int scoped_cgroup_match_index(__u32 target_count,
         struct security_policy_target *target = bpf_map_lookup_elem(&target_map, &key);
         if (target && target->cgroup_id != 0 &&
             target->file_path[0] == '\0' &&
+            target->file_prefix[0] == '\0' &&
             target->exec_path[0] == '\0' &&
             target->exec_prefix[0] == '\0' &&
             target->connect_daddr == 0 &&

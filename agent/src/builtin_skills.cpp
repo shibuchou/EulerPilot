@@ -428,6 +428,7 @@ struct SecurityPolicyConfig {
 
 struct SecurityPolicyTarget {
     char file_path[256] = {};
+    char file_prefix[256] = {};
     char exec_path[256] = {};
     char exec_prefix[256] = {};
     std::uint64_t cgroup_id = 0;
@@ -443,6 +444,7 @@ struct SecurityPolicyRule {
     std::string hook;
     std::string target_ref;
     std::string file_path;
+    std::string file_prefix;
     std::string exec_path;
     std::string exec_prefix;
     std::string file_access = "any";
@@ -495,7 +497,7 @@ static_assert(sizeof(NetworkXdpStats) == 24,
               "network xdp stats map layout must match BPF");
 static_assert(sizeof(SecurityPolicyConfig) == 8,
               "security policy config map layout must match BPF");
-static_assert(sizeof(SecurityPolicyTarget) == 792,
+static_assert(sizeof(SecurityPolicyTarget) == 1048,
               "security policy target map layout must match BPF");
 static_assert(sizeof(SecurityPolicyEvent) == 316,
               "security policy ringbuf event layout must match BPF");
@@ -2072,6 +2074,7 @@ public:
     bool configure(const RuntimeConfig &, const SkillSpec &spec) override {
         rules_.clear();
         exec_prefix_.clear();
+        file_prefix_.clear();
         file_access_ = "any";
         const int rule_index = find_first_rule(spec);
         if (rule_index >= 0) {
@@ -2116,6 +2119,11 @@ public:
                     return false;
                 }
                 rule.file_path = config_value_or(spec, target_prefix + "path", "");
+                rule.file_prefix =
+                    config_value_or(spec, target_prefix + "path_prefix",
+                                    config_value_or(spec, target_prefix + "file_prefix",
+                                                    config_value_or(spec, rule_prefix + "path_prefix",
+                                                                    config_value_or(spec, rule_prefix + "file_prefix", ""))));
                 rule.exec_path = config_value_or(spec, target_prefix + "exec_path", "");
                 rule.exec_prefix = config_value_or(spec, target_prefix + "exec_prefix", "");
                 rule.file_access =
@@ -2168,7 +2176,7 @@ public:
                     // Capability enforcement must be scoped. A global capable
                     // deny would break host administration paths.
                 } else {
-                    if (rule.file_path.empty()) {
+                    if (rule.file_path.empty() && rule.file_prefix.empty()) {
                         last_error_ = "security-policy-v2-target-path-missing";
                         return false;
                     }
@@ -2253,6 +2261,10 @@ public:
                     last_error_ = "invalid-target-path";
                     return false;
                 }
+                if (!rule.file_prefix.empty() && !valid_security_path(rule.file_prefix)) {
+                    last_error_ = "invalid-target-path-prefix";
+                    return false;
+                }
                 if (!rule.exec_path.empty() && !valid_security_path(rule.exec_path)) {
                     last_error_ = "invalid-exec-target-path";
                     return false;
@@ -2332,6 +2344,10 @@ public:
                 last_error_ = "invalid-target-path";
                 return false;
             }
+            if (!rule.file_prefix.empty() && !valid_security_path(rule.file_prefix)) {
+                last_error_ = "invalid-target-path-prefix";
+                return false;
+            }
             if (!rule.exec_path.empty() && !valid_security_path(rule.exec_path)) {
                 last_error_ = "invalid-exec-target-path";
                 return false;
@@ -2340,7 +2356,8 @@ public:
                 last_error_ = "invalid-exec-prefix";
                 return false;
             }
-            if (rule.hook == "lsm_file_open" && rule.file_path.empty()) {
+            if (rule.hook == "lsm_file_open" &&
+                rule.file_path.empty() && rule.file_prefix.empty()) {
                 last_error_ = "security-policy-file-rule-target-missing";
                 return false;
             }
@@ -2374,6 +2391,9 @@ public:
         for (const auto &rule : rules_) {
             if (target_path_.empty() && !rule.file_path.empty()) {
                 target_path_ = rule.file_path;
+            }
+            if (file_prefix_.empty() && !rule.file_prefix.empty()) {
+                file_prefix_ = rule.file_prefix;
             }
             if (exec_target_path_.empty() && !rule.exec_path.empty()) {
                 exec_target_path_ = rule.exec_path;
@@ -2501,6 +2521,7 @@ public:
         snapshot.evidence["target_path"] = target_path_;
         snapshot.evidence["exec_target_path"] = exec_target_path_;
         snapshot.evidence["exec_prefix"] = exec_prefix_;
+        snapshot.evidence["path_prefix"] = file_prefix_;
         snapshot.evidence["file_access"] = file_access_;
         snapshot.evidence["mode"] = mode_;
         snapshot.evidence["target_ref"] = target_ref_;
@@ -2747,6 +2768,13 @@ private:
                         return false;
                     }
                 }
+                if (rules_[i].hook == "lsm_file_open" && !rules_[i].file_prefix.empty()) {
+                    if (!copy_security_path(rules_[i].file_prefix, target.file_prefix,
+                                            sizeof(target.file_prefix),
+                                            last_error_, "file-prefix")) {
+                        return false;
+                    }
+                }
                 if (rules_[i].hook == "lsm_bprm_check_security" && !rules_[i].exec_path.empty()) {
                     if (!copy_security_path(rules_[i].exec_path, target.exec_path, sizeof(target.exec_path),
                                             last_error_, "exec-path")) {
@@ -2911,6 +2939,9 @@ private:
         if (matched_rule && !matched_rule->exec_prefix.empty()) {
             event.target["exec_prefix"] = matched_rule->exec_prefix;
         }
+        if (matched_rule && !matched_rule->file_prefix.empty()) {
+            event.target["path_prefix"] = matched_rule->file_prefix;
+        }
         if (matched_rule && matched_rule->hook == "lsm_file_open") {
             event.target["file_access"] = matched_rule->file_access;
         }
@@ -2974,6 +3005,7 @@ private:
             {"path", target_path_},
             {"exec_path", exec_target_path_},
             {"exec_prefix", exec_prefix_},
+            {"path_prefix", file_prefix_},
             {"file_access", file_access_},
             {"target_count", std::to_string(rules_.size())},
         };
@@ -3010,6 +3042,7 @@ private:
             {"path", target_path_},
             {"exec_path", exec_target_path_},
             {"exec_prefix", exec_prefix_},
+            {"path_prefix", file_prefix_},
             {"file_access", file_access_},
             {"action", action},
         };
@@ -3017,6 +3050,7 @@ private:
             {"path", target_path_},
             {"exec_path", exec_target_path_},
             {"exec_prefix", exec_prefix_},
+            {"path_prefix", file_prefix_},
             {"file_access", file_access_},
             {"bpf_link", handle},
         };
@@ -3034,6 +3068,7 @@ private:
     std::string target_path_ = "/root/EulerPilot/demo/security_policy_demo/secret.txt";
     std::string exec_target_path_ = "/root/EulerPilot/demo/security_policy_demo/deny_exec.sh";
     std::string exec_prefix_;
+    std::string file_prefix_;
     std::string file_access_ = "any";
     std::string mode_ = "enforce";
     std::string action_ = "deny";

@@ -1248,6 +1248,127 @@ if ! run_in_scoped_cgroup "$RESULT_DIR/file-access-post-cleanup.txt" \
     fail "file_access target is still denied after rollback/cleanup; see $RESULT_DIR/file-access-post-cleanup.err"
 fi
 
+DYNAMIC_READONLY_DIR="$DYNAMIC_DIR/read-only-dir"
+DYNAMIC_READONLY_FILE="$DYNAMIC_READONLY_DIR/nested-secret.txt"
+DYNAMIC_READONLY_PREFIX="$DYNAMIC_READONLY_DIR/"
+mkdir -p "$DYNAMIC_READONLY_DIR"
+printf 'read only directory target\n' > "$DYNAMIC_READONLY_FILE"
+
+cat > "$RESULT_DIR/agent.readonly-dir.yaml" <<'YAML'
+skills_config_path: skills.readonly-dir.yaml
+exporter:
+  prometheus:
+    enabled: false
+YAML
+
+cat > "$RESULT_DIR/skills.readonly-dir.yaml" <<YAML
+schema_version: 2
+skills:
+- name: resource_control
+  kind: runtime
+  enabled: true
+  config: {}
+- name: psi_gate
+  kind: runtime
+  enabled: true
+  config: {}
+- name: security_policy
+  kind: runtime
+  enabled: true
+  config:
+    mode: enforce
+    targets:
+      readonly_dir:
+        type: cgroup
+        cgroup_path: $SCOPED_CGROUP_PATH
+        path_prefix: $DYNAMIC_READONLY_PREFIX
+        file_access: write
+    rules:
+      - name: deny_readonly_dir_write
+        hook: lsm_file_open
+        target_ref: readonly_dir
+        action: deny
+YAML
+
+rm -f "$ROOT/reports/events/security_policy.jsonl"
+
+timeout 20s "$AGENT_BIN" \
+    --config "$RESULT_DIR/agent.readonly-dir.yaml" \
+    --duration-s 8 \
+    --interval-ms 1000 \
+    --jsonl \
+    > "$RESULT_DIR/agent-readonly-dir.log" 2>&1 &
+AGENT_PID="$!"
+
+readonly_dir_blocked="false"
+for _ in $(seq 1 40); do
+    if ! kill -0 "$AGENT_PID" 2>/dev/null; then
+        set +e
+        wait "$AGENT_PID"
+        agent_rc="$?"
+        set -e
+        AGENT_PID=""
+        fail "readonly-dir agent exited before write denial was observed, rc=$agent_rc; see $RESULT_DIR/agent-readonly-dir.log"
+    fi
+
+    if ! printf 'outside readonly dir write\n' >> "$DYNAMIC_READONLY_FILE"; then
+        fail "readonly-dir target write was denied outside target cgroup"
+    fi
+
+    if ! run_in_scoped_cgroup "$RESULT_DIR/readonly-dir-read.txt" \
+        "$RESULT_DIR/readonly-dir-read.err" \
+        cat "$DYNAMIC_READONLY_FILE"; then
+        fail "readonly-dir policy denied read inside target cgroup; see $RESULT_DIR/readonly-dir-read.err"
+    fi
+
+    set +e
+    run_in_scoped_cgroup "$RESULT_DIR/readonly-dir-write.txt" \
+        "$RESULT_DIR/readonly-dir-write.err" \
+        bash -c 'printf "inside scoped readonly dir write\n" >> "$1"' _ "$DYNAMIC_READONLY_FILE"
+    readonly_dir_rc="$?"
+    set -e
+    if [ "$readonly_dir_rc" -ne 0 ]; then
+        readonly_dir_blocked="true"
+        break
+    fi
+    sleep 0.2
+done
+
+if [ "$readonly_dir_blocked" != "true" ]; then
+    fail "readonly-dir write was not denied inside target cgroup; see $RESULT_DIR/agent-readonly-dir.log"
+fi
+
+set +e
+wait "$AGENT_PID"
+agent_rc="$?"
+set -e
+AGENT_PID=""
+if [ "$agent_rc" -ne 0 ]; then
+    fail "readonly-dir agent exited non-zero, rc=$agent_rc; see $RESULT_DIR/agent-readonly-dir.log"
+fi
+
+assert_blocked_rule_event "$DYNAMIC_READONLY_FILE" "lsm_file_open" \
+    "deny_readonly_dir_write" "readonly_dir"
+assert_blocked_rule_event_has_cgroup "$DYNAMIC_READONLY_FILE" "lsm_file_open" \
+    "deny_readonly_dir_write" "readonly_dir"
+if ! grep -F "$DYNAMIC_READONLY_FILE" "$ROOT/reports/events/security_policy.jsonl" 2>/dev/null \
+    | grep -F '"event_hook":"lsm_file_open"' \
+    | grep -F '"result":"blocked"' \
+    | grep -F '"file_access":"write"' \
+    | grep -Fq "\"path_prefix\":\"$DYNAMIC_READONLY_PREFIX\""; then
+    fail "readonly-dir blocked event did not carry path_prefix evidence"
+fi
+cp "$ROOT/reports/events/security_policy.jsonl" "$RESULT_DIR/security_policy_events.readonly-dir.jsonl"
+log "PASS: security_policy path_prefix read-only directory blocks scoped writes"
+
+run_cleanup_script
+
+if ! run_in_scoped_cgroup "$RESULT_DIR/readonly-dir-post-cleanup.txt" \
+    "$RESULT_DIR/readonly-dir-post-cleanup.err" \
+    bash -c 'printf "post cleanup readonly dir write\n" >> "$1"' _ "$DYNAMIC_READONLY_FILE"; then
+    fail "readonly-dir target is still denied after rollback/cleanup; see $RESULT_DIR/readonly-dir-post-cleanup.err"
+fi
+
 cat > "$RESULT_DIR/ptrace_traceme.py" <<'PY'
 import ctypes
 import errno
