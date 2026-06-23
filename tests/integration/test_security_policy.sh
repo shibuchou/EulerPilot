@@ -21,6 +21,10 @@ DYNAMIC_WRITE_TARGET_FILE=""
 SCOPED_CGROUP_PATH=""
 SCOPED_PID=""
 SOCKET_SERVER_PID=""
+TRUE_BIN="/usr/bin/true"
+if [ ! -x "$TRUE_BIN" ]; then
+    TRUE_BIN="/bin/true"
+fi
 
 log() {
     if [ "$RESULT_READY" = "true" ]; then
@@ -431,6 +435,113 @@ if ! grep -q '"result":"observed"' "$ROOT/reports/events/security_policy.jsonl" 
 fi
 cp "$ROOT/reports/events/security_policy.jsonl" "$RESULT_DIR/security_policy_events.audit.jsonl"
 log "PASS: security_policy audit mode writes file, bprm and four syscall hit events"
+
+if [ ! -x "$TRUE_BIN" ]; then
+    skip "missing executable true binary for execve anomaly test"
+fi
+
+cat > "$RESULT_DIR/agent.anomaly.yaml" <<'YAML'
+skills_config_path: skills.anomaly.yaml
+exporter:
+  prometheus:
+    enabled: false
+YAML
+
+cat > "$RESULT_DIR/skills.anomaly.yaml" <<'YAML'
+schema_version: 2
+skills:
+- name: resource_control
+  kind: runtime
+  enabled: true
+  config: {}
+- name: psi_gate
+  kind: runtime
+  enabled: true
+  config: {}
+- name: security_policy
+  kind: runtime
+  enabled: true
+  config:
+    mode: audit
+    targets:
+      demo_secret:
+        type: path
+        path: /root/EulerPilot/demo/security_policy_demo/secret.txt
+        exec_path: /root/EulerPilot/demo/security_policy_demo/deny_exec.sh
+    rules:
+      - name: deny_demo_secret_open
+        hook: lsm_file_open
+        target_ref: demo_secret
+        action: deny
+      - name: deny_demo_exec
+        hook: lsm_bprm_check_security
+        target_ref: demo_secret
+        action: deny
+    anomaly_rules:
+      - name: burst_execve
+        type: rate
+        syscall: execve
+        threshold: 4
+        window_ms: 2000
+        severity: medium
+YAML
+
+rm -f "$ROOT/reports/events/security_policy.jsonl"
+
+timeout 18s "$AGENT_BIN" \
+    --config "$RESULT_DIR/agent.anomaly.yaml" \
+    --duration-s 8 \
+    --interval-ms 1000 \
+    --jsonl \
+    > "$RESULT_DIR/agent-anomaly.log" 2>&1 &
+AGENT_PID="$!"
+sleep 1
+
+if ! kill -0 "$AGENT_PID" 2>/dev/null; then
+    set +e
+    wait "$AGENT_PID"
+    agent_rc="$?"
+    set -e
+    AGENT_PID=""
+    fail "anomaly agent exited early, rc=$agent_rc; see $RESULT_DIR/agent-anomaly.log"
+fi
+
+for idx in $(seq 1 8); do
+    if ! "$TRUE_BIN" > "$RESULT_DIR/anomaly-true-$idx.txt" \
+        2> "$RESULT_DIR/anomaly-true-$idx.err"; then
+        fail "execve anomaly trigger failed; see $RESULT_DIR/anomaly-true-$idx.err"
+    fi
+done
+
+anomaly_ready="false"
+for _ in $(seq 1 40); do
+    if grep -q '"operation":"anomaly"' "$ROOT/reports/events/security_policy.jsonl" 2>/dev/null && \
+        grep -q '"rule_id":"burst_execve"' "$ROOT/reports/events/security_policy.jsonl" 2>/dev/null && \
+        grep -q '"event_hook":"sys_enter_execve"' "$ROOT/reports/events/security_policy.jsonl" 2>/dev/null && \
+        grep -q '"result":"observed"' "$ROOT/reports/events/security_policy.jsonl" 2>/dev/null; then
+        anomaly_ready="true"
+        break
+    fi
+    sleep 0.1
+done
+
+set +e
+wait "$AGENT_PID"
+agent_rc="$?"
+set -e
+AGENT_PID=""
+if [ "$agent_rc" -ne 0 ]; then
+    fail "anomaly agent exited non-zero, rc=$agent_rc; see $RESULT_DIR/agent-anomaly.log"
+fi
+if [ "$anomaly_ready" != "true" ]; then
+    fail "burst_execve anomaly event was not observed; see $RESULT_DIR/agent-anomaly.log"
+fi
+if ! grep -q '"threshold":"4"' "$ROOT/reports/events/security_policy.jsonl" 2>/dev/null || \
+    ! grep -q '"window_ms":"2000"' "$ROOT/reports/events/security_policy.jsonl" 2>/dev/null; then
+    fail "burst_execve anomaly event did not carry threshold/window evidence"
+fi
+cp "$ROOT/reports/events/security_policy.jsonl" "$RESULT_DIR/security_policy_events.anomaly-execve.jsonl"
+log "PASS: security_policy detects configurable burst_execve anomaly"
 
 cat > "$RESULT_DIR/agent.enforce.yaml" <<'YAML'
 skills_config_path: skills.enforce.yaml
@@ -2121,22 +2232,31 @@ if [ "$pod_blocked" != "true" ]; then
     fail "pod target file was not denied inside resolved cgroup; see $RESULT_DIR/agent-pod.log"
 fi
 
-if ! kill -0 "$AGENT_PID" 2>/dev/null; then
-    set +e
-    wait "$AGENT_PID"
-    agent_rc="$?"
-    set -e
-    AGENT_PID=""
-    fail "pod target agent exited before exec denial was checked, rc=$agent_rc; see $RESULT_DIR/agent-pod.log"
-fi
+pod_exec_blocked="false"
+for _ in $(seq 1 40); do
+    if ! kill -0 "$AGENT_PID" 2>/dev/null; then
+        set +e
+        wait "$AGENT_PID"
+        agent_rc="$?"
+        set -e
+        AGENT_PID=""
+        fail "pod target agent exited before exec denial was observed, rc=$agent_rc; see $RESULT_DIR/agent-pod.log"
+    fi
 
-set +e
-run_in_scoped_cgroup "$RESULT_DIR/pod-blocked-exec.txt" \
-    "$RESULT_DIR/pod-blocked-exec.err" \
-    "$DYNAMIC_SCOPED_EXEC_TARGET_FILE"
-pod_exec_rc="$?"
-set -e
-if [ "$pod_exec_rc" -eq 0 ]; then
+    set +e
+    run_in_scoped_cgroup "$RESULT_DIR/pod-blocked-exec.txt" \
+        "$RESULT_DIR/pod-blocked-exec.err" \
+        "$DYNAMIC_SCOPED_EXEC_TARGET_FILE"
+    pod_exec_rc="$?"
+    set -e
+    if [ "$pod_exec_rc" -ne 0 ]; then
+        pod_exec_blocked="true"
+        break
+    fi
+    sleep 0.2
+done
+
+if [ "$pod_exec_blocked" != "true" ]; then
     fail "pod exec target was not denied inside resolved cgroup; see $RESULT_DIR/pod-blocked-exec.txt"
 fi
 

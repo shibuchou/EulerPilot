@@ -71,7 +71,7 @@
 
 ## 6. TAP 质量门禁结果（17/17）
 
-最新日志：`reports/final_quality_gate_20260623_security_path_prefix.log`
+最新日志：`reports/final_quality_gate_20260623_security_anomaly.log`
 
 ```
 ok 1 - make agent

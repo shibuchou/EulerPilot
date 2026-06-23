@@ -40,6 +40,7 @@ eBPF Observer
   - ptrace policy：`lsm/ptrace_traceme`，已验证仅目标 cgroup 内 `PTRACE_TRACEME` 被拒绝
   - capability policy：`lsm/capable`，已验证仅目标 cgroup 内 `CAP_SYS_ADMIN` 被拒绝
   - syscall tracing：`execve/openat/connect/ptrace` audit 观测
+  - runtime anomaly：`anomaly_rules` 已支持 `burst_execve` 速率规则，基于 `sys_enter_execve` ringbuf 事件在用户态聚合并输出 `operation=anomaly`
   - target scope：path、path_prefix、file_access、exec_path、exec_prefix、socket endpoint、ptrace cgroup scope、显式 cgroup、PID 自动解析、container_id cgroup tree 解析、container runtime name 解析、Kubernetes Pod 名称解析
   - 121/122 集成测试和 121 质量门禁通过
 
@@ -47,8 +48,8 @@ eBPF Observer
 
 - Redis：`/root/EulerPilot/results/final/redis-scx-compare-20260612-191543`
 - Nginx：`/root/EulerPilot/results/final/nginx-scx-compare-20260612-194018`
-- Security read-only directory LSM 121：`/root/EulerPilot/results/security_policy/integration-20260623-152931`
-- Security read-only directory LSM 122：`/root/EulerPilot/results/security_policy/integration-20260623-153318`
+- Security runtime anomaly 121：`/root/EulerPilot/results/security_policy/integration-20260623-162418`
+- Security runtime anomaly 122：`/root/EulerPilot/results/security_policy/integration-20260623-163022`
 
 当前图表目录为：
 

@@ -11,10 +11,12 @@
 #include <bpf/libbpf.h>
 #include <atomic>
 #include <cerrno>
+#include <chrono>
 #include <cctype>
 #include <cstdint>
 #include <ctime>
 #include <cstring>
+#include <deque>
 #include <iterator>
 
 #include <arpa/inet.h>
@@ -93,6 +95,21 @@ bool parse_pid_value(const std::string &value, int &pid) {
         return false;
     }
     pid = static_cast<int>(parsed);
+    return true;
+}
+
+bool parse_uint32_range(const std::string &value,
+                        std::uint32_t min_value,
+                        std::uint32_t max_value,
+                        std::uint32_t &out) {
+    char *end = nullptr;
+    errno = 0;
+    const unsigned long parsed = std::strtoul(value.c_str(), &end, 10);
+    if (errno != 0 || end == value.c_str() || *end != '\0' ||
+        parsed < min_value || parsed > max_value) {
+        return false;
+    }
+    out = static_cast<std::uint32_t>(parsed);
     return true;
 }
 
@@ -457,6 +474,16 @@ struct SecurityPolicyRule {
     std::uint16_t connect_dport = 0;
     std::uint16_t connect_protocol = 0;
     std::int32_t capability = -1;
+};
+
+struct SecurityAnomalyRule {
+    std::string rule_id;
+    std::string type = "rate";
+    std::string syscall = "execve";
+    std::string severity = "medium";
+    std::uint32_t threshold = 5;
+    std::uint32_t window_ms = 1000;
+    std::deque<std::chrono::steady_clock::time_point> hits;
 };
 
 struct SecurityPolicyEvent {
@@ -840,6 +867,7 @@ public:
             target_ref_ = config_value_or(spec, "target_ref", "legacy_cgroup");
             rule_id_ = "connect4-deny-port-" + dst_port_;
         }
+
         if (mode_ != "audit" && mode_ != "enforce") {
             last_error_ = "unsupported-mode";
             return false;
@@ -1264,6 +1292,7 @@ public:
             last_error_ = "unsupported-hook";
             return false;
         }
+
         if (mode_ != "audit" && mode_ != "enforce") {
             last_error_ = "unsupported-mode";
             return false;
@@ -1710,6 +1739,7 @@ public:
             last_error_ = "unsupported-hook";
             return false;
         }
+
         if (mode_ != "audit" && mode_ != "enforce") {
             last_error_ = "unsupported-mode";
             return false;
@@ -2073,6 +2103,8 @@ public:
 
     bool configure(const RuntimeConfig &, const SkillSpec &spec) override {
         rules_.clear();
+        anomaly_rules_.clear();
+        anomaly_alert_count_.store(0);
         exec_prefix_.clear();
         file_prefix_.clear();
         file_access_ = "any";
@@ -2323,6 +2355,9 @@ public:
             }
             rules_.push_back(std::move(rule));
         }
+        if (!parse_anomaly_rules(spec)) {
+            return false;
+        }
         if (mode_ != "audit" && mode_ != "enforce") {
             last_error_ = "unsupported-mode";
             return false;
@@ -2530,6 +2565,8 @@ public:
         snapshot.evidence["action"] = action_;
         snapshot.evidence["hit_count"] = std::to_string(hit_count_.load());
         snapshot.evidence["deny_count"] = std::to_string(deny_count_.load());
+        snapshot.evidence["anomaly_rule_count"] = std::to_string(anomaly_rules_.size());
+        snapshot.evidence["anomaly_alert_count"] = std::to_string(anomaly_alert_count_.load());
         snapshot.evidence["reason"] = last_error_.empty() ? "ok" : last_error_;
         return snapshot;
     }
@@ -2584,6 +2621,59 @@ private:
             }
         }
         return false;
+    }
+
+    bool parse_anomaly_rules(const SkillSpec &spec) {
+        anomaly_rules_.clear();
+        for (std::size_t i = 0; i < kSecurityPolicyMaxTargets; ++i) {
+            const std::string prefix = "anomaly_rules." + std::to_string(i) + ".";
+            const std::string name = config_value_or(spec, prefix + "name", "");
+            const std::string type = config_value_or(spec, prefix + "type", "");
+            const std::string syscall = config_value_or(spec, prefix + "syscall", "");
+            const std::string threshold_text = config_value_or(spec, prefix + "threshold", "");
+            const std::string window_text = config_value_or(spec, prefix + "window_ms", "");
+            if (name.empty() && type.empty() && syscall.empty() &&
+                threshold_text.empty() && window_text.empty()) {
+                continue;
+            }
+
+            SecurityAnomalyRule rule;
+            rule.rule_id = name.empty() ? "burst_execve" : name;
+            rule.type = type.empty() ? "rate" : type;
+            rule.syscall = syscall.empty() ? "execve" : syscall;
+            rule.severity = config_value_or(spec, prefix + "severity", "medium");
+            if (rule.type != "rate") {
+                last_error_ = "security-policy-anomaly-type-unsupported";
+                return false;
+            }
+            if (rule.syscall == "sys_enter_execve") {
+                rule.syscall = "execve";
+            }
+            if (rule.syscall != "execve") {
+                last_error_ = "security-policy-anomaly-syscall-unsupported";
+                return false;
+            }
+            if (!threshold_text.empty() &&
+                !parse_uint32_range(threshold_text, 1, 100000, rule.threshold)) {
+                last_error_ = "security-policy-anomaly-threshold-invalid";
+                return false;
+            }
+            if (!window_text.empty() &&
+                !parse_uint32_range(window_text, 1, 600000, rule.window_ms)) {
+                last_error_ = "security-policy-anomaly-window-invalid";
+                return false;
+            }
+            anomaly_rules_.push_back(std::move(rule));
+        }
+        if (!config_value_or(spec,
+                             "anomaly_rules." +
+                                 std::to_string(kSecurityPolicyMaxTargets) + ".name",
+                             "")
+                 .empty()) {
+            last_error_ = "security-policy-too-many-anomaly-rules";
+            return false;
+        }
+        return true;
     }
 
     static std::string join_security_field(const std::vector<SecurityPolicyRule> &rules,
@@ -2985,6 +3075,65 @@ private:
         event.severity = hit.decision < 0 ? "warning" : "info";
         std::string error;
         append_audit_event(audit_path.string(), event, &error);
+        maybe_write_anomaly_event(hit, hook_name, audit_path);
+    }
+
+    void maybe_write_anomaly_event(const SecurityPolicyEvent &hit,
+                                   const std::string &hook_name,
+                                   const fs::path &audit_path) {
+        if (hook_name != "sys_enter_execve" || anomaly_rules_.empty()) {
+            return;
+        }
+
+        const auto now = std::chrono::steady_clock::now();
+        const std::string path = bounded_string(hit.path, sizeof(hit.path));
+        const std::string comm = bounded_string(hit.comm, sizeof(hit.comm));
+        for (auto &rule : anomaly_rules_) {
+            if (rule.type != "rate" || rule.syscall != "execve") {
+                continue;
+            }
+            rule.hits.push_back(now);
+            const auto window = std::chrono::milliseconds(rule.window_ms);
+            while (!rule.hits.empty() && now - rule.hits.front() > window) {
+                rule.hits.pop_front();
+            }
+            if (rule.hits.size() < rule.threshold) {
+                continue;
+            }
+
+            const auto alert_index = anomaly_alert_count_.fetch_add(1) + 1;
+            const auto window_hit_count = rule.hits.size();
+            AuditEvent event;
+            event.timestamp = now_event_timestamp();
+            event.event_id = skill_name_ + "-anomaly-" + rule.rule_id + "-" +
+                             std::to_string(alert_index) + "-" + event.timestamp;
+            event.skill = skill_name_;
+            event.policy_id = "security_policy";
+            event.rule_id = rule.rule_id;
+            event.mode = mode_;
+            event.target = {
+                {"target_ref", "syscall_trace"},
+                {"syscall", rule.syscall},
+                {"path", path},
+            };
+            event.operation = "anomaly";
+            event.evidence = {
+                {"event_hook", hook_name},
+                {"anomaly_type", rule.type},
+                {"threshold", std::to_string(rule.threshold)},
+                {"window_ms", std::to_string(rule.window_ms)},
+                {"hit_count", std::to_string(window_hit_count)},
+                {"pid", std::to_string(hit.pid)},
+                {"tgid", std::to_string(hit.tgid)},
+                {"comm", comm},
+            };
+            event.action = "alert";
+            event.result = "observed";
+            event.severity = rule.severity;
+            std::string error;
+            append_audit_event(audit_path.string(), event, &error);
+            rule.hits.clear();
+        }
     }
 
     void write_audit_event(const std::string &operation,
@@ -3008,6 +3157,7 @@ private:
             {"path_prefix", file_prefix_},
             {"file_access", file_access_},
             {"target_count", std::to_string(rules_.size())},
+            {"anomaly_rule_count", std::to_string(anomaly_rules_.size())},
         };
         event.operation = operation;
         event.evidence = {
@@ -3075,8 +3225,10 @@ private:
     std::string target_ref_ = "legacy_path";
     std::string rule_id_ = "deny-demo-secret-open";
     std::vector<SecurityPolicyRule> rules_;
+    std::vector<SecurityAnomalyRule> anomaly_rules_;
     std::atomic<std::uint64_t> hit_count_{0};
     std::atomic<std::uint64_t> deny_count_{0};
+    std::atomic<std::uint64_t> anomaly_alert_count_{0};
     std::atomic<bool> event_thread_stop_{false};
     std::thread event_thread_;
     bpf_object *bpf_object_ = nullptr;
