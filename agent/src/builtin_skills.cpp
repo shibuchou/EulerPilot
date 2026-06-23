@@ -112,6 +112,96 @@ bool parse_security_file_access(const std::string &value, std::uint32_t &access)
     return false;
 }
 
+std::string normalize_security_token(std::string value) {
+    for (char &ch : value) {
+        ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+        if (ch == '-') {
+            ch = '_';
+        }
+    }
+    if (value.rfind("cap_", 0) == 0) {
+        value = value.substr(4);
+    }
+    return value;
+}
+
+bool parse_security_capability(const std::string &value, std::int32_t &capability) {
+    if (value.empty()) {
+        return false;
+    }
+
+    char *end = nullptr;
+    errno = 0;
+    const long parsed = std::strtol(value.c_str(), &end, 10);
+    if (errno == 0 && end != value.c_str() && *end == '\0' &&
+        parsed >= 0 && parsed <= 63) {
+        capability = static_cast<std::int32_t>(parsed);
+        return true;
+    }
+
+    const std::string token = normalize_security_token(value);
+    static const std::map<std::string, std::int32_t> caps = {
+        {"chown", 0},
+        {"dac_override", 1},
+        {"dac_read_search", 2},
+        {"fowner", 3},
+        {"fsetid", 4},
+        {"kill", 5},
+        {"setgid", 6},
+        {"setuid", 7},
+        {"setpcap", 8},
+        {"linux_immutable", 9},
+        {"net_bind_service", 10},
+        {"net_broadcast", 11},
+        {"net_admin", 12},
+        {"net_raw", 13},
+        {"ipc_lock", 14},
+        {"ipc_owner", 15},
+        {"sys_module", 16},
+        {"sys_rawio", 17},
+        {"sys_chroot", 18},
+        {"sys_ptrace", 19},
+        {"sys_pacct", 20},
+        {"sys_admin", 21},
+        {"sys_boot", 22},
+        {"sys_nice", 23},
+        {"sys_resource", 24},
+        {"sys_time", 25},
+        {"sys_tty_config", 26},
+        {"mknod", 27},
+        {"lease", 28},
+        {"audit_write", 29},
+        {"audit_control", 30},
+        {"setfcap", 31},
+        {"mac_override", 32},
+        {"mac_admin", 33},
+        {"syslog", 34},
+        {"wake_alarm", 35},
+        {"block_suspend", 36},
+        {"audit_read", 37},
+        {"perfmon", 38},
+        {"bpf", 39},
+        {"checkpoint_restore", 40},
+    };
+    const auto it = caps.find(token);
+    if (it == caps.end()) {
+        return false;
+    }
+    capability = it->second;
+    return true;
+}
+
+std::string security_capability_name(std::int32_t capability) {
+    switch (capability) {
+    case 12: return "CAP_NET_ADMIN";
+    case 19: return "CAP_SYS_PTRACE";
+    case 21: return "CAP_SYS_ADMIN";
+    case 38: return "CAP_PERFMON";
+    case 39: return "CAP_BPF";
+    default: return capability >= 0 ? std::to_string(capability) : "unset";
+    }
+}
+
 std::string security_file_access_name(std::uint32_t access) {
     switch (access) {
     case 1: return "read";
@@ -345,6 +435,7 @@ struct SecurityPolicyTarget {
     std::uint16_t connect_dport = 0;
     std::uint16_t connect_protocol = 0;
     std::uint32_t file_access = 0;
+    std::int32_t capability = -1;
 };
 
 struct SecurityPolicyRule {
@@ -363,6 +454,7 @@ struct SecurityPolicyRule {
     std::uint32_t connect_daddr = 0;
     std::uint16_t connect_dport = 0;
     std::uint16_t connect_protocol = 0;
+    std::int32_t capability = -1;
 };
 
 struct SecurityPolicyEvent {
@@ -379,6 +471,7 @@ struct SecurityPolicyEvent {
     std::uint16_t protocol = 0;
     std::uint32_t file_flags = 0;
     std::uint32_t file_access = 0;
+    std::int32_t capability = -1;
 };
 
 struct NetworkXdpRule {
@@ -404,7 +497,7 @@ static_assert(sizeof(SecurityPolicyConfig) == 8,
               "security policy config map layout must match BPF");
 static_assert(sizeof(SecurityPolicyTarget) == 792,
               "security policy target map layout must match BPF");
-static_assert(sizeof(SecurityPolicyEvent) == 312,
+static_assert(sizeof(SecurityPolicyEvent) == 316,
               "security policy ringbuf event layout must match BPF");
 
 bool valid_tc_token(const std::string &value) {
@@ -2032,6 +2125,17 @@ public:
                     last_error_ = "security-policy-v2-target-file-access-invalid";
                     return false;
                 }
+                if (hook == "lsm_capable") {
+                    const std::string capability_text =
+                        config_value_or(spec, target_prefix + "capability",
+                                        config_value_or(spec, target_prefix + "cap",
+                                                        config_value_or(spec, rule_prefix + "capability",
+                                                                        config_value_or(spec, rule_prefix + "cap", ""))));
+                    if (!parse_security_capability(capability_text, rule.capability)) {
+                        last_error_ = "security-policy-v2-target-capability-invalid";
+                        return false;
+                    }
+                }
                 if (hook == "lsm_socket_connect") {
                     rule.connect_ip =
                         config_value_or(spec, target_prefix + "dst_ip",
@@ -2060,6 +2164,9 @@ public:
                 } else if (hook == "lsm_ptrace_traceme") {
                     // Ptrace enforcement must be scoped. A global ptrace deny
                     // would be too easy to use incorrectly on the host.
+                } else if (hook == "lsm_capable") {
+                    // Capability enforcement must be scoped. A global capable
+                    // deny would break host administration paths.
                 } else {
                     if (rule.file_path.empty()) {
                         last_error_ = "security-policy-v2-target-path-missing";
@@ -2251,6 +2358,16 @@ public:
                 last_error_ = "security-policy-ptrace-rule-scope-missing";
                 return false;
             }
+            if (rule.hook == "lsm_capable") {
+                if (rule.cgroup_id == 0) {
+                    last_error_ = "security-policy-capable-rule-scope-missing";
+                    return false;
+                }
+                if (rule.capability < 0) {
+                    last_error_ = "security-policy-capable-rule-capability-missing";
+                    return false;
+                }
+            }
         }
         target_path_ = rules_.front().file_path;
         exec_target_path_ = rules_.front().exec_path;
@@ -2314,7 +2431,7 @@ public:
             return false;
         }
         std::vector<bpf_link *> probe_links;
-        if (!attach_security_programs(obj, probe_links, last_error_)) {
+        if (!attach_security_programs(obj, probe_links, false, last_error_)) {
             for (auto *probe_link : probe_links) {
                 bpf_link__destroy(probe_link);
             }
@@ -2355,7 +2472,8 @@ public:
             rollback();
             return false;
         }
-        if (!attach_security_programs(bpf_object_, links_, last_error_)) {
+        if (!attach_security_programs(bpf_object_, links_, has_rule_hook("lsm_capable"),
+                                      last_error_)) {
             rollback();
             return false;
         }
@@ -2434,7 +2552,17 @@ private:
 
     static bool is_supported_security_hook(const std::string &hook) {
         return hook == "lsm_file_open" || hook == "lsm_bprm_check_security" ||
-               hook == "lsm_socket_connect" || hook == "lsm_ptrace_traceme";
+               hook == "lsm_socket_connect" || hook == "lsm_ptrace_traceme" ||
+               hook == "lsm_capable";
+    }
+
+    bool has_rule_hook(const std::string &hook) const {
+        for (const auto &rule : rules_) {
+            if (rule.hook == hook) {
+                return true;
+            }
+        }
+        return false;
     }
 
     static std::string join_security_field(const std::vector<SecurityPolicyRule> &rules,
@@ -2471,6 +2599,7 @@ private:
 
     static bool attach_security_programs(bpf_object *obj,
                                          std::vector<bpf_link *> &links,
+                                         bool attach_capable,
                                          std::string &error) {
         bpf_program *lsm_prog = bpf_object__find_program_by_name(obj, "security_policy_demo");
         if (!lsm_prog) {
@@ -2521,6 +2650,21 @@ private:
             return false;
         }
         links.push_back(ptrace_traceme_link);
+
+        if (attach_capable) {
+            bpf_program *capable_prog =
+                bpf_object__find_program_by_name(obj, "security_policy_capable");
+            if (!capable_prog) {
+                error = "security-policy-capable-program-missing";
+                return false;
+            }
+            bpf_link *capable_link = bpf_program__attach_lsm(capable_prog);
+            if (!capable_link) {
+                error = "security-policy-capable-attach-failed";
+                return false;
+            }
+            links.push_back(capable_link);
+        }
 
         bpf_program *execve_prog = bpf_object__find_program_by_name(obj, "trace_execve");
         if (!execve_prog) {
@@ -2623,6 +2767,9 @@ private:
                 target.file_access = rules_[i].hook == "lsm_file_open"
                                          ? rules_[i].file_access_value
                                          : 0;
+                target.capability = rules_[i].hook == "lsm_capable"
+                                        ? rules_[i].capability
+                                        : -1;
             }
             std::uint32_t target_key = static_cast<std::uint32_t>(i);
             if (bpf_map_update_elem(target_fd, &target_key, &target, BPF_ANY) != 0) {
@@ -2719,6 +2866,7 @@ private:
         case 6: return "lsm_bprm_check_security";
         case 7: return "lsm_socket_connect";
         case 8: return "lsm_ptrace_traceme";
+        case 9: return "lsm_capable";
         default: return "unknown";
         }
     }
@@ -2766,6 +2914,10 @@ private:
         if (matched_rule && matched_rule->hook == "lsm_file_open") {
             event.target["file_access"] = matched_rule->file_access;
         }
+        if (matched_rule && matched_rule->hook == "lsm_capable") {
+            event.target["capability"] =
+                security_capability_name(matched_rule->capability);
+        }
         event.operation = "hit";
         event.evidence = {
             {"hook", matched_rule ? matched_rule->hook : hook_},
@@ -2792,6 +2944,10 @@ private:
         if (hit.event_type == 1) {
             event.evidence["file_access"] = security_file_access_name(hit.file_access);
             event.evidence["file_flags"] = std::to_string(hit.file_flags);
+        }
+        if (hit.capability >= 0) {
+            event.evidence["capability"] =
+                security_capability_name(hit.capability);
         }
         event.action = hit.decision < 0 ? "deny" : "audit-hit";
         event.result = hit.decision < 0 ? "blocked" : "observed";

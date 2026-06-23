@@ -35,9 +35,10 @@ eBPF Observer
   - `TargetResolver`：`container/k8s_pod -> runtime PID -> netns -> host veth/ifindex` 解析预备能力
 - Security Policy 阶段 C 最小闭环：
   - `security_policy`：YAML v2 `targets + rules + target_ref`
-  - BPF LSM：`file_open`、`bprm_check_security`、`socket_connect` 与 `ptrace_traceme` enforce
+  - BPF LSM：`file_open`、`bprm_check_security`、`socket_connect`、`ptrace_traceme` 与 `capable` enforce
   - file policy：`file_access=any/read/write`，已验证目标 cgroup 内读放行、写阻断
   - ptrace policy：`lsm/ptrace_traceme`，已验证仅目标 cgroup 内 `PTRACE_TRACEME` 被拒绝
+  - capability policy：`lsm/capable`，已验证仅目标 cgroup 内 `CAP_SYS_ADMIN` 被拒绝
   - syscall tracing：`execve/openat/connect/ptrace` audit 观测
   - target scope：path、file_access、exec_path、exec_prefix、socket endpoint、ptrace cgroup scope、显式 cgroup、PID 自动解析、container_id cgroup tree 解析、container runtime name 解析、Kubernetes Pod 名称解析
   - 121/122 集成测试和 121 质量门禁通过
@@ -46,8 +47,8 @@ eBPF Observer
 
 - Redis：`/root/EulerPilot/results/final/redis-scx-compare-20260612-191543`
 - Nginx：`/root/EulerPilot/results/final/nginx-scx-compare-20260612-194018`
-- Security ptrace LSM 121：`/root/EulerPilot/results/security_policy/integration-20260623-094234`
-- Security ptrace LSM 122：`/root/EulerPilot/results/security_policy/integration-20260623-094924`
+- Security capable LSM 121：`/root/EulerPilot/results/security_policy/integration-20260623-143856`
+- Security capable LSM 122：`/root/EulerPilot/results/security_policy/integration-20260623-145107`
 
 当前图表目录为：
 

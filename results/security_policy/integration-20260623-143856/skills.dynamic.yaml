@@ -1,0 +1,41 @@
+schema_version: 2
+skills:
+- name: resource_control
+  kind: runtime
+  enabled: true
+  config: {}
+- name: psi_gate
+  kind: runtime
+  enabled: true
+  config: {}
+- name: security_policy
+  kind: runtime
+  enabled: true
+  config:
+    mode: enforce
+    targets:
+      dynamic_secret:
+        type: path
+        path: /tmp/eulerpilot-security-policy.YVsxaR/dynamic-secret.txt
+        exec_path: /tmp/eulerpilot-security-policy.YVsxaR/dynamic-deny-exec.sh
+      dynamic_second:
+        type: path
+        path: /tmp/eulerpilot-security-policy.YVsxaR/dynamic-second-secret.txt
+        exec_path: /tmp/eulerpilot-security-policy.YVsxaR/dynamic-second-deny-exec.sh
+    rules:
+      - name: deny_dynamic_secret_open
+        hook: lsm_file_open
+        target_ref: dynamic_secret
+        action: deny
+      - name: deny_dynamic_exec
+        hook: lsm_bprm_check_security
+        target_ref: dynamic_secret
+        action: deny
+      - name: deny_dynamic_second_open
+        hook: lsm_file_open
+        target_ref: dynamic_second
+        action: deny
+      - name: deny_dynamic_second_exec
+        hook: lsm_bprm_check_security
+        target_ref: dynamic_second
+        action: deny

@@ -18,9 +18,11 @@ char LICENSE[] SEC("license") = "GPL";
 #define EVENT_LSM_BPRM_CHECK 6
 #define EVENT_LSM_SOCKET_CONNECT 7
 #define EVENT_LSM_PTRACE_TRACEME 8
+#define EVENT_LSM_CAPABLE 9
 #define MAX_SECURITY_PATH 256
 #define MAX_SECURITY_TARGETS 8
 #define SECURITY_TARGET_UNKNOWN 0xffffffff
+#define SECURITY_CAPABILITY_UNSET -1
 #define SECURITY_FILE_ACCESS_ANY 0
 #define SECURITY_FILE_ACCESS_READ 1
 #define SECURITY_FILE_ACCESS_WRITE 2
@@ -53,6 +55,7 @@ struct security_policy_target {
     __u16 connect_dport;
     __u16 connect_protocol;
     __u32 file_access;
+    __s32 capability;
 };
 
 struct security_policy_event {
@@ -69,6 +72,7 @@ struct security_policy_event {
     __u16 protocol;
     __u32 file_flags;
     __u32 file_access;
+    __s32 capability;
 };
 
 struct {
@@ -109,6 +113,7 @@ static __always_inline void fill_common_event(struct security_policy_event *even
     event->protocol = 0;
     event->file_flags = 0;
     event->file_access = SECURITY_FILE_ACCESS_ANY;
+    event->capability = SECURITY_CAPABILITY_UNSET;
     bpf_get_current_comm(&event->comm, sizeof(event->comm));
 }
 
@@ -242,7 +247,26 @@ static __always_inline int scoped_cgroup_match_index(__u32 target_count,
             target->exec_prefix[0] == '\0' &&
             target->connect_daddr == 0 &&
             target->connect_dport == 0 &&
+            target->capability < 0 &&
             target->cgroup_id == current_cgroup_id)
+            return i;
+    }
+    return -1;
+}
+
+static __always_inline int capability_match_index(int cap,
+                                                  __u32 target_count,
+                                                  __u64 current_cgroup_id)
+{
+    for (int i = 0; i < MAX_SECURITY_TARGETS; i++) {
+        if ((__u32)i >= target_count)
+            break;
+
+        __u32 key = i;
+        struct security_policy_target *target = bpf_map_lookup_elem(&target_map, &key);
+        if (target && target->capability >= 0 &&
+            target_scope_matches(target, current_cgroup_id) &&
+            target->capability == cap)
             return i;
     }
     return -1;
@@ -424,6 +448,40 @@ int BPF_PROG(security_policy_ptrace_traceme, struct task_struct *parent, int ret
         fill_common_event(event, EVENT_LSM_PTRACE_TRACEME, enforce, decision,
                           (__u32)target_index);
         __builtin_memcpy(event->path, "ptrace_traceme", sizeof("ptrace_traceme"));
+        bpf_ringbuf_submit(event, 0);
+    }
+
+    return decision;
+}
+
+SEC("lsm/capable")
+int BPF_PROG(security_policy_capable, const struct cred *cred,
+             struct user_namespace *ns, int cap, unsigned int opts, int ret)
+{
+    (void)cred;
+    (void)ns;
+    (void)opts;
+    if (ret != 0)
+        return ret;
+
+    __u32 key = 0;
+    struct security_policy_config *config = bpf_map_lookup_elem(&policy_map, &key);
+    __u32 target_count = clamp_target_count(config);
+    __u64 current_cgroup_id = bpf_get_current_cgroup_id();
+    int target_index = capability_match_index(cap, target_count, current_cgroup_id);
+    if (target_index < 0)
+        return 0;
+
+    __u32 enforce = config ? config->enforce : 1;
+    __s32 decision = enforce ? -EPERM : 0;
+
+    struct security_policy_event *event =
+        bpf_ringbuf_reserve(&events, sizeof(*event), 0);
+    if (event) {
+        fill_common_event(event, EVENT_LSM_CAPABLE, enforce, decision,
+                          (__u32)target_index);
+        __builtin_memcpy(event->path, "capable", sizeof("capable"));
+        event->capability = cap;
         bpf_ringbuf_submit(event, 0);
     }
 

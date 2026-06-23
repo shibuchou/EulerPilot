@@ -206,18 +206,19 @@ TC QoS 还完成了速率误差 Benchmark：在 2 Mbit/s 目标下，121 实测 
 
 | 组件 | 内容 |
 |------|------|
-| BPF 程序 | `lsm/file_open`、`lsm/bprm_check_security`、`lsm/socket_connect`、`lsm/ptrace_traceme`，并补充 `execve/openat/connect/ptrace` tracepoint audit |
+| BPF 程序 | `lsm/file_open`、`lsm/bprm_check_security`、`lsm/socket_connect`、`lsm/ptrace_traceme`、`lsm/capable`，并补充 `execve/openat/connect/ptrace` tracepoint audit |
 | 控制方式 | YAML v2 `targets + rules + target_ref` 下发，用户态填充最多 8 项 BPF `target_map` |
 | 文件策略 | `path + file_access=any/read/write`，已验证目标 cgroup 内读打开成功、写打开被拒绝 |
 | 执行策略 | 精确 `exec_path` 和字面 `exec_prefix`，已验证目标 cgroup 内可写目录前缀执行被拒绝 |
 | 网络安全策略 | `dst_ip + dst_port + cgroup_id`，已验证 scoped IPv4 socket connect 被拒绝 |
 | Ptrace 策略 | scope-only cgroup target，已验证目标 cgroup 内 `PTRACE_TRACEME` 被拒绝，scope 外允许 |
+| Capability 策略 | `capability + cgroup_id`，已验证目标 cgroup 内 `CAP_SYS_ADMIN` 被拒绝，scope 外允许 |
 | Scope | 显式 cgroup、PID 自动解析、container_id cgroup tree 扫描、runtime container name、Kubernetes Pod 名称解析 |
 | 生命周期 | YAML 驱动启用 -> LSM/tracepoint attach -> audit/enforce 验证 -> rollback detach -> 恢复 |
-| 验证结果 | 121/122 均通过完整集成测试；最新证据目录为 `results/security_policy/integration-20260623-094234` 和 `results/security_policy/integration-20260623-094924` |
+| 验证结果 | 121/122 均通过完整集成测试；最新证据目录为 `results/security_policy/integration-20260623-143856` 和 `results/security_policy/integration-20260623-145107` |
 | 安全设计 | 默认 disabled，audit 默认不阻断；enforce 只对显式 target 生效，不 pin link 到 BPF 文件系统，Agent 退出即 detach |
 
-该能力证明 Security 类 eBPF hook 可以复用 EulerPilot Skills 框架完成策略声明、目标解析、内核 hook attach、事件审计、阻断验证和可回滚恢复。事件文件 `reports/events/security_policy.jsonl` 会记录 `rule_id/target_ref/target_index/cgroup_id`，并对 socket、exec_prefix、file_access 和 ptrace 分别输出 endpoint、前缀、`file_flags` 和 `ptrace_traceme` 证据。
+该能力证明 Security 类 eBPF hook 可以复用 EulerPilot Skills 框架完成策略声明、目标解析、内核 hook attach、事件审计、阻断验证和可回滚恢复。事件文件 `reports/events/security_policy.jsonl` 会记录 `rule_id/target_ref/target_index/cgroup_id`，并对 socket、exec_prefix、file_access、ptrace 和 capability 分别输出 endpoint、前缀、`file_flags`、`ptrace_traceme` 和 `CAP_*` 证据。
 
 
 ---

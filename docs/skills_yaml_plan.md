@@ -280,7 +280,7 @@ eBPF TC classifier
 
 Security 使用统一目标引用和 observe/audit/enforce 模式。
 
-当前已落地的最小 schema 使用 `targets + rules + target_ref` 描述 path/file_access/exec/exec_prefix/socket/ptrace target，默认 `audit` 且默认 disabled。v2 正式入口对 `lsm_file_open` 规则要求 `targets.<target_ref>.path` 显式存在，`file_access` 可选为 `any/read/write`，默认 `any` 兼容旧路径阻断，并可选配置 `cgroup_path` 作为作用域；对 `lsm_bprm_check_security` 规则要求 `exec_path` 或 `exec_prefix` 至少存在一个，并可复用 cgroup/PID/container/Pod 作用域；对 `lsm_socket_connect` 规则要求 `dst_ip` 和 `dst_port` 显式存在，并可复用 `cgroup_path`、PID、container 或 Pod 解析出的 cgroup 作用域；对 `lsm_ptrace_traceme` 规则要求 target 必须解析出 cgroup scope，且不携带 path/exec/socket 字段，避免全局 ptrace deny。如果 target 使用 `type: pid`，则用户态通过 `TargetResolver` 从 PID 自动解析 cgroup scope；如果 target 使用 `type: container_id`，则用户态在限定 `cgroup_root` 下扫描包含 container ID 的 cgroup 目录并解析 cgroup scope；如果 target 使用 `type: container`，则可通过 `container_name` 和 runtime CLI 解析 container ID；如果 target 使用 `type: k8s_pod`，则可通过 `namespace/pod_name` 和 `kubectl` 查询 Pod UID 后解析 cgroup scope。用户态会扫描最多 8 条 `rules.*.target_ref` 并把对应 path/file_access/exec/exec_prefix/socket/ptrace/cgroup id 写入 BPF `target_map`：
+当前已落地的最小 schema 使用 `targets + rules + target_ref` 描述 path/file_access/exec/exec_prefix/socket/ptrace/capability target，默认 `audit` 且默认 disabled。v2 正式入口对 `lsm_file_open` 规则要求 `targets.<target_ref>.path` 显式存在，`file_access` 可选为 `any/read/write`，默认 `any` 兼容旧路径阻断，并可选配置 `cgroup_path` 作为作用域；对 `lsm_bprm_check_security` 规则要求 `exec_path` 或 `exec_prefix` 至少存在一个，并可复用 cgroup/PID/container/Pod 作用域；对 `lsm_socket_connect` 规则要求 `dst_ip` 和 `dst_port` 显式存在，并可复用 `cgroup_path`、PID、container 或 Pod 解析出的 cgroup 作用域；对 `lsm_ptrace_traceme` 规则要求 target 必须解析出 cgroup scope，且不携带 path/exec/socket 字段，避免全局 ptrace deny；对 `lsm_capable` 规则要求 target 必须解析出 cgroup scope，并配置 `capability` / `cap`，避免全局 capability deny。如果 target 使用 `type: pid`，则用户态通过 `TargetResolver` 从 PID 自动解析 cgroup scope；如果 target 使用 `type: container_id`，则用户态在限定 `cgroup_root` 下扫描包含 container ID 的 cgroup 目录并解析 cgroup scope；如果 target 使用 `type: container`，则可通过 `container_name` 和 runtime CLI 解析 container ID；如果 target 使用 `type: k8s_pod`，则可通过 `namespace/pod_name` 和 `kubectl` 查询 Pod UID 后解析 cgroup scope。用户态会扫描最多 8 条 `rules.*.target_ref` 并把对应 path/file_access/exec/exec_prefix/socket/ptrace/capability/cgroup id 写入 BPF `target_map`：
 
 ```yaml
 - name: security_policy
@@ -337,6 +337,10 @@ Security 使用统一目标引用和 observe/audit/enforce 模式。
       ptrace_scope:
         type: cgroup
         cgroup_path: /sys/fs/cgroup/eulerpilot/security-demo
+      capable_scope:
+        type: cgroup
+        cgroup_path: /sys/fs/cgroup/eulerpilot/security-demo
+        capability: CAP_SYS_ADMIN
     rules:
       - name: deny_demo_secret_open
         hook: lsm_file_open
@@ -374,14 +378,18 @@ Security 使用统一目标引用和 observe/audit/enforce 模式。
         hook: lsm_ptrace_traceme
         target_ref: ptrace_scope
         action: deny
+      - name: deny_cap_sys_admin
+        hook: lsm_capable
+        target_ref: capable_scope
+        action: deny
 ```
 
 当前语义：
 
 - `audit` 模式 attach BPF LSM + `execve/openat/connect/ptrace` tracepoint，但通过 `policy_map.enforce=0` 允许目标文件访问和 demo 执行脚本运行，并通过 ringbuf 输出 `result=observed` 命中事件。
 - `audit` 事件当前覆盖 `event_hook=lsm_file_open`、`event_hook=lsm_bprm_check_security`、`event_hook=sys_enter_execve`、`event_hook=sys_enter_openat`、`event_hook=sys_enter_connect`、`event_hook=sys_enter_ptrace`。
-- `enforce` 模式复用 `bpf/security_policy_demo.bpf.c`，在 `lsm/file_open` 上按 `target_map.file_path + file_access` 拒绝文件打开，在 `lsm/bprm_check_security` 上拒绝任一 `target_map.exec_path` 或 `target_map.exec_prefix`，在 `lsm/socket_connect` 上拒绝任一 `target_map.connect_daddr/connect_dport`，在 `lsm/ptrace_traceme` 上拒绝 scope-only cgroup target 内的 `PTRACE_TRACEME`，并通过 ringbuf 输出 `result=blocked` 命中事件；LSM blocked 事件携带 BPF `target_index`，用户态映射回单条 YAML `rule_id/target_ref`；当 target 配置 `cgroup_path`、`type: pid`、`type: container_id`、`type: container` 或 `type: k8s_pod` 时，BPF 还要求当前进程 cgroup id 命中；四类 syscall 当前只做观测，不阻断。
-- `tests/integration/test_security_policy.sh` 已额外创建 `/tmp/eulerpilot-security-policy.*` 下两组动态目标，证明 YAML `path/exec_path` 能驱动多目标 BPF `target_map`，blocked 事件能定位到对应规则，且不会误阻断默认 demo 目标；同时创建临时 cgroup 验证带 `cgroup_path` 的目标只在目标 cgroup 内阻断，验证 `type: pid`、`type: container_id`、`type: container` 和 `type: k8s_pod` target 均可解析到 cgroup scope；并启动本地 TCP server 验证 `lsm_socket_connect` 能阻断目标 cgroup 内的 IPv4 endpoint，事件携带 `dst_ip/dst_port/protocol/cgroup_id`；另用 `exec_prefix` 验证可写目录前缀执行只在目标 cgroup 内被 `lsm_bprm_check_security` 阻断，事件携带 `exec_prefix/cgroup_id`；再用 `file_access: write` 验证目标 cgroup 内读打开成功、写打开失败，事件携带 `file_access/file_flags/cgroup_id`；最后用 scope-only cgroup target 验证 `lsm_ptrace_traceme` 只阻断目标 cgroup 内 `PTRACE_TRACEME`，事件携带 `path=ptrace_traceme/cgroup_id`。
+- `enforce` 模式复用 `bpf/security_policy_demo.bpf.c`，在 `lsm/file_open` 上按 `target_map.file_path + file_access` 拒绝文件打开，在 `lsm/bprm_check_security` 上拒绝任一 `target_map.exec_path` 或 `target_map.exec_prefix`，在 `lsm/socket_connect` 上拒绝任一 `target_map.connect_daddr/connect_dport`，在 `lsm/ptrace_traceme` 上拒绝 scope-only cgroup target 内的 `PTRACE_TRACEME`，在 `lsm/capable` 上拒绝 scoped cgroup target 内的指定 capability，并通过 ringbuf 输出 `result=blocked` 命中事件；LSM blocked 事件携带 BPF `target_index`，用户态映射回单条 YAML `rule_id/target_ref`；当 target 配置 `cgroup_path`、`type: pid`、`type: container_id`、`type: container` 或 `type: k8s_pod` 时，BPF 还要求当前进程 cgroup id 命中；四类 syscall 当前只做观测，不阻断。
+- `tests/integration/test_security_policy.sh` 已额外创建 `/tmp/eulerpilot-security-policy.*` 下两组动态目标，证明 YAML `path/exec_path` 能驱动多目标 BPF `target_map`，blocked 事件能定位到对应规则，且不会误阻断默认 demo 目标；同时创建临时 cgroup 验证带 `cgroup_path` 的目标只在目标 cgroup 内阻断，验证 `type: pid`、`type: container_id`、`type: container` 和 `type: k8s_pod` target 均可解析到 cgroup scope；并启动本地 TCP server 验证 `lsm_socket_connect` 能阻断目标 cgroup 内的 IPv4 endpoint，事件携带 `dst_ip/dst_port/protocol/cgroup_id`；另用 `exec_prefix` 验证可写目录前缀执行只在目标 cgroup 内被 `lsm_bprm_check_security` 阻断，事件携带 `exec_prefix/cgroup_id`；再用 `file_access: write` 验证目标 cgroup 内读打开成功、写打开失败，事件携带 `file_access/file_flags/cgroup_id`；用 scope-only cgroup target 验证 `lsm_ptrace_traceme` 只阻断目标 cgroup 内 `PTRACE_TRACEME`，事件携带 `path=ptrace_traceme/cgroup_id`；最后用 `lsm_capable` 验证目标 cgroup 内 `CAP_SYS_ADMIN` 被拒绝且 scope 外允许，事件携带 `capability/cgroup_id`。
 - `security_policy_demo` 保留为兼容回归入口，最终答辩口径应优先使用正式 `security_policy`。
 
 完整目标态仍按下面结构扩展：
@@ -430,7 +438,7 @@ security_policy:
 
 - syscall tracing 固定覆盖 `execve/openat/connect/ptrace` 四类。（已完成四类 audit 观测）
 - 异常检测在用户态完成，BPF 侧只做过滤和事件上报。
-- LSM 至少覆盖文件访问和程序执行两类强制控制。（已完成 `file_open`、`bprm_check_security`、`socket_connect` 与 `ptrace_traceme` 多目标 `target_map`，支持 `file_access=any/read/write`、精确 `exec_path`、前缀 `exec_prefix`、IPv4 endpoint 和 scoped ptrace，blocked 事件已支持规则级 `rule_id/target_ref`、显式 cgroup scope、PID target 自动解析、container_id target cgroup 解析、runtime container name 解析和 k8s pod name 解析）
+- LSM 至少覆盖文件访问和程序执行两类强制控制。（已完成 `file_open`、`bprm_check_security`、`socket_connect`、`ptrace_traceme` 与 `capable` 多目标 `target_map`，支持 `file_access=any/read/write`、精确 `exec_path`、前缀 `exec_prefix`、IPv4 endpoint、scoped ptrace 和 scoped capability，blocked 事件已支持规则级 `rule_id/target_ref`、显式 cgroup scope、PID target 自动解析、container_id target cgroup 解析、runtime container name 解析和 k8s pod name 解析）
 - `enforce` 默认只允许 lab 目标，不允许直接作用于系统级 cgroup。
 
 ## 8. ResourceControlSkill YAML
@@ -595,7 +603,7 @@ policy_engine:
 4. 实现 AuditBus JSONL 写入。
 5. 实现 ActionJournal 写入与恢复。
 6. 将 `network_policy_demo` 包装或迁移为 `network_policy`。
-7. 将 `security_policy_demo` 包装或迁移为 `security_policy`。（已完成正式注册名、最小 audit/enforce 语义、YAML 驱动多目标 target_map、file/exec/socket/ptrace ringbuf hit 事件、规则级 LSM blocked 事件、显式 cgroup scope、PID target 自动解析、container_id target cgroup 解析、runtime container name 解析、k8s pod name 解析、`lsm_socket_connect` scoped IPv4 endpoint enforce、`lsm_bprm_check_security` scoped exec_prefix enforce、`lsm_file_open` scoped file_access write enforce、`lsm_ptrace_traceme` scoped enforce 和四类 syscall tracepoint 观测）
+7. 将 `security_policy_demo` 包装或迁移为 `security_policy`。（已完成正式注册名、最小 audit/enforce 语义、YAML 驱动多目标 target_map、file/exec/socket/ptrace/capable ringbuf hit 事件、规则级 LSM blocked 事件、显式 cgroup scope、PID target 自动解析、container_id target cgroup 解析、runtime container name 解析、k8s pod name 解析、`lsm_socket_connect` scoped IPv4 endpoint enforce、`lsm_bprm_check_security` scoped exec_prefix enforce、`lsm_file_open` scoped file_access write enforce、`lsm_ptrace_traceme` scoped enforce、`lsm_capable` scoped capability enforce 和四类 syscall tracepoint 观测）
 8. 扩展 `resource_control` 的 CPU/Memory/IO 配置模型。
 9. 增加 Policy Engine 联动配置。
 10. 将最终质量门禁从 demo target 切换到正式 Skill target。

@@ -116,6 +116,7 @@ require_cmd timeout
 require_cmd sed
 require_cmd grep
 require_cmd python3
+require_cmd unshare
 
 trigger_audit_syscalls() {
     python3 - <<'PY'
@@ -1360,6 +1361,119 @@ if ! run_in_scoped_cgroup "$RESULT_DIR/ptrace-post-cleanup.txt" \
     "$RESULT_DIR/ptrace-post-cleanup.err" \
     python3 "$RESULT_DIR/ptrace_traceme.py"; then
     fail "ptrace_traceme is still denied after rollback/cleanup; see $RESULT_DIR/ptrace-post-cleanup.err"
+fi
+
+if ! unshare -m true > "$RESULT_DIR/capable-baseline.txt" \
+    2> "$RESULT_DIR/capable-baseline.err"; then
+    fail "CAP_SYS_ADMIN baseline unshare failed; see $RESULT_DIR/capable-baseline.err"
+fi
+
+cat > "$RESULT_DIR/agent.capable.yaml" <<'YAML'
+skills_config_path: skills.capable.yaml
+exporter:
+  prometheus:
+    enabled: false
+YAML
+
+cat > "$RESULT_DIR/skills.capable.yaml" <<YAML
+schema_version: 2
+skills:
+- name: resource_control
+  kind: runtime
+  enabled: true
+  config: {}
+- name: psi_gate
+  kind: runtime
+  enabled: true
+  config: {}
+- name: security_policy
+  kind: runtime
+  enabled: true
+  config:
+    mode: enforce
+    targets:
+      capable_scope:
+        type: cgroup
+        cgroup_path: $SCOPED_CGROUP_PATH
+        capability: CAP_SYS_ADMIN
+    rules:
+      - name: deny_cap_sys_admin
+        hook: lsm_capable
+        target_ref: capable_scope
+        action: deny
+YAML
+
+rm -f "$ROOT/reports/events/security_policy.jsonl"
+
+timeout 20s "$AGENT_BIN" \
+    --config "$RESULT_DIR/agent.capable.yaml" \
+    --duration-s 8 \
+    --interval-ms 1000 \
+    --jsonl \
+    > "$RESULT_DIR/agent-capable.log" 2>&1 &
+AGENT_PID="$!"
+
+capable_blocked="false"
+for _ in $(seq 1 40); do
+    if ! kill -0 "$AGENT_PID" 2>/dev/null; then
+        set +e
+        wait "$AGENT_PID"
+        agent_rc="$?"
+        set -e
+        AGENT_PID=""
+        fail "capable agent exited before denial was observed, rc=$agent_rc; see $RESULT_DIR/agent-capable.log"
+    fi
+
+    if ! unshare -m true > "$RESULT_DIR/capable-outside.txt" \
+        2> "$RESULT_DIR/capable-outside.err"; then
+        fail "CAP_SYS_ADMIN was denied outside target cgroup; see $RESULT_DIR/capable-outside.err"
+    fi
+
+    set +e
+    run_in_scoped_cgroup "$RESULT_DIR/capable-blocked.txt" \
+        "$RESULT_DIR/capable-blocked.err" \
+        unshare -m true
+    capable_rc="$?"
+    set -e
+    if [ "$capable_rc" -ne 0 ]; then
+        capable_blocked="true"
+        break
+    fi
+    sleep 0.2
+done
+
+if [ "$capable_blocked" != "true" ]; then
+    fail "CAP_SYS_ADMIN was not denied inside target cgroup; see $RESULT_DIR/agent-capable.log"
+fi
+
+set +e
+wait "$AGENT_PID"
+agent_rc="$?"
+set -e
+AGENT_PID=""
+if [ "$agent_rc" -ne 0 ]; then
+    fail "capable agent exited non-zero, rc=$agent_rc; see $RESULT_DIR/agent-capable.log"
+fi
+
+assert_blocked_rule_event "capable" "lsm_capable" \
+    "deny_cap_sys_admin" "capable_scope"
+assert_blocked_rule_event_has_cgroup "capable" "lsm_capable" \
+    "deny_cap_sys_admin" "capable_scope"
+if ! grep -F "capable" "$ROOT/reports/events/security_policy.jsonl" 2>/dev/null \
+    | grep -F '"event_hook":"lsm_capable"' \
+    | grep -F '"capability":"CAP_SYS_ADMIN"' \
+    | grep -Fq '"result":"blocked"'; then
+    fail "capable blocked event did not carry CAP_SYS_ADMIN evidence"
+fi
+cp "$ROOT/reports/events/security_policy.jsonl" "$RESULT_DIR/security_policy_events.capable.jsonl"
+log "PASS: security_policy lsm_capable blocks scoped CAP_SYS_ADMIN in target cgroup"
+
+run_cleanup_script
+
+if ! run_in_scoped_cgroup "$RESULT_DIR/capable-post-cleanup.txt" \
+    "$RESULT_DIR/capable-post-cleanup.err" \
+    unshare -m true; then
+    fail "CAP_SYS_ADMIN is still denied after rollback/cleanup; see $RESULT_DIR/capable-post-cleanup.err"
 fi
 
 sleep 60 &

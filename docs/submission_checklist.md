@@ -93,7 +93,7 @@
 ## 质量与安全审计
 
 - `scripts/final_quality_gate.sh`：TAP 风格 17 项 P0 质量门禁脚本
-- `reports/final_quality_gate_20260623_container_target.log`：121 最新门禁通过记录
+- `reports/final_quality_gate_20260623_security_capable.log`：121 最新门禁通过记录
 - `docs/final_security_audit.md`：最终安全与质量审计报告
 
 ## 当前结论
