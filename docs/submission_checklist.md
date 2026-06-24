@@ -33,10 +33,11 @@
 - [x] `security_policy` `lsm_ptrace_traceme`、`lsm_capable`、`lsm_task_fix_setuid`、`lsm_task_fix_setgid`、`lsm_task_fix_setgroups` 与 `lsm_cred_prepare` 均要求 scoped cgroup target，分别验证 ptrace、CAP_SYS_ADMIN、setuid、setgid、setgroups credential 转换与 cred_prepare credential preparation 阻断
 - [x] `resource_control` CPU+Memory+IO 自动闭环 121/122 验证：YAML v2 `controllers + profiles`、`cpu.max`、`memory.high/low/max`、`io.weight/io.max`、事务化写入、`AuditBus`、`ActionJournal` 和 Agent stop rollback
 - [x] `resource_control` `target_ref` cgroup 最小闭环 121/122 验证：`targets + profiles.<name>.target_ref`、目标 cgroup 限制、非目标 cgroup 不误改、审计和 Agent JSONL 携带 `target_ref`
+- [x] `resource_control` runtime target 解析闭环 121/122 验证：`type: container_id/container/k8s_pod` 均能解析到目标 cgroup，并复用 CPU/Memory 控制器写入、审计和 rollback
 - [x] `security_policy_demo` BPF LSM file_open 最小闭环
 - [x] `security_policy_demo` BPF LSM attach/deny/rollback 集成测试 121/122 均通过
 - [x] Runtime 生命周期收拢与 ActionJournal/AuditBus 最小接入
-- [x] 121 SP3 编译、集成测试和 17 项质量门禁通过，最新 100 轮 smoke 与 5 轮 doctor 通过
+- [x] 121 SP3 编译、集成测试和 20 项质量门禁通过，最新 100 轮 smoke 与 5 轮 doctor 通过
 - [x] 静态 Dashboard：`reports/dashboard/index.html`
 - [x] Prometheus `/metrics` 端点：默认关闭，监听 `127.0.0.1:9108`
 - [x] 中文最终报告主稿与答辩材料
@@ -89,6 +90,8 @@
 - Resource Control IO 122：`results/resource_control/io-20260624-160208`
 - Resource Control target_ref 121：`results/resource_control/target-20260624-172139`
 - Resource Control target_ref 122：`results/resource_control/target-20260624-172916`
+- Resource Control runtime target 121：`results/resource_control/runtime-target-20260624-212403`
+- Resource Control runtime target 122：`results/resource_control/runtime-target-20260624-212529`
 
 ## 当前核心文档
 
@@ -105,8 +108,8 @@
 
 ## 质量与安全审计
 
-- `scripts/final_quality_gate.sh`：TAP 风格 18 项 P0 质量门禁脚本
-- `reports/final_quality_gate_20260624_resource_target.log`：121 最新门禁通过记录，19/19 P0 通过
+- `scripts/final_quality_gate.sh`：TAP 风格 20 项 P0 质量门禁脚本
+- `reports/final_quality_gate_20260624_resource_runtime_target.log`：121 最新门禁通过记录，20/20 P0 通过
 - `docs/final_security_audit.md`：最终安全与质量审计报告
 
 ## 当前结论

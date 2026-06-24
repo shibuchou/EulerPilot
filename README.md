@@ -53,6 +53,7 @@ eBPF Observer
   - 执行动作：读取旧值、校验、写入、复读验证、`AuditBus` 事件、`ActionJournal` 记录、Agent 退出恢复旧值
   - 121/122 CPU+Memory+IO 集成测试通过，已验证 background pressure 下 `cpu.max=10000 100000`、`memory.high=1048576`、`io.max wbps=1048576`、`memory.events high` 与 `io.stat wbytes` 增长和 rollback 恢复
   - 121/122 `target_ref` 集成测试通过，已验证只对目标 cgroup 写 `cpu.max/memory.high`，非目标 cgroup 不被误改
+  - 121/122 runtime target 集成测试通过，已验证 `container_id`、runtime container name 和 `k8s_pod` 名称解析后进入同一套 CPU/Memory 控制器写入、审计和 rollback
 
 当前最重要的候选结果目录为：
 
@@ -66,7 +67,9 @@ eBPF Observer
 - Resource Control IO 122：`/root/EulerPilot/results/resource_control/io-20260624-160208`
 - Resource Control target_ref 121：`/root/EulerPilot/results/resource_control/target-20260624-172139`
 - Resource Control target_ref 122：`/root/EulerPilot/results/resource_control/target-20260624-172916`
-- 121 最新质量门禁：`/root/EulerPilot/reports/final_quality_gate_20260624_resource_target.log`
+- Resource Control runtime target 121：`/root/EulerPilot/results/resource_control/runtime-target-20260624-212403`
+- Resource Control runtime target 122：`/root/EulerPilot/results/resource_control/runtime-target-20260624-212529`
+- 121 最新质量门禁：`/root/EulerPilot/reports/final_quality_gate_20260624_resource_runtime_target.log`
 
 当前图表目录为：
 
@@ -96,6 +99,7 @@ eBPF Observer
 - Resource Control 集成测试：`/root/EulerPilot/tests/integration/test_resource_control.sh`
 - Resource Control IO 集成测试：`/root/EulerPilot/tests/integration/test_resource_control_io.sh`
 - Resource Control target_ref 集成测试：`/root/EulerPilot/tests/integration/test_resource_control_target.sh`
+- Resource Control runtime target 集成测试：`/root/EulerPilot/tests/integration/test_resource_control_runtime_target.sh`
 - 质量门禁：`/root/EulerPilot/scripts/final_quality_gate.sh`
 
 ### 最终候选结果

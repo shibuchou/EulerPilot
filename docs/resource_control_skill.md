@@ -158,6 +158,8 @@ select profile
 - target_ref 改动后 IO 回归 121：`results/resource_control/io-regression-20260624-174400/summary.txt`
 - target_ref cgroup 闭环 121：`results/resource_control/target-20260624-172139/summary.txt`
 - target_ref cgroup 闭环 122：`results/resource_control/target-20260624-172916/summary.txt`
+- runtime target 闭环 121：`results/resource_control/runtime-target-20260624-212403/summary.txt`
+- runtime target 闭环 122：`results/resource_control/runtime-target-20260624-212529/summary.txt`
 
 测试命令：
 
@@ -166,6 +168,7 @@ cd /root/EulerPilot
 tests/integration/test_resource_control.sh
 tests/integration/test_resource_control_io.sh
 tests/integration/test_resource_control_target.sh
+tests/integration/test_resource_control_runtime_target.sh
 ```
 
 测试覆盖：
@@ -185,6 +188,8 @@ tests/integration/test_resource_control_target.sh
 - IO 测试验证 `resource_control_events.jsonl` 包含 `io.max`、`io.weight` 的 `applied` 与 `restored` 事件
 - Target 测试验证 `profiles.background.target_ref` 能解析到指定 cgroup，只对目标 cgroup 写 `cpu.max/memory.high`，非目标 cgroup 保持原值
 - Target 测试验证 Agent JSONL 和 `resource_control_events.jsonl` 都携带 `target_ref` 与目标 cgroup path，并在退出后恢复旧值
+- Runtime target 测试验证 `container_id`、runtime container name 和 `k8s_pod` 名称解析均能落到目标 cgroup，只对目标 cgroup 写 `cpu.max/memory.high`，scope 外 cgroup 保持原值
+- Runtime target 测试使用 fake `crictl/kubectl` 固定解析路径，不依赖真实容器服务；它验证的是 Resource Control 与 `TargetResolver` 的解析、写入、审计和回滚链路，真实容器/Kubernetes lab Pod 仍作为后续现场演示项
 
 当前 121 结果摘要：
 
@@ -238,7 +243,33 @@ limited_wbytes_after=8388608
 old_io_weight=default 100
 ```
 
+当前 121 runtime target 结果摘要：
+
+```text
+result=pass
+target_types=container_id,container,k8s_pod
+container_id_cpu_max_pressure=10000 100000
+container_name_cpu_max_pressure=10000 100000
+k8s_pod_cpu_max_pressure=10000 100000
+container_id_memory_high_pressure=1048576
+container_name_memory_high_pressure=1048576
+k8s_pod_memory_high_pressure=1048576
+```
+
+当前 122 runtime target 结果摘要：
+
+```text
+result=pass
+target_types=container_id,container,k8s_pod
+container_id_cpu_max_pressure=10000 100000
+container_name_cpu_max_pressure=10000 100000
+k8s_pod_cpu_max_pressure=10000 100000
+container_id_memory_high_pressure=1048576
+container_name_memory_high_pressure=1048576
+k8s_pod_memory_high_pressure=1048576
+```
+
 ## 后续 TODO
 
-- 将 Resource Control 与 Network/Security 的 `TargetResolver` 统一，支持 container/Pod target 后再落 cgroup。
+- 在真实 docker/podman/crictl 或 Kubernetes lab Pod 环境中补现场演示，把 fake runtime 自测升级为真实运行时证据。
 - 增加更稳定的 CPU quota 效果指标，例如 `cpu.stat usage_usec` 与 throttled 计数对照。

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 # EulerPilot Final Quality Gate — TAP-style
-# P0: 19 blocking checks. P1: optional checks (not in TAP count).
+# P0: 20 blocking checks. P1: optional checks (not in TAP count).
 # Run on 121. For 122: minimal regression only.
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -12,7 +12,7 @@ AGENT_YAML="configs/agent.yaml"
 AGENT_BIN="build/eulerpilot-agent"
 TMPLOG="/tmp/eulerpilot-quality-gate.tmp"
 
-TOTAL=19
+TOTAL=20
 N=1
 
 echo "1..$TOTAL"
@@ -250,7 +250,34 @@ else
     not_ok "resource_control target_ref evidence missing"
 fi
 
-# 19. no BPF/LSM/TC/XDP residue
+# 19. resource_control runtime target evidence
+RESOURCE_RUNTIME_TARGET_OK=true
+for summary in \
+    results/resource_control/runtime-target-20260624-212403/summary.txt \
+    results/resource_control/runtime-target-20260624-212529/summary.txt; do
+    if [ ! -s "$summary" ] ||
+       ! grep -q '^result=pass$' "$summary" ||
+       ! grep -q '^target_types=container_id,container,k8s_pod$' "$summary" ||
+       ! grep -q '^container_id_target_ref=container_id_scope$' "$summary" ||
+       ! grep -q '^container_name_target_ref=container_name_scope$' "$summary" ||
+       ! grep -q '^k8s_pod_target_ref=pod_scope$' "$summary" ||
+       ! grep -q '^container_id_cpu_max_pressure=10000 100000$' "$summary" ||
+       ! grep -q '^container_name_cpu_max_pressure=10000 100000$' "$summary" ||
+       ! grep -q '^k8s_pod_cpu_max_pressure=10000 100000$' "$summary" ||
+       ! grep -q '^container_id_memory_high_pressure=1048576$' "$summary" ||
+       ! grep -q '^container_name_memory_high_pressure=1048576$' "$summary" ||
+       ! grep -q '^k8s_pod_memory_high_pressure=1048576$' "$summary"; then
+        echo "  ERROR: missing runtime target evidence in $summary"
+        RESOURCE_RUNTIME_TARGET_OK=false
+    fi
+done
+if $RESOURCE_RUNTIME_TARGET_OK; then
+    ok "resource_control runtime target evidence"
+else
+    not_ok "resource_control runtime target evidence missing"
+fi
+
+# 20. no BPF/LSM/TC/XDP residue
 RESIDUE_OK=true
 if [ -e /sys/fs/bpf/security_policy_demo_link ]; then
     echo "  ERROR: /sys/fs/bpf/security_policy_demo_link still pinned"
