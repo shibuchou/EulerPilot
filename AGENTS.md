@@ -70,10 +70,10 @@
 - 以得奖为目标时，不能把比赛宣讲中明确提到的 Network Policy、Security Agent、Resource Control 仅停留在简单 demo。最终应对齐 `docs/contest_briefing_reference.md` 的完成度标准：
   - Network Policy 至少覆盖流量分类、QoS 限速和 XDP 高速拦截三个方向；配置模型必须区分 cgroup、netdev、k8s_pod 等不同 target，XDP 只能默认挂到专用 lab veth/netns，不能挂生产管理网卡。
   - Security Agent 至少覆盖 syscall tracing、运行时异常监测和 BPF LSM 强制访问控制三个方向；syscall tracing 最低固定覆盖 `execve/openat/connect/ptrace` 四类，LSM 最低覆盖文件访问与程序执行两类强制控制。
-  - Resource Control 必须从 CPU cgroup 扩展为 CPU + Memory 自动闭环，IO 至少达到独立可演示、可回滚状态；资源动作必须有事务化流程和 ActionJournal。
+  - Resource Control 必须从 CPU cgroup 扩展为 CPU + Memory + IO 自动闭环；资源动作必须有事务化流程、AuditBus 事件、ActionJournal 和 stop rollback 证据。
   - CPU Scheduling Agent 必须保持 sched_ext/scx 真实调度、Latency-first/Throughput-first/Mixed-Adaptive 策略和自动切换证据；Throughput-first 不能只做 smoke，必须进入正式 Benchmark。
 - 下一阶段执行口径以 `docs/next_phase_plan_v2_1.md` 为准；`docs/next_phase_plan_v2.md` 只作为历史版本保留。
-- 当前 Resource Control 已进入 CPU + Memory 自动闭环阶段，后续修改不得退化为只写 `cpu.weight`；IO controller、container/Pod target 和更稳定的 CPU quota 指标仍是后续增强项。
+- 当前 Resource Control 已进入 CPU + Memory + IO 自动闭环阶段，后续修改不得退化为只写 `cpu.weight`；container/Pod target 和更稳定的 CPU quota 指标仍是后续增强项。
 - 当前 Security cred 类规则已完成 `task_fix_setuid`、`task_fix_setgid`、`task_fix_setgroups` 与 `cred_prepare`；`cred_transfer`、`cred_alloc_blank` 等更多 cred 生命周期 hook 已记录为后续项，暂不阻塞 Resource Control 阶段。
 - 公共控制面必须前置：`TargetResolver` 统一解析 PID/cgroup/container/Pod/veth，`AuditBus` 统一事件格式，`ActionJournal` 统一回滚证据，`CapabilityDetector` 统一探测 BTF、BPF LSM、XDP、TC、cgroup v2、PSI、sched_ext 等能力。
 - 所有正式 Skill 应统一支持 `observe/audit/enforce` 或兼容等价模式；`audit` 可作为历史 `dry-run` 的正式口径。

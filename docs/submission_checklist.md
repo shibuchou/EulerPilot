@@ -31,7 +31,7 @@
 - [x] `security_policy` `lsm_bprm_check_security` 通过 `exec_prefix/cgroup_id` 阻断目标 cgroup 内可写目录前缀执行，scope 外允许，事件携带 `exec_prefix` 证据
 - [x] `security_policy` `lsm_file_open` 支持 `file_access=write` 与 `path_prefix + file_access=write`，验证目标 cgroup 内读放行、写阻断
 - [x] `security_policy` `lsm_ptrace_traceme`、`lsm_capable`、`lsm_task_fix_setuid`、`lsm_task_fix_setgid`、`lsm_task_fix_setgroups` 与 `lsm_cred_prepare` 均要求 scoped cgroup target，分别验证 ptrace、CAP_SYS_ADMIN、setuid、setgid、setgroups credential 转换与 cred_prepare credential preparation 阻断
-- [x] `resource_control` CPU+Memory 自动闭环 121/122 验证：YAML v2 `controllers + profiles`、`cpu.max`、`memory.high/low/max`、事务化写入、`AuditBus`、`ActionJournal` 和 Agent stop rollback
+- [x] `resource_control` CPU+Memory+IO 自动闭环 121/122 验证：YAML v2 `controllers + profiles`、`cpu.max`、`memory.high/low/max`、`io.weight/io.max`、事务化写入、`AuditBus`、`ActionJournal` 和 Agent stop rollback
 - [x] `security_policy_demo` BPF LSM file_open 最小闭环
 - [x] `security_policy_demo` BPF LSM attach/deny/rollback 集成测试 121/122 均通过
 - [x] Runtime 生命周期收拢与 ActionJournal/AuditBus 最小接入
@@ -82,8 +82,10 @@
 - Security bprm exec_prefix LSM 122：`results/security_policy/integration-20260622-145716`
 - Security scoped credential/cred_prepare LSM 121：`results/security_policy/integration-20260624-114838`
 - Security scoped credential/cred_prepare LSM 122：`results/security_policy/integration-20260624-115440`
-- Resource Control CPU+Memory 121：`results/resource_control/integration-20260624-150312`
-- Resource Control CPU+Memory 122：`results/resource_control/integration-20260624-151241`
+- Resource Control CPU+Memory 121：`results/resource_control/integration-20260624-160317`
+- Resource Control CPU+Memory 122：`results/resource_control/integration-20260624-160349`
+- Resource Control IO 121：`results/resource_control/io-20260624-160008`
+- Resource Control IO 122：`results/resource_control/io-20260624-160208`
 
 ## 当前核心文档
 
@@ -92,7 +94,7 @@
 - `docs/network_policy_skill.md`：Network Policy 设计与实施说明
 - `docs/network_pod_veth_target.md`：Pod/veth target 解析预备能力说明
 - `docs/security_policy_skill.md`：Security Policy 正式化设计与最小验收入口
-- `docs/resource_control_skill.md`：Resource Control CPU+Memory 自动闭环设计与验收入口
+- `docs/resource_control_skill.md`：Resource Control CPU+Memory+IO 自动闭环设计与验收入口
 - `docs/skills_yaml_plan.md`：Skills/YAML 控制面规划
 - `docs/final_quality_gate.md`：质量门禁说明
 - `docs/reference_repos.md`：参考仓库与复用边界
@@ -100,10 +102,10 @@
 
 ## 质量与安全审计
 
-- `scripts/final_quality_gate.sh`：TAP 风格 17 项 P0 质量门禁脚本
-- `reports/final_quality_gate_20260624_resource_control.log`：121 最新门禁通过记录
+- `scripts/final_quality_gate.sh`：TAP 风格 18 项 P0 质量门禁脚本
+- `reports/final_quality_gate_20260624_resource_io.log`：121 最新门禁通过记录
 - `docs/final_security_audit.md`：最终安全与质量审计报告
 
 ## 当前结论
 
-项目仍处于争奖增强阶段，不应停留在“最终材料整理”。下一步重点是补强 Network/Security/Resource 的成品化深度：Pod veth、Security 更多 cred 生命周期规则/更多异常规则、Resource IO controller。
+项目仍处于争奖增强阶段，不应停留在“最终材料整理”。下一步重点是补强 Network/Security/Resource 的成品化深度：Pod veth、Security 更多 cred 生命周期规则/更多异常规则、Resource container/Pod target 接入和 CPU quota 效果指标。

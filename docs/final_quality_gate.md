@@ -19,7 +19,7 @@ make agent
 ./build/eulerpilot-agent --doctor-skills --config configs/agent.yaml
 ```
 
-## P0 阻塞项（17 项）
+## P0 阻塞项（18 项）
 
 | # | 检查 | 判定 |
 |---|------|------|
@@ -39,7 +39,8 @@ make agent
 | 14 | metrics exporter | 默认关闭 + 监听 127.0.0.1:9108 |
 | 15 | Dashboard | `reports/dashboard/index.html` 存在且非空 |
 | 16 | 冻结结果目录 | Redis/Nginx 各 ≥1 个目录 |
-| 17 | 无 BPF/LSM/TC/XDP 残留 | security LSM link 不存在，demo-net cgroup 无 attached BPF，lab veth 不残留 |
+| 17 | Resource Control CPU+Memory+IO 证据 | 121/122 CPU+Memory 与 IO 结果目录存在，`summary.txt` 为 pass，包含 `cpu.max`、`memory.high`、`io.max`、`io.weight` 关键证据 |
+| 18 | 无 BPF/LSM/TC/XDP 残留 | security LSM link 不存在，demo-net cgroup 无 attached BPF，lab veth 不残留 |
 
 ## P1 可选项（不阻塞）
 
@@ -67,11 +68,11 @@ make agent
 
 ## 通过标准
 
-- 17 项 P0 全部 `ok`
+- 18 项 P0 全部 `ok`
 - P1 记录结果但不影响通过
 - 122 编译 + CLI 通过
 
 ## 最新记录
 
-- 121 最新完整门禁：`reports/final_quality_gate_20260624_security_cred_prepare.log`
-- 结果：17/17 P0 通过，P1 `agent 100-round stress smoke` 和 `doctor 5-round stable` 通过
+- 121 最新完整门禁：`reports/final_quality_gate_20260624_resource_io.log`
+- 结果：18/18 P0 通过，P1 `agent 100-round stress smoke` 和 `doctor 5-round stable` 通过

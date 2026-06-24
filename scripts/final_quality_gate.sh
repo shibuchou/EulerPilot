@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 # EulerPilot Final Quality Gate — TAP-style
-# P0: 17 blocking checks. P1: optional checks (not in TAP count).
+# P0: 18 blocking checks. P1: optional checks (not in TAP count).
 # Run on 121. For 122: minimal regression only.
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -12,7 +12,7 @@ AGENT_YAML="configs/agent.yaml"
 AGENT_BIN="build/eulerpilot-agent"
 TMPLOG="/tmp/eulerpilot-quality-gate.tmp"
 
-TOTAL=17
+TOTAL=18
 N=1
 
 echo "1..$TOTAL"
@@ -190,7 +190,45 @@ else
     not_ok "frozen result dirs missing (Redis=$REDIS_DIRS, Nginx=$NGINX_DIRS)"
 fi
 
-# 17. no BPF/LSM/TC/XDP residue
+# 17. resource_control CPU+Memory+IO evidence
+RESOURCE_CONTROL_OK=true
+for summary in \
+    results/resource_control/integration-20260624-160317/summary.txt \
+    results/resource_control/integration-20260624-160349/summary.txt \
+    results/resource_control/io-20260624-160008/summary.txt \
+    results/resource_control/io-20260624-160208/summary.txt; do
+    if [ ! -s "$summary" ] || ! grep -q '^result=pass$' "$summary"; then
+        echo "  ERROR: missing or failed resource control summary: $summary"
+        RESOURCE_CONTROL_OK=false
+    fi
+done
+if ! grep -q '^cpu_max_pressure=10000 100000$' results/resource_control/integration-20260624-160317/summary.txt; then
+    echo "  ERROR: 121 CPU pressure evidence missing"
+    RESOURCE_CONTROL_OK=false
+fi
+if ! grep -q '^memory_high_pressure=1048576$' results/resource_control/integration-20260624-160349/summary.txt; then
+    echo "  ERROR: 122 memory pressure evidence missing"
+    RESOURCE_CONTROL_OK=false
+fi
+for summary in \
+    results/resource_control/io-20260624-160008/summary.txt \
+    results/resource_control/io-20260624-160208/summary.txt; do
+    if ! grep -q '^io_max_pressure=.*wbps=1048576$' "$summary"; then
+        echo "  ERROR: IO max pressure evidence missing in $summary"
+        RESOURCE_CONTROL_OK=false
+    fi
+    if ! grep -q '^io_weight_pressure=default 50$' "$summary"; then
+        echo "  ERROR: IO weight pressure evidence missing in $summary"
+        RESOURCE_CONTROL_OK=false
+    fi
+done
+if $RESOURCE_CONTROL_OK; then
+    ok "resource_control CPU+Memory+IO evidence"
+else
+    not_ok "resource_control CPU+Memory+IO evidence missing"
+fi
+
+# 18. no BPF/LSM/TC/XDP residue
 RESIDUE_OK=true
 if [ -e /sys/fs/bpf/security_policy_demo_link ]; then
     echo "  ERROR: /sys/fs/bpf/security_policy_demo_link still pinned"

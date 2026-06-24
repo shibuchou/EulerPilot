@@ -6,6 +6,11 @@ SCX_NAME="$(basename "$SCX_BIN")"
 echo "[rollback] scx binary: $SCX_BIN" >&2
 
 ROOT="/sys/fs/cgroup/eulerpilot"
+detect_root_io_device() {
+    findmnt -no MAJ:MIN -T / 2>/dev/null | awk 'NF { print $1; exit }'
+}
+
+IO_DEVICE="${IO_DEVICE:-$(detect_root_io_device)}"
 
 printf '[Rollback] restore cgroup parameters and stop active sched_ext scheduler if configured.\n'
 
@@ -27,6 +32,10 @@ if [ -d "$ROOT" ]; then
         [ -w "$group_path/memory.high" ] && echo max > "$group_path/memory.high" 2>/dev/null || true
         [ -w "$group_path/memory.low" ] && echo 0 > "$group_path/memory.low" 2>/dev/null || true
         [ -w "$group_path/memory.max" ] && echo max > "$group_path/memory.max" 2>/dev/null || true
+        [ -w "$group_path/io.weight" ] && echo "default 100" > "$group_path/io.weight" 2>/dev/null || true
+        if [ -n "$IO_DEVICE" ] && [ -w "$group_path/io.max" ]; then
+            echo "$IO_DEVICE rbps=max wbps=max riops=max wiops=max" > "$group_path/io.max" 2>/dev/null || true
+        fi
         if [ -f "$group_path/cgroup.procs" ]; then
             while read -r pid; do
                 [ -n "$pid" ] && echo "$pid" > /sys/fs/cgroup/cgroup.procs 2>/dev/null || true

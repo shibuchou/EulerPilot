@@ -17,6 +17,8 @@
 #include <sstream>
 #include <unordered_set>
 #include <cerrno>
+#include <sys/stat.h>
+#include <sys/sysmacros.h>
 #include <sys/wait.h>
 #include <thread>
 #include <unistd.h>
@@ -36,6 +38,7 @@ struct ControlFileSnapshot {
     std::string group;
     std::string file;
     std::string old_value;
+    std::string restore_value;
 };
 
 void append_scx_session_log(const std::string &message) {
@@ -59,6 +62,8 @@ struct ResourceSettings {
     std::string memory_low = "0";
     std::string memory_max = "max";
     std::string memory_reclaim;
+    std::string io_weight;
+    std::string io_max;
     std::string mode = "normal";
 };
 
@@ -86,6 +91,15 @@ std::string read_file_trimmed(const char *path) {
     return value;
 }
 
+bool read_control_file(const std::string &path, std::string &value) {
+    std::ifstream file(path);
+    if (!file.good()) {
+        return false;
+    }
+    std::getline(file, value);
+    return !file.bad();
+}
+
 bool write_pid_to_group(const std::string &group, int pid) {
     std::ofstream procs("/sys/fs/cgroup/eulerpilot/" + group + "/cgroup.procs");
     if (!procs.good()) {
@@ -111,6 +125,41 @@ void ensure_parent_dir(const fs::path &path) {
 
 std::string cgroup_file_path(const std::string &group, const std::string &file) {
     return std::string(kCgroupRoot) + "/" + group + "/" + file;
+}
+
+bool valid_io_device(const std::string &value);
+
+std::string root_block_device() {
+    struct stat st {};
+    if (stat("/", &st) != 0) {
+        return "";
+    }
+    return std::to_string(major(st.st_dev)) + ":" + std::to_string(minor(st.st_dev));
+}
+
+std::string resolve_io_value_device(const std::string &value, const std::string &configured_device) {
+    if (value.empty()) {
+        return value;
+    }
+
+    std::istringstream in(value);
+    std::string device;
+    in >> device;
+    if (device != "auto") {
+        return value;
+    }
+
+    std::string resolved = configured_device == "auto" ? root_block_device() : configured_device;
+    if (!valid_io_device(resolved)) {
+        return value;
+    }
+
+    std::string rest;
+    std::getline(in, rest);
+    if (!rest.empty() && rest[0] == ' ') {
+        rest.erase(0, 1);
+    }
+    return rest.empty() ? resolved : resolved + " " + rest;
 }
 
 bool valid_resource_group(const std::string &group) {
@@ -155,6 +204,65 @@ bool validate_cpu_max_value(const std::string &value) {
            parse_unsigned_value(period, false);
 }
 
+bool valid_io_device(const std::string &value) {
+    const auto sep = value.find(':');
+    if (sep == std::string::npos || sep == 0 || sep + 1 >= value.size()) {
+        return false;
+    }
+    return parse_unsigned_value(value.substr(0, sep), true) &&
+           parse_unsigned_value(value.substr(sep + 1), true);
+}
+
+bool valid_io_limit_key(const std::string &key) {
+    return key == "rbps" || key == "wbps" || key == "riops" || key == "wiops";
+}
+
+bool validate_io_max_value(const std::string &value) {
+    std::istringstream in(value);
+    std::string device;
+    if (!(in >> device) || !valid_io_device(device)) {
+        return false;
+    }
+
+    bool has_limit = false;
+    std::string token;
+    while (in >> token) {
+        const auto sep = token.find('=');
+        if (sep == std::string::npos || sep == 0 || sep + 1 >= token.size()) {
+            return false;
+        }
+        const std::string key = token.substr(0, sep);
+        const std::string limit = token.substr(sep + 1);
+        if (!valid_io_limit_key(key)) {
+            return false;
+        }
+        if (limit != "max" && !parse_unsigned_value(limit, false)) {
+            return false;
+        }
+        has_limit = true;
+    }
+    return has_limit;
+}
+
+bool validate_io_weight_value(const std::string &value) {
+    std::istringstream in(value);
+    std::string scope;
+    std::string weight;
+    std::string extra;
+    if (!(in >> scope >> weight) || (in >> extra)) {
+        return false;
+    }
+    if (scope != "default" && !valid_io_device(scope)) {
+        return false;
+    }
+
+    char *end = nullptr;
+    errno = 0;
+    const long parsed = std::strtol(weight.c_str(), &end, 10);
+    return errno == 0 && end != weight.c_str() && *end == '\0' &&
+           parsed >= 1 && parsed <= 10000;
+}
+
 bool validate_control_value(const std::string &file, const std::string &value) {
     if (value.empty()) {
         return false;
@@ -178,7 +286,28 @@ bool validate_control_value(const std::string &file, const std::string &value) {
     if (file == "memory.reclaim") {
         return parse_unsigned_value(value, false);
     }
+    if (file == "io.max") {
+        return validate_io_max_value(value);
+    }
+    if (file == "io.weight") {
+        return validate_io_weight_value(value);
+    }
     return !value.empty();
+}
+
+std::string first_token(const std::string &value) {
+    std::istringstream in(value);
+    std::string token;
+    in >> token;
+    return token;
+}
+
+std::string io_max_unlimited_value(const std::string &value) {
+    const std::string device = first_token(value);
+    if (!valid_io_device(device)) {
+        return "";
+    }
+    return device + " rbps=max wbps=max riops=max wiops=max";
 }
 
 bool control_value_matches(const std::string &file,
@@ -189,6 +318,23 @@ bool control_value_matches(const std::string &file,
     }
     if (file == "cpu.max" && desired == "max") {
         return actual == "max" || actual.rfind("max ", 0) == 0;
+    }
+    if (file == "io.max") {
+        const std::string desired_device = first_token(desired);
+        const std::string actual_device = first_token(actual);
+        if (desired_device.empty() || desired_device != actual_device) {
+            return false;
+        }
+
+        std::istringstream in(desired);
+        std::string token;
+        in >> token; // device
+        while (in >> token) {
+            if (actual.find(token) == std::string::npos) {
+                return false;
+            }
+        }
+        return true;
     }
     return false;
 }
@@ -208,7 +354,7 @@ void append_resource_audit(const std::string &group,
     event.timestamp = now_event_timestamp();
     event.event_id = "resource-control-" + event.timestamp + "-" + group + "-" + file + "-" + std::to_string(pid);
     event.skill = "resource_control";
-    event.policy_id = "cgroup-v2-cpu-memory";
+    event.policy_id = "cgroup-v2-cpu-memory-io";
     event.rule_id = group + "." + file;
     event.mode = mode;
     event.target = {
@@ -276,8 +422,8 @@ bool apply_control_file(const std::string &group,
 
     const std::string path = cgroup_file_path(group, file);
     const bool write_only = file == "memory.reclaim";
-    const std::string old_value = write_only ? "" : read_file_trimmed(path.c_str());
-    if (!write_only && old_value.empty()) {
+    std::string old_value;
+    if (!write_only && !read_control_file(path, old_value)) {
         reason = "control-file-read-failed";
         append_resource_audit(group, file, "", value, mode, "failed", reason, pid, profile);
         return false;
@@ -296,7 +442,10 @@ bool apply_control_file(const std::string &group,
 
     const std::string key = group + "/" + file;
     if (!write_only && resource_control_snapshots().find(key) == resource_control_snapshots().end()) {
-        resource_control_snapshots()[key] = {path, group, file, old_value};
+        const std::string restore_value = file == "io.max" && old_value.empty()
+            ? io_max_unlimited_value(value)
+            : old_value;
+        resource_control_snapshots()[key] = {path, group, file, old_value, restore_value};
     }
 
     if (!write_file_value(path, value)) {
@@ -306,7 +455,12 @@ bool apply_control_file(const std::string &group,
     }
 
     if (!write_only) {
-        const std::string verified = read_file_trimmed(path.c_str());
+        std::string verified;
+        if (!read_control_file(path, verified)) {
+            reason = "control-file-verify-failed";
+            append_resource_audit(group, file, old_value, value, mode, "failed", reason, pid, profile);
+            return false;
+        }
         if (!control_value_matches(file, value, verified)) {
             reason = "control-file-verify-failed";
             append_resource_audit(group, file, old_value, value, mode, "failed", reason, pid, profile);
@@ -382,6 +536,8 @@ ResourceSettings select_resource_settings(const ResourceControlPolicy &policy,
         settings.memory_high = policy.latency_memory_high;
         settings.memory_low = policy.latency_memory_low;
         settings.memory_max = policy.latency_memory_max;
+        settings.io_weight = policy.latency_io_weight;
+        settings.io_max = policy.latency_io_max;
         return settings;
     }
 
@@ -390,6 +546,8 @@ ResourceSettings select_resource_settings(const ResourceControlPolicy &policy,
         settings.memory_high = policy.batch_memory_high;
         settings.memory_low = policy.batch_memory_low;
         settings.memory_max = policy.batch_memory_max;
+        settings.io_weight = policy.batch_io_weight;
+        settings.io_max = policy.batch_io_max;
         return settings;
     }
 
@@ -401,6 +559,10 @@ ResourceSettings select_resource_settings(const ResourceControlPolicy &policy,
         settings.memory_low = policy.background_memory_low;
         settings.memory_max = policy.background_memory_max;
         settings.memory_reclaim = pressure_mode ? policy.background_memory_reclaim_pressure : "";
+        settings.io_weight = pressure_mode ? policy.background_io_weight_pressure
+                                           : policy.background_io_weight_normal;
+        settings.io_max = pressure_mode ? policy.background_io_max_pressure
+                                        : policy.background_io_max_normal;
         return settings;
     }
 
@@ -827,6 +989,8 @@ ExecutionAction apply_cgroup_assignment(const RuntimeConfig &config,
     action.memory_low = resources.memory_low;
     action.memory_max = resources.memory_max;
     action.memory_reclaim = resources.memory_reclaim;
+    action.io_weight = resolve_io_value_device(resources.io_weight, policy.io_device);
+    action.io_max = resolve_io_value_device(resources.io_max, policy.io_device);
     action.resource_mode = resources.mode;
 
     if (std::strlen(profile.group) == 0) {
@@ -901,6 +1065,20 @@ ExecutionAction apply_cgroup_assignment(const RuntimeConfig &config,
         return action;
     }
 
+    if (policy.io_enabled && policy.io_weight_enabled && !action.io_weight.empty() &&
+        !apply_control_file(profile.group, "io.weight", action.io_weight, policy.mode,
+                            decision.sample.pid, profile.name, reason)) {
+        action.reason = "io-weight-write-failed";
+        return action;
+    }
+
+    if (policy.io_enabled && policy.io_max_enabled && !action.io_max.empty() &&
+        !apply_control_file(profile.group, "io.max", action.io_max, policy.mode,
+                            decision.sample.pid, profile.name, reason)) {
+        action.reason = "io-max-write-failed";
+        return action;
+    }
+
     if (!write_pid_to_group(profile.group, decision.sample.pid)) {
         action.reason = "cgroup-write-failed";
         return action;
@@ -918,16 +1096,16 @@ bool rollback_resource_control_state() {
     bool ok = true;
     for (const auto &item : resource_control_snapshots()) {
         const auto &snapshot = item.second;
-        if (snapshot.old_value.empty()) {
+        if (snapshot.restore_value.empty()) {
             continue;
         }
-        if (!write_file_value(snapshot.path, snapshot.old_value)) {
+        if (!write_file_value(snapshot.path, snapshot.restore_value)) {
             ok = false;
-            append_resource_audit(snapshot.group, snapshot.file, "", snapshot.old_value,
+            append_resource_audit(snapshot.group, snapshot.file, "", snapshot.restore_value,
                                   "rollback", "failed", "restore-failed", 0, "rollback");
             continue;
         }
-        append_resource_audit(snapshot.group, snapshot.file, "", snapshot.old_value,
+        append_resource_audit(snapshot.group, snapshot.file, "", snapshot.restore_value,
                               "rollback", "restored", "restored-old-value", 0, "rollback");
     }
     resource_control_snapshots().clear();

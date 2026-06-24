@@ -28,6 +28,9 @@ struct ResourceControlPolicy {
     bool memory_low_enabled = true;
     bool memory_max_enabled = true;
     bool memory_reclaim_enabled = false;
+    bool io_enabled = true;
+    bool io_weight_enabled = true;
+    bool io_max_enabled = true;
 
     std::string latency_cpu_max = "max";
     std::string batch_cpu_max = "max";
@@ -45,6 +48,16 @@ struct ResourceControlPolicy {
     std::string background_memory_low = "0";
     std::string background_memory_max = "max";
     std::string background_memory_reclaim_pressure = "";
+
+    std::string io_device = "auto";
+    std::string latency_io_weight = "default 100";
+    std::string latency_io_max = "";
+    std::string batch_io_weight = "default 100";
+    std::string batch_io_max = "";
+    std::string background_io_weight_normal = "default 100";
+    std::string background_io_weight_pressure = "default 50";
+    std::string background_io_max_normal = "";
+    std::string background_io_max_pressure = "auto rbps=max wbps=1048576";
 };
 
 bool should_manage_sample(const WorkloadSample &sample);

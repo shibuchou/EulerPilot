@@ -84,6 +84,8 @@ struct ExecutionAction {
     std::string memory_low = "0";
     std::string memory_max = "max";
     std::string memory_reclaim = "";
+    std::string io_weight = "";
+    std::string io_max = "";
     std::string resource_mode = "normal";
     std::string reason = "no-action";
 };

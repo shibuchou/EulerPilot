@@ -1,0 +1,13 @@
+result=pass
+io_device=253:0
+hog_pid=225891
+io_max_pressure=253:0 rbps=max wbps=1048576
+io_weight_pressure=default 50
+baseline_time_s=0.025
+limited_time_s=13.784
+baseline_wbytes_before=0
+baseline_wbytes_after=4194304
+limited_wbytes_before=4194304
+limited_wbytes_after=8388608
+old_io_max=
+old_io_weight=default 100

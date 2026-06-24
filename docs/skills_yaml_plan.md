@@ -1,6 +1,6 @@
 # EulerPilot Skills 与 YAML 能力规划 v2.1
 
-更新时间：`2026-06-22`
+更新时间：`2026-06-24`
 
 ## 1. 当前判断
 
@@ -473,7 +473,7 @@ security_policy:
 
 ## 8. ResourceControlSkill YAML
 
-Resource Control 不能只保留 `cpu.weight`。当前 `resource_control` 已完成 CPU + Memory 自动闭环，默认配置位于 `configs/skills.yaml`：
+Resource Control 不能只保留 `cpu.weight`。当前 `resource_control` 已完成 CPU + Memory + IO 自动闭环，默认配置位于 `configs/skills.yaml`：
 
 ```yaml
 - name: resource_control
@@ -495,36 +495,52 @@ Resource Control 不能只保留 `cpu.weight`。当前 `resource_control` 已完
           enabled: true
         reclaim:
           enabled: false
+      io:
+        enabled: true
+        device: auto
+        weight:
+          enabled: true
+        max:
+          enabled: true
     profiles:
       latency:
         cpu_max: max
         memory_low: '67108864'
         memory_high: max
         memory_max: max
+        io_weight: 'default 100'
+        io_max: ''
       batch:
         cpu_max: max
         memory_low: '0'
         memory_high: max
         memory_max: max
+        io_weight: 'default 100'
+        io_max: ''
       background:
         normal:
           cpu_max: max
           memory_high: max
+          io_weight: 'default 100'
+          io_max: ''
         pressure:
           cpu_max: '20000 100000'
           memory_high: '134217728'
           memory_low: '0'
           memory_max: max
           memory_reclaim: ''
+          io_weight: 'default 50'
+          io_max: 'auto rbps=max wbps=1048576'
 ```
 
 已落地行为：
 
 - `GateState::Active/Cooldown` 或非 `normal_profile` 时进入 pressure 模式。
 - `latency` 组默认只做 `memory.low` 保护，不设置 CPU quota。
-- `background` 组在 pressure 模式下写 `cpu.max` 与 `memory.high`。
+- `background` 组在 pressure 模式下写 `cpu.max`、`memory.high`、`io.weight` 与 `io.max`。
 - `memory.reclaim` 已有配置开关，默认关闭，避免 one-shot 动作在每个周期重复触发。
-- 121/122 已通过 `tests/integration/test_resource_control.sh`，结果目录为 `results/resource_control/integration-20260624-150312` 与 `results/resource_control/integration-20260624-151241`。
+- `controllers.io.device=auto` 会解析根文件系统所在块设备；121/122 当前均解析为 `253:0`。
+- 121/122 已通过 `tests/integration/test_resource_control.sh` 和 `tests/integration/test_resource_control_io.sh`，最新结果目录为 `results/resource_control/integration-20260624-160317`、`results/resource_control/integration-20260624-160349`、`results/resource_control/io-20260624-160008` 与 `results/resource_control/io-20260624-160208`。
 
 写入 cgroup 控制器时必须：
 
@@ -539,7 +555,6 @@ Resource Control 不能只保留 `cpu.weight`。当前 `resource_control` 已完
 
 后续扩展：
 
-- 增加 IO controller：`io.weight`、`io.max`。
 - 将 `target_ref` 接入 `TargetResolver`，支持 container/Pod target 后再落 cgroup。
 - 增加 CPU quota 效果指标：`cpu.stat usage_usec`、`nr_throttled/throttled_usec` 对照。
 
@@ -652,7 +667,7 @@ policy_engine:
 5. 实现 ActionJournal 写入与恢复。
 6. 将 `network_policy_demo` 包装或迁移为 `network_policy`。
 7. 将 `security_policy_demo` 包装或迁移为 `security_policy`。（已完成正式注册名、最小 audit/enforce 语义、YAML 驱动多目标 target_map、file/exec/socket/ptrace/capable ringbuf hit 事件、规则级 LSM blocked 事件、显式 cgroup scope、PID target 自动解析、container_id target cgroup 解析、runtime container name 解析、k8s pod name 解析、`lsm_socket_connect` scoped IPv4 endpoint enforce、`lsm_bprm_check_security` scoped exec_prefix enforce、`lsm_file_open` scoped file_access write enforce、`lsm_file_open` scoped path_prefix read-only directory enforce、`lsm_ptrace_traceme` scoped enforce、`lsm_capable` scoped capability enforce、`burst_execve` 用户态异常规则和四类 syscall tracepoint 观测）
-8. 扩展 `resource_control` 的 CPU/Memory/IO 配置模型。
+8. 扩展 `resource_control` 的 CPU/Memory/IO 配置模型。（已完成 CPU+Memory+IO 事务化写入、审计、journal、rollback 和 121/122 集成测试）
 9. 增加 Policy Engine 联动配置。
 10. 将最终质量门禁从 demo target 切换到正式 Skill target。
 

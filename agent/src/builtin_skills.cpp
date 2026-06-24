@@ -285,6 +285,10 @@ ResourceControlPolicy parse_resource_control_policy(const RuntimeConfig &runtime
     policy.memory_low_enabled = config_bool_or(spec, "controllers.memory.low.enabled", policy.memory_low_enabled);
     policy.memory_max_enabled = config_bool_or(spec, "controllers.memory.max.enabled", policy.memory_max_enabled);
     policy.memory_reclaim_enabled = config_bool_or(spec, "controllers.memory.reclaim.enabled", policy.memory_reclaim_enabled);
+    policy.io_enabled = config_bool_or(spec, "controllers.io.enabled", policy.io_enabled);
+    policy.io_weight_enabled = config_bool_or(spec, "controllers.io.weight.enabled", policy.io_weight_enabled);
+    policy.io_max_enabled = config_bool_or(spec, "controllers.io.max.enabled", policy.io_max_enabled);
+    policy.io_device = config_value_or(spec, "controllers.io.device", policy.io_device);
 
     policy.latency_cpu_max =
         config_value_or(spec, "profiles.latency.cpu_max",
@@ -329,6 +333,26 @@ ResourceControlPolicy parse_resource_control_policy(const RuntimeConfig &runtime
                         config_value_or(spec, "profiles.background.pressure.memory_max", policy.background_memory_max));
     policy.background_memory_reclaim_pressure =
         config_value_or(spec, "profiles.background.pressure.memory_reclaim", policy.background_memory_reclaim_pressure);
+    policy.latency_io_weight =
+        config_value_or(spec, "profiles.latency.io_weight",
+                        config_value_or(spec, "profiles.latency.pressure.io_weight", policy.latency_io_weight));
+    policy.latency_io_max =
+        config_value_or(spec, "profiles.latency.io_max",
+                        config_value_or(spec, "profiles.latency.pressure.io_max", policy.latency_io_max));
+    policy.batch_io_weight =
+        config_value_or(spec, "profiles.batch.io_weight",
+                        config_value_or(spec, "profiles.batch.pressure.io_weight", policy.batch_io_weight));
+    policy.batch_io_max =
+        config_value_or(spec, "profiles.batch.io_max",
+                        config_value_or(spec, "profiles.batch.pressure.io_max", policy.batch_io_max));
+    policy.background_io_weight_normal =
+        config_value_or(spec, "profiles.background.normal.io_weight", policy.background_io_weight_normal);
+    policy.background_io_weight_pressure =
+        config_value_or(spec, "profiles.background.pressure.io_weight", policy.background_io_weight_pressure);
+    policy.background_io_max_normal =
+        config_value_or(spec, "profiles.background.normal.io_max", policy.background_io_max_normal);
+    policy.background_io_max_pressure =
+        config_value_or(spec, "profiles.background.pressure.io_max", policy.background_io_max_pressure);
     return policy;
 }
 
@@ -752,6 +776,7 @@ public:
         snapshot.evidence["mode"] = policy_.mode;
         snapshot.evidence["memory"] = policy_.memory_enabled ? "enabled" : "disabled";
         snapshot.evidence["cpu_max"] = policy_.cpu_max_enabled ? "enabled" : "disabled";
+        snapshot.evidence["io"] = policy_.io_enabled ? "enabled" : "disabled";
         snapshot.evidence["reason"] = last_error_.empty() ? "ok" : last_error_;
         return snapshot;
     }
