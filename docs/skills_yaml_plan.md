@@ -418,8 +418,8 @@ Security 使用统一目标引用和 observe/audit/enforce 模式。
 
 - `audit` 模式 attach BPF LSM + `execve/openat/connect/ptrace` tracepoint，但通过 `policy_map.enforce=0` 允许目标文件访问和 demo 执行脚本运行，并通过 ringbuf 输出 `result=observed` 命中事件。
 - `audit` 事件当前覆盖 `event_hook=lsm_file_open`、`event_hook=lsm_bprm_check_security`、`event_hook=sys_enter_execve`、`event_hook=sys_enter_openat`、`event_hook=sys_enter_connect`、`event_hook=sys_enter_ptrace`；`anomaly_rules` 第一版已支持 `burst_execve`，用户态基于 `sys_enter_execve` 事件按 `threshold/window_ms` 聚合并输出 `operation=anomaly/result=observed`。
-- `enforce` 模式复用 `bpf/security_policy_demo.bpf.c`，在 `lsm/file_open` 上按 `target_map.file_path/file_prefix + file_access` 拒绝文件打开，在 `lsm/bprm_check_security` 上拒绝任一 `target_map.exec_path` 或 `target_map.exec_prefix`，在 `lsm/socket_connect` 上拒绝任一 `target_map.connect_daddr/connect_dport`，在 `lsm/ptrace_traceme` 上拒绝 scope-only cgroup target 内的 `PTRACE_TRACEME`，在 `lsm/capable` 上拒绝 scoped cgroup target 内的指定 capability，在 `lsm/task_fix_setuid`、`lsm/task_fix_setgid`、`lsm/task_fix_setgroups`、`lsm/cred_prepare` 与 `lsm/cred_prepare` 上拒绝 scoped cgroup target 内的 credential 转换，并通过 ringbuf 输出 `result=blocked` 命中事件；LSM blocked 事件携带 BPF `target_index`，用户态映射回单条 YAML `rule_id/target_ref`；当 target 配置 `cgroup_path`、`type: pid`、`type: container_id`、`type: container` 或 `type: k8s_pod` 时，BPF 还要求当前进程 cgroup id 命中；四类 syscall 当前只做观测，不阻断。
-- `tests/integration/test_security_policy.sh` 已额外创建 `/tmp/eulerpilot-security-policy.*` 下两组动态目标，证明 YAML `path/exec_path` 能驱动多目标 BPF `target_map`，blocked 事件能定位到对应规则，且不会误阻断默认 demo 目标；同时创建临时 cgroup 验证带 `cgroup_path` 的目标只在目标 cgroup 内阻断，验证 `type: pid`、`type: container_id`、`type: container` 和 `type: k8s_pod` target 均可解析到 cgroup scope；并启动本地 TCP server 验证 `lsm_socket_connect` 能阻断目标 cgroup 内的 IPv4 endpoint，事件携带 `dst_ip/dst_port/protocol/cgroup_id`；另用 `exec_prefix` 验证可写目录前缀执行只在目标 cgroup 内被 `lsm_bprm_check_security` 阻断，事件携带 `exec_prefix/cgroup_id`；再用 `file_access: write` 验证目标 cgroup 内读打开成功、写打开失败，事件携带 `file_access/file_flags/cgroup_id`；用 `path_prefix + file_access: write` 验证只读目录保护，目标 cgroup 内目录前缀写打开失败、读打开成功，事件携带 `path_prefix/file_access/file_flags/cgroup_id`；用 scope-only cgroup target 验证 `lsm_ptrace_traceme` 只阻断目标 cgroup 内 `PTRACE_TRACEME`，事件携带 `path=ptrace_traceme/cgroup_id`；用 `lsm_capable` 验证目标 cgroup 内 `CAP_SYS_ADMIN` 被拒绝且 scope 外允许，事件携带 `capability/cgroup_id`；再用 `lsm_task_fix_setuid`、`lsm_task_fix_setgid`、`lsm_task_fix_setgroups` 和 `lsm_cred_prepare` 验证目标 cgroup 内 setuid/setgid/setgroups credential 转换被拒绝且 scope 外允许，事件携带 `uid/euid/suid/setuid_flags/cgroup_id`、`gid/egid/sgid/setgid_flags/cgroup_id` 与 `group_count/old_group_count/cgroup_id`；并用 `burst_execve` 验证可配置异常规则能够生成 `security_policy_events.anomaly-execve.jsonl`。
+- `enforce` 模式复用 `bpf/security_policy_demo.bpf.c`，在 `lsm/file_open` 上按 `target_map.file_path/file_prefix + file_access` 拒绝文件打开，在 `lsm/bprm_check_security` 上拒绝任一 `target_map.exec_path` 或 `target_map.exec_prefix`，在 `lsm/socket_connect` 上拒绝任一 `target_map.connect_daddr/connect_dport`，在 `lsm/ptrace_traceme` 上拒绝 scope-only cgroup target 内的 `PTRACE_TRACEME`，在 `lsm/capable` 上拒绝 scoped cgroup target 内的指定 capability，在 `lsm/task_fix_setuid`、`lsm/task_fix_setgid`、`lsm/task_fix_setgroups` 与 `lsm/cred_prepare` 上拒绝 scoped cgroup target 内的 credential 相关动作，并通过 ringbuf 输出 `result=blocked` 命中事件；LSM blocked 事件携带 BPF `target_index`，用户态映射回单条 YAML `rule_id/target_ref`；当 target 配置 `cgroup_path`、`type: pid`、`type: container_id`、`type: container` 或 `type: k8s_pod` 时，BPF 还要求当前进程 cgroup id 命中；四类 syscall 当前只做观测，不阻断。
+- `tests/integration/test_security_policy.sh` 已额外创建 `/tmp/eulerpilot-security-policy.*` 下两组动态目标，证明 YAML `path/exec_path` 能驱动多目标 BPF `target_map`，blocked 事件能定位到对应规则，且不会误阻断默认 demo 目标；同时创建临时 cgroup 验证带 `cgroup_path` 的目标只在目标 cgroup 内阻断，验证 `type: pid`、`type: container_id`、`type: container` 和 `type: k8s_pod` target 均可解析到 cgroup scope；并启动本地 TCP server 验证 `lsm_socket_connect` 能阻断目标 cgroup 内的 IPv4 endpoint，事件携带 `dst_ip/dst_port/protocol/cgroup_id`；另用 `exec_prefix` 验证可写目录前缀执行只在目标 cgroup 内被 `lsm_bprm_check_security` 阻断，事件携带 `exec_prefix/cgroup_id`；再用 `file_access: write` 验证目标 cgroup 内读打开成功、写打开失败，事件携带 `file_access/file_flags/cgroup_id`；用 `path_prefix + file_access: write` 验证只读目录保护，目标 cgroup 内目录前缀写打开失败、读打开成功，事件携带 `path_prefix/file_access/file_flags/cgroup_id`；用 scope-only cgroup target 验证 `lsm_ptrace_traceme` 只阻断目标 cgroup 内 `PTRACE_TRACEME`，事件携带 `path=ptrace_traceme/cgroup_id`；用 `lsm_capable` 验证目标 cgroup 内 `CAP_SYS_ADMIN` 被拒绝且 scope 外允许，事件携带 `capability/cgroup_id`；再用 `lsm_task_fix_setuid`、`lsm_task_fix_setgid`、`lsm_task_fix_setgroups` 和 `lsm_cred_prepare` 验证目标 cgroup 内 credential 动作被拒绝且 scope 外允许，事件分别携带 `uid/euid/suid/setuid_flags/cgroup_id`、`gid/egid/sgid/setgid_flags/cgroup_id`、`group_count/old_group_count/cgroup_id` 与 `uid/euid/suid/gid/egid/sgid/group_count/old_group_count/cred_gfp/cgroup_id`；并用 `burst_execve` 验证可配置异常规则能够生成 `security_policy_events.anomaly-execve.jsonl`。
 - `security_policy_demo` 保留为兼容回归入口，最终答辩口径应优先使用正式 `security_policy`。
 
 完整目标态仍按下面结构扩展：
@@ -473,46 +473,58 @@ security_policy:
 
 ## 8. ResourceControlSkill YAML
 
-Resource Control 不能只保留 `cpu.weight`。
+Resource Control 不能只保留 `cpu.weight`。当前 `resource_control` 已完成 CPU + Memory 自动闭环，默认配置位于 `configs/skills.yaml`：
 
 ```yaml
-resource_control:
+- name: resource_control
+  kind: runtime
   enabled: true
-  mode: audit
-  target_ref: web_pod
-
-  controllers:
-    cpu:
-      enabled: true
-      weight:
-        min: 100
-        max: 10000
-      max:
+  config:
+    mode: enforce
+    controllers:
+      cpu:
+        max:
+          enabled: true
+      memory:
         enabled: true
-
-    memory:
-      enabled: true
-      high:
-        enabled: true
-      low:
-        enabled: true
-      max:
-        enabled: false
-      reclaim:
-        enabled: auto
-
-    io:
-      enabled: true
-      weight:
-        enabled: true
-      max:
-        enabled: true
-
-  policy:
-    pressure_window_ms: 5000
-    cooldown_ms: 15000
-    max_actions_per_minute: 4
+        high:
+          enabled: true
+        low:
+          enabled: true
+        max:
+          enabled: true
+        reclaim:
+          enabled: false
+    profiles:
+      latency:
+        cpu_max: max
+        memory_low: '67108864'
+        memory_high: max
+        memory_max: max
+      batch:
+        cpu_max: max
+        memory_low: '0'
+        memory_high: max
+        memory_max: max
+      background:
+        normal:
+          cpu_max: max
+          memory_high: max
+        pressure:
+          cpu_max: '20000 100000'
+          memory_high: '134217728'
+          memory_low: '0'
+          memory_max: max
+          memory_reclaim: ''
 ```
+
+已落地行为：
+
+- `GateState::Active/Cooldown` 或非 `normal_profile` 时进入 pressure 模式。
+- `latency` 组默认只做 `memory.low` 保护，不设置 CPU quota。
+- `background` 组在 pressure 模式下写 `cpu.max` 与 `memory.high`。
+- `memory.reclaim` 已有配置开关，默认关闭，避免 one-shot 动作在每个周期重复触发。
+- 121/122 已通过 `tests/integration/test_resource_control.sh`，结果目录为 `results/resource_control/integration-20260624-150312` 与 `results/resource_control/integration-20260624-151241`。
 
 写入 cgroup 控制器时必须：
 
@@ -524,6 +536,12 @@ resource_control:
   -> 记录 ActionJournal
   -> 失败回滚
 ```
+
+后续扩展：
+
+- 增加 IO controller：`io.weight`、`io.max`。
+- 将 `target_ref` 接入 `TargetResolver`，支持 container/Pod target 后再落 cgroup。
+- 增加 CPU quota 效果指标：`cpu.stat usage_usec`、`nr_throttled/throttled_usec` 对照。
 
 ## 9. CPU Scheduling YAML
 

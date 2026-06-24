@@ -13,6 +13,7 @@
 ## 当前完成状态
 
 - `skills.yaml` 已升级到 `schema_version: 2`，当前 Agent 仍兼容旧 `schema_version: 1` flat config。
+- `resource_control` 默认启用，已配置 CPU + Memory 控制器与 `latency/batch/background` profile；写入只作用于 `/sys/fs/cgroup/eulerpilot/*` 实验 cgroup。
 - `skills.yaml` 中 `network_policy`、`network_qos`、`network_xdp`、`security_policy`、`network_policy_demo` 和 `security_policy_demo` 默认均为 disabled。
 - `network_qos` 默认目标为 lab veth `ep-veth-qos0`，不能作为真实业务网卡默认配置使用。
 - `network_xdp` 默认目标为 lab veth `ep-veth-xdp0`，包含 ICMP drop 与 TCP:19092 drop 两条 lab 规则，只能用于 isolated veth/netns 或后续 lab Pod veth。
@@ -25,9 +26,10 @@
   - `network_qos` 的 `tc_egress`
   - `network_xdp` 的 `xdp`
   - `security_policy` 的 `lsm_file_open` path target 最小闭环
+  - `resource_control` 的 `controllers.cpu.max`、`controllers.memory.high/low/max/reclaim` 与 `profiles.latency/batch/background`
 - 后续还需要补：
   - `security_policy` 的动态 path/process/container target map 和 syscall tracing 规则
-  - `resource_control.controllers`
+  - `resource_control` 的 IO controller 与 container/Pod target 解析
   - `policy_engine.rules`
 
 ## 维护规则

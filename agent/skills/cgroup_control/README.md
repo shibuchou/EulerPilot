@@ -1,16 +1,41 @@
-# cgroup_control Skill
+# cgroup_control / resource_control Skill
 
-职责：使用 cgroup v2 cpu.weight、cpu.max、cpuset 等能力提供资源管控兜底路径。
+职责：使用 cgroup v2 为 EulerPilot 提供 CPU + Memory 资源管控执行路径。
 
-当前状态：
+## 当前状态
 
-- `PSI` 与 unified `cgroup v2` 已在官方 openEuler 24.03 LTS SP3 内核上验证可用。
-- `cgroup_control` 已升级为第一阶段主执行路径，而不只是兜底路径。
-- Agent 已能基于第一版 workload 分类结果执行 profile 级 `cpu.weight` 调整和 `cgroup.procs` 分配。
-- `cpuset` 隔离能力已预留到执行设计中，但当前主实验先以 `cpu.weight + cgroup.procs` 为稳定路径。
+- `resource_control` 是正式 Skill 名称；`cgroup_control` 作为目录名保留历史语义。
+- 已支持 `/sys/fs/cgroup/eulerpilot/{latency,batch,background}` 三组实验 cgroup。
+- 已支持 `cpu.weight`、`cpu.max`、`cpuset.cpus`、`cpuset.mems`。
+- 已支持 `memory.high`、`memory.low`、`memory.max`。
+- `memory.reclaim` 预留为 one-shot 动作，默认关闭。
+- 写控制器前会读取旧值并校验，写后复读验证，动作进入 `AuditBus` 和 `ActionJournal`。
+- Agent `stop/rollback` 会恢复本进程生命周期内修改过的旧值。
 
-第一阶段：
+## 安全边界
 
-- 实现 `mixed_profile` 下后台 workload 限制和 rollback。
-- 维护 `/sys/fs/cgroup/eulerpilot/{latency,batch,background}` 层级。
-- 通过 `scripts/setup_cgroup_v2.sh` 和 `scripts/rollback.sh` 提供初始化与恢复。
+- 仅操作 EulerPilot 实验 cgroup，不写任意系统 cgroup。
+- `latency` 组默认使用 `memory.low` 保护，不默认设置 CPU quota。
+- `background` 组在 pressure 模式下使用 `cpu.max` 与 `memory.high` 限制干扰。
+- `memory.max` 默认保持 `max`，避免测试进程被误杀。
+
+## 关键文件
+
+- `agent/src/executors.cpp`：cgroup v2 执行与事务化写入。
+- `agent/src/builtin_skills.cpp`：`resource_control` YAML 配置解析与 gate pressure 模式接入。
+- `configs/skills.yaml`：默认 CPU/Memory 策略。
+- `scripts/setup_cgroup_v2.sh`：初始化 CPU/cpuset/memory controller 与实验 cgroup。
+- `scripts/rollback.sh`：恢复 CPU/Memory 控制器默认值并清理实验 cgroup。
+- `tests/integration/test_resource_control.sh`：CPU+Memory 自动闭环集成测试。
+- `docs/resource_control_skill.md`：设计、配置和验收说明。
+
+## 验收
+
+最新通过结果：
+
+- `results/resource_control/integration-20260624-150312/summary.txt`
+- `results/resource_control/integration-20260624-150312/resource_control_events.jsonl`
+- `results/resource_control/integration-20260624-151241/summary.txt`
+- `results/resource_control/integration-20260624-151241/resource_control_events.jsonl`
+
+测试验证 `background` 组 pressure 策略写入 `cpu.max=10000 100000`、`memory.high=1048576`，触发 `memory.events high` 计数增长，并在 Agent 退出后恢复旧值。121 和 122 均已通过。

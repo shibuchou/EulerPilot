@@ -10,6 +10,8 @@
 
 阶段 C：Security Agent 正式化，状态：`BPF LSM + socket_connect + bprm exec_prefix + file_access/path_prefix + ptrace_traceme + capable + task_fix_setuid + task_fix_setgid + task_fix_setgroups + cred_prepare + syscall tracing + runtime anomaly + 多目标 target_map + 规则级事件标识 + cgroup/pid/container/runtime/pod scope 最小闭环已完成`
 
+阶段 D：Resource Control，状态：`CPU + Memory 自动闭环 121/122 均已完成`
+
 目标：
 
 - 将 `network_policy_demo` 升级为正式 `network_policy` Skill。
@@ -17,6 +19,7 @@
 - 再补 TC QoS 和 isolated-veth XDP，并继续扩展 Benchmark、多规则和 Pod veth。
 - `TargetResolver` 已从 netdev 与 `k8s_pod` 诊断入口推进到 container name/ID、Pod UID、runtime PID、netns 和 host veth/ifindex 真实解析；后续重点是把真实集群 lab Pod 接入 TC/XDP 演示。
 - 所有 Network 事件接入 `AuditBus`，所有挂载/卸载动作接入 `ActionJournal`。
+- Resource Control 已从 CPU-only 扩展到 CPU + Memory：pressure 模式下写 `cpu.max` 与 `memory.high`，latency 组使用 `memory.low` 保护，并通过事务化写入、`AuditBus`、`ActionJournal` 和 stop rollback 闭环验证。
 
 ## 阶段完成情况
 
@@ -25,7 +28,7 @@
 | A. 公共基础设施 | 已完成 | 远端 Git、文档规则、README 覆盖、公共控制面最小代码和现有质量门禁已完成；后续随正式 Skill 深度接入 | `AGENTS.md`、本文件、各目录 README、`docs/public_control_plane_design.md`、`reports/final_quality_gate_20260618_control_plane.log` |
 | B. Network Policy | 收尾 / container + Pod veth 真实解析预备已完成 | 正式 `network_policy` 注册名已落地；connect4 audit/enforce 已完成；TC QoS 最小闭环与速率误差 Benchmark 已完成；isolated-veth XDP 多规则闭环已完成；schema v2 `targets + rules + target_ref` 已落地；`TargetResolver` 已支持 netdev、container name/ID、Pod UID、runtime container ID/PID、netns path 和 host veth/ifindex 解析；`network_qos` 与 `network_xdp` 已可接受 `type: container` / `type: k8s_pod` target 并解析成 host veth ifname；下一步在真实 Kubernetes lab Pod 上跑 TC/XDP 演示 | `docs/network_policy_skill.md`、`docs/network_pod_veth_target.md`、`tests/integration/test_network_policy.sh`、`tests/integration/test_network_qos_tc.sh`、`tests/integration/test_network_xdp.sh`、`tests/integration/test_target_resolver.sh`、`tests/benchmark/test_network_qos_rate.sh` |
 | C. Security Agent | 九类 LSM + 四类 syscall tracing + runtime anomaly + 多目标 target_map + 规则级事件标识 + cgroup/pid/container/runtime/pod scope 最小闭环已完成 | 正式 `security_policy` 注册名已落地；YAML v2 target/rule、最多 8 项 BPF `target_map`、audit BPF attach 不阻断、enforce BPF LSM blocked hit、`lsm_socket_connect`、`lsm_bprm_check_security` exec_prefix、`lsm_file_open` file_access/path_prefix、`lsm_ptrace_traceme`、`lsm_capable`、`lsm_task_fix_setuid`、`lsm_task_fix_setgid`、`lsm_task_fix_setgroups`、`lsm_cred_prepare`、`burst_execve` 用户态异常规则、规则级事件、显式 cgroup/PID/container_id/runtime container/k8s_pod scope 和 rollback 无残留已在 121/122 通过；下一步转向 cred_transfer/cred_alloc_blank 等更多 cred 生命周期规则、更多异常行为规则和联动处置 | `docs/security_policy_skill.md`、`agent/skills/security_policy/README.md`、`tests/integration/test_security_policy.sh`、`demo/security_policy_demo/README.md` |
-| D. Resource Control | 未开始 | 需要扩展到 CPU + Memory 自动闭环，IO 可演示可回滚 | `docs/next_phase_plan_v2_1.md` |
+| D. Resource Control | CPU + Memory 自动闭环 121/122 均已完成 | 正式 `resource_control` 已读取 YAML v2 `controllers + profiles`；cgroup v2 后端已支持 `cpu.weight/cpu.max/cpuset` 与 `memory.high/memory.low/memory.max`；写入流程包含旧值读取、值校验、写入、复读验证、`AuditBus` 事件、`ActionJournal` 记录和 Agent stop rollback；121/122 集成测试已验证 background pressure `cpu.max=10000 100000`、`memory.high=1048576`、`memory.events high` 增长和旧值恢复；IO controller 待补 | `docs/resource_control_skill.md`、`tests/integration/test_resource_control.sh`、`results/resource_control/integration-20260624-150312`、`results/resource_control/integration-20260624-151241` |
 | E. SP4/sched_ext 复核 | 未开始 | 等待 SP4/123 环境 | `docs/next_phase_plan_v2_1.md` |
 | F. Kubernetes 与跨 Agent 联动 | 未开始 | 等待 Network/Security/Resource 正式 Skill | `docs/next_phase_plan_v2_1.md` |
 | G. Benchmark 与冻结材料 | 未开始 | 等待正式能力完成 | `docs/next_phase_plan_v2_1.md` |
@@ -96,7 +99,7 @@
   - Agent 退出后 `/sys/fs/bpf/eulerpilot_network_policy_link` 和 cgroup BPF attachment 无残留。
 - 121 最新集成测试证据目录：`results/network_policy/integration-20260619-142347/`。
 - 122 最新集成测试证据目录：`results/network_policy/integration-20260619-122352/`。
-- 121 最新完整质量门禁已通过：`reports/final_quality_gate_20260624_security_cred_prepare.log`。
+- 121 最新完整质量门禁已通过：`reports/final_quality_gate_20260624_resource_control.log`。
 
 ### YAML v2 证据
 
@@ -160,7 +163,7 @@
   - Agent 退出后无 XDP attachment 残留，连通性恢复。
 - 121 最新 XDP 多规则集成测试证据目录：`results/network_policy/xdp-20260620-183031/`。
 - 122 最新 XDP 多规则集成测试证据目录：`results/network_policy/xdp-20260620-184212/`。
-- 121 最新完整质量门禁已通过：`reports/final_quality_gate_20260624_security_cred_prepare.log`，17/17 P0、100 轮 Agent smoke 和 5 轮 doctor 均通过。
+- 121 最新完整质量门禁已通过：`reports/final_quality_gate_20260624_resource_control.log`，17/17 P0、100 轮 Agent smoke 和 5 轮 doctor 均通过。
 
 ### TargetResolver / container + Pod veth 预备证据
 
@@ -224,8 +227,18 @@
 - 121 最新正式 `security_policy` scoped credential/cred_prepare LSM 集成测试证据目录：`results/security_policy/integration-20260624-114838/`。
 - 122 最新正式 `security_policy` scoped credential/cred_prepare LSM 集成测试证据目录：`results/security_policy/integration-20260624-115440/`。
 - audit 模式证据：目标文件和 demo 执行脚本保持可访问，`security_policy_events.audit.jsonl` 包含 `operation=hit`、`result=observed`、`enforce=0`，并覆盖 `event_hook=lsm_file_open/lsm_bprm_check_security/sys_enter_execve/sys_enter_openat/sys_enter_connect/sys_enter_ptrace`；异常证据见 `security_policy_events.anomaly-execve.jsonl`，包含 `operation=anomaly`、`rule_id=burst_execve`、`event_hook=sys_enter_execve`、`threshold/window_ms/hit_count`。
-- enforce 模式证据：目标文件和 demo 执行脚本被 BPF LSM 拒绝，`security_policy_events.enforce.jsonl` 包含 `operation=hit`、`result=blocked`、`enforce=1`；动态多目标 blocked 事件会携带单条 `rule_id/target_ref` 和 `target_index`；cgroup scoped、PID scoped、container_id scoped、runtime container scoped 与 k8s pod scoped 事件会携带 `cgroup_id/cgroup_path`，且 scope 外访问保持成功；`security_policy_events.socket.jsonl` 包含 `event_hook=lsm_socket_connect`、`dst_ip=127.0.0.1`、`dst_port`、`protocol=tcp` 和 `result=blocked`；`security_policy_events.exec-prefix.jsonl` 包含 `event_hook=lsm_bprm_check_security`、形如 `/tmp/eulerpilot-security-policy.<suffix>/` 的 `exec_prefix`、`cgroup_id` 和 `result=blocked`；`security_policy_events.file-access.jsonl` 包含 `event_hook=lsm_file_open`、`file_access=write`、`file_flags`、`cgroup_id` 和 `result=blocked`，同时测试脚本验证同一目标在 scoped cgroup 内读打开成功、写打开失败；`security_policy_events.readonly-dir.jsonl` 包含 `event_hook=lsm_file_open`、`path_prefix`、`file_access=write`、`file_flags`、`cgroup_id`、`rule_id=deny_readonly_dir_write`、`target_ref=readonly_dir` 和 `result=blocked`，同时测试脚本验证目录前缀下文件在 scoped cgroup 内读打开成功、写打开失败；`security_policy_events.ptrace.jsonl` 包含 `event_hook=lsm_ptrace_traceme`、`path=ptrace_traceme`、`cgroup_id`、`rule_id=deny_ptrace_traceme`、`target_ref=ptrace_scope` 和 `result=blocked`；`security_policy_events.capable.jsonl` 包含 `event_hook=lsm_capable`、`capability=CAP_SYS_ADMIN`、`cgroup_id`、`rule_id=deny_cap_sys_admin`、`target_ref=capable_scope` 和 `result=blocked`；`security_policy_events.setuid.jsonl` 包含 `event_hook=lsm_task_fix_setuid`、`uid/euid/suid/setuid_flags`、`cgroup_id`、`rule_id=deny_setuid_transition`、`target_ref=setuid_scope` 和 `result=blocked`；`security_policy_events.setgid.jsonl` 包含 `event_hook=lsm_task_fix_setgid`、`gid/egid/sgid/setgid_flags`、`cgroup_id`、`rule_id=deny_setgid_transition`、`target_ref=setgid_scope` 和 `result=blocked`；`security_policy_events.setgroups.jsonl` 包含 `event_hook=lsm_task_fix_setgroups`/`event_hook=lsm_cred_prepare`、`group_count/old_group_count`、`cred_gfp`、`cgroup_id`、`rule_id=deny_setgroups_transition`、`target_ref=setgroups_scope` 和 `result=blocked`；Agent 退出后恢复可访问，无 BPF link/pin 残留。
+- enforce 模式证据：目标文件和 demo 执行脚本被 BPF LSM 拒绝，`security_policy_events.enforce.jsonl` 包含 `operation=hit`、`result=blocked`、`enforce=1`；动态多目标 blocked 事件会携带单条 `rule_id/target_ref` 和 `target_index`；cgroup scoped、PID scoped、container_id scoped、runtime container scoped 与 k8s pod scoped 事件会携带 `cgroup_id/cgroup_path`，且 scope 外访问保持成功；`security_policy_events.socket.jsonl` 包含 `event_hook=lsm_socket_connect`、`dst_ip=127.0.0.1`、`dst_port`、`protocol=tcp` 和 `result=blocked`；`security_policy_events.exec-prefix.jsonl` 包含 `event_hook=lsm_bprm_check_security`、形如 `/tmp/eulerpilot-security-policy.<suffix>/` 的 `exec_prefix`、`cgroup_id` 和 `result=blocked`；`security_policy_events.file-access.jsonl` 包含 `event_hook=lsm_file_open`、`file_access=write`、`file_flags`、`cgroup_id` 和 `result=blocked`，同时测试脚本验证同一目标在 scoped cgroup 内读打开成功、写打开失败；`security_policy_events.readonly-dir.jsonl` 包含 `event_hook=lsm_file_open`、`path_prefix`、`file_access=write`、`file_flags`、`cgroup_id`、`rule_id=deny_readonly_dir_write`、`target_ref=readonly_dir` 和 `result=blocked`，同时测试脚本验证目录前缀下文件在 scoped cgroup 内读打开成功、写打开失败；`security_policy_events.ptrace.jsonl` 包含 `event_hook=lsm_ptrace_traceme`、`path=ptrace_traceme`、`cgroup_id`、`rule_id=deny_ptrace_traceme`、`target_ref=ptrace_scope` 和 `result=blocked`；`security_policy_events.capable.jsonl` 包含 `event_hook=lsm_capable`、`capability=CAP_SYS_ADMIN`、`cgroup_id`、`rule_id=deny_cap_sys_admin`、`target_ref=capable_scope` 和 `result=blocked`；`security_policy_events.setuid.jsonl` 包含 `event_hook=lsm_task_fix_setuid`、`uid/euid/suid/setuid_flags`、`cgroup_id`、`rule_id=deny_setuid_transition`、`target_ref=setuid_scope` 和 `result=blocked`；`security_policy_events.setgid.jsonl` 包含 `event_hook=lsm_task_fix_setgid`、`gid/egid/sgid/setgid_flags`、`cgroup_id`、`rule_id=deny_setgid_transition`、`target_ref=setgid_scope` 和 `result=blocked`；`security_policy_events.setgroups.jsonl` 包含 `event_hook=lsm_task_fix_setgroups`、`group_count/old_group_count`、`cgroup_id`、`rule_id=deny_setgroups_transition`、`target_ref=setgroups_scope` 和 `result=blocked`；`security_policy_events.cred-prepare.jsonl` 包含 `event_hook=lsm_cred_prepare`、`uid/euid/suid/gid/egid/sgid/group_count/old_group_count/cred_gfp`、`cgroup_id`、`rule_id=deny_cred_prepare_transition`、`target_ref=cred_prepare_scope` 和 `result=blocked`；Agent 退出后恢复可访问，无 BPF link/pin 残留。
 - `scripts/cleanup_security_policy_demo.sh` 已修复无残留时因 `grep`/`pipefail` 返回非零的问题，cleanup 空跑现在正常返回 0。
+
+## 阶段 D 当前任务收口
+
+| 编号 | 任务 | 状态 | 说明 |
+|------|------|------|------|
+| D1 | ResourceControlPolicy 配置模型 | 121 已完成 | `resource_control.config` 已支持 `mode`、CPU/Mem controller 开关、latency/batch/background profile |
+| D2 | CPU+Memory 事务化执行 | 121 已完成 | `agent/src/executors.cpp` 已支持 `cpu.max`、`memory.high/low/max`，每次写入记录旧值、复读验证、写审计和 journal，stop 时恢复旧值 |
+| D3 | cgroup v2 初始化与回滚脚本 | 121 已完成 | `scripts/setup_cgroup_v2.sh` 尝试开启 `cpu/cpuset/memory`；`scripts/rollback.sh` 恢复 CPU/Mem 默认值 |
+| D4 | 集成测试 | 121/122 已完成 | `tests/integration/test_resource_control.sh` 结果目录：121 `results/resource_control/integration-20260624-150312`；122 `results/resource_control/integration-20260624-151241` |
+| D5 | IO controller | 待补 | 后续扩展 `io.weight/io.max`，要求独立可演示、可回滚 |
 
 ## 阶段 A 后续随阶段接入项
 

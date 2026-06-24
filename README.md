@@ -19,7 +19,7 @@ eBPF Observer
 
 ## 当前状态
 
-截至 `2026-06-23`，项目已经完成：
+截至 `2026-06-24`，项目已经完成：
 
 - `SP3 + cgroup v2` 主闭环
 - `OLK-6.6 + sched_ext` 正式对照线
@@ -44,6 +44,12 @@ eBPF Observer
   - runtime anomaly：`anomaly_rules` 已支持 `burst_execve` 速率规则，基于 `sys_enter_execve` ringbuf 事件在用户态聚合并输出 `operation=anomaly`
   - target scope：path、path_prefix、file_access、exec_path、exec_prefix、socket endpoint、ptrace/capability/setuid/setgid/setgroups/cred_prepare cgroup scope、显式 cgroup、PID 自动解析、container_id cgroup tree 解析、container runtime name 解析、Kubernetes Pod 名称解析
   - 121/122 集成测试和 121 质量门禁通过
+- Resource Control 阶段 D CPU+Memory 闭环：
+  - `resource_control`：YAML v2 `controllers + profiles` 配置已接入
+  - CPU：`cpu.weight`、`cpu.max`、`cpuset.cpus`、`cpuset.mems`
+  - Memory：`memory.high`、`memory.low`、`memory.max`
+  - 执行动作：读取旧值、校验、写入、复读验证、`AuditBus` 事件、`ActionJournal` 记录、Agent 退出恢复旧值
+  - 121/122 集成测试通过，已验证 background pressure 下 `cpu.max=10000 100000`、`memory.high=1048576`、`memory.events high` 计数增长和 rollback 恢复
 
 当前最重要的候选结果目录为：
 
@@ -51,6 +57,9 @@ eBPF Observer
 - Nginx：`/root/EulerPilot/results/final/nginx-scx-compare-20260612-194018`
 - Security scoped credential/cred_prepare 121：`/root/EulerPilot/results/security_policy/integration-20260624-114838`
 - Security scoped credential/cred_prepare 122：`/root/EulerPilot/results/security_policy/integration-20260624-115440`
+- Resource Control CPU+Memory 121：`/root/EulerPilot/results/resource_control/integration-20260624-150312`
+- Resource Control CPU+Memory 122：`/root/EulerPilot/results/resource_control/integration-20260624-151241`
+- 121 最新质量门禁：`/root/EulerPilot/reports/final_quality_gate_20260624_resource_control.log`
 
 当前图表目录为：
 
@@ -77,6 +86,7 @@ eBPF Observer
 - Network TC QoS 速率 Benchmark：`/root/EulerPilot/tests/benchmark/test_network_qos_rate.sh`
 - Network XDP 集成测试：`/root/EulerPilot/tests/integration/test_network_xdp.sh`
 - Security Policy 集成测试：`/root/EulerPilot/tests/integration/test_security_policy.sh`
+- Resource Control 集成测试：`/root/EulerPilot/tests/integration/test_resource_control.sh`
 - 质量门禁：`/root/EulerPilot/scripts/final_quality_gate.sh`
 
 ### 最终候选结果
@@ -105,9 +115,10 @@ eBPF Observer
 3. `/root/EulerPilot/docs/progress_status.md`
 4. `/root/EulerPilot/docs/network_policy_skill.md`
 5. `/root/EulerPilot/docs/security_policy_skill.md`
-6. `/root/EulerPilot/docs/skills_yaml_plan.md`
-7. `/root/EulerPilot/docs/final_report_submission.md`
-8. `/root/EulerPilot/docs/design_proposal.md`
+6. `/root/EulerPilot/docs/resource_control_skill.md`
+7. `/root/EulerPilot/docs/skills_yaml_plan.md`
+8. `/root/EulerPilot/docs/final_report_submission.md`
+9. `/root/EulerPilot/docs/design_proposal.md`
 
 如果要继续实现下一阶段功能，以 `docs/next_phase_plan_v2_1.md` 为当前执行口径；`docs/next_phase_plan_v2.md` 仅作为历史版本保留。
 

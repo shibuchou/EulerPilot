@@ -3,7 +3,43 @@ skills:
 - name: resource_control
   kind: runtime
   enabled: true
-  config: {}
+  config:
+    mode: enforce
+    controllers:
+      cpu:
+        max:
+          enabled: true
+      memory:
+        enabled: true
+        high:
+          enabled: true
+        low:
+          enabled: true
+        max:
+          enabled: true
+        reclaim:
+          enabled: false
+    profiles:
+      latency:
+        cpu_max: max
+        memory_low: '67108864'
+        memory_high: max
+        memory_max: max
+      batch:
+        cpu_max: max
+        memory_low: '0'
+        memory_high: max
+        memory_max: max
+      background:
+        normal:
+          cpu_max: max
+          memory_high: max
+        pressure:
+          cpu_max: '20000 100000'
+          memory_high: '134217728'
+          memory_low: '0'
+          memory_max: max
+          memory_reclaim: ''
 - name: psi_gate
   kind: runtime
   enabled: true

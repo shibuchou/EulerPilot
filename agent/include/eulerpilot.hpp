@@ -78,7 +78,13 @@ struct ExecutionAction {
     std::string target_group = "none";
     std::string target_profile = "normal_profile";
     int cpu_weight = 100;
+    std::string cpu_max = "max";
     std::string cpuset_cpus = "";
+    std::string memory_high = "max";
+    std::string memory_low = "0";
+    std::string memory_max = "max";
+    std::string memory_reclaim = "";
+    std::string resource_mode = "normal";
     std::string reason = "no-action";
 };
 

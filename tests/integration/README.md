@@ -9,8 +9,8 @@
 - `test_network_qos_tc.sh`：验证 `network_qos` 子能力和 schema v2 `netdev target_ref`，创建专用 netns/veth，确认 audit 不改 TC，enforce 会安装 TC clsact + TBF，流量命中 BPF stats，退出后无 qdisc 残留。脚本只使用 Python 标准库，不依赖 PyYAML。
 - `test_network_xdp.sh`：验证 `network_xdp` 子能力和 schema v2 `netdev target_ref`，创建专用 netns/veth，确认 audit 不挂 XDP，enforce 以 generic XDP drop ICMP 并命中 TCP:19092 规则，rollback 后 XDP detached 且连通性恢复。脚本只使用 Python 标准库，不依赖 PyYAML。
 - `test_security_policy.sh`：验证正式 `security_policy` 注册名、schema v2 path/path_prefix/file_access/exec/exec_prefix/socket/ptrace/capability/setuid/setgid/setgroups/cred_prepare target、最多 8 项 BPF `target_map`、audit 模式 BPF ringbuf hit、`burst_execve` 用户态异常规则、九类 LSM enforce、规则级 `rule_id/target_ref`、显式 cgroup/PID/container_id/runtime container/k8s_pod scope、rollback 和 cleanup。覆盖 scoped IPv4 socket connect、exec_prefix、file_access 写打开、path_prefix 只读目录、ptrace_traceme、CAP_SYS_ADMIN、setuid、setgid、setgroups 与 cred_prepare；对应 blocked 事件分别携带 endpoint、exec_prefix、file_flags、path_prefix、capability、credential 字段和 `cgroup_id/cgroup_path`。当前脚本以 `/root/EulerPilot` 作为 Agent BPF object 与 demo 结果目录基准，在其他路径会安全跳过。121 最新通过结果：`results/security_policy/integration-20260624-114838`；122 最新通过结果：`results/security_policy/integration-20260624-115440`。
+- `test_resource_control.sh`：验证正式 `resource_control` CPU+Memory 自动闭环。脚本初始化 cgroup v2 CPU/cpuset/memory controller，启动 background workload，以 `always-active + --active` 运行 Agent，确认 background 组写入 `cpu.max=10000 100000` 与 `memory.high=1048576`，用内存压力触发 `memory.events high` 计数增长，并确认 Agent 停止后恢复旧值。121 最新通过结果：`results/resource_control/integration-20260624-150312`；122 最新通过结果：`results/resource_control/integration-20260624-151241`。
 
 ## 后续测试
 
-- `test_resource_control.sh`
 - `test_sched_ext.sh`

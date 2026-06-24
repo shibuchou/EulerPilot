@@ -1,0 +1,8 @@
+[INFO] EulerPilot cgroup v2 hierarchy is ready under /sys/fs/cgroup/eulerpilot
+[INFO]   latency/cpu.weight=1000
+[INFO]   batch/cpu.weight=100
+[INFO]   background/cpu.weight=20
+[INFO]   memory controller requested for latency/batch/background
+[INFO]   latency/cpuset.cpus=0-1
+[INFO]   batch/cpuset.cpus=2-3
+[INFO]   background/cpuset.cpus=4-7

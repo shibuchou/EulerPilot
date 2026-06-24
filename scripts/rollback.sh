@@ -23,6 +23,10 @@ rmdir /sys/fs/bpf/eulerpilot/scx_eulerpilot 2>/dev/null || true
 if [ -d "$ROOT" ]; then
     for subgroup in latency batch background; do
         group_path="$ROOT/$subgroup"
+        [ -w "$group_path/cpu.max" ] && echo max > "$group_path/cpu.max" 2>/dev/null || true
+        [ -w "$group_path/memory.high" ] && echo max > "$group_path/memory.high" 2>/dev/null || true
+        [ -w "$group_path/memory.low" ] && echo 0 > "$group_path/memory.low" 2>/dev/null || true
+        [ -w "$group_path/memory.max" ] && echo max > "$group_path/memory.max" 2>/dev/null || true
         if [ -f "$group_path/cgroup.procs" ]; then
             while read -r pid; do
                 [ -n "$pid" ] && echo "$pid" > /sys/fs/cgroup/cgroup.procs 2>/dev/null || true

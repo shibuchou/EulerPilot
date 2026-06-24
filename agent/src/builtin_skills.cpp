@@ -274,6 +274,64 @@ bool config_bool_or(const SkillSpec &spec,
            *value == "on";
 }
 
+ResourceControlPolicy parse_resource_control_policy(const RuntimeConfig &runtime_config,
+                                                    const SkillSpec &spec) {
+    ResourceControlPolicy policy;
+    policy.mode = config_value_or(spec, "mode", runtime_config.dry_run ? "audit" : "enforce");
+
+    policy.cpu_max_enabled = config_bool_or(spec, "controllers.cpu.max.enabled", policy.cpu_max_enabled);
+    policy.memory_enabled = config_bool_or(spec, "controllers.memory.enabled", policy.memory_enabled);
+    policy.memory_high_enabled = config_bool_or(spec, "controllers.memory.high.enabled", policy.memory_high_enabled);
+    policy.memory_low_enabled = config_bool_or(spec, "controllers.memory.low.enabled", policy.memory_low_enabled);
+    policy.memory_max_enabled = config_bool_or(spec, "controllers.memory.max.enabled", policy.memory_max_enabled);
+    policy.memory_reclaim_enabled = config_bool_or(spec, "controllers.memory.reclaim.enabled", policy.memory_reclaim_enabled);
+
+    policy.latency_cpu_max =
+        config_value_or(spec, "profiles.latency.cpu_max",
+                        config_value_or(spec, "profiles.latency.pressure.cpu_max", policy.latency_cpu_max));
+    policy.batch_cpu_max =
+        config_value_or(spec, "profiles.batch.cpu_max",
+                        config_value_or(spec, "profiles.batch.pressure.cpu_max", policy.batch_cpu_max));
+    policy.background_cpu_max_normal =
+        config_value_or(spec, "profiles.background.normal.cpu_max", policy.background_cpu_max_normal);
+    policy.background_cpu_max_pressure =
+        config_value_or(spec, "profiles.background.pressure.cpu_max", policy.background_cpu_max_pressure);
+
+    policy.latency_memory_high =
+        config_value_or(spec, "profiles.latency.memory_high",
+                        config_value_or(spec, "profiles.latency.pressure.memory_high", policy.latency_memory_high));
+    policy.latency_memory_low =
+        config_value_or(spec, "profiles.latency.memory_low",
+                        config_value_or(spec, "profiles.latency.pressure.memory_low", policy.latency_memory_low));
+    policy.latency_memory_max =
+        config_value_or(spec, "profiles.latency.memory_max",
+                        config_value_or(spec, "profiles.latency.pressure.memory_max", policy.latency_memory_max));
+
+    policy.batch_memory_high =
+        config_value_or(spec, "profiles.batch.memory_high",
+                        config_value_or(spec, "profiles.batch.pressure.memory_high", policy.batch_memory_high));
+    policy.batch_memory_low =
+        config_value_or(spec, "profiles.batch.memory_low",
+                        config_value_or(spec, "profiles.batch.pressure.memory_low", policy.batch_memory_low));
+    policy.batch_memory_max =
+        config_value_or(spec, "profiles.batch.memory_max",
+                        config_value_or(spec, "profiles.batch.pressure.memory_max", policy.batch_memory_max));
+
+    policy.background_memory_high_normal =
+        config_value_or(spec, "profiles.background.normal.memory_high", policy.background_memory_high_normal);
+    policy.background_memory_high_pressure =
+        config_value_or(spec, "profiles.background.pressure.memory_high", policy.background_memory_high_pressure);
+    policy.background_memory_low =
+        config_value_or(spec, "profiles.background.memory_low",
+                        config_value_or(spec, "profiles.background.pressure.memory_low", policy.background_memory_low));
+    policy.background_memory_max =
+        config_value_or(spec, "profiles.background.memory_max",
+                        config_value_or(spec, "profiles.background.pressure.memory_max", policy.background_memory_max));
+    policy.background_memory_reclaim_pressure =
+        config_value_or(spec, "profiles.background.pressure.memory_reclaim", policy.background_memory_reclaim_pressure);
+    return policy;
+}
+
 bool resolve_network_target_ifname(const SkillSpec &spec,
                                    const std::string &target_prefix,
                                    const std::string &target_ref,
@@ -621,9 +679,10 @@ class ResourceControlSkillAdapter final : public Skill, public ResourceControlRu
 public:
     std::string name() const override { return "resource_control"; }
 
-    bool configure(const RuntimeConfig &runtime_config, const SkillSpec &) override {
+    bool configure(const RuntimeConfig &runtime_config, const SkillSpec &spec) override {
         backend_ = runtime_config.preferred_backend;
         runtime_config_ = runtime_config;
+        policy_ = parse_resource_control_policy(runtime_config, spec);
         return true;
     }
 
@@ -673,8 +732,11 @@ public:
                 d.action = apply_scx_assignment(runtime_config_, d, scx_active, scx_reason);
             }
         } else {
+            const bool gate_pressure = gate.next_state == GateState::Active ||
+                                       gate.next_state == GateState::Cooldown;
             for (auto &d : decisions) {
-                d.action = apply_cgroup_assignment(runtime_config_, d);
+                const bool pressure_mode = gate_pressure || d.target_profile != "normal_profile";
+                d.action = apply_cgroup_assignment(runtime_config_, d, policy_, pressure_mode);
             }
         }
     }
@@ -687,6 +749,9 @@ public:
         snapshot.state = state_;
         snapshot.evidence["backend"] = "resource_control_adapter";
         snapshot.evidence["scheduler_backend"] = backend_ == ExecutorBackend::SchedExt ? "sched_ext" : "cgroup_v2";
+        snapshot.evidence["mode"] = policy_.mode;
+        snapshot.evidence["memory"] = policy_.memory_enabled ? "enabled" : "disabled";
+        snapshot.evidence["cpu_max"] = policy_.cpu_max_enabled ? "enabled" : "disabled";
         snapshot.evidence["reason"] = last_error_.empty() ? "ok" : last_error_;
         return snapshot;
     }
@@ -696,6 +761,7 @@ public:
         if (ctx.resource_ops == this) ctx.resource_ops = nullptr;
         stop_scx_session(ctx.scx_session);
         close_scx_map(ctx.scx_session);
+        rollback_resource_control_state();
         ctx.scx_ready = false;
         ctx.scx_reason = "rolled-back";
         running_ = false;
@@ -708,6 +774,7 @@ public:
         if (ctx.resource_ops == this) ctx.resource_ops = nullptr;
         stop_scx_session(ctx.scx_session);
         close_scx_map(ctx.scx_session);
+        rollback_resource_control_state();
         ctx.scx_ready = false;
         running_ = false;
         state_ = "stopped";
@@ -722,6 +789,7 @@ private:
     std::string last_error_;
     ExecutorBackend backend_ = ExecutorBackend::CgroupV2;
     RuntimeConfig runtime_config_;
+    ResourceControlPolicy policy_;
 };
 
 class PsiGateSkillAdapter final : public Skill, public PsiGateRuntimeOps {

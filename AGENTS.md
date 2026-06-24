@@ -73,6 +73,8 @@
   - Resource Control 必须从 CPU cgroup 扩展为 CPU + Memory 自动闭环，IO 至少达到独立可演示、可回滚状态；资源动作必须有事务化流程和 ActionJournal。
   - CPU Scheduling Agent 必须保持 sched_ext/scx 真实调度、Latency-first/Throughput-first/Mixed-Adaptive 策略和自动切换证据；Throughput-first 不能只做 smoke，必须进入正式 Benchmark。
 - 下一阶段执行口径以 `docs/next_phase_plan_v2_1.md` 为准；`docs/next_phase_plan_v2.md` 只作为历史版本保留。
+- 当前 Resource Control 已进入 CPU + Memory 自动闭环阶段，后续修改不得退化为只写 `cpu.weight`；IO controller、container/Pod target 和更稳定的 CPU quota 指标仍是后续增强项。
+- 当前 Security cred 类规则已完成 `task_fix_setuid`、`task_fix_setgid`、`task_fix_setgroups` 与 `cred_prepare`；`cred_transfer`、`cred_alloc_blank` 等更多 cred 生命周期 hook 已记录为后续项，暂不阻塞 Resource Control 阶段。
 - 公共控制面必须前置：`TargetResolver` 统一解析 PID/cgroup/container/Pod/veth，`AuditBus` 统一事件格式，`ActionJournal` 统一回滚证据，`CapabilityDetector` 统一探测 BTF、BPF LSM、XDP、TC、cgroup v2、PSI、sched_ext 等能力。
 - 所有正式 Skill 应统一支持 `observe/audit/enforce` 或兼容等价模式；`audit` 可作为历史 `dry-run` 的正式口径。
 - 从 v2.1 开始，每完成一个阶段或阶段内关键子任务，必须同步更新对应文档，至少包括：`docs/progress_status.md`、该阶段设计/验证文档、相关脚本说明和结果目录说明。

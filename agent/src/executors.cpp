@@ -1,12 +1,18 @@
 #include "executors.hpp"
 
+#include "action_journal.hpp"
+#include "audit_bus.hpp"
+
 #include <bpf/bpf.h>
 
 #include <chrono>
 #include <cstdlib>
 #include <cstring>
+#include <ctime>
 #include <fcntl.h>
+#include <filesystem>
 #include <fstream>
+#include <map>
 #include <signal.h>
 #include <sstream>
 #include <unordered_set>
@@ -18,6 +24,19 @@
 namespace eulerpilot {
 
 namespace {
+
+namespace fs = std::filesystem;
+
+constexpr const char *kCgroupRoot = "/sys/fs/cgroup/eulerpilot";
+constexpr const char *kResourceAuditPath = "reports/events/resource_control.jsonl";
+constexpr const char *kResourceJournalPath = "run/eulerpilot/action_journal.jsonl";
+
+struct ControlFileSnapshot {
+    std::string path;
+    std::string group;
+    std::string file;
+    std::string old_value;
+};
 
 void append_scx_session_log(const std::string &message) {
     std::ofstream out("/tmp/eulerpilot-scx-session.log", std::ios::app);
@@ -32,6 +51,15 @@ struct ProfileSettings {
     const char *group;
     int cpu_weight;
     const char *cpuset_cpus;
+};
+
+struct ResourceSettings {
+    std::string cpu_max = "max";
+    std::string memory_high = "max";
+    std::string memory_low = "0";
+    std::string memory_max = "max";
+    std::string memory_reclaim;
+    std::string mode = "normal";
 };
 
 int get_env_int(const char *name, int fallback) {
@@ -58,19 +86,6 @@ std::string read_file_trimmed(const char *path) {
     return value;
 }
 
-bool write_group_value(const std::string &group, const char *file, const std::string &value) {
-    std::ofstream out("/sys/fs/cgroup/eulerpilot/" + group + "/" + file);
-    if (!out.good()) {
-        return false;
-    }
-    out << value;
-    return out.good();
-}
-
-bool write_group_value(const std::string &group, const char *file, int value) {
-    return write_group_value(group, file, std::to_string(value));
-}
-
 bool write_pid_to_group(const std::string &group, int pid) {
     std::ofstream procs("/sys/fs/cgroup/eulerpilot/" + group + "/cgroup.procs");
     if (!procs.good()) {
@@ -78,6 +93,231 @@ bool write_pid_to_group(const std::string &group, int pid) {
     }
     procs << pid;
     return procs.good();
+}
+
+std::map<std::string, ControlFileSnapshot> &resource_control_snapshots() {
+    static std::map<std::string, ControlFileSnapshot> snapshots;
+    return snapshots;
+}
+
+std::string now_event_timestamp() {
+    return std::to_string(static_cast<long long>(std::time(nullptr)));
+}
+
+void ensure_parent_dir(const fs::path &path) {
+    std::error_code ec;
+    fs::create_directories(path.parent_path(), ec);
+}
+
+std::string cgroup_file_path(const std::string &group, const std::string &file) {
+    return std::string(kCgroupRoot) + "/" + group + "/" + file;
+}
+
+bool valid_resource_group(const std::string &group) {
+    return group == "latency" || group == "batch" || group == "background";
+}
+
+bool write_file_value(const std::string &path, const std::string &value) {
+    std::ofstream out(path);
+    if (!out.good()) {
+        return false;
+    }
+    out << value;
+    return out.good();
+}
+
+bool parse_unsigned_value(const std::string &value, bool allow_zero) {
+    if (value.empty()) {
+        return false;
+    }
+    char *end = nullptr;
+    errno = 0;
+    const unsigned long long parsed = std::strtoull(value.c_str(), &end, 10);
+    if (errno != 0 || end == value.c_str() || *end != '\0') {
+        return false;
+    }
+    return allow_zero || parsed > 0;
+}
+
+bool validate_cpu_max_value(const std::string &value) {
+    if (value == "max") {
+        return true;
+    }
+
+    std::istringstream in(value);
+    std::string quota;
+    std::string period;
+    std::string extra;
+    if (!(in >> quota >> period) || (in >> extra)) {
+        return false;
+    }
+    return (quota == "max" || parse_unsigned_value(quota, false)) &&
+           parse_unsigned_value(period, false);
+}
+
+bool validate_control_value(const std::string &file, const std::string &value) {
+    if (value.empty()) {
+        return false;
+    }
+    if (file == "cpu.weight") {
+        char *end = nullptr;
+        errno = 0;
+        const long parsed = std::strtol(value.c_str(), &end, 10);
+        return errno == 0 && end != value.c_str() && *end == '\0' &&
+               parsed >= 1 && parsed <= 10000;
+    }
+    if (file == "cpu.max") {
+        return validate_cpu_max_value(value);
+    }
+    if (file == "memory.high" || file == "memory.max") {
+        return value == "max" || parse_unsigned_value(value, true);
+    }
+    if (file == "memory.low") {
+        return parse_unsigned_value(value, true);
+    }
+    if (file == "memory.reclaim") {
+        return parse_unsigned_value(value, false);
+    }
+    return !value.empty();
+}
+
+bool control_value_matches(const std::string &file,
+                           const std::string &desired,
+                           const std::string &actual) {
+    if (desired == actual) {
+        return true;
+    }
+    if (file == "cpu.max" && desired == "max") {
+        return actual == "max" || actual.rfind("max ", 0) == 0;
+    }
+    return false;
+}
+
+void append_resource_audit(const std::string &group,
+                           const std::string &file,
+                           const std::string &old_value,
+                           const std::string &new_value,
+                           const std::string &mode,
+                           const std::string &result,
+                           const std::string &reason,
+                           int pid,
+                           const std::string &profile) {
+    ensure_parent_dir(kResourceAuditPath);
+
+    AuditEvent event;
+    event.timestamp = now_event_timestamp();
+    event.event_id = "resource-control-" + event.timestamp + "-" + group + "-" + file + "-" + std::to_string(pid);
+    event.skill = "resource_control";
+    event.policy_id = "cgroup-v2-cpu-memory";
+    event.rule_id = group + "." + file;
+    event.mode = mode;
+    event.target = {
+        {"cgroup", std::string(kCgroupRoot) + "/" + group},
+        {"file", file},
+        {"pid", std::to_string(pid)},
+        {"profile", profile},
+    };
+    event.operation = "write-cgroup-file";
+    event.evidence = {
+        {"old_value", old_value},
+        {"new_value", new_value},
+        {"reason", reason},
+    };
+    event.action = "set-" + file;
+    event.result = result;
+    event.severity = result == "failed" ? "warning" : "info";
+
+    std::string error;
+    append_audit_event(kResourceAuditPath, event, &error);
+}
+
+void append_resource_journal(const std::string &group,
+                             const std::string &file,
+                             const std::string &path,
+                             const std::string &old_value,
+                             const std::string &new_value,
+                             int pid) {
+    ensure_parent_dir(kResourceJournalPath);
+
+    JournalAction action;
+    action.action_id = "resource-control-" + now_event_timestamp() + "-" + group + "-" + file + "-" + std::to_string(pid);
+    action.skill = "resource_control";
+    action.target = path;
+    action.operation = "write-cgroup-file";
+    action.old_values = {{file, old_value}};
+    action.new_values = {{file, new_value}};
+    action.handles = {
+        {"group", group},
+        {"pid", std::to_string(pid)},
+        {"path", path},
+    };
+    action.restored = false;
+
+    std::string error;
+    append_journal_action(kResourceJournalPath, action, &error);
+}
+
+bool apply_control_file(const std::string &group,
+                        const std::string &file,
+                        const std::string &value,
+                        const std::string &mode,
+                        int pid,
+                        const std::string &profile,
+                        std::string &reason) {
+    if (!valid_resource_group(group)) {
+        reason = "unsupported-cgroup";
+        return false;
+    }
+    if (!validate_control_value(file, value)) {
+        reason = "invalid-control-value";
+        append_resource_audit(group, file, "", value, mode, "failed", reason, pid, profile);
+        return false;
+    }
+
+    const std::string path = cgroup_file_path(group, file);
+    const bool write_only = file == "memory.reclaim";
+    const std::string old_value = write_only ? "" : read_file_trimmed(path.c_str());
+    if (!write_only && old_value.empty()) {
+        reason = "control-file-read-failed";
+        append_resource_audit(group, file, "", value, mode, "failed", reason, pid, profile);
+        return false;
+    }
+
+    if (mode != "enforce") {
+        reason = "audit-only";
+        append_resource_audit(group, file, old_value, value, mode, "audit-only", reason, pid, profile);
+        return true;
+    }
+
+    if (!write_only && control_value_matches(file, value, old_value)) {
+        reason = "unchanged";
+        return true;
+    }
+
+    const std::string key = group + "/" + file;
+    if (!write_only && resource_control_snapshots().find(key) == resource_control_snapshots().end()) {
+        resource_control_snapshots()[key] = {path, group, file, old_value};
+    }
+
+    if (!write_file_value(path, value)) {
+        reason = "control-file-write-failed";
+        append_resource_audit(group, file, old_value, value, mode, "failed", reason, pid, profile);
+        return false;
+    }
+
+    if (!write_only) {
+        const std::string verified = read_file_trimmed(path.c_str());
+        if (!control_value_matches(file, value, verified)) {
+            reason = "control-file-verify-failed";
+            append_resource_audit(group, file, old_value, value, mode, "failed", reason, pid, profile);
+            return false;
+        }
+    }
+
+    reason = "applied";
+    append_resource_audit(group, file, old_value, value, mode, "applied", reason, pid, profile);
+    append_resource_journal(group, file, path, old_value, value, pid);
+    return true;
 }
 
 bool is_benchmark_client(const WorkloadSample &sample) {
@@ -129,6 +369,42 @@ ProfileSettings select_profile_settings(const WorkloadDecision &decision) {
     }
 
     return {"normal_profile", "", 100, ""};
+}
+
+ResourceSettings select_resource_settings(const ResourceControlPolicy &policy,
+                                          const ProfileSettings &profile,
+                                          bool pressure_mode) {
+    ResourceSettings settings;
+    settings.mode = pressure_mode ? "pressure" : "normal";
+
+    if (std::strcmp(profile.group, "latency") == 0) {
+        settings.cpu_max = policy.latency_cpu_max;
+        settings.memory_high = policy.latency_memory_high;
+        settings.memory_low = policy.latency_memory_low;
+        settings.memory_max = policy.latency_memory_max;
+        return settings;
+    }
+
+    if (std::strcmp(profile.group, "batch") == 0) {
+        settings.cpu_max = policy.batch_cpu_max;
+        settings.memory_high = policy.batch_memory_high;
+        settings.memory_low = policy.batch_memory_low;
+        settings.memory_max = policy.batch_memory_max;
+        return settings;
+    }
+
+    if (std::strcmp(profile.group, "background") == 0) {
+        settings.cpu_max = pressure_mode ? policy.background_cpu_max_pressure
+                                         : policy.background_cpu_max_normal;
+        settings.memory_high = pressure_mode ? policy.background_memory_high_pressure
+                                             : policy.background_memory_high_normal;
+        settings.memory_low = policy.background_memory_low;
+        settings.memory_max = policy.background_memory_max;
+        settings.memory_reclaim = pressure_mode ? policy.background_memory_reclaim_pressure : "";
+        return settings;
+    }
+
+    return settings;
 }
 
 std::string default_scx_binary() {
@@ -519,6 +795,15 @@ bool update_scx_gate_state(ScxSession &session, GateState state, std::uint32_t g
 }
 
 ExecutionAction apply_cgroup_assignment(const RuntimeConfig &config, const WorkloadDecision &decision) {
+    ResourceControlPolicy policy;
+    policy.mode = config.dry_run ? "audit" : "enforce";
+    return apply_cgroup_assignment(config, decision, policy, decision.target_profile != "normal_profile");
+}
+
+ExecutionAction apply_cgroup_assignment(const RuntimeConfig &config,
+                                        const WorkloadDecision &decision,
+                                        const ResourceControlPolicy &policy,
+                                        bool pressure_mode) {
     ExecutionAction action;
     action.executor = "observe-only";
 
@@ -536,6 +821,13 @@ ExecutionAction apply_cgroup_assignment(const RuntimeConfig &config, const Workl
     action.target_profile = profile.name;
     action.cpu_weight = profile.cpu_weight;
     action.cpuset_cpus = profile.cpuset_cpus;
+    const auto resources = select_resource_settings(policy, profile, pressure_mode);
+    action.cpu_max = resources.cpu_max;
+    action.memory_high = resources.memory_high;
+    action.memory_low = resources.memory_low;
+    action.memory_max = resources.memory_max;
+    action.memory_reclaim = resources.memory_reclaim;
+    action.resource_mode = resources.mode;
 
     if (std::strlen(profile.group) == 0) {
         action.reason = "no-group-for-class";
@@ -550,16 +842,62 @@ ExecutionAction apply_cgroup_assignment(const RuntimeConfig &config, const Workl
         return action;
     }
 
+    if (policy.mode != "enforce") {
+        action.reason = "audit-only";
+        return action;
+    }
+
     if (std::strlen(profile.cpuset_cpus) > 0) {
-        if (!write_group_value(profile.group, "cpuset.mems", "0") ||
-            !write_group_value(profile.group, "cpuset.cpus", profile.cpuset_cpus)) {
+        std::string reason;
+        if (!apply_control_file(profile.group, "cpuset.mems", "0", policy.mode,
+                                decision.sample.pid, profile.name, reason) ||
+            !apply_control_file(profile.group, "cpuset.cpus", profile.cpuset_cpus,
+                                policy.mode, decision.sample.pid, profile.name, reason)) {
             action.reason = "cpuset-fallback-cpu-weight-only";
             action.cpuset_cpus.clear();
         }
     }
 
-    if (!write_group_value(profile.group, "cpu.weight", profile.cpu_weight)) {
+    std::string reason;
+    if (!apply_control_file(profile.group, "cpu.weight", std::to_string(profile.cpu_weight),
+                            policy.mode, decision.sample.pid, profile.name, reason)) {
         action.reason = "cpu-weight-write-failed";
+        return action;
+    }
+
+    if (policy.cpu_max_enabled &&
+        !apply_control_file(profile.group, "cpu.max", resources.cpu_max, policy.mode,
+                            decision.sample.pid, profile.name, reason)) {
+        action.reason = "cpu-max-write-failed";
+        return action;
+    }
+
+    if (policy.memory_enabled && policy.memory_low_enabled &&
+        !apply_control_file(profile.group, "memory.low", resources.memory_low, policy.mode,
+                            decision.sample.pid, profile.name, reason)) {
+        action.reason = "memory-low-write-failed";
+        return action;
+    }
+
+    if (policy.memory_enabled && policy.memory_high_enabled &&
+        !apply_control_file(profile.group, "memory.high", resources.memory_high, policy.mode,
+                            decision.sample.pid, profile.name, reason)) {
+        action.reason = "memory-high-write-failed";
+        return action;
+    }
+
+    if (policy.memory_enabled && policy.memory_max_enabled &&
+        !apply_control_file(profile.group, "memory.max", resources.memory_max, policy.mode,
+                            decision.sample.pid, profile.name, reason)) {
+        action.reason = "memory-max-write-failed";
+        return action;
+    }
+
+    if (policy.memory_enabled && policy.memory_reclaim_enabled &&
+        !resources.memory_reclaim.empty() &&
+        !apply_control_file(profile.group, "memory.reclaim", resources.memory_reclaim,
+                            policy.mode, decision.sample.pid, profile.name, reason)) {
+        action.reason = "memory-reclaim-write-failed";
         return action;
     }
 
@@ -574,6 +912,26 @@ ExecutionAction apply_cgroup_assignment(const RuntimeConfig &config, const Workl
     }
     action.reason = "assigned";
     return action;
+}
+
+bool rollback_resource_control_state() {
+    bool ok = true;
+    for (const auto &item : resource_control_snapshots()) {
+        const auto &snapshot = item.second;
+        if (snapshot.old_value.empty()) {
+            continue;
+        }
+        if (!write_file_value(snapshot.path, snapshot.old_value)) {
+            ok = false;
+            append_resource_audit(snapshot.group, snapshot.file, "", snapshot.old_value,
+                                  "rollback", "failed", "restore-failed", 0, "rollback");
+            continue;
+        }
+        append_resource_audit(snapshot.group, snapshot.file, "", snapshot.old_value,
+                              "rollback", "restored", "restored-old-value", 0, "rollback");
+    }
+    resource_control_snapshots().clear();
+    return ok;
 }
 
 ExecutionAction apply_scx_assignment(const RuntimeConfig &config, const WorkloadDecision &decision,
