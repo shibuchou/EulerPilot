@@ -11,14 +11,16 @@
 - CPU：`cpu.weight`、`cpu.max`、`cpuset.cpus`、`cpuset.mems`
 - Memory：`memory.high`、`memory.low`、`memory.max`
 - IO：`io.weight`、`io.max`
+- Target：`target_ref` 可解析 cgroup、PID、container ID、runtime container name 和 Kubernetes Pod cgroup
 - 可选 Memory reclaim：`memory.reclaim` 已有配置开关，默认关闭，后续只在明确 pressure 策略中启用
 - 自动模式：`GateState::Active/Cooldown` 或非 `normal_profile` 时进入 pressure 模式
 - 事务化执行：读取旧值、校验新值、写入控制器、复读验证、写 `AuditBus`、写 `ActionJournal`、停止时恢复旧值
 
 当前安全边界：
 
-- 只操作 `/sys/fs/cgroup/eulerpilot/latency`、`batch`、`background` 三个实验 cgroup。
-- 默认不会修改系统 root cgroup 或任意业务 cgroup。
+- 未配置 `target_ref` 时，只操作 `/sys/fs/cgroup/eulerpilot/latency`、`batch`、`background` 三个实验 cgroup，并把命中 workload 迁入对应 profile cgroup。
+- 配置 `target_ref` 时，先通过 `TargetResolver` 解析真实 cgroup，再只对命中该 cgroup 的 workload 写控制器；不命中的进程会被标记为 `target-scope-mismatch`，不会被误限流。
+- 默认不会修改系统 root cgroup；显式 `target_ref` 只应指向实验 cgroup、容器 cgroup 或比赛验证环境中明确允许管理的 Pod cgroup。
 - `latency` 组默认不做 CPU quota 强限，只通过 `memory.low` 做保护。
 - `background` 组在 pressure 模式下使用 `cpu.max`、`memory.high` 和 `io.max` 做限额。
 - `memory.max` 默认保持 `max`，避免误杀实验进程。
@@ -51,6 +53,7 @@ controllers:
       enabled: true
     max:
       enabled: true
+targets: {}
 profiles:
   latency:
     cpu_max: max
@@ -85,9 +88,44 @@ profiles:
 说明：
 
 - `mode: enforce` 表示允许写 cgroup 控制器；如果 Agent 以 dry-run 启动，代码仍不会写入。
+- `targets: {}` 是默认空 target 集合；需要按容器或 Pod 管控时，在这里声明 target，再在 `profiles.<name>.target_ref` 中引用。
 - 测试脚本会把 pressure 策略收紧为 `cpu.max=10000 100000`、`memory.high=1048576`，便于在短时间内验证闭环。
 - `controllers.memory.reclaim.enabled` 默认关闭，避免每个控制周期重复触发 one-shot reclaim。
 - `controllers.io.device=auto` 会解析 `/` 所在块设备；IO 集成测试固定使用 `253:0`。
+
+### Target 示例
+
+直接管理已存在 cgroup：
+
+```yaml
+targets:
+  background_scope:
+    type: cgroup
+    path: /sys/fs/cgroup/eulerpilot/target-background
+profiles:
+  background:
+    target_ref: background_scope
+```
+
+后续接入真实容器或 Pod 时，配置形式保持一致：
+
+```yaml
+targets:
+  build_container:
+    type: container
+    container_name: build-worker
+    runtime: auto
+  web_pod:
+    type: k8s_pod
+    namespace: eulerpilot-lab
+    pod_name: web-demo
+    container_name: nginx
+profiles:
+  background:
+    target_ref: build_container
+```
+
+当前实现对 `type: container_id/container/k8s_pod/pid/cgroup` 统一解析为 cgroup path，再复用同一套 CPU/Memory/IO 事务化写入与 rollback。
 
 ## 执行流程
 
@@ -96,6 +134,8 @@ profiles:
 ```text
 select profile
   -> build CPU/Memory/IO desired values
+  -> resolve optional target_ref
+  -> skip samples outside target scope
   -> read old cgroup file value
   -> validate desired value
   -> write cgroup file
@@ -115,6 +155,9 @@ select profile
 - CPU+Memory 回归 122：`results/resource_control/integration-20260624-160349/summary.txt`
 - IO controller 121：`results/resource_control/io-20260624-160008/summary.txt`
 - IO controller 122：`results/resource_control/io-20260624-160208/summary.txt`
+- target_ref 改动后 IO 回归 121：`results/resource_control/io-regression-20260624-174400/summary.txt`
+- target_ref cgroup 闭环 121：`results/resource_control/target-20260624-172139/summary.txt`
+- target_ref cgroup 闭环 122：`results/resource_control/target-20260624-172916/summary.txt`
 
 测试命令：
 
@@ -122,6 +165,7 @@ select profile
 cd /root/EulerPilot
 tests/integration/test_resource_control.sh
 tests/integration/test_resource_control_io.sh
+tests/integration/test_resource_control_target.sh
 ```
 
 测试覆盖：
@@ -139,6 +183,8 @@ tests/integration/test_resource_control_io.sh
 - IO 测试使用 direct write 验证 `io.stat wbytes` 增长和限速耗时增加
 - IO 测试验证 Agent 停止后 `io.max` 和 `io.weight` 恢复旧值
 - IO 测试验证 `resource_control_events.jsonl` 包含 `io.max`、`io.weight` 的 `applied` 与 `restored` 事件
+- Target 测试验证 `profiles.background.target_ref` 能解析到指定 cgroup，只对目标 cgroup 写 `cpu.max/memory.high`，非目标 cgroup 保持原值
+- Target 测试验证 Agent JSONL 和 `resource_control_events.jsonl` 都携带 `target_ref` 与目标 cgroup path，并在退出后恢复旧值
 
 当前 121 结果摘要：
 

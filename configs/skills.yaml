@@ -26,6 +26,7 @@ skills:
           enabled: true
         max:
           enabled: true
+    targets: {}
     profiles:
       latency:
         cpu_max: max

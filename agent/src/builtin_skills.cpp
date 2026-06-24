@@ -274,6 +274,56 @@ bool config_bool_or(const SkillSpec &spec,
            *value == "on";
 }
 
+ResourceControlTargetSpec parse_resource_control_target(const SkillSpec &spec,
+                                                        const std::string &prefix,
+                                                        const std::string &ref) {
+    ResourceControlTargetSpec target;
+    target.ref = ref;
+    target.type = config_value_or(spec, prefix + "type", "");
+    target.path = config_value_or(spec, prefix + "path", "");
+    target.cgroup_path = config_value_or(spec, prefix + "cgroup_path", "");
+    target.cgroup_root = config_value_or(spec, prefix + "cgroup_root", target.cgroup_root);
+    target.container_id = config_value_or(spec, prefix + "container_id", "");
+    target.container_name =
+        config_value_or(spec, prefix + "container_name",
+                        config_value_or(spec, prefix + "container", ""));
+    target.runtime = config_value_or(spec, prefix + "runtime", target.runtime);
+    target.pod_namespace =
+        config_value_or(spec, prefix + "namespace",
+                        config_value_or(spec, prefix + "pod_namespace", ""));
+    target.pod_name =
+        config_value_or(spec, prefix + "pod_name",
+                        config_value_or(spec, prefix + "pod", ""));
+    target.pod_uid = config_value_or(spec, prefix + "pod_uid", "");
+    target.crictl_path = config_value_or(spec, prefix + "crictl_path", target.crictl_path);
+    target.docker_path = config_value_or(spec, prefix + "docker_path", target.docker_path);
+    target.podman_path = config_value_or(spec, prefix + "podman_path", target.podman_path);
+    target.kubectl_path = config_value_or(spec, prefix + "kubectl_path", target.kubectl_path);
+    target.lab_namespace = config_value_or(spec, prefix + "lab_namespace", target.lab_namespace);
+    target.allow_non_lab_pods =
+        config_bool_or(spec, prefix + "allow_non_lab_pods", target.allow_non_lab_pods);
+    target.require_runtime_socket =
+        config_bool_or(spec, prefix + "require_runtime_socket", target.require_runtime_socket);
+    if (!config_value_or(spec, prefix + "pid", "").empty() &&
+        !parse_pid_value(config_value_or(spec, prefix + "pid", ""), target.pid)) {
+        target.type.clear();
+    }
+    return target;
+}
+
+void add_resource_target_if_valid(ResourceControlPolicy &policy,
+                                  const ResourceControlTargetSpec &target) {
+    if (target.ref.empty() || target.type.empty()) {
+        return;
+    }
+    for (const auto &existing : policy.targets) {
+        if (existing.ref == target.ref) {
+            return;
+        }
+    }
+    policy.targets.push_back(target);
+}
+
 ResourceControlPolicy parse_resource_control_policy(const RuntimeConfig &runtime_config,
                                                     const SkillSpec &spec) {
     ResourceControlPolicy policy;
@@ -353,6 +403,38 @@ ResourceControlPolicy parse_resource_control_policy(const RuntimeConfig &runtime
         config_value_or(spec, "profiles.background.normal.io_max", policy.background_io_max_normal);
     policy.background_io_max_pressure =
         config_value_or(spec, "profiles.background.pressure.io_max", policy.background_io_max_pressure);
+
+    policy.latency_target_ref =
+        config_value_or(spec, "profiles.latency.target_ref", policy.latency_target_ref);
+    policy.batch_target_ref =
+        config_value_or(spec, "profiles.batch.target_ref", policy.batch_target_ref);
+    policy.background_target_ref =
+        config_value_or(spec, "profiles.background.target_ref",
+                        config_value_or(spec, "profiles.background.normal.target_ref",
+                                        policy.background_target_ref));
+    policy.background_target_ref =
+        config_value_or(spec, "profiles.background.pressure.target_ref",
+                        policy.background_target_ref);
+
+    add_resource_target_if_valid(
+        policy,
+        parse_resource_control_target(spec, "targets." + policy.latency_target_ref + ".",
+                                      policy.latency_target_ref));
+    add_resource_target_if_valid(
+        policy,
+        parse_resource_control_target(spec, "targets." + policy.batch_target_ref + ".",
+                                      policy.batch_target_ref));
+    add_resource_target_if_valid(
+        policy,
+        parse_resource_control_target(spec, "targets." + policy.background_target_ref + ".",
+                                      policy.background_target_ref));
+
+    for (int i = 0; i < 32; ++i) {
+        const std::string prefix = "targets." + std::to_string(i) + ".";
+        add_resource_target_if_valid(
+            policy,
+            parse_resource_control_target(spec, prefix, config_value_or(spec, prefix + "name", "")));
+    }
     return policy;
 }
 

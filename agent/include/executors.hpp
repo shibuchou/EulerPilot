@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -19,6 +20,28 @@ struct ScxSession {
 };
 
 struct TriggerContext;
+
+struct ResourceControlTargetSpec {
+    std::string ref;
+    std::string type;
+    std::string path;
+    std::string cgroup_path;
+    std::string cgroup_root = "/sys/fs/cgroup";
+    std::string container_id;
+    std::string container_name;
+    std::string runtime = "auto";
+    std::string pod_namespace;
+    std::string pod_name;
+    std::string pod_uid;
+    std::string crictl_path = "crictl";
+    std::string docker_path = "docker";
+    std::string podman_path = "podman";
+    std::string kubectl_path = "kubectl";
+    std::string lab_namespace = "eulerpilot-lab";
+    int pid = -1;
+    bool allow_non_lab_pods = false;
+    bool require_runtime_socket = false;
+};
 
 struct ResourceControlPolicy {
     std::string mode = "audit";
@@ -58,6 +81,11 @@ struct ResourceControlPolicy {
     std::string background_io_weight_pressure = "default 50";
     std::string background_io_max_normal = "";
     std::string background_io_max_pressure = "auto rbps=max wbps=1048576";
+
+    std::vector<ResourceControlTargetSpec> targets;
+    std::string latency_target_ref;
+    std::string batch_target_ref;
+    std::string background_target_ref;
 };
 
 bool should_manage_sample(const WorkloadSample &sample);

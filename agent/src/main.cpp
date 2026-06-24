@@ -93,6 +93,8 @@ void print_decision(const eulerpilot::WorkloadDecision &d, bool verbose, bool js
                   << ",\"trigger_reason\":\"" << d.trigger_reason << "\""
                   << ",\"executor\":\"" << d.action.executor << "\""
                   << ",\"group\":\"" << d.action.target_group << "\""
+                  << ",\"target_ref\":\"" << d.action.target_ref << "\""
+                  << ",\"target_cgroup_path\":\"" << d.action.target_cgroup_path << "\""
                   << "}\n";
         return;
     }

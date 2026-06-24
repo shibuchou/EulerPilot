@@ -473,7 +473,7 @@ security_policy:
 
 ## 8. ResourceControlSkill YAML
 
-Resource Control 不能只保留 `cpu.weight`。当前 `resource_control` 已完成 CPU + Memory + IO 自动闭环，默认配置位于 `configs/skills.yaml`：
+Resource Control 不能只保留 `cpu.weight`。当前 `resource_control` 已完成 CPU + Memory + IO 自动闭环，并已接入 `target_ref` cgroup 闭环，默认配置位于 `configs/skills.yaml`：
 
 ```yaml
 - name: resource_control
@@ -502,6 +502,7 @@ Resource Control 不能只保留 `cpu.weight`。当前 `resource_control` 已完
           enabled: true
         max:
           enabled: true
+    targets: {}
     profiles:
       latency:
         cpu_max: max
@@ -540,12 +541,37 @@ Resource Control 不能只保留 `cpu.weight`。当前 `resource_control` 已完
 - `background` 组在 pressure 模式下写 `cpu.max`、`memory.high`、`io.weight` 与 `io.max`。
 - `memory.reclaim` 已有配置开关，默认关闭，避免 one-shot 动作在每个周期重复触发。
 - `controllers.io.device=auto` 会解析根文件系统所在块设备；121/122 当前均解析为 `253:0`。
+- `targets + profiles.<name>.target_ref` 已接入 `TargetResolver`，支持 `type: cgroup/pid/container_id/container/k8s_pod` 解析为 cgroup path；未命中 target scope 的 workload 会跳过，不写控制器。
 - 121/122 已通过 `tests/integration/test_resource_control.sh` 和 `tests/integration/test_resource_control_io.sh`，最新结果目录为 `results/resource_control/integration-20260624-160317`、`results/resource_control/integration-20260624-160349`、`results/resource_control/io-20260624-160008` 与 `results/resource_control/io-20260624-160208`。
+- 121/122 已通过 `tests/integration/test_resource_control_target.sh`，结果目录为 `results/resource_control/target-20260624-172139` 与 `results/resource_control/target-20260624-172916`，验证 target cgroup 被限额、非目标 cgroup 不被误改、审计和 Agent JSONL 携带 `target_ref`。
+
+target_ref 示例：
+
+```yaml
+targets:
+  background_scope:
+    type: cgroup
+    path: /sys/fs/cgroup/eulerpilot/target-background
+  build_container:
+    type: container
+    container_name: build-worker
+    runtime: auto
+  web_pod:
+    type: k8s_pod
+    namespace: eulerpilot-lab
+    pod_name: web-demo
+    container_name: nginx
+profiles:
+  background:
+    target_ref: background_scope
+```
 
 写入 cgroup 控制器时必须：
 
 ```text
 读取旧值
+  -> 解析可选 target_ref
+  -> 跳过 target scope 外 workload
   -> 校验新策略
   -> 写入控制器
   -> 验证是否生效
@@ -555,7 +581,7 @@ Resource Control 不能只保留 `cpu.weight`。当前 `resource_control` 已完
 
 后续扩展：
 
-- 将 `target_ref` 接入 `TargetResolver`，支持 container/Pod target 后再落 cgroup。
+- 在真实 container runtime / Kubernetes Pod 上复用同一 YAML 做现场演示验证。
 - 增加 CPU quota 效果指标：`cpu.stat usage_usec`、`nr_throttled/throttled_usec` 对照。
 
 ## 9. CPU Scheduling YAML

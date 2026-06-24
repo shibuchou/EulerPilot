@@ -32,6 +32,7 @@
 - [x] `security_policy` `lsm_file_open` 支持 `file_access=write` 与 `path_prefix + file_access=write`，验证目标 cgroup 内读放行、写阻断
 - [x] `security_policy` `lsm_ptrace_traceme`、`lsm_capable`、`lsm_task_fix_setuid`、`lsm_task_fix_setgid`、`lsm_task_fix_setgroups` 与 `lsm_cred_prepare` 均要求 scoped cgroup target，分别验证 ptrace、CAP_SYS_ADMIN、setuid、setgid、setgroups credential 转换与 cred_prepare credential preparation 阻断
 - [x] `resource_control` CPU+Memory+IO 自动闭环 121/122 验证：YAML v2 `controllers + profiles`、`cpu.max`、`memory.high/low/max`、`io.weight/io.max`、事务化写入、`AuditBus`、`ActionJournal` 和 Agent stop rollback
+- [x] `resource_control` `target_ref` cgroup 最小闭环 121/122 验证：`targets + profiles.<name>.target_ref`、目标 cgroup 限制、非目标 cgroup 不误改、审计和 Agent JSONL 携带 `target_ref`
 - [x] `security_policy_demo` BPF LSM file_open 最小闭环
 - [x] `security_policy_demo` BPF LSM attach/deny/rollback 集成测试 121/122 均通过
 - [x] Runtime 生命周期收拢与 ActionJournal/AuditBus 最小接入
@@ -86,6 +87,8 @@
 - Resource Control CPU+Memory 122：`results/resource_control/integration-20260624-160349`
 - Resource Control IO 121：`results/resource_control/io-20260624-160008`
 - Resource Control IO 122：`results/resource_control/io-20260624-160208`
+- Resource Control target_ref 121：`results/resource_control/target-20260624-172139`
+- Resource Control target_ref 122：`results/resource_control/target-20260624-172916`
 
 ## 当前核心文档
 
@@ -103,9 +106,9 @@
 ## 质量与安全审计
 
 - `scripts/final_quality_gate.sh`：TAP 风格 18 项 P0 质量门禁脚本
-- `reports/final_quality_gate_20260624_resource_io.log`：121 最新门禁通过记录
+- `reports/final_quality_gate_20260624_resource_target.log`：121 最新门禁通过记录，19/19 P0 通过
 - `docs/final_security_audit.md`：最终安全与质量审计报告
 
 ## 当前结论
 
-项目仍处于争奖增强阶段，不应停留在“最终材料整理”。下一步重点是补强 Network/Security/Resource 的成品化深度：Pod veth、Security 更多 cred 生命周期规则/更多异常规则、Resource container/Pod target 接入和 CPU quota 效果指标。
+项目仍处于争奖增强阶段，不应停留在“最终材料整理”。下一步重点是补强 Network/Security/Resource 的成品化深度：Pod veth、Security 更多 cred 生命周期规则/更多异常规则、Resource 真实 container runtime / Kubernetes Pod target 实测和 CPU quota 效果指标。

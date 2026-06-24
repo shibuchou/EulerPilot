@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 # EulerPilot Final Quality Gate — TAP-style
-# P0: 18 blocking checks. P1: optional checks (not in TAP count).
+# P0: 19 blocking checks. P1: optional checks (not in TAP count).
 # Run on 121. For 122: minimal regression only.
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -12,7 +12,7 @@ AGENT_YAML="configs/agent.yaml"
 AGENT_BIN="build/eulerpilot-agent"
 TMPLOG="/tmp/eulerpilot-quality-gate.tmp"
 
-TOTAL=18
+TOTAL=19
 N=1
 
 echo "1..$TOTAL"
@@ -228,7 +228,29 @@ else
     not_ok "resource_control CPU+Memory+IO evidence missing"
 fi
 
-# 18. no BPF/LSM/TC/XDP residue
+# 18. resource_control target_ref evidence
+RESOURCE_TARGET_OK=true
+for summary in \
+    results/resource_control/target-20260624-172139/summary.txt \
+    results/resource_control/target-20260624-172916/summary.txt; do
+    if [ ! -s "$summary" ] ||
+       ! grep -q '^result=pass$' "$summary" ||
+       ! grep -q '^target_ref=background_scope$' "$summary" ||
+       ! grep -q '^target_cgroup=/sys/fs/cgroup/eulerpilot/target-background$' "$summary" ||
+       ! grep -q '^cpu_max_pressure=10000 100000$' "$summary" ||
+       ! grep -q '^memory_high_pressure=1048576$' "$summary" ||
+       ! grep -q '^outside_cpu_max=max 100000$' "$summary"; then
+        echo "  ERROR: missing target_ref evidence in $summary"
+        RESOURCE_TARGET_OK=false
+    fi
+done
+if $RESOURCE_TARGET_OK; then
+    ok "resource_control target_ref evidence"
+else
+    not_ok "resource_control target_ref evidence missing"
+fi
+
+# 19. no BPF/LSM/TC/XDP residue
 RESIDUE_OK=true
 if [ -e /sys/fs/bpf/security_policy_demo_link ]; then
     echo "  ERROR: /sys/fs/bpf/security_policy_demo_link still pinned"

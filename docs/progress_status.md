@@ -10,7 +10,7 @@
 
 阶段 C：Security Agent 正式化，状态：`BPF LSM + socket_connect + bprm exec_prefix + file_access/path_prefix + ptrace_traceme + capable + task_fix_setuid + task_fix_setgid + task_fix_setgroups + cred_prepare + syscall tracing + runtime anomaly + 多目标 target_map + 规则级事件标识 + cgroup/pid/container/runtime/pod scope 最小闭环已完成`
 
-阶段 D：Resource Control，状态：`CPU + Memory + IO 自动闭环 121/122 均已完成`
+阶段 D：Resource Control，状态：`CPU + Memory + IO 自动闭环 121/122 均已完成；target_ref cgroup 闭环 121/122 均已完成`
 
 目标：
 
@@ -19,7 +19,7 @@
 - 再补 TC QoS 和 isolated-veth XDP，并继续扩展 Benchmark、多规则和 Pod veth。
 - `TargetResolver` 已从 netdev 与 `k8s_pod` 诊断入口推进到 container name/ID、Pod UID、runtime PID、netns 和 host veth/ifindex 真实解析；后续重点是把真实集群 lab Pod 接入 TC/XDP 演示。
 - 所有 Network 事件接入 `AuditBus`，所有挂载/卸载动作接入 `ActionJournal`。
-- Resource Control 已从 CPU-only 扩展到 CPU + Memory + IO：pressure 模式下写 `cpu.max`、`memory.high`、`io.weight` 与 `io.max`，latency 组使用 `memory.low` 保护，IO 默认解析根文件系统块设备，并通过事务化写入、`AuditBus`、`ActionJournal` 和 stop rollback 闭环验证。
+- Resource Control 已从 CPU-only 扩展到 CPU + Memory + IO：pressure 模式下写 `cpu.max`、`memory.high`、`io.weight` 与 `io.max`，latency 组使用 `memory.low` 保护，IO 默认解析根文件系统块设备，并通过事务化写入、`AuditBus`、`ActionJournal` 和 stop rollback 闭环验证；`target_ref` 已接入 `TargetResolver`，可将 profile 绑定到 cgroup/PID/container/Pod 解析出的真实 cgroup。
 
 ## 阶段完成情况
 
@@ -28,7 +28,7 @@
 | A. 公共基础设施 | 已完成 | 远端 Git、文档规则、README 覆盖、公共控制面最小代码和现有质量门禁已完成；后续随正式 Skill 深度接入 | `AGENTS.md`、本文件、各目录 README、`docs/public_control_plane_design.md`、`reports/final_quality_gate_20260618_control_plane.log` |
 | B. Network Policy | 收尾 / container + Pod veth 真实解析预备已完成 | 正式 `network_policy` 注册名已落地；connect4 audit/enforce 已完成；TC QoS 最小闭环与速率误差 Benchmark 已完成；isolated-veth XDP 多规则闭环已完成；schema v2 `targets + rules + target_ref` 已落地；`TargetResolver` 已支持 netdev、container name/ID、Pod UID、runtime container ID/PID、netns path 和 host veth/ifindex 解析；`network_qos` 与 `network_xdp` 已可接受 `type: container` / `type: k8s_pod` target 并解析成 host veth ifname；下一步在真实 Kubernetes lab Pod 上跑 TC/XDP 演示 | `docs/network_policy_skill.md`、`docs/network_pod_veth_target.md`、`tests/integration/test_network_policy.sh`、`tests/integration/test_network_qos_tc.sh`、`tests/integration/test_network_xdp.sh`、`tests/integration/test_target_resolver.sh`、`tests/benchmark/test_network_qos_rate.sh` |
 | C. Security Agent | 九类 LSM + 四类 syscall tracing + runtime anomaly + 多目标 target_map + 规则级事件标识 + cgroup/pid/container/runtime/pod scope 最小闭环已完成 | 正式 `security_policy` 注册名已落地；YAML v2 target/rule、最多 8 项 BPF `target_map`、audit BPF attach 不阻断、enforce BPF LSM blocked hit、`lsm_socket_connect`、`lsm_bprm_check_security` exec_prefix、`lsm_file_open` file_access/path_prefix、`lsm_ptrace_traceme`、`lsm_capable`、`lsm_task_fix_setuid`、`lsm_task_fix_setgid`、`lsm_task_fix_setgroups`、`lsm_cred_prepare`、`burst_execve` 用户态异常规则、规则级事件、显式 cgroup/PID/container_id/runtime container/k8s_pod scope 和 rollback 无残留已在 121/122 通过；下一步转向 cred_transfer/cred_alloc_blank 等更多 cred 生命周期规则、更多异常行为规则和联动处置 | `docs/security_policy_skill.md`、`agent/skills/security_policy/README.md`、`tests/integration/test_security_policy.sh`、`demo/security_policy_demo/README.md` |
-| D. Resource Control | CPU + Memory + IO 自动闭环 121/122 均已完成 | 正式 `resource_control` 已读取 YAML v2 `controllers + profiles`；cgroup v2 后端已支持 `cpu.weight/cpu.max/cpuset`、`memory.high/memory.low/memory.max` 与 `io.weight/io.max`；写入流程包含旧值读取、值校验、写入、复读验证、`AuditBus` 事件、`ActionJournal` 记录和 Agent stop rollback；121/122 集成测试已验证 background pressure `cpu.max=10000 100000`、`memory.high=1048576`、`io.max wbps=1048576`、`io.weight=default 50`、`memory.events high` 增长、`io.stat wbytes` 增长、写入吞吐下降和旧值恢复 | `docs/resource_control_skill.md`、`tests/integration/test_resource_control.sh`、`tests/integration/test_resource_control_io.sh`、`results/resource_control/integration-20260624-160317`、`results/resource_control/integration-20260624-160349`、`results/resource_control/io-20260624-160008`、`results/resource_control/io-20260624-160208` |
+| D. Resource Control | CPU + Memory + IO 自动闭环 121/122 均已完成；target_ref cgroup 闭环 121/122 均已完成 | 正式 `resource_control` 已读取 YAML v2 `controllers + targets + profiles`；cgroup v2 后端已支持 `cpu.weight/cpu.max/cpuset`、`memory.high/memory.low/memory.max` 与 `io.weight/io.max`；写入流程包含旧值读取、值校验、写入、复读验证、`AuditBus` 事件、`ActionJournal` 记录和 Agent stop rollback；121/122 集成测试已验证 background pressure `cpu.max=10000 100000`、`memory.high=1048576`、`io.max wbps=1048576`、`io.weight=default 50`、`memory.events high` 增长、`io.stat wbytes` 增长、写入吞吐下降和旧值恢复；121/122 target 测试已验证 `profiles.background.target_ref` 只作用于目标 cgroup，非目标 cgroup 不被误改 | `docs/resource_control_skill.md`、`tests/integration/test_resource_control.sh`、`tests/integration/test_resource_control_io.sh`、`tests/integration/test_resource_control_target.sh`、`results/resource_control/integration-20260624-160317`、`results/resource_control/integration-20260624-160349`、`results/resource_control/io-20260624-160008`、`results/resource_control/io-20260624-160208`、`results/resource_control/target-20260624-172139`、`results/resource_control/target-20260624-172916` |
 | E. SP4/sched_ext 复核 | 未开始 | 等待 SP4/123 环境 | `docs/next_phase_plan_v2_1.md` |
 | F. Kubernetes 与跨 Agent 联动 | 未开始 | 等待 Network/Security/Resource 正式 Skill | `docs/next_phase_plan_v2_1.md` |
 | G. Benchmark 与冻结材料 | 未开始 | 等待正式能力完成 | `docs/next_phase_plan_v2_1.md` |
@@ -99,7 +99,7 @@
   - Agent 退出后 `/sys/fs/bpf/eulerpilot_network_policy_link` 和 cgroup BPF attachment 无残留。
 - 121 最新集成测试证据目录：`results/network_policy/integration-20260619-142347/`。
 - 122 最新集成测试证据目录：`results/network_policy/integration-20260619-122352/`。
-- 121 最新完整质量门禁已通过：`reports/final_quality_gate_20260624_resource_io.log`。
+- 121 最新完整质量门禁已通过：`reports/final_quality_gate_20260624_resource_target.log`。
 
 ### YAML v2 证据
 
@@ -163,7 +163,7 @@
   - Agent 退出后无 XDP attachment 残留，连通性恢复。
 - 121 最新 XDP 多规则集成测试证据目录：`results/network_policy/xdp-20260620-183031/`。
 - 122 最新 XDP 多规则集成测试证据目录：`results/network_policy/xdp-20260620-184212/`。
-- 121 最新完整质量门禁已通过：`reports/final_quality_gate_20260624_resource_io.log`，18/18 P0、100 轮 Agent smoke 和 5 轮 doctor 均通过。
+- 121 最新完整质量门禁已通过：`reports/final_quality_gate_20260624_resource_target.log`，19/19 P0、100 轮 Agent smoke 和 5 轮 doctor 均通过。
 
 ### TargetResolver / container + Pod veth 预备证据
 
@@ -234,12 +234,12 @@
 
 | 编号 | 任务 | 状态 | 说明 |
 |------|------|------|------|
-| D1 | ResourceControlPolicy 配置模型 | 121/122 已完成 | `resource_control.config` 已支持 `mode`、CPU/Mem/IO controller 开关、IO 设备 `auto` 解析和 latency/batch/background profile |
+| D1 | ResourceControlPolicy 配置模型 | 121/122 已完成 | `resource_control.config` 已支持 `mode`、CPU/Mem/IO controller 开关、IO 设备 `auto` 解析、`targets` 和 latency/batch/background profile |
 | D2 | CPU+Memory+IO 事务化执行 | 121/122 已完成 | `agent/src/executors.cpp` 已支持 `cpu.max`、`memory.high/low/max`、`io.weight`、`io.max`，每次写入记录旧值、复读验证、写审计和 journal，stop 时恢复旧值 |
 | D3 | cgroup v2 初始化与回滚脚本 | 121/122 已完成 | `scripts/setup_cgroup_v2.sh` 尝试开启 `cpu/cpuset/memory/io`；`scripts/rollback.sh` 恢复 CPU/Mem 默认值，并将 `io.weight` 恢复为 `default 100`、`io.max` 恢复为不限速 |
 | D4 | CPU+Memory 集成测试 | 121/122 已完成 | `tests/integration/test_resource_control.sh` 结果目录：121 `results/resource_control/integration-20260624-160317`；122 `results/resource_control/integration-20260624-160349` |
-| D5 | IO controller 集成测试 | 121/122 已完成 | `tests/integration/test_resource_control_io.sh` 结果目录：121 `results/resource_control/io-20260624-160008`；122 `results/resource_control/io-20260624-160208`；验证 `io.max/io.weight` 写入、`io.stat wbytes` 增长、限速耗时上升和 rollback |
-| D6 | container/Pod target 接入 | 待补 | 后续将 `target_ref` 接入 `TargetResolver`，支持 container/Pod target 后再落 cgroup |
+| D5 | IO controller 集成测试 | 121/122 已完成 | `tests/integration/test_resource_control_io.sh` 结果目录：121 `results/resource_control/io-20260624-160008`；122 `results/resource_control/io-20260624-160208`；target_ref 改动后 121 回归 `results/resource_control/io-regression-20260624-174400`；验证 `io.max/io.weight` 写入、`io.stat wbytes` 增长、限速耗时上升和 rollback |
+| D6 | container/Pod target 接入 | 121/122 已完成最小 cgroup 闭环 | `target_ref` 已接入 `TargetResolver`，支持 `type: cgroup/pid/container_id/container/k8s_pod` 解析到 cgroup path；`tests/integration/test_resource_control_target.sh` 已在 121/122 验证显式 cgroup target 只限制目标 cgroup，非目标 cgroup 不被误改；下一步在真实 container runtime / Kubernetes Pod 上做现场演示验证 |
 
 ## 阶段 A 后续随阶段接入项
 

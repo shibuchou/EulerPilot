@@ -87,6 +87,8 @@ struct ExecutionAction {
     std::string io_weight = "";
     std::string io_max = "";
     std::string resource_mode = "normal";
+    std::string target_ref = "";
+    std::string target_cgroup_path = "";
     std::string reason = "no-action";
 };
 
