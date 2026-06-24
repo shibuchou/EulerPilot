@@ -511,6 +511,7 @@ struct SecurityPolicyEvent {
     std::uint32_t setgid_flags = 0;
     std::uint32_t group_count = 0;
     std::uint32_t old_group_count = 0;
+    std::uint32_t cred_gfp = 0;
 };
 
 struct NetworkXdpRule {
@@ -536,7 +537,7 @@ static_assert(sizeof(SecurityPolicyConfig) == 8,
               "security policy config map layout must match BPF");
 static_assert(sizeof(SecurityPolicyTarget) == 1048,
               "security policy target map layout must match BPF");
-static_assert(sizeof(SecurityPolicyEvent) == 356,
+static_assert(sizeof(SecurityPolicyEvent) == 360,
               "security policy ringbuf event layout must match BPF");
 
 bool valid_tc_token(const std::string &value) {
@@ -2223,6 +2224,9 @@ public:
                 } else if (hook == "lsm_task_fix_setgroups") {
                     // Supplementary group changes must be scoped. A global
                     // setgroups deny would break service initialization paths.
+                } else if (hook == "lsm_cred_prepare") {
+                    // Credential allocation hooks are very hot and broad, so
+                    // enforcement must always be scoped to an explicit workload.
                 } else if (hook == "lsm_capable") {
                     // Capability enforcement must be scoped. A global capable
                     // deny would break host administration paths.
@@ -2441,6 +2445,10 @@ public:
                 last_error_ = "security-policy-setgroups-rule-scope-missing";
                 return false;
             }
+            if (rule.hook == "lsm_cred_prepare" && rule.cgroup_id == 0) {
+                last_error_ = "security-policy-cred-prepare-rule-scope-missing";
+                return false;
+            }
             if (rule.hook == "lsm_capable") {
                 if (rule.cgroup_id == 0) {
                     last_error_ = "security-policy-capable-rule-scope-missing";
@@ -2517,7 +2525,7 @@ public:
             return false;
         }
         std::vector<bpf_link *> probe_links;
-        if (!attach_security_programs(obj, probe_links, false, false, false, false,
+        if (!attach_security_programs(obj, probe_links, false, false, false, false, false,
                                       last_error_)) {
             for (auto *probe_link : probe_links) {
                 bpf_link__destroy(probe_link);
@@ -2563,6 +2571,7 @@ public:
                                       has_rule_hook("lsm_task_fix_setuid"),
                                       has_rule_hook("lsm_task_fix_setgid"),
                                       has_rule_hook("lsm_task_fix_setgroups"),
+                                      has_rule_hook("lsm_cred_prepare"),
                                       last_error_)) {
             rollback();
             return false;
@@ -2648,7 +2657,8 @@ private:
                hook == "lsm_socket_connect" || hook == "lsm_ptrace_traceme" ||
                hook == "lsm_capable" || hook == "lsm_task_fix_setuid" ||
                hook == "lsm_task_fix_setgid" ||
-               hook == "lsm_task_fix_setgroups";
+               hook == "lsm_task_fix_setgroups" ||
+               hook == "lsm_cred_prepare";
     }
 
     bool has_rule_hook(const std::string &hook) const {
@@ -2751,6 +2761,7 @@ private:
                                          bool attach_task_fix_setuid,
                                          bool attach_task_fix_setgid,
                                          bool attach_task_fix_setgroups,
+                                         bool attach_cred_prepare,
                                          std::string &error) {
         bpf_program *lsm_prog = bpf_object__find_program_by_name(obj, "security_policy_demo");
         if (!lsm_prog) {
@@ -2860,6 +2871,21 @@ private:
                 return false;
             }
             links.push_back(setgroups_link);
+        }
+
+        if (attach_cred_prepare) {
+            bpf_program *cred_prepare_prog =
+                bpf_object__find_program_by_name(obj, "security_policy_cred_prepare");
+            if (!cred_prepare_prog) {
+                error = "security-policy-cred-prepare-program-missing";
+                return false;
+            }
+            bpf_link *cred_prepare_link = bpf_program__attach_lsm(cred_prepare_prog);
+            if (!cred_prepare_link) {
+                error = "security-policy-cred-prepare-attach-failed";
+                return false;
+            }
+            links.push_back(cred_prepare_link);
         }
 
         bpf_program *execve_prog = bpf_object__find_program_by_name(obj, "trace_execve");
@@ -3073,6 +3099,7 @@ private:
         case 10: return "lsm_task_fix_setuid";
         case 11: return "lsm_task_fix_setgid";
         case 12: return "lsm_task_fix_setgroups";
+        case 13: return "lsm_cred_prepare";
         default: return "unknown";
         }
     }
@@ -3173,6 +3200,17 @@ private:
         if (hit.event_type == 12) {
             event.evidence["group_count"] = std::to_string(hit.group_count);
             event.evidence["old_group_count"] = std::to_string(hit.old_group_count);
+        }
+        if (hit.event_type == 13) {
+            event.evidence["uid"] = std::to_string(hit.uid);
+            event.evidence["euid"] = std::to_string(hit.euid);
+            event.evidence["suid"] = std::to_string(hit.suid);
+            event.evidence["gid"] = std::to_string(hit.gid);
+            event.evidence["egid"] = std::to_string(hit.egid);
+            event.evidence["sgid"] = std::to_string(hit.sgid);
+            event.evidence["group_count"] = std::to_string(hit.group_count);
+            event.evidence["old_group_count"] = std::to_string(hit.old_group_count);
+            event.evidence["cred_gfp"] = std::to_string(hit.cred_gfp);
         }
         event.action = hit.decision < 0 ? "deny" : "audit-hit";
         event.result = hit.decision < 0 ? "blocked" : "observed";

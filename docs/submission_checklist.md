@@ -1,6 +1,6 @@
 # EulerPilot 提交清单
 
-更新时间：`2026-06-23`
+更新时间：`2026-06-24`
 
 ## 已完成
 
@@ -30,7 +30,7 @@
 - [x] `security_policy` `lsm_socket_connect` 通过 `dst_ip/dst_port/cgroup_id` 阻断目标 cgroup 内 IPv4 connect，scope 外允许，事件携带 endpoint 证据
 - [x] `security_policy` `lsm_bprm_check_security` 通过 `exec_prefix/cgroup_id` 阻断目标 cgroup 内可写目录前缀执行，scope 外允许，事件携带 `exec_prefix` 证据
 - [x] `security_policy` `lsm_file_open` 支持 `file_access=write` 与 `path_prefix + file_access=write`，验证目标 cgroup 内读放行、写阻断
-- [x] `security_policy` `lsm_ptrace_traceme`、`lsm_capable`、`lsm_task_fix_setuid`、`lsm_task_fix_setgid` 与 `lsm_task_fix_setgroups` 均要求 scoped cgroup target，分别验证 ptrace、CAP_SYS_ADMIN、setuid、setgid 与 setgroups credential 转换阻断
+- [x] `security_policy` `lsm_ptrace_traceme`、`lsm_capable`、`lsm_task_fix_setuid`、`lsm_task_fix_setgid`、`lsm_task_fix_setgroups` 与 `lsm_cred_prepare` 均要求 scoped cgroup target，分别验证 ptrace、CAP_SYS_ADMIN、setuid、setgid、setgroups credential 转换与 cred_prepare credential preparation 阻断
 - [x] `security_policy_demo` BPF LSM file_open 最小闭环
 - [x] `security_policy_demo` BPF LSM attach/deny/rollback 集成测试 121/122 均通过
 - [x] Runtime 生命周期收拢与 ActionJournal/AuditBus 最小接入
@@ -79,8 +79,8 @@
 - Security socket_connect LSM 122：`results/security_policy/integration-20260622-110120`
 - Security bprm exec_prefix LSM 121：`results/security_policy/integration-20260622-145403`
 - Security bprm exec_prefix LSM 122：`results/security_policy/integration-20260622-145716`
-- Security scoped credential LSM 121：`results/security_policy/integration-20260623-214457`
-- Security scoped credential LSM 122：`results/security_policy/integration-20260623-214850`
+- Security scoped credential/cred_prepare LSM 121：`results/security_policy/integration-20260624-114838`
+- Security scoped credential/cred_prepare LSM 122：`results/security_policy/integration-20260624-115440`
 
 ## 当前核心文档
 
@@ -97,7 +97,7 @@
 ## 质量与安全审计
 
 - `scripts/final_quality_gate.sh`：TAP 风格 17 项 P0 质量门禁脚本
-- `reports/final_quality_gate_20260623_security_setgroups.log`：121 最新门禁通过记录
+- `reports/final_quality_gate_20260624_security_cred_prepare.log`：121 最新门禁通过记录
 - `docs/final_security_audit.md`：最终安全与质量审计报告
 
 ## 当前结论

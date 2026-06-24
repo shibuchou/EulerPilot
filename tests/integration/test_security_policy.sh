@@ -2094,6 +2094,134 @@ if ! run_in_scoped_cgroup "$RESULT_DIR/setgroups-post-cleanup.txt" \
     python3 "$RESULT_DIR/setgroups_transition.py" 65534; then
     fail "setgroups transition is still denied after rollback/cleanup; see $RESULT_DIR/setgroups-post-cleanup.err"
 fi
+cat > "$RESULT_DIR/cred_prepare_transition.py" <<'PY'
+import errno
+import os
+import sys
+
+target_uid = int(sys.argv[1]) if len(sys.argv) > 1 else 65534
+try:
+    os.setuid(target_uid)
+except OSError as exc:
+    print(os.strerror(exc.errno or errno.EPERM), file=sys.stderr)
+    sys.exit(1)
+sys.exit(0)
+PY
+
+if ! python3 "$RESULT_DIR/cred_prepare_transition.py" 65534 \
+    > "$RESULT_DIR/cred-prepare-baseline.txt" \
+    2> "$RESULT_DIR/cred-prepare-baseline.err"; then
+    fail "cred_prepare baseline failed before policy; see $RESULT_DIR/cred-prepare-baseline.err"
+fi
+
+cat > "$RESULT_DIR/agent.cred-prepare.yaml" <<'YAML'
+skills_config_path: skills.cred-prepare.yaml
+exporter:
+  prometheus:
+    enabled: false
+YAML
+
+cat > "$RESULT_DIR/skills.cred-prepare.yaml" <<YAML
+schema_version: 2
+skills:
+- name: resource_control
+  kind: runtime
+  enabled: true
+  config: {}
+- name: psi_gate
+  kind: runtime
+  enabled: true
+  config: {}
+- name: security_policy
+  kind: runtime
+  enabled: true
+  config:
+    mode: enforce
+    targets:
+      cred_prepare_scope:
+        type: cgroup
+        cgroup_path: $SCOPED_CGROUP_PATH
+    rules:
+      - name: deny_cred_prepare
+        hook: lsm_cred_prepare
+        target_ref: cred_prepare_scope
+        action: deny
+YAML
+
+rm -f "$ROOT/reports/events/security_policy.jsonl"
+
+timeout 20s "$AGENT_BIN" \
+    --config "$RESULT_DIR/agent.cred-prepare.yaml" \
+    --duration-s 8 \
+    --interval-ms 1000 \
+    --jsonl \
+    > "$RESULT_DIR/agent-cred-prepare.log" 2>&1 &
+AGENT_PID="$!"
+
+cred_prepare_blocked="false"
+for _ in $(seq 1 40); do
+    if ! kill -0 "$AGENT_PID" 2>/dev/null; then
+        set +e
+        wait "$AGENT_PID"
+        agent_rc="$?"
+        set -e
+        AGENT_PID=""
+        fail "cred_prepare agent exited before denial was observed, rc=$agent_rc; see $RESULT_DIR/agent-cred-prepare.log"
+    fi
+
+    if ! python3 "$RESULT_DIR/cred_prepare_transition.py" 65534 \
+        > "$RESULT_DIR/cred-prepare-outside.txt" \
+        2> "$RESULT_DIR/cred-prepare-outside.err"; then
+        fail "cred_prepare transition was denied outside target cgroup; see $RESULT_DIR/cred-prepare-outside.err"
+    fi
+
+    set +e
+    run_in_scoped_cgroup "$RESULT_DIR/cred-prepare-blocked.txt" \
+        "$RESULT_DIR/cred-prepare-blocked.err" \
+        python3 "$RESULT_DIR/cred_prepare_transition.py" 65534
+    cred_prepare_rc="$?"
+    set -e
+    if [ "$cred_prepare_rc" -ne 0 ]; then
+        cred_prepare_blocked="true"
+        break
+    fi
+    sleep 0.2
+done
+
+if [ "$cred_prepare_blocked" != "true" ]; then
+    fail "cred_prepare transition was not denied inside target cgroup; see $RESULT_DIR/agent-cred-prepare.log"
+fi
+
+set +e
+wait "$AGENT_PID"
+agent_rc="$?"
+set -e
+AGENT_PID=""
+if [ "$agent_rc" -ne 0 ]; then
+    fail "cred_prepare agent exited non-zero, rc=$agent_rc; see $RESULT_DIR/agent-cred-prepare.log"
+fi
+
+assert_blocked_rule_event "cred_prepare" "lsm_cred_prepare" \
+    "deny_cred_prepare" "cred_prepare_scope"
+assert_blocked_rule_event_has_cgroup "cred_prepare" "lsm_cred_prepare" \
+    "deny_cred_prepare" "cred_prepare_scope"
+if ! grep -F "cred_prepare" "$ROOT/reports/events/security_policy.jsonl" 2>/dev/null \
+    | grep -F '"event_hook":"lsm_cred_prepare"' \
+    | grep -F '"result":"blocked"' \
+    | grep -F '"uid":"' \
+    | grep -Fq '"cred_gfp":"'; then
+    fail "cred_prepare blocked event did not carry uid/cred_gfp evidence"
+fi
+cp "$ROOT/reports/events/security_policy.jsonl" "$RESULT_DIR/security_policy_events.cred-prepare.jsonl"
+log "PASS: security_policy lsm_cred_prepare blocks scoped credential preparation"
+
+run_cleanup_script
+
+if ! run_in_scoped_cgroup "$RESULT_DIR/cred-prepare-post-cleanup.txt" \
+    "$RESULT_DIR/cred-prepare-post-cleanup.err" \
+    python3 "$RESULT_DIR/cred_prepare_transition.py" 65534; then
+    fail "cred_prepare transition is still denied after rollback/cleanup; see $RESULT_DIR/cred-prepare-post-cleanup.err"
+fi
 sleep 60 &
 SCOPED_PID="$!"
 echo "$SCOPED_PID" > "$SCOPED_CGROUP_PATH/cgroup.procs"

@@ -1,6 +1,6 @@
 # EulerPilot 最终安全与质量审计报告
 
-更新时间：`2026-06-23`
+更新时间：`2026-06-24`
 
 ## 审计范围
 
@@ -28,7 +28,7 @@
 | sched_ext state | `disabled` | `disabled` | PASS |
 | sched_ext nr_rejected | `0` | `0` | PASS |
 
-正式 `security_policy` 默认 disabled，audit 模式 attach BPF LSM + `execve/openat/connect/ptrace` tracepoint，但通过 `policy_map.enforce=0` 保持允许，命中后写 ringbuf observed hit；enforce 模式当前复用 `security_policy_demo` 的 BPF LSM，由用户态从 YAML `path/path_prefix/exec_path/exec_prefix/dst_ip/dst_port/capability/cgroup_path/pid/container_id/container/k8s_pod` 写入最多 8 项 `target_map`，写 blocked hit 后拒绝访问 map 中的文件路径、文件前缀、精确执行路径、执行路径前缀、scoped IPv4 socket endpoint、scope-only cgroup ptrace target、scoped capability target、scope-only setuid credential target、scope-only setgid credential target 和 scope-only setgroups target。LSM blocked hit 会携带 BPF `target_index`，用户态据此还原单条 YAML `rule_id/target_ref`；配置 `cgroup_path`、`type: pid`、`type: container_id`、`type: container` 或 `type: k8s_pod` 时，BPF 还要求当前进程 cgroup id 命中，事件会写 `cgroup_id/cgroup_path`；socket blocked 事件额外写 `dst_ip/dst_port/protocol`，exec_prefix blocked 事件额外写 `exec_prefix`，file_access blocked 事件额外写 `path_prefix/file_access/file_flags`，ptrace blocked 事件额外写 `path=ptrace_traceme`，capability blocked 事件额外写 `capability=CAP_*`，task_fix_setuid blocked 事件额外写 `uid/euid/suid/setuid_flags`，task_fix_setgid blocked 事件额外写 `gid/egid/sgid/setgid_flags`，task_fix_setgroups blocked 事件额外写 `group_count/old_group_count`。tracepoint 观测事件不参与规则匹配，写 `target_index=unknown`。BPF link 默认不 pin，LSM 与 tracepoint 程序随 Agent 进程退出自动消亡。`tests/integration/test_security_policy.sh` 已在 121/122 验证 `lsm_file_open/lsm_bprm_check_security/lsm_socket_connect/lsm_ptrace_traceme/lsm_capable/lsm_task_fix_setuid/lsm_task_fix_setgid/lsm_task_fix_setgroups/sys_enter_execve/sys_enter_openat/sys_enter_connect/sys_enter_ptrace` BPF ringbuf hit、八类 LSM enforce、双动态 `/tmp` target_map、scoped writable-dir exec_prefix、scoped file_access 精确路径写打开、scoped path_prefix 只读目录写打开、scoped ptrace_traceme、scoped CAP_SYS_ADMIN、scoped setuid/setgid/setgroups credential 转换、规则级 blocked 事件、显式 cgroup scope、PID target 自动解析、container_id target cgroup 解析、runtime container name 解析、k8s pod name 解析和 rollback 恢复，最新结果目录分别为 `results/security_policy/integration-20260623-214457` 和 `results/security_policy/integration-20260623-214850`。network_policy_demo 在 rollback 时 unpin + destroy，退出后无残留。
+正式 `security_policy` 默认 disabled，audit 模式 attach BPF LSM + `execve/openat/connect/ptrace` tracepoint，但通过 `policy_map.enforce=0` 保持允许，命中后写 ringbuf observed hit；enforce 模式复用 `security_policy_demo` 的 BPF LSM，由用户态从 YAML target 写入最多 8 项 `target_map`，拒绝文件路径/前缀、执行路径/前缀、scoped IPv4 endpoint、scope-only ptrace、capability、setuid、setgid、setgroups 和 cred_prepare target。LSM blocked hit 携带 BPF `target_index` 并映射回单条 YAML `rule_id/target_ref`；scoped target 事件会写 `cgroup_id/cgroup_path`；socket、exec_prefix、file_access、ptrace、capability 和 credential 事件分别输出对应证据。`tests/integration/test_security_policy.sh` 已在 121/122 验证九类 LSM enforce、四类 syscall tracing、双动态 `/tmp` target_map、scoped writable-dir exec_prefix、file_access、path_prefix、ptrace_traceme、CAP_SYS_ADMIN、setuid/setgid/setgroups credential 转换、cred_prepare credential preparation、显式 cgroup/PID/container/runtime/Pod target 和 rollback 恢复，最新结果目录分别为 `results/security_policy/integration-20260624-114838` 和 `results/security_policy/integration-20260624-115440`。security_policy_demo 在 rollback 时不 pin link，退出后无残留。
 
 ## 3. 内存泄漏审计
 
@@ -71,7 +71,7 @@
 
 ## 6. TAP 质量门禁结果（17/17）
 
-最新日志：`reports/final_quality_gate_20260623_security_setgroups.log`
+最新日志：`reports/final_quality_gate_20260624_security_cred_prepare.log`
 
 ```
 ok 1 - make agent
@@ -104,4 +104,4 @@ ok 17 - no BPF/LSM/TC/XDP residue
 | 构建/回归 | PASS |
 | 质量门禁 | PASS (17/17) |
 
-**当前结论：EulerPilot 通过最新安全与质量审计，可作为当前争奖增强阶段的稳定基线。Security 已具备正式 `security_policy` 最小 audit/enforce 闭环、file_open/bprm/socket_connect/ptrace_traceme/capable/task_fix_setuid/task_fix_setgid/task_fix_setgroups 八类 LSM enforce、四类 syscall tracing、最多 8 项 target_map、规则级 LSM blocked 事件标识、显式 cgroup scope、PID target 自动解析、container_id target cgroup 解析、runtime container name 解析、k8s pod name 解析、scoped IPv4 endpoint 阻断、scoped writable-dir exec_prefix 执行阻断、scoped file_access 精确路径写打开阻断、scoped path_prefix 只读目录写打开阻断、scoped ptrace_traceme 阻断、scoped CAP_SYS_ADMIN 阻断和 scoped setuid/setgid/setgroups credential 转换阻断；仍需继续补齐 cred_prepare 等更多 cred 类规则、异常规则和更完整进程过滤。**
+**当前结论：EulerPilot 通过最新安全与质量审计，可作为当前争奖增强阶段的稳定基线。Security 已具备正式 `security_policy` 最小 audit/enforce 闭环、file_open/bprm/socket_connect/ptrace_traceme/capable/task_fix_setuid/task_fix_setgid/task_fix_setgroups/cred_prepare 九类 LSM enforce、四类 syscall tracing、最多 8 项 target_map、规则级 LSM blocked 事件标识、显式 cgroup scope、PID target、container_id target、runtime container name target、k8s pod name target、scoped IPv4 endpoint、scoped writable-dir exec_prefix、scoped file_access、scoped path_prefix、scoped ptrace_traceme、scoped CAP_SYS_ADMIN、scoped setuid/setgid/setgroups credential 转换和 scoped cred_prepare credential preparation 阻断；仍需继续补齐 cred_transfer/cred_alloc_blank 等更多 cred 生命周期规则、异常规则和更完整进程过滤。**
