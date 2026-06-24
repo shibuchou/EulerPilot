@@ -1,0 +1,4 @@
+skills_config_path: skills.readonly-dir.yaml
+exporter:
+  prometheus:
+    enabled: false

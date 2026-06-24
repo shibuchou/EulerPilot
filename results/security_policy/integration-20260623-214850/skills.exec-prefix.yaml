@@ -1,0 +1,25 @@
+schema_version: 2
+skills:
+- name: resource_control
+  kind: runtime
+  enabled: true
+  config: {}
+- name: psi_gate
+  kind: runtime
+  enabled: true
+  config: {}
+- name: security_policy
+  kind: runtime
+  enabled: true
+  config:
+    mode: enforce
+    targets:
+      writable_exec:
+        type: cgroup
+        cgroup_path: /sys/fs/cgroup/eulerpilot/security-scope-217345
+        exec_prefix: /tmp/eulerpilot-security-policy.up4YVx/
+    rules:
+      - name: deny_writable_dir_exec
+        hook: lsm_bprm_check_security
+        target_ref: writable_exec
+        action: deny

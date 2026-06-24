@@ -1,0 +1,25 @@
+schema_version: 2
+skills:
+- name: resource_control
+  kind: runtime
+  enabled: true
+  config: {}
+- name: psi_gate
+  kind: runtime
+  enabled: true
+  config: {}
+- name: security_policy
+  kind: runtime
+  enabled: true
+  config:
+    mode: enforce
+    targets:
+      capable_scope:
+        type: cgroup
+        cgroup_path: /sys/fs/cgroup/eulerpilot/security-scope-217345
+        capability: CAP_SYS_ADMIN
+    rules:
+      - name: deny_cap_sys_admin
+        hook: lsm_capable
+        target_ref: capable_scope
+        action: deny
