@@ -161,6 +161,8 @@ select profile
 - target_ref cgroup 闭环 122：`results/resource_control/target-20260624-172916/summary.txt`
 - runtime target 闭环 121：`results/resource_control/runtime-target-20260624-212403/summary.txt`
 - runtime target 闭环 122：`results/resource_control/runtime-target-20260624-212529/summary.txt`
+- runtime readiness 诊断 121：`results/resource_control/runtime-readiness-20260625-104844/summary.txt`
+- runtime readiness 诊断 122：`results/resource_control/runtime-readiness-20260625-104857/summary.txt`
 - CPU quota 效果 121：`results/resource_control/cpu-quota-20260625-095030/summary.txt`
 - CPU quota 效果 122：`results/resource_control/cpu-quota-20260625-095114/summary.txt`
 - Redis quota Compare Benchmark 121：`results/resource_control/redis-quota-compare-20260625-102426/summary.txt`
@@ -174,6 +176,7 @@ tests/integration/test_resource_control.sh
 tests/integration/test_resource_control_io.sh
 tests/integration/test_resource_control_target.sh
 tests/integration/test_resource_control_runtime_target.sh
+tests/integration/test_resource_control_runtime_readiness.sh
 tests/integration/test_resource_control_cpu_quota.sh
 tests/benchmark/test_resource_control_redis_quota.sh
 tests/benchmark/test_resource_control_redis_quota_compare.sh
@@ -198,6 +201,7 @@ tests/benchmark/test_resource_control_redis_quota_compare.sh
 - Target 测试验证 Agent JSONL 和 `resource_control_events.jsonl` 都携带 `target_ref` 与目标 cgroup path，并在退出后恢复旧值
 - Runtime target 测试验证 `container_id`、runtime container name 和 `k8s_pod` 名称解析均能落到目标 cgroup，只对目标 cgroup 写 `cpu.max/memory.high`，scope 外 cgroup 保持原值
 - Runtime target 测试使用 fake `crictl/kubectl` 固定解析路径，不依赖真实容器服务；它验证的是 Resource Control 与 `TargetResolver` 的解析、写入、审计和回滚链路，真实容器/Kubernetes lab Pod 仍作为后续现场演示项
+- Runtime readiness 诊断只读检查 docker/podman/nerdctl/ctr/crictl/kubectl、systemd 服务、runtime socket、runtime cgroup 和 Kubernetes lab namespace；当前 121/122 均输出 `result=blocked`，说明真实容器/Pod target 现场实测需要先安装或启动 runtime，或提供 `eulerpilot-lab` demo Pod
 - CPU quota 测试先在 `cpu.max=max` 下采样 CPU hog 的 `cpu.stat usage_usec`，再由 Agent 写入 `cpu.max=10000 100000` 后采样同一指标；测试要求 `usage_rate_ratio < 0.70`，且限额窗口 `nr_throttled/throttled_usec` 均增加
 - Redis quota Compare Benchmark 在 Redis GET/SET 压测与 background CPU hog 同时运行时记录业务 RPS 和 background cgroup `cpu.stat`；它包含 `default_noisy`、`eulerpilot_no_quota` 和 `eulerpilot_quota` 三阶段，当前通过线聚焦同样 Agent 放置下后台限额是否生效，Redis RPS 作为业务侧证据记录，不包装成性能提升结论
 
@@ -277,6 +281,36 @@ k8s_pod_cpu_max_pressure=10000 100000
 container_id_memory_high_pressure=1048576
 container_name_memory_high_pressure=1048576
 k8s_pod_memory_high_pressure=1048576
+```
+
+当前 121 runtime readiness 诊断摘要：
+
+```text
+result=blocked
+reason=missing-container-runtime-and-kubernetes-lab
+container_runtime_ready=0
+kubernetes_ready=0
+runtime_cgroup_count=0
+docker_command=missing
+podman_command=missing
+crictl_command=missing
+kubectl_command=missing
+next_action=install-or-start-docker-podman-containerd-crio-or-provide-eulerpilot-lab-pod
+```
+
+当前 122 runtime readiness 诊断摘要：
+
+```text
+result=blocked
+reason=missing-container-runtime-and-kubernetes-lab
+container_runtime_ready=0
+kubernetes_ready=0
+runtime_cgroup_count=0
+docker_command=missing
+podman_command=missing
+crictl_command=missing
+kubectl_command=missing
+next_action=install-or-start-docker-podman-containerd-crio-or-provide-eulerpilot-lab-pod
 ```
 
 当前 121 CPU quota 结果摘要：

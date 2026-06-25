@@ -54,6 +54,7 @@ eBPF Observer
   - 121/122 CPU+Memory+IO 集成测试通过，已验证 background pressure 下 `cpu.max=10000 100000`、`memory.high=1048576`、`io.max wbps=1048576`、`memory.events high` 与 `io.stat wbytes` 增长和 rollback 恢复
   - 121/122 `target_ref` 集成测试通过，已验证只对目标 cgroup 写 `cpu.max/memory.high`，非目标 cgroup 不被误改
   - 121/122 runtime target 集成测试通过，已验证 `container_id`、runtime container name 和 `k8s_pod` 名称解析后进入同一套 CPU/Memory 控制器写入、审计和 rollback
+  - 121/122 真实 runtime readiness 诊断已完成，当前两台机器均缺少 docker/podman/containerd/crictl/kubectl 和 Kubernetes lab，因此真实容器 / Pod target 现场实测被环境阻塞；已有诊断结果明确下一步需要安装或启动真实 runtime，或提供 `eulerpilot-lab` namespace 与 demo Pod
   - 121/122 CPU quota 效果测试通过，已用 `cpu.stat usage_usec/nr_throttled/throttled_usec` 证明 `cpu.max=10000 100000` 后单位时间 CPU 使用量约降至 10%，且 throttling 计数明显增加
   - 121/122 Redis + background CPU quota Compare Benchmark 通过，已分离 `default_noisy`、`eulerpilot_no_quota` 与 `eulerpilot_quota` 三个阶段；同样 Agent 放置下，background CPU 使用率在 quota 阶段降至 no-quota 阶段约 2.47% / 2.50%，并触发 throttling；Redis GET/SET RPS 作为业务侧边界指标记录，不写成提升结论
 
@@ -71,11 +72,13 @@ eBPF Observer
 - Resource Control target_ref 122：`/root/EulerPilot/results/resource_control/target-20260624-172916`
 - Resource Control runtime target 121：`/root/EulerPilot/results/resource_control/runtime-target-20260624-212403`
 - Resource Control runtime target 122：`/root/EulerPilot/results/resource_control/runtime-target-20260624-212529`
+- Resource Control runtime readiness 121：`/root/EulerPilot/results/resource_control/runtime-readiness-20260625-104844`
+- Resource Control runtime readiness 122：`/root/EulerPilot/results/resource_control/runtime-readiness-20260625-104857`
 - Resource Control CPU quota 121：`/root/EulerPilot/results/resource_control/cpu-quota-20260625-095030`
 - Resource Control CPU quota 122：`/root/EulerPilot/results/resource_control/cpu-quota-20260625-095114`
 - Resource Control Redis quota Compare Benchmark 121：`/root/EulerPilot/results/resource_control/redis-quota-compare-20260625-102426`
 - Resource Control Redis quota Compare Benchmark 122：`/root/EulerPilot/results/resource_control/redis-quota-compare-20260625-102611`
-- 121 最新质量门禁：`/root/EulerPilot/reports/final_quality_gate_20260625_resource_redis_quota_compare.log`
+- 121 最新质量门禁：`/root/EulerPilot/reports/final_quality_gate_20260625_resource_runtime_readiness.log`
 
 当前图表目录为：
 
@@ -106,6 +109,7 @@ eBPF Observer
 - Resource Control IO 集成测试：`/root/EulerPilot/tests/integration/test_resource_control_io.sh`
 - Resource Control target_ref 集成测试：`/root/EulerPilot/tests/integration/test_resource_control_target.sh`
 - Resource Control runtime target 集成测试：`/root/EulerPilot/tests/integration/test_resource_control_runtime_target.sh`
+- Resource Control runtime readiness 诊断：`/root/EulerPilot/tests/integration/test_resource_control_runtime_readiness.sh`
 - Resource Control CPU quota 效果测试：`/root/EulerPilot/tests/integration/test_resource_control_cpu_quota.sh`
 - Resource Control Redis quota Compare Benchmark：`/root/EulerPilot/tests/benchmark/test_resource_control_redis_quota_compare.sh`
 - 质量门禁：`/root/EulerPilot/scripts/final_quality_gate.sh`
