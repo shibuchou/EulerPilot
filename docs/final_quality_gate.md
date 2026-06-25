@@ -19,7 +19,7 @@ make agent
 ./build/eulerpilot-agent --doctor-skills --config configs/agent.yaml
 ```
 
-## P0 阻塞项（20 项）
+## P0 阻塞项（21 项）
 
 | # | 检查 | 判定 |
 |---|------|------|
@@ -42,7 +42,8 @@ make agent
 | 17 | Resource Control CPU+Memory+IO 证据 | 121/122 CPU+Memory 与 IO 结果目录存在，`summary.txt` 为 pass，包含 `cpu.max`、`memory.high`、`io.max`、`io.weight` 关键证据 |
 | 18 | Resource Control target_ref 证据 | 121/122 target 结果目录存在，`summary.txt` 为 pass，包含 `target_ref`、目标 cgroup、非目标 cgroup 未误改和 `cpu.max/memory.high` 关键证据 |
 | 19 | Resource Control runtime target 证据 | 121/122 runtime target 结果目录存在，`summary.txt` 为 pass，包含 `container_id/container/k8s_pod`、三类 `target_ref` 和 `cpu.max/memory.high` 关键证据 |
-| 20 | 无 BPF/LSM/TC/XDP 残留 | security LSM link 不存在，demo-net cgroup 无 attached BPF，lab veth 不残留 |
+| 20 | Resource Control CPU quota 效果证据 | 121/122 CPU quota 结果目录存在，`summary.txt` 为 pass，`usage_rate_ratio < 0.70`，且 `nr_throttled/throttled_usec` 增长 |
+| 21 | 无 BPF/LSM/TC/XDP 残留 | security LSM link 不存在，demo-net cgroup 无 attached BPF，lab veth 不残留 |
 
 ## P1 可选项（不阻塞）
 
@@ -70,11 +71,11 @@ make agent
 
 ## 通过标准
 
-- 20 项 P0 全部 `ok`
+- 21 项 P0 全部 `ok`
 - P1 记录结果但不影响通过
 - 122 编译 + CLI 通过
 
 ## 最新记录
 
-- 121 最新完整门禁：`reports/final_quality_gate_20260624_resource_runtime_target.log`
-- 结果：20/20 P0 通过，P1 `agent 100-round stress smoke` 和 `doctor 5-round stable` 通过
+- 121 最新完整门禁：`reports/final_quality_gate_20260625_resource_cpu_quota.log`
+- 结果：21/21 P0 通过，P1 `agent 100-round stress smoke` 和 `doctor 5-round stable` 通过

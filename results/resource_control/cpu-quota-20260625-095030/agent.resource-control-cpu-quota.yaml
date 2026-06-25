@@ -1,0 +1,9 @@
+agent:
+  name: EulerPilot
+  mode: active
+skills_config_path: skills.resource-control-cpu-quota.yaml
+scheduler:
+  type: cgroup_v2
+exporter:
+  prometheus:
+    enabled: false

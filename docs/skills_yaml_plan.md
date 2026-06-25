@@ -579,10 +579,14 @@ profiles:
   -> 失败回滚
 ```
 
+当前补充证据：
+
+- CPU quota 效果指标已在 121/122 完成：`tests/integration/test_resource_control_cpu_quota.sh` 使用 `cpu.stat usage_usec`、`nr_throttled`、`throttled_usec` 对照，证明 `cpu.max=10000 100000` 后实际 CPU 使用率下降并触发 throttling。
+
 后续扩展：
 
 - 在真实 container runtime / Kubernetes Pod 上复用同一 YAML 做现场演示验证。
-- 增加 CPU quota 效果指标：`cpu.stat usage_usec`、`nr_throttled/throttled_usec` 对照。
+- 将 CPU quota 效果指标扩展到 Redis/Nginx + background CPU hog 的多 workload 业务场景。
 
 ## 9. CPU Scheduling YAML
 

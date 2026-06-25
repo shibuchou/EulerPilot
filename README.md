@@ -54,6 +54,7 @@ eBPF Observer
   - 121/122 CPU+Memory+IO 集成测试通过，已验证 background pressure 下 `cpu.max=10000 100000`、`memory.high=1048576`、`io.max wbps=1048576`、`memory.events high` 与 `io.stat wbytes` 增长和 rollback 恢复
   - 121/122 `target_ref` 集成测试通过，已验证只对目标 cgroup 写 `cpu.max/memory.high`，非目标 cgroup 不被误改
   - 121/122 runtime target 集成测试通过，已验证 `container_id`、runtime container name 和 `k8s_pod` 名称解析后进入同一套 CPU/Memory 控制器写入、审计和 rollback
+  - 121/122 CPU quota 效果测试通过，已用 `cpu.stat usage_usec/nr_throttled/throttled_usec` 证明 `cpu.max=10000 100000` 后单位时间 CPU 使用量约降至 10%，且 throttling 计数明显增加
 
 当前最重要的候选结果目录为：
 
@@ -69,7 +70,9 @@ eBPF Observer
 - Resource Control target_ref 122：`/root/EulerPilot/results/resource_control/target-20260624-172916`
 - Resource Control runtime target 121：`/root/EulerPilot/results/resource_control/runtime-target-20260624-212403`
 - Resource Control runtime target 122：`/root/EulerPilot/results/resource_control/runtime-target-20260624-212529`
-- 121 最新质量门禁：`/root/EulerPilot/reports/final_quality_gate_20260624_resource_runtime_target.log`
+- Resource Control CPU quota 121：`/root/EulerPilot/results/resource_control/cpu-quota-20260625-095030`
+- Resource Control CPU quota 122：`/root/EulerPilot/results/resource_control/cpu-quota-20260625-095114`
+- 121 最新质量门禁：`/root/EulerPilot/reports/final_quality_gate_20260625_resource_cpu_quota.log`
 
 当前图表目录为：
 
@@ -100,6 +103,7 @@ eBPF Observer
 - Resource Control IO 集成测试：`/root/EulerPilot/tests/integration/test_resource_control_io.sh`
 - Resource Control target_ref 集成测试：`/root/EulerPilot/tests/integration/test_resource_control_target.sh`
 - Resource Control runtime target 集成测试：`/root/EulerPilot/tests/integration/test_resource_control_runtime_target.sh`
+- Resource Control CPU quota 效果测试：`/root/EulerPilot/tests/integration/test_resource_control_cpu_quota.sh`
 - 质量门禁：`/root/EulerPilot/scripts/final_quality_gate.sh`
 
 ### 最终候选结果

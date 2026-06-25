@@ -13,6 +13,7 @@
 - `test_resource_control_io.sh`：验证正式 `resource_control` IO controller。脚本初始化 cgroup v2 IO controller，检测根文件系统块设备，确认 background 组写入 `io.max=253:0 rbps=max wbps=1048576` 与 `io.weight=default 50`，用 direct write 对比 baseline/limited 耗时和 `io.stat wbytes`，并确认 Agent 停止后恢复旧值。121 最新通过结果：`results/resource_control/io-20260624-160008`；122 最新通过结果：`results/resource_control/io-20260624-160208`。
 - `test_resource_control_target.sh`：验证正式 `resource_control` 的 `target_ref` cgroup 闭环。脚本创建目标 cgroup 和非目标 cgroup，将两个 background workload 分别放入其中，确认只对 `profiles.background.target_ref` 指向的 cgroup 写 `cpu.max/memory.high`，非目标 cgroup 不被误改，审计和 Agent JSONL 均携带 `target_ref`。121 最新通过结果：`results/resource_control/target-20260624-172139`；122 最新通过结果：`results/resource_control/target-20260624-172916`。
 - `test_resource_control_runtime_target.sh`：验证正式 `resource_control` 的 runtime target 解析闭环。脚本使用 fake `crictl/kubectl` 固定解析路径，分别验证 `type: container_id`、`type: container` 和 `type: k8s_pod` 能解析到目标 cgroup，只对目标 cgroup 写 `cpu.max/memory.high`，非目标 cgroup 不被误改，并确认 Agent 退出后恢复旧值。121 最新通过结果：`results/resource_control/runtime-target-20260624-212403`；122 最新通过结果：`results/resource_control/runtime-target-20260624-212529`。
+- `test_resource_control_cpu_quota.sh`：验证正式 `resource_control` 的 CPU quota 效果指标。脚本先在 `cpu.max=max` 下采样 CPU hog 的 `cpu.stat usage_usec`，再让 Agent 写入 `cpu.max=10000 100000`，验证限额后单位时间 CPU 使用量下降、`nr_throttled/throttled_usec` 增长，并确认 rollback 恢复旧值。121 最新通过结果：`results/resource_control/cpu-quota-20260625-095030`；122 最新通过结果：`results/resource_control/cpu-quota-20260625-095114`。
 
 ## 后续测试
 

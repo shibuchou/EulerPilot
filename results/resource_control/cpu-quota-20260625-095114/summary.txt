@@ -1,0 +1,17 @@
+result=pass
+hog_pid=233282
+cpu_max_pressure=10000 100000
+old_cpu_max=max 100000
+baseline_seconds=4
+limited_seconds=6
+baseline_usage_delta_usec=4007894
+limited_usage_delta_usec=605142
+baseline_usage_rate_usec_per_s=1001973.50
+limited_usage_rate_usec_per_s=100857.00
+usage_rate_ratio=0.1007
+baseline_nr_periods_delta=0
+limited_nr_periods_delta=61
+baseline_nr_throttled_delta=0
+limited_nr_throttled_delta=61
+baseline_throttled_usec_delta=0
+limited_throttled_usec_delta=5557095

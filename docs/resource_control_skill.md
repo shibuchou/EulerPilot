@@ -15,6 +15,7 @@
 - 可选 Memory reclaim：`memory.reclaim` 已有配置开关，默认关闭，后续只在明确 pressure 策略中启用
 - 自动模式：`GateState::Active/Cooldown` 或非 `normal_profile` 时进入 pressure 模式
 - 事务化执行：读取旧值、校验新值、写入控制器、复读验证、写 `AuditBus`、写 `ActionJournal`、停止时恢复旧值
+- CPU quota 效果证据：使用 `cpu.stat usage_usec`、`nr_throttled`、`throttled_usec` 对比不限额和 `cpu.max=10000 100000` 两个窗口，验证实际 CPU 使用率下降和 throttling 生效
 
 当前安全边界：
 
@@ -160,6 +161,8 @@ select profile
 - target_ref cgroup 闭环 122：`results/resource_control/target-20260624-172916/summary.txt`
 - runtime target 闭环 121：`results/resource_control/runtime-target-20260624-212403/summary.txt`
 - runtime target 闭环 122：`results/resource_control/runtime-target-20260624-212529/summary.txt`
+- CPU quota 效果 121：`results/resource_control/cpu-quota-20260625-095030/summary.txt`
+- CPU quota 效果 122：`results/resource_control/cpu-quota-20260625-095114/summary.txt`
 
 测试命令：
 
@@ -169,6 +172,7 @@ tests/integration/test_resource_control.sh
 tests/integration/test_resource_control_io.sh
 tests/integration/test_resource_control_target.sh
 tests/integration/test_resource_control_runtime_target.sh
+tests/integration/test_resource_control_cpu_quota.sh
 ```
 
 测试覆盖：
@@ -190,6 +194,7 @@ tests/integration/test_resource_control_runtime_target.sh
 - Target 测试验证 Agent JSONL 和 `resource_control_events.jsonl` 都携带 `target_ref` 与目标 cgroup path，并在退出后恢复旧值
 - Runtime target 测试验证 `container_id`、runtime container name 和 `k8s_pod` 名称解析均能落到目标 cgroup，只对目标 cgroup 写 `cpu.max/memory.high`，scope 外 cgroup 保持原值
 - Runtime target 测试使用 fake `crictl/kubectl` 固定解析路径，不依赖真实容器服务；它验证的是 Resource Control 与 `TargetResolver` 的解析、写入、审计和回滚链路，真实容器/Kubernetes lab Pod 仍作为后续现场演示项
+- CPU quota 测试先在 `cpu.max=max` 下采样 CPU hog 的 `cpu.stat usage_usec`，再由 Agent 写入 `cpu.max=10000 100000` 后采样同一指标；测试要求 `usage_rate_ratio < 0.70`，且限额窗口 `nr_throttled/throttled_usec` 均增加
 
 当前 121 结果摘要：
 
@@ -269,7 +274,31 @@ container_name_memory_high_pressure=1048576
 k8s_pod_memory_high_pressure=1048576
 ```
 
+当前 121 CPU quota 结果摘要：
+
+```text
+result=pass
+cpu_max_pressure=10000 100000
+baseline_usage_rate_usec_per_s=1001520.00
+limited_usage_rate_usec_per_s=100849.00
+usage_rate_ratio=0.1007
+limited_nr_throttled_delta=61
+limited_throttled_usec_delta=5557964
+```
+
+当前 122 CPU quota 结果摘要：
+
+```text
+result=pass
+cpu_max_pressure=10000 100000
+baseline_usage_rate_usec_per_s=1001973.50
+limited_usage_rate_usec_per_s=100857.00
+usage_rate_ratio=0.1007
+limited_nr_throttled_delta=61
+limited_throttled_usec_delta=5557095
+```
+
 ## 后续 TODO
 
 - 在真实 docker/podman/crictl 或 Kubernetes lab Pod 环境中补现场演示，把 fake runtime 自测升级为真实运行时证据。
-- 增加更稳定的 CPU quota 效果指标，例如 `cpu.stat usage_usec` 与 throttled 计数对照。
+- 将 CPU quota 效果测试扩展到 Redis/Nginx + background CPU hog 的多 workload 业务场景，输出前台 P99 与后台 throttling 的联合证据。

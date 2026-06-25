@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 # EulerPilot Final Quality Gate — TAP-style
-# P0: 20 blocking checks. P1: optional checks (not in TAP count).
+# P0: 21 blocking checks. P1: optional checks (not in TAP count).
 # Run on 121. For 122: minimal regression only.
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -12,7 +12,7 @@ AGENT_YAML="configs/agent.yaml"
 AGENT_BIN="build/eulerpilot-agent"
 TMPLOG="/tmp/eulerpilot-quality-gate.tmp"
 
-TOTAL=20
+TOTAL=21
 N=1
 
 echo "1..$TOTAL"
@@ -277,7 +277,35 @@ else
     not_ok "resource_control runtime target evidence missing"
 fi
 
-# 20. no BPF/LSM/TC/XDP residue
+# 20. resource_control CPU quota effect evidence
+RESOURCE_CPU_QUOTA_OK=true
+for summary in \
+    results/resource_control/cpu-quota-20260625-095030/summary.txt \
+    results/resource_control/cpu-quota-20260625-095114/summary.txt; do
+    if [ ! -s "$summary" ] ||
+       ! grep -q '^result=pass$' "$summary" ||
+       ! grep -q '^cpu_max_pressure=10000 100000$' "$summary"; then
+        echo "  ERROR: missing CPU quota summary fields in $summary"
+        RESOURCE_CPU_QUOTA_OK=false
+        continue
+    fi
+
+    ratio=$(awk -F= '$1 == "usage_rate_ratio" { print $2 }' "$summary")
+    throttled=$(awk -F= '$1 == "limited_nr_throttled_delta" { print $2 }' "$summary")
+    throttled_usec=$(awk -F= '$1 == "limited_throttled_usec_delta" { print $2 }' "$summary")
+    if ! awk -v ratio="$ratio" -v throttled="$throttled" -v throttled_usec="$throttled_usec" \
+        'BEGIN { exit !(ratio > 0 && ratio < 0.70 && throttled > 0 && throttled_usec > 0) }'; then
+        echo "  ERROR: weak CPU quota evidence in $summary ratio=$ratio throttled=$throttled throttled_usec=$throttled_usec"
+        RESOURCE_CPU_QUOTA_OK=false
+    fi
+done
+if $RESOURCE_CPU_QUOTA_OK; then
+    ok "resource_control CPU quota effect evidence"
+else
+    not_ok "resource_control CPU quota effect evidence missing"
+fi
+
+# 21. no BPF/LSM/TC/XDP residue
 RESIDUE_OK=true
 if [ -e /sys/fs/bpf/security_policy_demo_link ]; then
     echo "  ERROR: /sys/fs/bpf/security_policy_demo_link still pinned"
