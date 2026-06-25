@@ -35,6 +35,7 @@
 - [x] `resource_control` `target_ref` cgroup 最小闭环 121/122 验证：`targets + profiles.<name>.target_ref`、目标 cgroup 限制、非目标 cgroup 不误改、审计和 Agent JSONL 携带 `target_ref`
 - [x] `resource_control` runtime target 解析闭环 121/122 验证：`type: container_id/container/k8s_pod` 均能解析到目标 cgroup，并复用 CPU/Memory 控制器写入、审计和 rollback
 - [x] `resource_control` CPU quota 效果指标 121/122 验证：`cpu.stat usage_usec/nr_throttled/throttled_usec` 证明 `cpu.max=10000 100000` 后实际 CPU 使用率下降并触发 throttling
+- [x] `resource_control` Redis + background CPU quota Benchmark 121/122 验证：记录 Redis GET/SET RPS 与 background cgroup CPU 使用率，结论限定为后台限额效果显著，不写成 Redis 性能提升
 - [x] `security_policy_demo` BPF LSM file_open 最小闭环
 - [x] `security_policy_demo` BPF LSM attach/deny/rollback 集成测试 121/122 均通过
 - [x] Runtime 生命周期收拢与 ActionJournal/AuditBus 最小接入
@@ -95,6 +96,8 @@
 - Resource Control runtime target 122：`results/resource_control/runtime-target-20260624-212529`
 - Resource Control CPU quota 121：`results/resource_control/cpu-quota-20260625-095030`
 - Resource Control CPU quota 122：`results/resource_control/cpu-quota-20260625-095114`
+- Resource Control Redis quota Benchmark 121：`results/resource_control/redis-quota-20260625-101307`
+- Resource Control Redis quota Benchmark 122：`results/resource_control/redis-quota-20260625-101401`
 
 ## 当前核心文档
 
@@ -117,4 +120,4 @@
 
 ## 当前结论
 
-项目仍处于争奖增强阶段，不应停留在“最终材料整理”。下一步重点是补强 Network/Security/Resource 的成品化深度：Pod veth、Security 更多 cred 生命周期规则/更多异常规则、Resource 真实 container runtime / Kubernetes Pod target 实测和多 workload CPU quota Benchmark。
+项目仍处于争奖增强阶段，不应停留在“最终材料整理”。下一步重点是补强 Network/Security/Resource 的成品化深度：Pod veth、Security 更多 cred 生命周期规则/更多异常规则、Resource 真实 container runtime / Kubernetes Pod target 实测，以及 Redis/Nginx 多 workload quota 调参。

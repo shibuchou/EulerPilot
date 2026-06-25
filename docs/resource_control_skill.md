@@ -163,6 +163,8 @@ select profile
 - runtime target 闭环 122：`results/resource_control/runtime-target-20260624-212529/summary.txt`
 - CPU quota 效果 121：`results/resource_control/cpu-quota-20260625-095030/summary.txt`
 - CPU quota 效果 122：`results/resource_control/cpu-quota-20260625-095114/summary.txt`
+- Redis quota Benchmark 121：`results/resource_control/redis-quota-20260625-101307/summary.txt`
+- Redis quota Benchmark 122：`results/resource_control/redis-quota-20260625-101401/summary.txt`
 
 测试命令：
 
@@ -173,6 +175,7 @@ tests/integration/test_resource_control_io.sh
 tests/integration/test_resource_control_target.sh
 tests/integration/test_resource_control_runtime_target.sh
 tests/integration/test_resource_control_cpu_quota.sh
+tests/benchmark/test_resource_control_redis_quota.sh
 ```
 
 测试覆盖：
@@ -195,6 +198,7 @@ tests/integration/test_resource_control_cpu_quota.sh
 - Runtime target 测试验证 `container_id`、runtime container name 和 `k8s_pod` 名称解析均能落到目标 cgroup，只对目标 cgroup 写 `cpu.max/memory.high`，scope 外 cgroup 保持原值
 - Runtime target 测试使用 fake `crictl/kubectl` 固定解析路径，不依赖真实容器服务；它验证的是 Resource Control 与 `TargetResolver` 的解析、写入、审计和回滚链路，真实容器/Kubernetes lab Pod 仍作为后续现场演示项
 - CPU quota 测试先在 `cpu.max=max` 下采样 CPU hog 的 `cpu.stat usage_usec`，再由 Agent 写入 `cpu.max=10000 100000` 后采样同一指标；测试要求 `usage_rate_ratio < 0.70`，且限额窗口 `nr_throttled/throttled_usec` 均增加
+- Redis quota Benchmark 在 Redis GET/SET 压测与 background CPU hog 同时运行时记录业务 RPS 和 background cgroup `cpu.stat`；当前通过线聚焦后台限额是否生效，Redis RPS 作为业务侧证据记录，不包装成性能提升结论
 
 当前 121 结果摘要：
 
@@ -298,7 +302,33 @@ limited_nr_throttled_delta=61
 limited_throttled_usec_delta=5557095
 ```
 
+当前 121 Redis quota Benchmark 摘要：
+
+```text
+result=pass
+default_get_rps=43795.62
+limited_get_rps=37359.90
+get_rps_ratio=0.8531
+default_background_usage_rate_usec_per_s=4039749.82
+limited_background_usage_rate_usec_per_s=96426.35
+background_usage_rate_ratio=0.0239
+limited_nr_throttled_delta=17
+```
+
+当前 122 Redis quota Benchmark 摘要：
+
+```text
+result=pass
+default_get_rps=41208.79
+limited_get_rps=36231.88
+get_rps_ratio=0.8792
+default_background_usage_rate_usec_per_s=4029673.09
+limited_background_usage_rate_usec_per_s=97966.44
+background_usage_rate_ratio=0.0243
+limited_nr_throttled_delta=16
+```
+
 ## 后续 TODO
 
 - 在真实 docker/podman/crictl 或 Kubernetes lab Pod 环境中补现场演示，把 fake runtime 自测升级为真实运行时证据。
-- 将 CPU quota 效果测试扩展到 Redis/Nginx + background CPU hog 的多 workload 业务场景，输出前台 P99 与后台 throttling 的联合证据。
+- 继续调参 Redis/Nginx + background CPU hog 的多 workload 场景，寻找更合理的 background quota、cpuset 与 latency 保护组合，目标是同时展示后台抑制和前台收益。

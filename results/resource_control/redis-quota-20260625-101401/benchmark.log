@@ -1,0 +1,6 @@
+[INFO] redis ready pid=234015 port=16379
+[INFO] phase=default_noisy
+[INFO] background hogs=234027 234028 234029 234030
+[INFO] phase=eulerpilot_quota
+[INFO] background hogs=234064 234065 234066 234067
+[INFO] resource_control Redis quota benchmark result saved to results/resource_control/redis-quota-20260625-101401
