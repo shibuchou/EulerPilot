@@ -15,7 +15,7 @@
 - 可选 Memory reclaim：`memory.reclaim` 已有配置开关，默认关闭，后续只在明确 pressure 策略中启用
 - 自动模式：`GateState::Active/Cooldown` 或非 `normal_profile` 时进入 pressure 模式
 - 事务化执行：读取旧值、校验新值、写入控制器、复读验证、写 `AuditBus`、写 `ActionJournal`、停止时恢复旧值
-- CPU quota 效果证据：使用 `cpu.stat usage_usec`、`nr_throttled`、`throttled_usec` 对比不限额和 `cpu.max=10000 100000` 两个窗口，验证实际 CPU 使用率下降和 throttling 生效
+- CPU quota 效果证据：使用 `cpu.stat usage_usec`、`nr_throttled`、`throttled_usec` 对比不限额和 `cpu.max=10000 100000` 窗口，验证实际 CPU 使用率下降和 throttling 生效；Redis compare benchmark 进一步拆分 `default_noisy`、`eulerpilot_no_quota` 和 `eulerpilot_quota`，避免混淆 Agent 放置影响与 quota 影响
 
 当前安全边界：
 
@@ -163,8 +163,8 @@ select profile
 - runtime target 闭环 122：`results/resource_control/runtime-target-20260624-212529/summary.txt`
 - CPU quota 效果 121：`results/resource_control/cpu-quota-20260625-095030/summary.txt`
 - CPU quota 效果 122：`results/resource_control/cpu-quota-20260625-095114/summary.txt`
-- Redis quota Benchmark 121：`results/resource_control/redis-quota-20260625-101307/summary.txt`
-- Redis quota Benchmark 122：`results/resource_control/redis-quota-20260625-101401/summary.txt`
+- Redis quota Compare Benchmark 121：`results/resource_control/redis-quota-compare-20260625-102426/summary.txt`
+- Redis quota Compare Benchmark 122：`results/resource_control/redis-quota-compare-20260625-102611/summary.txt`
 
 测试命令：
 
@@ -176,6 +176,7 @@ tests/integration/test_resource_control_target.sh
 tests/integration/test_resource_control_runtime_target.sh
 tests/integration/test_resource_control_cpu_quota.sh
 tests/benchmark/test_resource_control_redis_quota.sh
+tests/benchmark/test_resource_control_redis_quota_compare.sh
 ```
 
 测试覆盖：
@@ -198,7 +199,7 @@ tests/benchmark/test_resource_control_redis_quota.sh
 - Runtime target 测试验证 `container_id`、runtime container name 和 `k8s_pod` 名称解析均能落到目标 cgroup，只对目标 cgroup 写 `cpu.max/memory.high`，scope 外 cgroup 保持原值
 - Runtime target 测试使用 fake `crictl/kubectl` 固定解析路径，不依赖真实容器服务；它验证的是 Resource Control 与 `TargetResolver` 的解析、写入、审计和回滚链路，真实容器/Kubernetes lab Pod 仍作为后续现场演示项
 - CPU quota 测试先在 `cpu.max=max` 下采样 CPU hog 的 `cpu.stat usage_usec`，再由 Agent 写入 `cpu.max=10000 100000` 后采样同一指标；测试要求 `usage_rate_ratio < 0.70`，且限额窗口 `nr_throttled/throttled_usec` 均增加
-- Redis quota Benchmark 在 Redis GET/SET 压测与 background CPU hog 同时运行时记录业务 RPS 和 background cgroup `cpu.stat`；当前通过线聚焦后台限额是否生效，Redis RPS 作为业务侧证据记录，不包装成性能提升结论
+- Redis quota Compare Benchmark 在 Redis GET/SET 压测与 background CPU hog 同时运行时记录业务 RPS 和 background cgroup `cpu.stat`；它包含 `default_noisy`、`eulerpilot_no_quota` 和 `eulerpilot_quota` 三阶段，当前通过线聚焦同样 Agent 放置下后台限额是否生效，Redis RPS 作为业务侧证据记录，不包装成性能提升结论
 
 当前 121 结果摘要：
 
@@ -302,30 +303,34 @@ limited_nr_throttled_delta=61
 limited_throttled_usec_delta=5557095
 ```
 
-当前 121 Redis quota Benchmark 摘要：
+当前 121 Redis quota Compare Benchmark 摘要：
 
 ```text
 result=pass
-default_get_rps=43795.62
-limited_get_rps=37359.90
-get_rps_ratio=0.8531
-default_background_usage_rate_usec_per_s=4039749.82
-limited_background_usage_rate_usec_per_s=96426.35
-background_usage_rate_ratio=0.0239
-limited_nr_throttled_delta=17
+benchmark=redis_background_cpu_quota_compare
+no_quota_get_rps=40160.64
+quota_get_rps=37735.85
+quota_vs_no_quota_get_rps_ratio=0.9396
+no_quota_background_usage_rate_usec_per_s=4037467.65
+quota_background_usage_rate_usec_per_s=99623.90
+quota_vs_no_quota_background_usage_rate_ratio=0.0247
+quota_nr_throttled_delta=17
+quota_throttled_usec_delta=6594710
 ```
 
-当前 122 Redis quota Benchmark 摘要：
+当前 122 Redis quota Compare Benchmark 摘要：
 
 ```text
 result=pass
-default_get_rps=41208.79
-limited_get_rps=36231.88
-get_rps_ratio=0.8792
-default_background_usage_rate_usec_per_s=4029673.09
-limited_background_usage_rate_usec_per_s=97966.44
-background_usage_rate_ratio=0.0243
-limited_nr_throttled_delta=16
+benchmark=redis_background_cpu_quota_compare
+no_quota_get_rps=40650.41
+quota_get_rps=36719.71
+quota_vs_no_quota_get_rps_ratio=0.9033
+no_quota_background_usage_rate_usec_per_s=4038245.65
+quota_background_usage_rate_usec_per_s=100796.10
+quota_vs_no_quota_background_usage_rate_ratio=0.0250
+quota_nr_throttled_delta=17
+quota_throttled_usec_delta=6621902
 ```
 
 ## 后续 TODO

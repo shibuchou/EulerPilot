@@ -582,7 +582,7 @@ profiles:
 当前补充证据：
 
 - CPU quota 效果指标已在 121/122 完成：`tests/integration/test_resource_control_cpu_quota.sh` 使用 `cpu.stat usage_usec`、`nr_throttled`、`throttled_usec` 对照，证明 `cpu.max=10000 100000` 后实际 CPU 使用率下降并触发 throttling。
-- Redis + background CPU quota Benchmark 已在 121/122 完成：`tests/benchmark/test_resource_control_redis_quota.sh` 输出 Redis GET/SET RPS 与 background cgroup `cpu.stat` 对照，当前作为后台限额效果和业务指标证据，不作为 Redis 性能提升结论。
+- Redis + background CPU quota Compare Benchmark 已在 121/122 完成：`tests/benchmark/test_resource_control_redis_quota_compare.sh` 输出 `default_noisy`、`eulerpilot_no_quota`、`eulerpilot_quota` 三阶段 Redis GET/SET RPS 与 background cgroup `cpu.stat` 对照，当前作为同样 Agent 放置下的后台限额效果、throttling 和业务指标边界证据，不作为 Redis 性能提升结论。
 
 后续扩展：
 

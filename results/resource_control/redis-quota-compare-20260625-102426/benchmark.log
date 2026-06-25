@@ -1,0 +1,8 @@
+[INFO] redis ready pid=411432 port=16380
+[INFO] phase=default_noisy
+[INFO] background hogs=411461 411462 411463 411464
+[INFO] phase=eulerpilot_no_quota cpu_max=max
+[INFO] background hogs=411500 411501 411502 411503
+[INFO] phase=eulerpilot_quota cpu_max=10000 100000
+[INFO] background hogs=411544 411545 411546 411547
+[INFO] resource_control Redis quota compare benchmark result saved to results/resource_control/redis-quota-compare-20260625-102426
