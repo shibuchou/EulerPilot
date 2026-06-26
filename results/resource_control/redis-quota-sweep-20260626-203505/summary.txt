@@ -1,0 +1,15 @@
+result=pass
+benchmark=redis_background_cpu_quota_sweep
+rps_retention_min=0.85
+no_quota_get_rps=43541.36
+no_quota_set_rps=43165.47
+no_quota_background_usage_rate_usec_per_s=4040242.17
+quota_10_background_ratio_vs_no_quota=0.0246
+quota_10_nr_throttled_delta=16
+quota_10_throttled_usec_delta=6228099
+recommended_profile=quota_10
+recommended_cpu_max=10000 100000
+recommended_get_ratio_vs_no_quota=0.8423
+recommended_set_ratio_vs_no_quota=0.9761
+recommended_background_ratio_vs_no_quota=0.0246
+recommendation_reason=no_profile_met_rps_retention_threshold

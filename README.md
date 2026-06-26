@@ -19,7 +19,7 @@ eBPF Observer
 
 ## 当前状态
 
-截至 `2026-06-25`，项目已经完成：
+截至 `2026-06-26`，项目已经完成：
 
 - `SP3 + cgroup v2` 主闭环
 - `OLK-6.6 + sched_ext` 正式对照线
@@ -56,7 +56,7 @@ eBPF Observer
   - 121/122 runtime target 集成测试通过，已验证 `container_id`、runtime container name 和 `k8s_pod` 名称解析后进入同一套 CPU/Memory 控制器写入、审计和 rollback
   - 121/122 真实 runtime readiness 诊断已完成，当前两台机器均缺少 docker/podman/containerd/crictl/kubectl 和 Kubernetes lab，因此真实容器 / Pod target 现场实测被环境阻塞；已有诊断结果明确下一步需要安装或启动真实 runtime，或提供 `eulerpilot-lab` namespace 与 demo Pod
   - 121/122 CPU quota 效果测试通过，已用 `cpu.stat usage_usec/nr_throttled/throttled_usec` 证明 `cpu.max=10000 100000` 后单位时间 CPU 使用量约降至 10%，且 throttling 计数明显增加
-  - 121/122 Redis + background CPU quota Compare Benchmark 通过，已分离 `default_noisy`、`eulerpilot_no_quota` 与 `eulerpilot_quota` 三个阶段；同样 Agent 放置下，background CPU 使用率在 quota 阶段降至 no-quota 阶段约 2.47% / 2.50%，并触发 throttling；Redis GET/SET RPS 作为业务侧边界指标记录，不写成提升结论
+  - 121/122 Redis + background CPU quota Compare/Sweep Benchmark 通过，已分离 `default_noisy`、`eulerpilot_no_quota` 与多档 `eulerpilot_quota` 阶段；同样 Agent 放置下，`quota_10` 在 121/122 的 background CPU ratio 分别为 `0.0247` / `0.0246`，并触发 throttling；sweep 结果显示 121 可尝试 `quota_05`，但 122 在 `0.85` RPS 保留阈值下无 profile 完全达标，因此跨机保守建议仍以 `quota_10` 作为默认演示 profile，Redis GET/SET RPS 作为业务侧边界指标记录，不写成提升结论
 
 当前最重要的候选结果目录为：
 
@@ -78,7 +78,9 @@ eBPF Observer
 - Resource Control CPU quota 122：`/root/EulerPilot/results/resource_control/cpu-quota-20260625-095114`
 - Resource Control Redis quota Compare Benchmark 121：`/root/EulerPilot/results/resource_control/redis-quota-compare-20260625-102426`
 - Resource Control Redis quota Compare Benchmark 122：`/root/EulerPilot/results/resource_control/redis-quota-compare-20260625-102611`
-- 121 最新质量门禁：`/root/EulerPilot/reports/final_quality_gate_20260625_resource_runtime_readiness.log`
+- Resource Control Redis quota Sweep Benchmark 121：`/root/EulerPilot/results/resource_control/redis-quota-sweep-20260626-203131`
+- Resource Control Redis quota Sweep Benchmark 122：`/root/EulerPilot/results/resource_control/redis-quota-sweep-20260626-203505`
+- 121 最新质量门禁：`/root/EulerPilot/reports/final_quality_gate_20260626_resource_redis_quota_sweep.log`
 
 当前图表目录为：
 
@@ -112,6 +114,7 @@ eBPF Observer
 - Resource Control runtime readiness 诊断：`/root/EulerPilot/tests/integration/test_resource_control_runtime_readiness.sh`
 - Resource Control CPU quota 效果测试：`/root/EulerPilot/tests/integration/test_resource_control_cpu_quota.sh`
 - Resource Control Redis quota Compare Benchmark：`/root/EulerPilot/tests/benchmark/test_resource_control_redis_quota_compare.sh`
+- Resource Control Redis quota Sweep Benchmark：`/root/EulerPilot/tests/benchmark/test_resource_control_redis_quota_sweep.sh`
 - 质量门禁：`/root/EulerPilot/scripts/final_quality_gate.sh`
 
 ### 最终候选结果

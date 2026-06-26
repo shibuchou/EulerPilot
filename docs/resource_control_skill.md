@@ -167,6 +167,8 @@ select profile
 - CPU quota 效果 122：`results/resource_control/cpu-quota-20260625-095114/summary.txt`
 - Redis quota Compare Benchmark 121：`results/resource_control/redis-quota-compare-20260625-102426/summary.txt`
 - Redis quota Compare Benchmark 122：`results/resource_control/redis-quota-compare-20260625-102611/summary.txt`
+- Redis quota Sweep Benchmark 121：`results/resource_control/redis-quota-sweep-20260626-203131/summary.txt`
+- Redis quota Sweep Benchmark 122：`results/resource_control/redis-quota-sweep-20260626-203505/summary.txt`
 
 测试命令：
 
@@ -180,6 +182,7 @@ tests/integration/test_resource_control_runtime_readiness.sh
 tests/integration/test_resource_control_cpu_quota.sh
 tests/benchmark/test_resource_control_redis_quota.sh
 tests/benchmark/test_resource_control_redis_quota_compare.sh
+tests/benchmark/test_resource_control_redis_quota_sweep.sh
 ```
 
 测试覆盖：
@@ -204,6 +207,7 @@ tests/benchmark/test_resource_control_redis_quota_compare.sh
 - Runtime readiness 诊断只读检查 docker/podman/nerdctl/ctr/crictl/kubectl、systemd 服务、runtime socket、runtime cgroup 和 Kubernetes lab namespace；当前 121/122 均输出 `result=blocked`，说明真实容器/Pod target 现场实测需要先安装或启动 runtime，或提供 `eulerpilot-lab` demo Pod
 - CPU quota 测试先在 `cpu.max=max` 下采样 CPU hog 的 `cpu.stat usage_usec`，再由 Agent 写入 `cpu.max=10000 100000` 后采样同一指标；测试要求 `usage_rate_ratio < 0.70`，且限额窗口 `nr_throttled/throttled_usec` 均增加
 - Redis quota Compare Benchmark 在 Redis GET/SET 压测与 background CPU hog 同时运行时记录业务 RPS 和 background cgroup `cpu.stat`；它包含 `default_noisy`、`eulerpilot_no_quota` 和 `eulerpilot_quota` 三阶段，当前通过线聚焦同样 Agent 放置下后台限额是否生效，Redis RPS 作为业务侧证据记录，不包装成性能提升结论
+- Redis quota Sweep Benchmark 在同样 Agent 放置路径下扫描 `max / 50% / 20% / 10% / 5%` background `cpu.max` profile，输出 `sweep_summary.csv` 和推荐 profile；当前跨机保守结论是 `quota_10` 更适合作为默认演示 profile，121 可进一步尝试 `quota_05`，122 在 `0.85` RPS 保留阈值下没有 profile 完全达标
 
 当前 121 结果摘要：
 
@@ -366,6 +370,38 @@ quota_vs_no_quota_background_usage_rate_ratio=0.0250
 quota_nr_throttled_delta=17
 quota_throttled_usec_delta=6621902
 ```
+
+当前 121 Redis quota Sweep Benchmark 摘要：
+
+```text
+result=pass
+benchmark=redis_background_cpu_quota_sweep
+quota_10_background_ratio_vs_no_quota=0.0247
+quota_10_nr_throttled_delta=15
+recommended_profile=quota_05
+recommended_cpu_max=5000 100000
+recommended_get_ratio_vs_no_quota=0.9558
+recommended_set_ratio_vs_no_quota=0.9448
+recommended_background_ratio_vs_no_quota=0.0121
+recommendation_reason=rps_retention_ge_0.85_and_min_background_ratio
+```
+
+当前 122 Redis quota Sweep Benchmark 摘要：
+
+```text
+result=pass
+benchmark=redis_background_cpu_quota_sweep
+quota_10_background_ratio_vs_no_quota=0.0246
+quota_10_nr_throttled_delta=16
+recommended_profile=quota_10
+recommended_cpu_max=10000 100000
+recommended_get_ratio_vs_no_quota=0.8423
+recommended_set_ratio_vs_no_quota=0.9761
+recommended_background_ratio_vs_no_quota=0.0246
+recommendation_reason=no_profile_met_rps_retention_threshold
+```
+
+跨机解释：121 在 `0.85` RPS 保留阈值下可选择 `quota_05`；122 没有 profile 同时满足 GET/SET 的 `0.85` 保留阈值，最佳折中为 `quota_10`。因此当前默认演示 profile 保守使用 `cpu.max=10000 100000`，`quota_05` 只作为 121 单机进一步调参候选。
 
 ## 后续 TODO
 

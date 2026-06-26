@@ -1,0 +1,12 @@
+[INFO] redis ready pid=238913 port=16381
+[INFO] phase=no_quota cpu_max=max
+[INFO] background hogs=238944 238945 238946 238947
+[INFO] phase=quota_50 cpu_max=50000 100000
+[INFO] background hogs=238985 238986 238987 238988
+[INFO] phase=quota_20 cpu_max=20000 100000
+[INFO] background hogs=239038 239039 239040 239041
+[INFO] phase=quota_10 cpu_max=10000 100000
+[INFO] background hogs=239092 239093 239094 239095
+[INFO] phase=quota_05 cpu_max=5000 100000
+[INFO] background hogs=239145 239146 239147 239148
+[INFO] resource_control Redis quota sweep benchmark result saved to results/resource_control/redis-quota-sweep-20260626-203505
