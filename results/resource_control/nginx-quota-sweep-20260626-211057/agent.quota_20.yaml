@@ -1,0 +1,9 @@
+agent:
+  name: EulerPilot
+  mode: active
+skills_config_path: skills.quota_20.yaml
+scheduler:
+  type: cgroup_v2
+exporter:
+  prometheus:
+    enabled: false

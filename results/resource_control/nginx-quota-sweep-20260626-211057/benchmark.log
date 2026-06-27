@@ -1,0 +1,12 @@
+[INFO] nginx ready pid=240522 port=18083
+[INFO] phase=no_quota cpu_max=max
+[INFO] background hogs=240549 240550 240551 240552
+[INFO] phase=quota_50 cpu_max=50000 100000
+[INFO] background hogs=240592 240593 240594 240595
+[INFO] phase=quota_20 cpu_max=20000 100000
+[INFO] background hogs=240647 240648 240649 240650
+[INFO] phase=quota_10 cpu_max=10000 100000
+[INFO] background hogs=240702 240703 240704 240705
+[INFO] phase=quota_05 cpu_max=5000 100000
+[INFO] background hogs=240757 240758 240759 240760
+[INFO] resource_control Nginx quota sweep benchmark result saved to results/resource_control/nginx-quota-sweep-20260626-211057

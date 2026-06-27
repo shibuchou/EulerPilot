@@ -169,6 +169,8 @@ select profile
 - Redis quota Compare Benchmark 122：`results/resource_control/redis-quota-compare-20260625-102611/summary.txt`
 - Redis quota Sweep Benchmark 121：`results/resource_control/redis-quota-sweep-20260626-203131/summary.txt`
 - Redis quota Sweep Benchmark 122：`results/resource_control/redis-quota-sweep-20260626-203505/summary.txt`
+- Nginx quota Sweep Benchmark 121：`results/resource_control/nginx-quota-sweep-20260626-210702/summary.txt`
+- Nginx quota Sweep Benchmark 122：`results/resource_control/nginx-quota-sweep-20260626-211057/summary.txt`
 
 测试命令：
 
@@ -183,6 +185,7 @@ tests/integration/test_resource_control_cpu_quota.sh
 tests/benchmark/test_resource_control_redis_quota.sh
 tests/benchmark/test_resource_control_redis_quota_compare.sh
 tests/benchmark/test_resource_control_redis_quota_sweep.sh
+tests/benchmark/test_resource_control_nginx_quota_sweep.sh
 ```
 
 测试覆盖：
@@ -208,6 +211,7 @@ tests/benchmark/test_resource_control_redis_quota_sweep.sh
 - CPU quota 测试先在 `cpu.max=max` 下采样 CPU hog 的 `cpu.stat usage_usec`，再由 Agent 写入 `cpu.max=10000 100000` 后采样同一指标；测试要求 `usage_rate_ratio < 0.70`，且限额窗口 `nr_throttled/throttled_usec` 均增加
 - Redis quota Compare Benchmark 在 Redis GET/SET 压测与 background CPU hog 同时运行时记录业务 RPS 和 background cgroup `cpu.stat`；它包含 `default_noisy`、`eulerpilot_no_quota` 和 `eulerpilot_quota` 三阶段，当前通过线聚焦同样 Agent 放置下后台限额是否生效，Redis RPS 作为业务侧证据记录，不包装成性能提升结论
 - Redis quota Sweep Benchmark 在同样 Agent 放置路径下扫描 `max / 50% / 20% / 10% / 5%` background `cpu.max` profile，输出 `sweep_summary.csv` 和推荐 profile；当前跨机保守结论是 `quota_10` 更适合作为默认演示 profile，121 可进一步尝试 `quota_05`，122 在 `0.85` RPS 保留阈值下没有 profile 完全达标
+- Nginx quota Sweep Benchmark 使用 `nginx + wrk + background CPU hog` 在同样 Agent 放置路径下扫描相同 profile；121/122 均推荐 `quota_05`，background ratio 均为 `0.0125`，可作为 Nginx 场景的激进候选 profile，但不覆盖 Redis 场景的保守默认 profile
 
 当前 121 结果摘要：
 
@@ -402,6 +406,38 @@ recommendation_reason=no_profile_met_rps_retention_threshold
 ```
 
 跨机解释：121 在 `0.85` RPS 保留阈值下可选择 `quota_05`；122 没有 profile 同时满足 GET/SET 的 `0.85` 保留阈值，最佳折中为 `quota_10`。因此当前默认演示 profile 保守使用 `cpu.max=10000 100000`，`quota_05` 只作为 121 单机进一步调参候选。
+
+当前 121 Nginx quota Sweep Benchmark 摘要：
+
+```text
+result=pass
+benchmark=nginx_background_cpu_quota_sweep
+quota_10_background_ratio_vs_no_quota=0.0249
+quota_10_nr_throttled_delta=100
+recommended_profile=quota_05
+recommended_cpu_max=5000 100000
+recommended_rps_ratio_vs_no_quota=1.0012
+recommended_background_ratio_vs_no_quota=0.0125
+recommended_p99_latency=1.89ms
+recommendation_reason=rps_retention_ge_0.85_and_min_background_ratio
+```
+
+当前 122 Nginx quota Sweep Benchmark 摘要：
+
+```text
+result=pass
+benchmark=nginx_background_cpu_quota_sweep
+quota_10_background_ratio_vs_no_quota=0.0249
+quota_10_nr_throttled_delta=100
+recommended_profile=quota_05
+recommended_cpu_max=5000 100000
+recommended_rps_ratio_vs_no_quota=1.1841
+recommended_background_ratio_vs_no_quota=0.0125
+recommended_p99_latency=1.88ms
+recommendation_reason=rps_retention_ge_0.85_and_min_background_ratio
+```
+
+Nginx 跨机解释：121/122 均满足 `0.85` RPS 保留阈值，并推荐 `quota_05`；因此 Nginx 场景可把 `cpu.max=5000 100000` 作为激进演示候选。该结论只适用于当前 Nginx + wrk 场景，不应直接覆盖 Redis 的跨机保守默认 profile。
 
 ## 后续 TODO
 

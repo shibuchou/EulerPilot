@@ -1,0 +1,14 @@
+result=pass
+benchmark=nginx_background_cpu_quota_sweep
+rps_retention_min=0.85
+no_quota_requests_per_sec=37784.21
+no_quota_background_usage_rate_usec_per_s=3989429.96
+quota_10_background_ratio_vs_no_quota=0.0249
+quota_10_nr_throttled_delta=100
+quota_10_throttled_usec_delta=38980202
+recommended_profile=quota_05
+recommended_cpu_max=5000 100000
+recommended_rps_ratio_vs_no_quota=1.0012
+recommended_background_ratio_vs_no_quota=0.0125
+recommended_p99_latency=1.89ms
+recommendation_reason=rps_retention_ge_0.85_and_min_background_ratio

@@ -56,7 +56,8 @@ eBPF Observer
   - 121/122 runtime target 集成测试通过，已验证 `container_id`、runtime container name 和 `k8s_pod` 名称解析后进入同一套 CPU/Memory 控制器写入、审计和 rollback
   - 121/122 真实 runtime readiness 诊断已完成，当前两台机器均缺少 docker/podman/containerd/crictl/kubectl 和 Kubernetes lab，因此真实容器 / Pod target 现场实测被环境阻塞；已有诊断结果明确下一步需要安装或启动真实 runtime，或提供 `eulerpilot-lab` namespace 与 demo Pod
   - 121/122 CPU quota 效果测试通过，已用 `cpu.stat usage_usec/nr_throttled/throttled_usec` 证明 `cpu.max=10000 100000` 后单位时间 CPU 使用量约降至 10%，且 throttling 计数明显增加
-  - 121/122 Redis + background CPU quota Compare/Sweep Benchmark 通过，已分离 `default_noisy`、`eulerpilot_no_quota` 与多档 `eulerpilot_quota` 阶段；同样 Agent 放置下，`quota_10` 在 121/122 的 background CPU ratio 分别为 `0.0247` / `0.0246`，并触发 throttling；sweep 结果显示 121 可尝试 `quota_05`，但 122 在 `0.85` RPS 保留阈值下无 profile 完全达标，因此跨机保守建议仍以 `quota_10` 作为默认演示 profile，Redis GET/SET RPS 作为业务侧边界指标记录，不写成提升结论
+  - 121/122 Redis + background CPU quota Compare/Sweep Benchmark 通过，已分离 `default_noisy`、`eulerpilot_no_quota` 与多档 `eulerpilot_quota` 阶段；同样 Agent 放置下，`quota_10` 在 121/122 的 background CPU ratio 分别为 `0.0247` / `0.0246`，并触发 throttling；sweep 结果显示 121 可尝试 `quota_05`，但 122 在 `0.85` RPS 保留阈值下无 profile 完全达标，因此跨机保守建议仍以 `quota_10` 作为 Redis 默认演示 profile，Redis GET/SET RPS 作为业务侧边界指标记录，不写成提升结论
+  - 121/122 Nginx + background CPU quota Sweep Benchmark 通过，同样 Agent 放置下 `quota_05` 在两台机器均满足 `0.85` RPS 保留阈值，background CPU ratio 均为 `0.0125`；该结果作为 Nginx 场景的激进候选 profile 证据，不直接覆盖 Redis 的保守默认 profile
 
 当前最重要的候选结果目录为：
 
@@ -80,7 +81,9 @@ eBPF Observer
 - Resource Control Redis quota Compare Benchmark 122：`/root/EulerPilot/results/resource_control/redis-quota-compare-20260625-102611`
 - Resource Control Redis quota Sweep Benchmark 121：`/root/EulerPilot/results/resource_control/redis-quota-sweep-20260626-203131`
 - Resource Control Redis quota Sweep Benchmark 122：`/root/EulerPilot/results/resource_control/redis-quota-sweep-20260626-203505`
-- 121 最新质量门禁：`/root/EulerPilot/reports/final_quality_gate_20260626_resource_redis_quota_sweep.log`
+- Resource Control Nginx quota Sweep Benchmark 121：`/root/EulerPilot/results/resource_control/nginx-quota-sweep-20260626-210702`
+- Resource Control Nginx quota Sweep Benchmark 122：`/root/EulerPilot/results/resource_control/nginx-quota-sweep-20260626-211057`
+- 121 最新质量门禁：`/root/EulerPilot/reports/final_quality_gate_20260626_resource_nginx_quota_sweep.log`
 
 当前图表目录为：
 
@@ -115,6 +118,7 @@ eBPF Observer
 - Resource Control CPU quota 效果测试：`/root/EulerPilot/tests/integration/test_resource_control_cpu_quota.sh`
 - Resource Control Redis quota Compare Benchmark：`/root/EulerPilot/tests/benchmark/test_resource_control_redis_quota_compare.sh`
 - Resource Control Redis quota Sweep Benchmark：`/root/EulerPilot/tests/benchmark/test_resource_control_redis_quota_sweep.sh`
+- Resource Control Nginx quota Sweep Benchmark：`/root/EulerPilot/tests/benchmark/test_resource_control_nginx_quota_sweep.sh`
 - 质量门禁：`/root/EulerPilot/scripts/final_quality_gate.sh`
 
 ### 最终候选结果

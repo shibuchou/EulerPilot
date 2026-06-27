@@ -1,0 +1,6 @@
+label,cpu_max,requests_per_sec,rps_ratio_vs_no_quota,p99_latency,avg_latency,background_usage_rate_usec_per_s,background_ratio_vs_no_quota,nr_throttled_delta,throttled_usec_delta,duration_ms
+no_quota,max,37784.21,1.0000,1.67ms,847.67us,3989429.96,1.0000,0,0,10073
+quota_50,50000 100000,38402.91,1.0164,2.08ms,842.50us,502204.58,0.1259,101,35285706,10084
+quota_20,20000 100000,39930.23,1.0568,1.95ms,808.11us,198663.46,0.0498,101,38320063,10070
+quota_10,10000 100000,37792.34,1.0002,1.71ms,0.85ms,99531.50,0.0249,100,38980202,10049
+quota_05,5000 100000,37828.85,1.0012,1.89ms,0.85ms,50008.03,0.0125,101,39881123,10092
