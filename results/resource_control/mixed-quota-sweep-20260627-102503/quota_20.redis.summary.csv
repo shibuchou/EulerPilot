@@ -1,0 +1,3 @@
+test,rps,avg_latency_ms,p95_latency_ms,p99_latency_ms,max_latency_ms
+SET,41339.40,0.422,0.687,1.047,3.855
+GET,47192.07,0.357,0.623,0.831,5.023

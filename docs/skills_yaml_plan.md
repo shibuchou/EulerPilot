@@ -585,11 +585,12 @@ profiles:
 - Redis + background CPU quota Compare Benchmark 已在 121/122 完成：`tests/benchmark/test_resource_control_redis_quota_compare.sh` 输出 `default_noisy`、`eulerpilot_no_quota`、`eulerpilot_quota` 三阶段 Redis GET/SET RPS 与 background cgroup `cpu.stat` 对照，当前作为同样 Agent 放置下的后台限额效果、throttling 和业务指标边界证据，不作为 Redis 性能提升结论。
 - Redis quota profile sweep 已在 121/122 完成：`tests/benchmark/test_resource_control_redis_quota_sweep.sh` 扫描多档 background `cpu.max`，当前跨机保守默认演示 profile 暂定 `10000 100000`；`5000 100000` 只作为 121 单机候选，不直接写入默认 YAML。
 - Nginx quota profile sweep 已在 121/122 完成：`tests/benchmark/test_resource_control_nginx_quota_sweep.sh` 扫描相同 background `cpu.max` profile，121/122 均推荐 `5000 100000` 作为 Nginx 场景激进候选；由于 Redis 跨机结果更保守，默认 YAML 暂不直接切到该值。
+- Mixed Redis+Nginx quota profile sweep 已在 121/122 完成：`tests/benchmark/test_resource_control_mixed_quota_sweep.sh` 在同一窗口并发 Redis GET/SET 与 Nginx wrk，121 推荐 `20000 100000`，122 推荐 `50000 100000`；默认 YAML 后续若要内置混合 profile，应优先使用更保守的跨机值或在现场环境重新跑 sweep 后冻结。
 
 后续扩展：
 
 - 在真实 container runtime / Kubernetes Pod 上复用同一 YAML 做现场演示验证。
-- 继续调参 Redis/Nginx + background CPU hog 的多 workload 业务场景，寻找能同时展示后台抑制和前台收益的 profile 组合。
+- 在 Mixed Redis+Nginx 结果基础上继续调参 `cpu.max + cpuset + memory.low/high` 的多资源组合，寻找能同时展示后台抑制和前台稳定性的 profile 组合。
 
 ## 9. CPU Scheduling YAML
 

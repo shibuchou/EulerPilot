@@ -171,6 +171,8 @@ select profile
 - Redis quota Sweep Benchmark 122：`results/resource_control/redis-quota-sweep-20260626-203505/summary.txt`
 - Nginx quota Sweep Benchmark 121：`results/resource_control/nginx-quota-sweep-20260626-210702/summary.txt`
 - Nginx quota Sweep Benchmark 122：`results/resource_control/nginx-quota-sweep-20260626-211057/summary.txt`
+- Mixed Redis+Nginx quota Sweep Benchmark 121：`results/resource_control/mixed-quota-sweep-20260627-102503/summary.txt`
+- Mixed Redis+Nginx quota Sweep Benchmark 122：`results/resource_control/mixed-quota-sweep-20260627-103139/summary.txt`
 
 测试命令：
 
@@ -186,6 +188,7 @@ tests/benchmark/test_resource_control_redis_quota.sh
 tests/benchmark/test_resource_control_redis_quota_compare.sh
 tests/benchmark/test_resource_control_redis_quota_sweep.sh
 tests/benchmark/test_resource_control_nginx_quota_sweep.sh
+tests/benchmark/test_resource_control_mixed_quota_sweep.sh
 ```
 
 测试覆盖：
@@ -212,6 +215,7 @@ tests/benchmark/test_resource_control_nginx_quota_sweep.sh
 - Redis quota Compare Benchmark 在 Redis GET/SET 压测与 background CPU hog 同时运行时记录业务 RPS 和 background cgroup `cpu.stat`；它包含 `default_noisy`、`eulerpilot_no_quota` 和 `eulerpilot_quota` 三阶段，当前通过线聚焦同样 Agent 放置下后台限额是否生效，Redis RPS 作为业务侧证据记录，不包装成性能提升结论
 - Redis quota Sweep Benchmark 在同样 Agent 放置路径下扫描 `max / 50% / 20% / 10% / 5%` background `cpu.max` profile，输出 `sweep_summary.csv` 和推荐 profile；当前跨机保守结论是 `quota_10` 更适合作为默认演示 profile，121 可进一步尝试 `quota_05`，122 在 `0.85` RPS 保留阈值下没有 profile 完全达标
 - Nginx quota Sweep Benchmark 使用 `nginx + wrk + background CPU hog` 在同样 Agent 放置路径下扫描相同 profile；121/122 均推荐 `quota_05`，background ratio 均为 `0.0125`，可作为 Nginx 场景的激进候选 profile，但不覆盖 Redis 场景的保守默认 profile
+- Mixed Redis+Nginx quota Sweep Benchmark 在同一窗口并发运行 Redis GET/SET 与 Nginx wrk，扫描相同 background `cpu.max` profile；它使用 Redis GET/SET ratio、Nginx RPS ratio 和三者最低保留率作为混合业务边界，121 推荐 `quota_20`，122 推荐 `quota_50`，说明混合场景不能直接套用单 workload 最优 profile
 
 当前 121 结果摘要：
 
@@ -439,7 +443,45 @@ recommendation_reason=rps_retention_ge_0.85_and_min_background_ratio
 
 Nginx 跨机解释：121/122 均满足 `0.85` RPS 保留阈值，并推荐 `quota_05`；因此 Nginx 场景可把 `cpu.max=5000 100000` 作为激进演示候选。该结论只适用于当前 Nginx + wrk 场景，不应直接覆盖 Redis 的跨机保守默认 profile。
 
+当前 121 Mixed Redis+Nginx quota Sweep Benchmark 摘要：
+
+```text
+result=pass
+benchmark=mixed_redis_nginx_background_cpu_quota_sweep
+rps_retention_min=0.70
+quota_10_background_ratio_vs_no_quota=0.0251
+quota_10_business_min_ratio_vs_no_quota=0.6576
+recommended_profile=quota_20
+recommended_cpu_max=20000 100000
+recommended_business_min_ratio_vs_no_quota=0.7073
+recommended_redis_get_ratio_vs_no_quota=0.7850
+recommended_redis_set_ratio_vs_no_quota=0.7073
+recommended_nginx_rps_ratio_vs_no_quota=1.6385
+recommended_background_ratio_vs_no_quota=0.0501
+recommendation_reason=all_business_retention_ge_0.70_and_min_background_ratio
+```
+
+当前 122 Mixed Redis+Nginx quota Sweep Benchmark 摘要：
+
+```text
+result=pass
+benchmark=mixed_redis_nginx_background_cpu_quota_sweep
+rps_retention_min=0.70
+quota_10_background_ratio_vs_no_quota=0.0251
+quota_10_business_min_ratio_vs_no_quota=0.6258
+recommended_profile=quota_50
+recommended_cpu_max=50000 100000
+recommended_business_min_ratio_vs_no_quota=0.7681
+recommended_redis_get_ratio_vs_no_quota=0.7681
+recommended_redis_set_ratio_vs_no_quota=0.8832
+recommended_nginx_rps_ratio_vs_no_quota=1.0822
+recommended_background_ratio_vs_no_quota=0.1255
+recommendation_reason=all_business_retention_ge_0.70_and_min_background_ratio
+```
+
+Mixed 跨机解释：两台机器都证明 background CPU 会随 `cpu.max` profile 单调下降，`quota_10` 可把 background ratio 压到约 `0.025`，但 Redis GET/SET 与 Nginx 同时运行时，前台最低业务保留率在 `quota_10/quota_05` 下低于 `0.70`。因此混合业务演示应使用按业务最低保留率筛选出的 profile：121 为 `quota_20`，122 为 `quota_50`；如果要给跨机统一保守值，应优先选择 `quota_50` 或在真实现场环境重新跑 sweep 后再冻结。
+
 ## 后续 TODO
 
 - 在真实 docker/podman/crictl 或 Kubernetes lab Pod 环境中补现场演示，把 fake runtime 自测升级为真实运行时证据。
-- 继续调参 Redis/Nginx + background CPU hog 的多 workload 场景，寻找更合理的 background quota、cpuset 与 latency 保护组合，目标是同时展示后台抑制和前台收益。
+- 在混合业务结果基础上继续补 `cpuset`、`memory.low/high` 与 per-workload profile 联动，目标是把单一 background quota 扩展为更贴近现场演示的多资源组合策略。

@@ -1,6 +1,6 @@
 # EulerPilot 提交清单
 
-更新时间：`2026-06-25`
+更新时间：`2026-06-27`
 
 ## 已完成
 
@@ -39,6 +39,7 @@
 - [x] `resource_control` Redis + background CPU quota Compare Benchmark 121/122 验证：拆分 `default_noisy`、`eulerpilot_no_quota`、`eulerpilot_quota` 三阶段，记录 Redis GET/SET RPS 与 background cgroup CPU 使用率，结论限定为同样 Agent 放置下后台限额效果显著，不写成 Redis 性能提升
 - [x] `resource_control` Redis quota profile sweep 121/122 验证：扫描 `max/50%/20%/10%/5%` background `cpu.max`，121 推荐 `quota_05`，122 最佳折中 `quota_10`，跨机保守默认演示 profile 暂定 `cpu.max=10000 100000`
 - [x] `resource_control` Nginx quota profile sweep 121/122 验证：使用 `nginx + wrk + background CPU hog` 扫描相同 profile，两端均推荐 `quota_05`，作为 Nginx 场景激进候选
+- [x] `resource_control` Mixed Redis+Nginx quota profile sweep 121/122 验证：同一窗口并发 Redis GET/SET 与 Nginx wrk，121 推荐 `quota_20`，122 推荐 `quota_50`，证明混合业务 profile 需要同时满足多前台最低保留率
 - [x] `security_policy_demo` BPF LSM file_open 最小闭环
 - [x] `security_policy_demo` BPF LSM attach/deny/rollback 集成测试 121/122 均通过
 - [x] Runtime 生命周期收拢与 ActionJournal/AuditBus 最小接入
@@ -107,6 +108,8 @@
 - Resource Control Redis quota Sweep Benchmark 122：`results/resource_control/redis-quota-sweep-20260626-203505`
 - Resource Control Nginx quota Sweep Benchmark 121：`results/resource_control/nginx-quota-sweep-20260626-210702`
 - Resource Control Nginx quota Sweep Benchmark 122：`results/resource_control/nginx-quota-sweep-20260626-211057`
+- Resource Control Mixed Redis+Nginx quota Sweep Benchmark 121：`results/resource_control/mixed-quota-sweep-20260627-102503`
+- Resource Control Mixed Redis+Nginx quota Sweep Benchmark 122：`results/resource_control/mixed-quota-sweep-20260627-103139`
 
 ## 当前核心文档
 
@@ -124,7 +127,7 @@
 ## 质量与安全审计
 
 - `scripts/final_quality_gate.sh`：TAP 风格 21 项 P0 质量门禁脚本
-- `reports/final_quality_gate_20260626_resource_nginx_quota_sweep.log`：121 最新门禁通过记录，21/21 P0 通过，100 轮 smoke 与 5 轮 doctor 通过
+- `reports/final_quality_gate_20260627_resource_mixed_quota_sweep.log`：121 最新门禁通过记录，21/21 P0 通过，100 轮 smoke 与 5 轮 doctor 通过
 - `docs/final_security_audit.md`：最终安全与质量审计报告
 
 ## 当前结论

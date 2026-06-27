@@ -1,0 +1,13 @@
+[INFO] redis ready pid=243076 port=16382
+[INFO] nginx ready pid=243089 port=18084
+[INFO] phase=no_quota cpu_max=max
+[INFO] background hogs=243114 243115 243116 243117
+[INFO] phase=quota_50 cpu_max=50000 100000
+[INFO] background hogs=243160 243161 243162 243163
+[INFO] phase=quota_20 cpu_max=20000 100000
+[INFO] background hogs=243218 243219 243220 243221
+[INFO] phase=quota_10 cpu_max=10000 100000
+[INFO] background hogs=243276 243277 243278 243279
+[INFO] phase=quota_05 cpu_max=5000 100000
+[INFO] background hogs=243334 243335 243336 243337
+[INFO] resource_control mixed quota sweep benchmark result saved to results/resource_control/mixed-quota-sweep-20260627-103139

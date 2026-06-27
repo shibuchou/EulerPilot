@@ -1,0 +1,29 @@
+schema_version: 2
+skills:
+- name: resource_control
+  kind: runtime
+  enabled: true
+  config:
+    mode: enforce
+    controllers:
+      cpu:
+        max:
+          enabled: true
+      memory:
+        enabled: false
+      io:
+        enabled: false
+        weight:
+          enabled: false
+        max:
+          enabled: false
+    profiles:
+      background:
+        normal:
+          cpu_max: max
+        pressure:
+          cpu_max: '20000 100000'
+- name: psi_gate
+  kind: runtime
+  enabled: true
+  config: {}

@@ -19,7 +19,7 @@ eBPF Observer
 
 ## 当前状态
 
-截至 `2026-06-26`，项目已经完成：
+截至 `2026-06-27`，项目已经完成：
 
 - `SP3 + cgroup v2` 主闭环
 - `OLK-6.6 + sched_ext` 正式对照线
@@ -58,6 +58,7 @@ eBPF Observer
   - 121/122 CPU quota 效果测试通过，已用 `cpu.stat usage_usec/nr_throttled/throttled_usec` 证明 `cpu.max=10000 100000` 后单位时间 CPU 使用量约降至 10%，且 throttling 计数明显增加
   - 121/122 Redis + background CPU quota Compare/Sweep Benchmark 通过，已分离 `default_noisy`、`eulerpilot_no_quota` 与多档 `eulerpilot_quota` 阶段；同样 Agent 放置下，`quota_10` 在 121/122 的 background CPU ratio 分别为 `0.0247` / `0.0246`，并触发 throttling；sweep 结果显示 121 可尝试 `quota_05`，但 122 在 `0.85` RPS 保留阈值下无 profile 完全达标，因此跨机保守建议仍以 `quota_10` 作为 Redis 默认演示 profile，Redis GET/SET RPS 作为业务侧边界指标记录，不写成提升结论
   - 121/122 Nginx + background CPU quota Sweep Benchmark 通过，同样 Agent 放置下 `quota_05` 在两台机器均满足 `0.85` RPS 保留阈值，background CPU ratio 均为 `0.0125`；该结果作为 Nginx 场景的激进候选 profile 证据，不直接覆盖 Redis 的保守默认 profile
+  - 121/122 Redis + Nginx 混合业务 quota Sweep Benchmark 通过，Redis GET/SET 与 Nginx wrk 同时运行；121 推荐 `quota_20`，122 推荐 `quota_50`，两端均证明 `quota_10` 可把 background CPU ratio 压到约 `0.025`，但混合业务下 Redis 保留率低于 `0.70`，因此混合演示 profile 需按业务保留率选择，不直接套用单 workload 最优值
 
 当前最重要的候选结果目录为：
 
@@ -83,7 +84,9 @@ eBPF Observer
 - Resource Control Redis quota Sweep Benchmark 122：`/root/EulerPilot/results/resource_control/redis-quota-sweep-20260626-203505`
 - Resource Control Nginx quota Sweep Benchmark 121：`/root/EulerPilot/results/resource_control/nginx-quota-sweep-20260626-210702`
 - Resource Control Nginx quota Sweep Benchmark 122：`/root/EulerPilot/results/resource_control/nginx-quota-sweep-20260626-211057`
-- 121 最新质量门禁：`/root/EulerPilot/reports/final_quality_gate_20260626_resource_nginx_quota_sweep.log`
+- Resource Control Mixed Redis+Nginx quota Sweep Benchmark 121：`/root/EulerPilot/results/resource_control/mixed-quota-sweep-20260627-102503`
+- Resource Control Mixed Redis+Nginx quota Sweep Benchmark 122：`/root/EulerPilot/results/resource_control/mixed-quota-sweep-20260627-103139`
+- 121 最新质量门禁：`/root/EulerPilot/reports/final_quality_gate_20260627_resource_mixed_quota_sweep.log`
 
 当前图表目录为：
 
@@ -119,6 +122,7 @@ eBPF Observer
 - Resource Control Redis quota Compare Benchmark：`/root/EulerPilot/tests/benchmark/test_resource_control_redis_quota_compare.sh`
 - Resource Control Redis quota Sweep Benchmark：`/root/EulerPilot/tests/benchmark/test_resource_control_redis_quota_sweep.sh`
 - Resource Control Nginx quota Sweep Benchmark：`/root/EulerPilot/tests/benchmark/test_resource_control_nginx_quota_sweep.sh`
+- Resource Control Mixed Redis+Nginx quota Sweep Benchmark：`/root/EulerPilot/tests/benchmark/test_resource_control_mixed_quota_sweep.sh`
 - 质量门禁：`/root/EulerPilot/scripts/final_quality_gate.sh`
 
 ### 最终候选结果
