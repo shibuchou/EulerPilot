@@ -1,0 +1,11 @@
+[INFO] redis ready pid=246053 port=16383
+[INFO] nginx ready pid=246066 port=18085
+[INFO] phase=cpu_cpuset_no_quota cpu_max=max memory_enabled=false
+[INFO] background hogs=246093 246094 246095 246096
+[INFO] phase=cpu_cpuset_quota50 cpu_max=50000 100000 memory_enabled=false
+[INFO] background hogs=246149 246150 246151 246152
+[INFO] phase=multi_quota50 cpu_max=50000 100000 memory_enabled=true
+[INFO] background hogs=246217 246218 246219 246220
+[INFO] phase=multi_quota20 cpu_max=20000 100000 memory_enabled=true
+[INFO] background hogs=246288 246289 246290 246291
+[INFO] resource_control mixed multi-resource benchmark result saved to results/resource_control/mixed-multi-resource-20260628-212132

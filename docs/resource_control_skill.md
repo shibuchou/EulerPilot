@@ -173,6 +173,8 @@ select profile
 - Nginx quota Sweep Benchmark 122：`results/resource_control/nginx-quota-sweep-20260626-211057/summary.txt`
 - Mixed Redis+Nginx quota Sweep Benchmark 121：`results/resource_control/mixed-quota-sweep-20260627-102503/summary.txt`
 - Mixed Redis+Nginx quota Sweep Benchmark 122：`results/resource_control/mixed-quota-sweep-20260627-103139/summary.txt`
+- Mixed Redis+Nginx Multi-Resource Benchmark 121：`results/resource_control/mixed-multi-resource-20260628-211631/summary.txt`
+- Mixed Redis+Nginx Multi-Resource Benchmark 122：`results/resource_control/mixed-multi-resource-20260628-212132/summary.txt`
 
 测试命令：
 
@@ -189,6 +191,7 @@ tests/benchmark/test_resource_control_redis_quota_compare.sh
 tests/benchmark/test_resource_control_redis_quota_sweep.sh
 tests/benchmark/test_resource_control_nginx_quota_sweep.sh
 tests/benchmark/test_resource_control_mixed_quota_sweep.sh
+tests/benchmark/test_resource_control_mixed_multi_resource.sh
 ```
 
 测试覆盖：
@@ -216,6 +219,7 @@ tests/benchmark/test_resource_control_mixed_quota_sweep.sh
 - Redis quota Sweep Benchmark 在同样 Agent 放置路径下扫描 `max / 50% / 20% / 10% / 5%` background `cpu.max` profile，输出 `sweep_summary.csv` 和推荐 profile；当前跨机保守结论是 `quota_10` 更适合作为默认演示 profile，121 可进一步尝试 `quota_05`，122 在 `0.85` RPS 保留阈值下没有 profile 完全达标
 - Nginx quota Sweep Benchmark 使用 `nginx + wrk + background CPU hog` 在同样 Agent 放置路径下扫描相同 profile；121/122 均推荐 `quota_05`，background ratio 均为 `0.0125`，可作为 Nginx 场景的激进候选 profile，但不覆盖 Redis 场景的保守默认 profile
 - Mixed Redis+Nginx quota Sweep Benchmark 在同一窗口并发运行 Redis GET/SET 与 Nginx wrk，扫描相同 background `cpu.max` profile；它使用 Redis GET/SET ratio、Nginx RPS ratio 和三者最低保留率作为混合业务边界，121 推荐 `quota_20`，122 推荐 `quota_50`，说明混合场景不能直接套用单 workload 最优 profile
+- Mixed Redis+Nginx Multi-Resource Benchmark 在同一混合业务上比较 CPU/cpuset 与 `cpu.max + cpuset.cpus + memory.low/high` 组合 profile；它验证 Agent 对 latency/background cgroup 写入 `cpuset.cpus`、latency `memory.low=67108864`、background `memory.high=134217728`，并验证 applied/restored 审计事件和业务最低保留率
 
 当前 121 结果摘要：
 
@@ -481,7 +485,43 @@ recommendation_reason=all_business_retention_ge_0.70_and_min_background_ratio
 
 Mixed 跨机解释：两台机器都证明 background CPU 会随 `cpu.max` profile 单调下降，`quota_10` 可把 background ratio 压到约 `0.025`，但 Redis GET/SET 与 Nginx 同时运行时，前台最低业务保留率在 `quota_10/quota_05` 下低于 `0.70`。因此混合业务演示应使用按业务最低保留率筛选出的 profile：121 为 `quota_20`，122 为 `quota_50`；如果要给跨机统一保守值，应优先选择 `quota_50` 或在真实现场环境重新跑 sweep 后再冻结。
 
+当前 121 Mixed Redis+Nginx Multi-Resource Benchmark 摘要：
+
+```text
+result=pass
+benchmark=mixed_redis_nginx_multi_resource_profile
+business_retention_min=0.70
+cpu_cpuset_quota50_background_ratio_vs_baseline=0.1253
+multi_quota50_business_min_ratio_vs_baseline=0.7302
+multi_quota50_background_ratio_vs_baseline=0.1257
+multi_quota50_latency_memory_low=67108864
+multi_quota50_background_memory_high=134217728
+multi_quota50_latency_cpuset_cpus=0-1
+multi_quota50_background_cpuset_cpus=4-7
+recommended_profile=multi_quota50
+recommended_cpu_max=50000 100000
+```
+
+当前 122 Mixed Redis+Nginx Multi-Resource Benchmark 摘要：
+
+```text
+result=pass
+benchmark=mixed_redis_nginx_multi_resource_profile
+business_retention_min=0.70
+cpu_cpuset_quota50_background_ratio_vs_baseline=0.1256
+multi_quota50_business_min_ratio_vs_baseline=0.7939
+multi_quota50_background_ratio_vs_baseline=0.1257
+multi_quota50_latency_memory_low=67108864
+multi_quota50_background_memory_high=134217728
+multi_quota50_latency_cpuset_cpus=0-1
+multi_quota50_background_cpuset_cpus=4-7
+recommended_profile=multi_quota50
+recommended_cpu_max=50000 100000
+```
+
+Multi-Resource 跨机解释：两台机器都验证了 `cpuset.cpus`、`memory.low`、`memory.high` 的 applied/restored 审计事件。当前结果证明 EulerPilot 已具备 CPU quota、CPU placement 与 memory protection 的组合 profile 下发能力；业务侧仍按边界指标解释，不写成通用性能提升结论。
+
 ## 后续 TODO
 
 - 在真实 docker/podman/crictl 或 Kubernetes lab Pod 环境中补现场演示，把 fake runtime 自测升级为真实运行时证据。
-- 在混合业务结果基础上继续补 `cpuset`、`memory.low/high` 与 per-workload profile 联动，目标是把单一 background quota 扩展为更贴近现场演示的多资源组合策略。
+- 继续扩展跨 Skill 联动，例如 Security anomaly 触发 Resource Control 降级、Network QoS 与 Resource Control 同步限流。

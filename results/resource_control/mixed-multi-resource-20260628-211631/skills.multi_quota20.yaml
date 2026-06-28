@@ -1,0 +1,51 @@
+schema_version: 2
+skills:
+- name: resource_control
+  kind: runtime
+  enabled: true
+  config:
+    mode: enforce
+    controllers:
+      cpu:
+        max:
+          enabled: true
+      memory:
+        enabled: true
+        high:
+          enabled: true
+        low:
+          enabled: true
+        max:
+          enabled: false
+        reclaim:
+          enabled: false
+      io:
+        enabled: false
+        weight:
+          enabled: false
+        max:
+          enabled: false
+    profiles:
+      latency:
+        cpu_max: max
+        memory_low: '67108864'
+        memory_high: max
+        memory_max: max
+      batch:
+        cpu_max: max
+        memory_low: '0'
+        memory_high: max
+        memory_max: max
+      background:
+        normal:
+          cpu_max: max
+          memory_high: max
+        pressure:
+          cpu_max: '20000 100000'
+          memory_low: '0'
+          memory_high: '134217728'
+          memory_max: max
+- name: psi_gate
+  kind: runtime
+  enabled: true
+  config: {}

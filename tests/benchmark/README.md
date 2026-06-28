@@ -10,6 +10,7 @@
 - `test_resource_control_redis_quota_sweep.sh`：当前推荐 profile 调参入口。它在同样 Agent 放置路径下扫描 `max / 50000 100000 / 20000 100000 / 10000 100000 / 5000 100000`，输出 `sweep_summary.csv`、推荐 profile 和边界解释。121 最新通过结果：`results/resource_control/redis-quota-sweep-20260626-203131`；122 最新通过结果：`results/resource_control/redis-quota-sweep-20260626-203505`。
 - `test_resource_control_nginx_quota_sweep.sh`：Nginx profile 调参入口。它使用 `nginx + wrk + background CPU hog`，在同样 Agent 放置路径下扫描 `max / 50000 100000 / 20000 100000 / 10000 100000 / 5000 100000`，输出 `sweep_summary.csv`、推荐 profile、RPS ratio、p99 latency 和 background ratio。121 最新通过结果：`results/resource_control/nginx-quota-sweep-20260626-210702`；122 最新通过结果：`results/resource_control/nginx-quota-sweep-20260626-211057`。
 - `test_resource_control_mixed_quota_sweep.sh`：Redis+Nginx 混合业务 profile 调参入口。它在同一窗口并发运行 Redis GET/SET 与 Nginx wrk，同时施加 background CPU hog，扫描相同 `cpu.max` profile，输出 Redis/Nginx ratio、业务最低保留率、background ratio 和推荐 profile。121 最新通过结果：`results/resource_control/mixed-quota-sweep-20260627-102503`；122 最新通过结果：`results/resource_control/mixed-quota-sweep-20260627-103139`。
+- `test_resource_control_mixed_multi_resource.sh`：Redis+Nginx 多资源组合 profile 验证入口。它比较 CPU/cpuset 与 `cpu.max + cpuset.cpus + memory.low/high` 组合 profile，验证 `cpuset.cpus`、latency `memory.low`、background `memory.high` 的 applied/restored 审计事件，并输出业务最低保留率和 background ratio。121 最新通过结果：`results/resource_control/mixed-multi-resource-20260628-211631`；122 最新通过结果：`results/resource_control/mixed-multi-resource-20260628-212132`。
 
 ## 维护规则
 

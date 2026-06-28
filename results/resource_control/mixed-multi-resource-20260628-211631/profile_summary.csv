@@ -1,0 +1,5 @@
+label,cpu_max,memory_enabled,latency_cpuset_cpus,background_cpuset_cpus,latency_memory_low,background_memory_high,redis_get_rps,redis_set_rps,nginx_requests_per_sec,redis_get_ratio_vs_baseline,redis_set_ratio_vs_baseline,nginx_rps_ratio_vs_baseline,business_min_ratio_vs_baseline,nginx_p99_latency,background_usage_rate_usec_per_s,background_ratio_vs_baseline,nr_throttled_delta,throttled_usec_delta,duration_ms
+cpu_cpuset_no_quota,max,false,0-1,4-7,0,max,58139.54,63959.06,43059.04,1.0000,1.0000,1.0000,1.0000,2.70ms,3988757.35,1.0000,0,0,10101
+cpu_cpuset_quota50,50000 100000,false,0-1,4-7,0,max,50112.75,49738.87,60083.04,0.8619,0.7777,1.3954,0.7777,3.72ms,499772.05,0.1253,101,33857835,10103
+multi_quota50,50000 100000,true,0-1,4-7,67108864,134217728,42453.83,47404.60,60275.86,0.7302,0.7412,1.3998,0.7302,2.91ms,501249.06,0.1257,101,33946802,10074
+multi_quota20,20000 100000,true,0-1,4-7,67108864,134217728,41143.80,42131.87,66233.05,0.7077,0.6587,1.5382,0.6587,1.49ms,200327.15,0.0502,101,37570051,10084
