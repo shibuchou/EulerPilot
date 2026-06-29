@@ -11,6 +11,8 @@ struct AuditEvent {
     std::string skill;
     std::string policy_id;
     std::string rule_id;
+    std::string transaction_id;
+    std::string trigger_event_id;
     std::string mode = "audit";
     std::map<std::string, std::string> target;
     std::string operation;

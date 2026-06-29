@@ -42,6 +42,8 @@ struct RuntimeConfig {
     GateMode gate_mode = GateMode::AlwaysActive;
     bool list_skills_only = false;
     bool doctor_skills_only = false;
+    bool validate_config_only = false;
+    bool status_only = false;
     bool verbose = false;
     bool jsonl = false;
     bool metrics_enabled = false;

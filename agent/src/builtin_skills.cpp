@@ -11,6 +11,7 @@
 #include <bpf/libbpf.h>
 #include <atomic>
 #include <cerrno>
+#include <cstdio>
 #include <chrono>
 #include <cctype>
 #include <cstdint>
@@ -645,6 +646,8 @@ struct SecurityAnomalyRule {
     std::string type = "rate";
     std::string syscall = "execve";
     std::string severity = "medium";
+    std::string path_prefix;
+    std::int32_t capability = -1;
     std::uint32_t threshold = 5;
     std::uint32_t window_ms = 1000;
     std::deque<std::chrono::steady_clock::time_point> hits;
@@ -716,6 +719,26 @@ bool valid_tc_token(const std::string &value) {
         }
     }
     return true;
+}
+
+bool has_prefix(const std::string &value, const char *prefix) {
+    return value.rfind(prefix, 0) == 0;
+}
+
+bool is_lab_netdev_name(const std::string &ifname) {
+    return has_prefix(ifname, "ep-") || has_prefix(ifname, "eulerpilot-") ||
+           has_prefix(ifname, "lab-");
+}
+
+bool is_denied_host_netdev_name(const std::string &ifname) {
+    return has_prefix(ifname, "eth") || has_prefix(ifname, "ens") ||
+           has_prefix(ifname, "eno") || has_prefix(ifname, "wlan") ||
+           has_prefix(ifname, "bond") || has_prefix(ifname, "br") ||
+           has_prefix(ifname, "cni") || has_prefix(ifname, "flannel");
+}
+
+bool is_allowed_lab_netdev_name(const std::string &ifname) {
+    return is_lab_netdev_name(ifname) && !is_denied_host_netdev_name(ifname);
 }
 
 bool command_available(const char *command) {
@@ -1501,6 +1524,10 @@ public:
         if (!valid_tc_token(ifname_) || !valid_tc_token(rate_) ||
             !valid_tc_token(burst_) || !valid_tc_token(latency_)) {
             last_error_ = "invalid-tc-token";
+            return false;
+        }
+        if (!is_allowed_lab_netdev_name(ifname_)) {
+            last_error_ = "network-qos-non-lab-netdev-denied:" + ifname_;
             return false;
         }
         protocol_value_ = protocol_id(protocol_);
@@ -2854,8 +2881,15 @@ private:
             const std::string syscall = config_value_or(spec, prefix + "syscall", "");
             const std::string threshold_text = config_value_or(spec, prefix + "threshold", "");
             const std::string window_text = config_value_or(spec, prefix + "window_ms", "");
+            const std::string path_prefix =
+                config_value_or(spec, prefix + "path_prefix",
+                                config_value_or(spec, prefix + "sensitive_path_prefix", ""));
+            const std::string capability_text =
+                config_value_or(spec, prefix + "capability",
+                                config_value_or(spec, prefix + "cap", ""));
             if (name.empty() && type.empty() && syscall.empty() &&
-                threshold_text.empty() && window_text.empty()) {
+                threshold_text.empty() && window_text.empty() &&
+                path_prefix.empty() && capability_text.empty()) {
                 continue;
             }
 
@@ -2864,15 +2898,42 @@ private:
             rule.type = type.empty() ? "rate" : type;
             rule.syscall = syscall.empty() ? "execve" : syscall;
             rule.severity = config_value_or(spec, prefix + "severity", "medium");
+            rule.path_prefix = path_prefix;
             if (rule.type != "rate") {
                 last_error_ = "security-policy-anomaly-type-unsupported";
                 return false;
             }
             if (rule.syscall == "sys_enter_execve") {
                 rule.syscall = "execve";
+            } else if (rule.syscall == "sys_enter_connect" ||
+                       rule.syscall == "lsm_socket_connect") {
+                rule.syscall = "connect";
+            } else if (rule.syscall == "sys_enter_openat" ||
+                       rule.syscall == "lsm_file_open") {
+                rule.syscall = "openat";
+            } else if (rule.syscall == "capable" ||
+                       rule.syscall == "lsm_capable") {
+                rule.syscall = "capability";
+            } else if (rule.syscall == "cred" || rule.syscall == "credential" ||
+                       rule.syscall == "lsm_cred_prepare" ||
+                       rule.syscall == "lsm_task_fix_setuid" ||
+                       rule.syscall == "lsm_task_fix_setgid" ||
+                       rule.syscall == "lsm_task_fix_setgroups") {
+                rule.syscall = "credential";
             }
-            if (rule.syscall != "execve") {
+            if (rule.syscall != "execve" && rule.syscall != "connect" &&
+                rule.syscall != "openat" && rule.syscall != "capability" &&
+                rule.syscall != "credential") {
                 last_error_ = "security-policy-anomaly-syscall-unsupported";
+                return false;
+            }
+            if (!rule.path_prefix.empty() && !valid_security_path(rule.path_prefix)) {
+                last_error_ = "security-policy-anomaly-path-prefix-invalid";
+                return false;
+            }
+            if (!capability_text.empty() &&
+                !parse_security_capability(capability_text, rule.capability)) {
+                last_error_ = "security-policy-anomaly-capability-invalid";
                 return false;
             }
             if (!threshold_text.empty() &&
@@ -2897,7 +2958,6 @@ private:
         }
         return true;
     }
-
     static std::string join_security_field(const std::vector<SecurityPolicyRule> &rules,
                                            const char *field) {
         std::ostringstream out;
@@ -3398,7 +3458,25 @@ private:
     void maybe_write_anomaly_event(const SecurityPolicyEvent &hit,
                                    const std::string &hook_name,
                                    const fs::path &audit_path) {
-        if (hook_name != "sys_enter_execve" || anomaly_rules_.empty()) {
+        if (anomaly_rules_.empty()) {
+            return;
+        }
+
+        std::string observed_syscall;
+        if (hook_name == "sys_enter_execve") {
+            observed_syscall = "execve";
+        } else if (hook_name == "sys_enter_connect" || hook_name == "lsm_socket_connect") {
+            observed_syscall = "connect";
+        } else if (hook_name == "sys_enter_openat" || hook_name == "lsm_file_open") {
+            observed_syscall = "openat";
+        } else if (hook_name == "lsm_capable") {
+            observed_syscall = "capability";
+        } else if (hook_name == "lsm_cred_prepare" ||
+                   hook_name == "lsm_task_fix_setuid" ||
+                   hook_name == "lsm_task_fix_setgid" ||
+                   hook_name == "lsm_task_fix_setgroups") {
+            observed_syscall = "credential";
+        } else {
             return;
         }
 
@@ -3406,7 +3484,13 @@ private:
         const std::string path = bounded_string(hit.path, sizeof(hit.path));
         const std::string comm = bounded_string(hit.comm, sizeof(hit.comm));
         for (auto &rule : anomaly_rules_) {
-            if (rule.type != "rate" || rule.syscall != "execve") {
+            if (rule.type != "rate" || rule.syscall != observed_syscall) {
+                continue;
+            }
+            if (!rule.path_prefix.empty() && path.rfind(rule.path_prefix, 0) != 0) {
+                continue;
+            }
+            if (rule.capability >= 0 && hit.capability != rule.capability) {
                 continue;
             }
             rule.hits.push_back(now);
@@ -3444,6 +3528,20 @@ private:
                 {"tgid", std::to_string(hit.tgid)},
                 {"comm", comm},
             };
+            if (!rule.path_prefix.empty()) {
+                event.evidence["path_prefix"] = rule.path_prefix;
+            }
+            if (hit.daddr != 0) {
+                const std::string dst_ip = ipv4_to_string(hit.daddr);
+                if (!dst_ip.empty()) {
+                    event.evidence["dst_ip"] = dst_ip;
+                }
+                event.evidence["dst_port"] = std::to_string(ntohs(hit.dport));
+                event.evidence["protocol"] = hit.protocol == 6 ? "tcp" : std::to_string(hit.protocol);
+            }
+            if (hit.capability >= 0) {
+                event.evidence["capability"] = security_capability_name(hit.capability);
+            }
             event.action = "alert";
             event.result = "observed";
             event.severity = rule.severity;
@@ -3452,7 +3550,6 @@ private:
             rule.hits.clear();
         }
     }
-
     void write_audit_event(const std::string &operation,
                            const std::string &action,
                            const std::string &result) const {
@@ -3558,9 +3655,14 @@ struct PolicyEngineAction {
     std::string target_ref;
     std::string target_type = "cgroup";
     std::string target_path;
+    std::string target_ifname;
     std::string file;
     std::string value;
+    std::string burst = "32kb";
+    std::string latency = "50ms";
     std::string old_value;
+    std::string skip_reason;
+    bool memory_high_guard = true;
     bool applied = false;
 };
 
@@ -3576,11 +3678,15 @@ public:
         if (require_resource_control_) {
             deps.push_back("resource_control");
         }
+        if (require_network_qos_) {
+            deps.push_back("network_qos");
+        }
         return deps;
     }
 
     bool configure(const RuntimeConfig &, const SkillSpec &spec) override {
         mode_ = config_value_or(spec, "mode", "enforce");
+        policy_id_ = config_value_or(spec, "policy_id", "cross_skill_response");
         source_path_ = config_value_or(spec, "source.audit_path",
                                        config_value_or(spec, "watch.audit_path",
                                                        "reports/events/security_policy.jsonl"));
@@ -3596,9 +3702,13 @@ public:
             config_bool_or(spec, "dependencies.security_policy", true);
         require_resource_control_ =
             config_bool_or(spec, "dependencies.resource_control", true);
+        require_network_qos_ =
+            config_bool_or(spec, "dependencies.network_qos", false);
         poll_interval_ms_ = 100;
         parse_uint32_range(config_value_or(spec, "poll_interval_ms", "100"),
                            20, 5000, poll_interval_ms_);
+        const bool default_memory_high_guard =
+            config_bool_or(spec, "guards.memory_high", true);
 
         actions_.clear();
         for (int i = 0; i < 16; ++i) {
@@ -3625,8 +3735,17 @@ public:
             action.target_path =
                 config_value_or(spec, target_prefix + "path",
                                 config_value_or(spec, target_prefix + "cgroup_path", ""));
+            action.target_ifname =
+                config_value_or(spec, target_prefix + "ifname",
+                                config_value_or(spec, prefix + "ifname", ""));
             action.file = file;
             action.value = value;
+            action.burst = config_value_or(spec, prefix + "burst",
+                                           config_value_or(spec, target_prefix + "burst", "32kb"));
+            action.latency = config_value_or(spec, prefix + "latency",
+                                             config_value_or(spec, target_prefix + "latency", "50ms"));
+            action.memory_high_guard =
+                config_bool_or(spec, prefix + "memory_high_guard", default_memory_high_guard);
             if (!validate_action(action)) {
                 return false;
             }
@@ -3655,15 +3774,28 @@ public:
                 available_ = false;
                 return false;
             }
-            if (!fs::exists(action.target_path)) {
-                last_error_ = "policy-engine-target-missing:" + action.target_ref;
-                available_ = false;
-                return false;
-            }
-            if (!fs::exists(fs::path(action.target_path) / action.file)) {
-                last_error_ = "policy-engine-control-file-missing:" + action.file;
-                available_ = false;
-                return false;
+            if (action.target_type == "cgroup") {
+                if (!fs::exists(action.target_path)) {
+                    last_error_ = "policy-engine-target-missing:" + action.target_ref;
+                    available_ = false;
+                    return false;
+                }
+                if (!fs::exists(fs::path(action.target_path) / action.file)) {
+                    last_error_ = "policy-engine-control-file-missing:" + action.file;
+                    available_ = false;
+                    return false;
+                }
+            } else if (action.target_type == "netdev") {
+                if (!command_available("tc") || !command_available("ip")) {
+                    last_error_ = "policy-engine-iproute2-missing";
+                    available_ = false;
+                    return false;
+                }
+                if (if_nametoindex(action.target_ifname.c_str()) == 0) {
+                    last_error_ = "policy-engine-netdev-missing:" + action.target_ifname;
+                    available_ = false;
+                    return false;
+                }
             }
         }
         available_ = true;
@@ -3691,7 +3823,7 @@ public:
         event_thread_ = std::thread([this] { event_loop(); });
         running_ = true;
         state_ = "watching";
-        write_policy_event("start", "watch-security-anomaly", "success", "");
+        write_policy_event("start", "watch-security-anomaly", "success", "", "", "", nullptr);
         return true;
     }
 
@@ -3705,16 +3837,18 @@ public:
         snapshot.evidence["watch_skill"] = watch_skill_;
         snapshot.evidence["watch_operation"] = watch_operation_;
         snapshot.evidence["watch_rule_id"] = watch_rule_id_;
+        snapshot.evidence["policy_id"] = policy_id_;
         snapshot.evidence["mode"] = mode_;
         snapshot.evidence["action_count"] = std::to_string(actions_.size());
         snapshot.evidence["trigger_count"] = std::to_string(trigger_count_.load());
+        snapshot.evidence["last_transaction_id"] = last_transaction_id_;
         snapshot.evidence["reason"] = last_error_.empty() ? "ok" : last_error_;
         return snapshot;
     }
 
     bool rollback() override {
         stop_thread();
-        restore_actions();
+        restore_actions(last_transaction_id_, last_trigger_event_id_);
         running_ = false;
         state_ = "rolled-back";
         return true;
@@ -3722,7 +3856,7 @@ public:
 
     void stop() override {
         stop_thread();
-        restore_actions();
+        restore_actions(last_transaction_id_, last_trigger_event_id_);
         running_ = false;
         state_ = "stopped";
     }
@@ -3731,25 +3865,41 @@ public:
 
 private:
     bool validate_action(const PolicyEngineAction &action) const {
-        if (action.target_type != "cgroup") {
-            last_error_ = "policy-engine-target-not-cgroup";
-            return false;
-        }
-        if (action.target_path.empty() ||
-            action.target_path.rfind("/sys/fs/cgroup/", 0) != 0) {
-            last_error_ = "policy-engine-target-outside-cgroup";
-            return false;
-        }
-        if (!is_allowed_control_file(action.file)) {
-            last_error_ = "policy-engine-control-file-not-allowed:" + action.file;
-            return false;
-        }
         if (action.value.empty() || action.value.find('\n') != std::string::npos ||
             action.value.find('\r') != std::string::npos) {
             last_error_ = "policy-engine-invalid-value";
             return false;
         }
-        return true;
+        if (action.target_type == "cgroup") {
+            if (action.target_path.empty() ||
+                action.target_path.rfind("/sys/fs/cgroup/", 0) != 0) {
+                last_error_ = "policy-engine-target-outside-cgroup";
+                return false;
+            }
+            if (!is_allowed_control_file(action.file)) {
+                last_error_ = "policy-engine-control-file-not-allowed:" + action.file;
+                return false;
+            }
+            return true;
+        }
+        if (action.target_type == "netdev") {
+            if (!is_allowed_network_qos_file(action.file)) {
+                last_error_ = "policy-engine-network-action-not-allowed:" + action.file;
+                return false;
+            }
+            if (!valid_tc_token(action.target_ifname) || !valid_tc_token(action.value) ||
+                !valid_tc_token(action.burst) || !valid_tc_token(action.latency)) {
+                last_error_ = "policy-engine-invalid-tc-token";
+                return false;
+            }
+            if (!is_allowed_lab_netdev_name(action.target_ifname)) {
+                last_error_ = "policy-engine-non-lab-netdev-denied:" + action.target_ifname;
+                return false;
+            }
+            return true;
+        }
+        last_error_ = "policy-engine-target-type-unsupported:" + action.target_type;
+        return false;
     }
 
     bool is_allowed_control_file(const std::string &file) const {
@@ -3757,6 +3907,11 @@ private:
                file == "memory.high" || file == "memory.low" ||
                file == "memory.max" || file == "io.max" ||
                file == "io.weight";
+    }
+
+    bool is_allowed_network_qos_file(const std::string &file) const {
+        return file == "network_qos.rate" || file == "tc.tbf.rate" ||
+               file == "tc.rate";
     }
 
     std::uint64_t current_source_size() const {
@@ -3776,6 +3931,21 @@ private:
                               const std::string &key,
                               const std::string &value) const {
         return line.find("\"" + key + "\":\"" + value + "\"") != std::string::npos;
+    }
+
+    std::string extract_json_string(const std::string &line,
+                                    const std::string &key) const {
+        const std::string marker = "\"" + key + "\":\"";
+        const auto start = line.find(marker);
+        if (start == std::string::npos) {
+            return "";
+        }
+        const auto value_start = start + marker.size();
+        const auto value_end = line.find('"', value_start);
+        if (value_end == std::string::npos) {
+            return "";
+        }
+        return line.substr(value_start, value_end - value_start);
     }
 
     void event_loop() {
@@ -3828,62 +3998,251 @@ private:
         return out.good();
     }
 
+    bool parse_uint64_value(const std::string &value, std::uint64_t &out) const {
+        char *end = nullptr;
+        errno = 0;
+        const unsigned long long parsed = std::strtoull(value.c_str(), &end, 10);
+        if (errno != 0 || end == value.c_str() || *end != '\0') {
+            return false;
+        }
+        out = static_cast<std::uint64_t>(parsed);
+        return true;
+    }
+
+    bool memory_high_allowed(const PolicyEngineAction &action,
+                             std::string &reason) const {
+        if (action.file != "memory.high" || !action.memory_high_guard ||
+            action.value == "max") {
+            return true;
+        }
+        std::uint64_t high_value = 0;
+        if (!parse_uint64_value(action.value, high_value)) {
+            reason = "memory-high-value-not-numeric";
+            return false;
+        }
+        std::string max_value;
+        if (!read_value(fs::path(action.target_path) / "memory.max", max_value)) {
+            return true;
+        }
+        if (max_value == "max") {
+            return true;
+        }
+        std::uint64_t max_numeric = 0;
+        if (!parse_uint64_value(max_value, max_numeric)) {
+            return true;
+        }
+        if (max_numeric <= high_value) {
+            reason = "memory-max-below-memory-high:" + max_value;
+            return false;
+        }
+        return true;
+    }
+
+    std::string tc_qdisc_show(const std::string &ifname) const {
+        const std::string command = "tc qdisc show dev " + ifname + " 2>/dev/null";
+        FILE *pipe = popen(command.c_str(), "r");
+        if (!pipe) {
+            return "";
+        }
+        std::string output;
+        char buffer[256];
+        while (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
+            output += buffer;
+        }
+        pclose(pipe);
+        return output;
+    }
+
+    std::string apply_action(PolicyEngineAction &action,
+                             const std::string &transaction_id,
+                             const std::string &trigger_event_id,
+                             const std::string &source_line) {
+        action.skip_reason.clear();
+        if (action.target_type == "cgroup") {
+            return apply_cgroup_action(action, transaction_id, trigger_event_id, source_line);
+        }
+        if (action.target_type == "netdev") {
+            return apply_netdev_action(action, transaction_id, trigger_event_id, source_line);
+        }
+        last_error_ = "policy-engine-unsupported-action-target:" + action.target_type;
+        return "failed";
+    }
+
+    std::string apply_cgroup_action(PolicyEngineAction &action,
+                                    const std::string &,
+                                    const std::string &,
+                                    const std::string &) {
+        const fs::path control_path = fs::path(action.target_path) / action.file;
+        std::string old_value;
+        if (!read_value(control_path, old_value)) {
+            last_error_ = "policy-engine-read-old-failed:" + action.file;
+            return "failed";
+        }
+        action.old_value = old_value;
+        std::string guard_reason;
+        if (!memory_high_allowed(action, guard_reason)) {
+            action.skip_reason = guard_reason;
+            return "skipped";
+        }
+        if (mode_ != "enforce") {
+            return "observed";
+        }
+        if (!write_value(control_path, action.value)) {
+            last_error_ = "policy-engine-write-failed:" + action.file;
+            return "failed";
+        }
+        std::string verify_value;
+        if (!read_value(control_path, verify_value) || verify_value != action.value) {
+            last_error_ = "policy-engine-verify-failed:" + action.file;
+            return "failed";
+        }
+        action.applied = true;
+        return "applied";
+    }
+
+    std::string apply_netdev_action(PolicyEngineAction &action,
+                                    const std::string &,
+                                    const std::string &,
+                                    const std::string &) {
+        action.old_value = tc_qdisc_show(action.target_ifname);
+        if (mode_ != "enforce") {
+            return "observed";
+        }
+        if (if_nametoindex(action.target_ifname.c_str()) == 0) {
+            last_error_ = "policy-engine-netdev-missing-at-apply:" + action.target_ifname;
+            return "failed";
+        }
+        const std::string command = "tc qdisc replace dev " + action.target_ifname +
+                                    " root tbf rate " + action.value +
+                                    " burst " + action.burst +
+                                    " latency " + action.latency;
+        if (!run_tc_command(command)) {
+            last_error_ = "policy-engine-network-qos-apply-failed:" + action.target_ifname;
+            return "failed";
+        }
+        const std::string after = tc_qdisc_show(action.target_ifname);
+        if (after.find("tbf") == std::string::npos) {
+            last_error_ = "policy-engine-network-qos-verify-failed:" + action.target_ifname;
+            return "failed";
+        }
+        action.applied = true;
+        return "applied";
+    }
+
     void apply_actions(const std::string &source_line) {
         if (applied_once_.exchange(true)) {
             return;
         }
+        const std::string trigger_event_id = extract_json_string(source_line, "event_id");
+        const std::string transaction_id = "pe-v3-1-" +
+            std::to_string(trigger_count_.load()) + "-" + now_event_timestamp();
+        last_transaction_id_ = transaction_id;
+        last_trigger_event_id_ = trigger_event_id;
+        write_policy_event("decision", policy_id_, "decision", source_line,
+                           transaction_id, trigger_event_id, nullptr);
+
         for (auto &action : actions_) {
-            const fs::path control_path = fs::path(action.target_path) / action.file;
-            std::string old_value;
-            if (!read_value(control_path, old_value)) {
-                last_error_ = "policy-engine-read-old-failed:" + action.file;
-                write_policy_event("apply", action.name, "failed", source_line);
+            const std::string result =
+                apply_action(action, transaction_id, trigger_event_id, source_line);
+            write_policy_event("apply", action.name, result, source_line,
+                               transaction_id, trigger_event_id, &action);
+            write_skill_action_event(action, "apply", result, transaction_id,
+                                     trigger_event_id, source_line);
+            if (result == "applied" || result == "observed" || result == "skipped") {
+                write_policy_journal(action, "apply", false,
+                                     transaction_id, trigger_event_id);
+            }
+            if (result == "failed") {
+                restore_actions(transaction_id, trigger_event_id);
+                state_ = "failed";
+                return;
+            }
+        }
+        state_ = "applied";
+    }
+
+    void restore_actions(const std::string &transaction_id,
+                         const std::string &trigger_event_id) {
+        for (std::size_t i = actions_.size(); i > 0; --i) {
+            auto &action = actions_[i - 1];
+            if (!action.applied) {
                 continue;
             }
-            action.old_value = old_value;
-            if (mode_ == "enforce") {
-                if (!write_value(control_path, action.value)) {
-                    last_error_ = "policy-engine-write-failed:" + action.file;
-                    write_policy_event("apply", action.name, "failed", source_line);
-                    continue;
-                }
-                action.applied = true;
+            bool restored = false;
+            if (action.target_type == "cgroup") {
+                const fs::path control_path = fs::path(action.target_path) / action.file;
+                restored = !action.old_value.empty() && write_value(control_path, action.old_value);
+            } else if (action.target_type == "netdev") {
+                restored = run_tc_command("tc qdisc del dev " + action.target_ifname + " root");
             }
-            write_policy_event("apply", action.name,
-                               mode_ == "enforce" ? "applied" : "observed",
-                               source_line);
-            write_policy_journal(action, "apply", false);
+            if (restored) {
+                write_policy_event("rollback", action.name, "restored", "",
+                                   transaction_id, trigger_event_id, &action);
+                write_skill_action_event(action, "rollback", "restored",
+                                         transaction_id, trigger_event_id, "");
+                write_policy_journal(action, "rollback", true,
+                                     transaction_id, trigger_event_id);
+                action.applied = false;
+            } else {
+                last_error_ = "policy-engine-restore-failed:" + action.name;
+                write_policy_event("rollback", action.name, "failed", "",
+                                   transaction_id, trigger_event_id, &action);
+                write_skill_action_event(action, "rollback", "failed",
+                                         transaction_id, trigger_event_id, "");
+            }
         }
     }
 
-    void restore_actions() {
-        for (auto &action : actions_) {
-            if (!action.applied || action.old_value.empty()) {
-                continue;
-            }
-            const fs::path control_path = fs::path(action.target_path) / action.file;
-            if (write_value(control_path, action.old_value)) {
-                write_policy_event("rollback", action.name, "restored", "");
-                write_policy_journal(action, "rollback", true);
-                action.applied = false;
-            } else {
-                last_error_ = "policy-engine-restore-failed:" + action.file;
-                write_policy_event("rollback", action.name, "failed", "");
-            }
+    std::string stage_for_result(const std::string &operation,
+                                 const std::string &result) const {
+        if (operation == "decision") {
+            return "decision";
+        }
+        if (result == "applied") {
+            return "applied";
+        }
+        if (result == "restored") {
+            return "restored";
+        }
+        if (result == "failed") {
+            return "failed";
+        }
+        return result;
+    }
+
+    void fill_action_target(AuditEvent &event,
+                            const PolicyEngineAction *action) const {
+        if (!action) {
+            event.target["source_audit_path"] = source_path_;
+            return;
+        }
+        event.target["target_ref"] = action->target_ref;
+        event.target["target_type"] = action->target_type;
+        if (action->target_type == "cgroup") {
+            event.target["cgroup_path"] = action->target_path;
+            event.target["file"] = action->file;
+        } else if (action->target_type == "netdev") {
+            event.target["ifname"] = action->target_ifname;
+            event.target["file"] = action->file;
         }
     }
 
     void write_policy_event(const std::string &operation,
                             const std::string &action_name,
                             const std::string &result,
-                            const std::string &source_line) const {
+                            const std::string &source_line,
+                            const std::string &transaction_id,
+                            const std::string &trigger_event_id,
+                            const PolicyEngineAction *action) const {
         AuditEvent event;
         event.timestamp = now_event_timestamp();
         event.event_id = "policy_engine-" + operation + "-" +
-                         std::to_string(trigger_count_.load());
+                         std::to_string(trigger_count_.load()) + "-" + event.timestamp;
         event.skill = "policy_engine";
-        event.policy_id = "cross_skill_response";
+        event.policy_id = policy_id_;
         event.rule_id = watch_rule_id_;
+        event.transaction_id = transaction_id;
+        event.trigger_event_id = trigger_event_id;
         event.mode = mode_;
         event.operation = operation == "apply" ? "cross_skill_response" : operation;
         event.action = action_name;
@@ -3894,31 +4253,104 @@ private:
             {"source_operation", watch_operation_},
             {"source_rule_id", watch_rule_id_},
             {"source_seen", source_line.empty() ? "false" : "true"},
+            {"stage", stage_for_result(operation, result)},
         };
-        for (const auto &action : actions_) {
-            event.target["target_ref"] = action.target_ref;
-            event.target["cgroup_path"] = action.target_path;
-            break;
+        if (action) {
+            event.evidence["old_value"] = action->old_value;
+            event.evidence["new_value"] = action->value;
+            if (!action->skip_reason.empty()) {
+                event.evidence["reason"] = action->skip_reason;
+            }
         }
+        fill_action_target(event, action);
         std::string error;
         append_audit_event(audit_path_, event, &error);
     }
 
+    void write_skill_action_event(const PolicyEngineAction &action,
+                                  const std::string &operation,
+                                  const std::string &result,
+                                  const std::string &transaction_id,
+                                  const std::string &trigger_event_id,
+                                  const std::string &source_line) const {
+        const bool is_netdev = action.target_type == "netdev";
+        const fs::path path = is_netdev ? fs::path("reports/events/network_policy.jsonl")
+                                        : fs::path("reports/events/resource_control.jsonl");
+        ensure_parent_dir(path);
+        AuditEvent event;
+        event.timestamp = now_event_timestamp();
+        event.event_id = (is_netdev ? "network_qos" : "resource_control") +
+                         std::string("-") + operation + "-" + event.timestamp;
+        event.skill = is_netdev ? "network_qos" : "resource_control";
+        event.policy_id = policy_id_;
+        event.rule_id = watch_rule_id_;
+        event.transaction_id = transaction_id;
+        event.trigger_event_id = trigger_event_id;
+        event.mode = mode_;
+        event.operation = is_netdev ? "write-tc-qdisc" : "write-cgroup-file";
+        event.action = action.name;
+        event.result = result;
+        event.severity = result == "failed" ? "error" : "info";
+        if (is_netdev) {
+            event.target = {
+                {"target_ref", action.target_ref},
+                {"ifname", action.target_ifname},
+                {"file", action.file},
+            };
+            event.evidence = {
+                {"old_value", action.old_value},
+                {"new_value", action.value},
+                {"rate", action.value},
+                {"burst", action.burst},
+                {"latency", action.latency},
+                {"stage", stage_for_result(operation, result)},
+                {"source_seen", source_line.empty() ? "false" : "true"},
+            };
+        } else {
+            event.target = {
+                {"target_ref", action.target_ref},
+                {"cgroup", action.target_path},
+                {"file", action.file},
+            };
+            event.evidence = {
+                {"old_value", action.old_value},
+                {"new_value", action.value},
+                {"stage", stage_for_result(operation, result)},
+                {"source_seen", source_line.empty() ? "false" : "true"},
+            };
+        }
+        if (!action.skip_reason.empty()) {
+            event.evidence["reason"] = action.skip_reason;
+        }
+        std::string error;
+        append_audit_event(path.string(), event, &error);
+    }
+
     void write_policy_journal(const PolicyEngineAction &action,
                               const std::string &operation,
-                              bool restored) const {
+                              bool restored,
+                              const std::string &transaction_id,
+                              const std::string &trigger_event_id) const {
         JournalAction entry;
         entry.action_id = "policy_engine-" + operation + "-" + action.name;
         entry.skill = "policy_engine";
-        entry.target = action.target_path;
+        entry.transaction_id = transaction_id;
+        entry.trigger_event_id = trigger_event_id;
+        entry.policy_id = policy_id_;
+        entry.target = action.target_type == "netdev" ? action.target_ifname : action.target_path;
         entry.operation = operation;
         entry.old_values = {{action.file, action.old_value}};
         entry.new_values = {{action.file, action.value}};
         entry.handles = {
             {"target_ref", action.target_ref},
+            {"target_type", action.target_type},
             {"control_file", action.file},
             {"source_audit_path", source_path_},
         };
+        if (action.target_type == "netdev") {
+            entry.handles["ifname"] = action.target_ifname;
+            entry.handles["qdisc"] = "tbf";
+        }
         entry.restored = restored;
         std::string error;
         append_journal_action(journal_path_, entry, &error);
@@ -3929,6 +4361,7 @@ private:
     mutable std::string last_error_;
     std::string state_ = "created";
     std::string mode_ = "enforce";
+    std::string policy_id_ = "cross_skill_response";
     std::string source_path_ = "reports/events/security_policy.jsonl";
     std::string audit_path_ = "reports/events/policy_engine.jsonl";
     std::string journal_path_ = "run/eulerpilot/action_journal.jsonl";
@@ -3938,6 +4371,7 @@ private:
     std::string watch_result_ = "observed";
     bool require_security_policy_ = true;
     bool require_resource_control_ = true;
+    bool require_network_qos_ = false;
     std::uint32_t poll_interval_ms_ = 100;
     std::vector<PolicyEngineAction> actions_;
     std::atomic<bool> event_thread_stop_{false};
@@ -3945,8 +4379,9 @@ private:
     std::atomic<std::uint64_t> trigger_count_{0};
     std::thread event_thread_;
     std::uint64_t source_offset_ = 0;
+    std::string last_transaction_id_;
+    std::string last_trigger_event_id_;
 };
-
 } // namespace
 
 void register_builtin_skills(SkillRegistry &registry) {

@@ -37,6 +37,58 @@ std::string bar(std::size_t width = 50) {
     return std::string(width, '-');
 }
 
+std::string escape_json(const std::string &value) {
+    std::string out;
+    for (char ch : value) {
+        switch (ch) {
+        case '\\': out += "\\\\"; break;
+        case '"': out += "\\\""; break;
+        case '\n': out += "\\n"; break;
+        case '\r': out += "\\r"; break;
+        case '\t': out += "\\t"; break;
+        default: out += ch; break;
+        }
+    }
+    return out;
+}
+
+void print_status_json(const std::vector<eulerpilot::SkillSnapshot> &snapshots) {
+    std::cout << "{\"skills\":[";
+    for (std::size_t i = 0; i < snapshots.size(); ++i) {
+        const auto &snapshot = snapshots[i];
+        if (i > 0) {
+            std::cout << ",";
+        }
+        std::cout << "{\"name\":\"" << escape_json(snapshot.skill_name) << "\","
+                  << "\"available\":" << (snapshot.available ? "true" : "false") << ","
+                  << "\"running\":" << (snapshot.running ? "true" : "false") << ","
+                  << "\"state\":\"" << escape_json(snapshot.state) << "\","
+                  << "\"evidence\":{";
+        bool first = true;
+        for (const auto &item : snapshot.evidence) {
+            if (!first) {
+                std::cout << ",";
+            }
+            first = false;
+            std::cout << "\"" << escape_json(item.first) << "\":\""
+                      << escape_json(item.second) << "\"";
+        }
+        std::cout << "}}";
+    }
+    std::cout << "]}\n";
+}
+
+void print_status_text(const std::vector<eulerpilot::SkillSnapshot> &snapshots) {
+    for (const auto &snapshot : snapshots) {
+        std::cout << snapshot.skill_name << " " << snapshot.state;
+        auto reason = snapshot.evidence.find("reason");
+        if (reason != snapshot.evidence.end() && reason->second != "ok") {
+            std::cout << " [" << reason->second << "]";
+        }
+        std::cout << "\n";
+    }
+}
+
 void print_banner(const eulerpilot::RuntimeConfig &config, const eulerpilot::EnvironmentStatus &env) {
     std::cout << "\n"
               << clr::cyan_() << clr::b() << "  * EulerPilot Agent " << clr::r() << "\n"
@@ -184,6 +236,33 @@ int main(int argc, char **argv) {
         if (config.list_skills_only) {
             for (const auto &name : registry.list()) {
                 std::cout << clr::cyan_() << name << clr::r() << "\n";
+            }
+            return 0;
+        }
+
+        if (config.validate_config_only) {
+            if (!manager.load_from_yaml(config, registry)) {
+                std::cerr << "EulerPilot config invalid: " << manager.last_error() << "\n";
+                return 1;
+            }
+            if (config.jsonl) {
+                std::cout << "{\"config\":\"" << escape_json(config.config_path)
+                          << "\",\"result\":\"valid\"}\n";
+            } else {
+                std::cout << "EulerPilot config valid: " << config.config_path << "\n";
+            }
+            return 0;
+        }
+
+        if (config.status_only) {
+            if (!manager.load_from_yaml(config, registry)) {
+                std::cerr << "EulerPilot error: " << manager.last_error() << "\n";
+                return 1;
+            }
+            if (config.jsonl) {
+                print_status_json(manager.snapshots());
+            } else {
+                print_status_text(manager.snapshots());
             }
             return 0;
         }

@@ -51,7 +51,14 @@ bool append_audit_event(const std::string &path, const AuditEvent &event, std::s
         << "\"event_id\":\"" << escape_json(event.event_id) << "\","
         << "\"skill\":\"" << escape_json(event.skill) << "\","
         << "\"policy_id\":\"" << escape_json(event.policy_id) << "\","
-        << "\"rule_id\":\"" << escape_json(event.rule_id) << "\","
+        << "\"rule_id\":\"" << escape_json(event.rule_id) << "\",";
+    if (!event.transaction_id.empty()) {
+        out << "\"transaction_id\":\"" << escape_json(event.transaction_id) << "\",";
+    }
+    if (!event.trigger_event_id.empty()) {
+        out << "\"trigger_event_id\":\"" << escape_json(event.trigger_event_id) << "\",";
+    }
+    out
         << "\"mode\":\"" << escape_json(event.mode) << "\","
         << "\"target\":";
     write_map(out, event.target);

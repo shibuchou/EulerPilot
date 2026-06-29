@@ -119,3 +119,13 @@ sudo tests/integration/test_security_policy.sh
 当前可验收：正式 `security_policy` 注册名、YAML v2 path/path_prefix/file_access/exec_path/exec_prefix/dst_ip/dst_port/capability/cgroup_path/pid/container_id/container/k8s_pod target、最多 8 组 BPF `target_map`、audit 不阻断并写 BPF hit event、四类 syscall tracing、`burst_execve` anomaly event、九类 LSM enforce、规则级 blocked 事件、scoped IPv4 socket connect、exec_prefix、file_access、path_prefix、ptrace_traceme、CAP_SYS_ADMIN、setuid/setgid/setgroups credential 转换、cred_prepare credential preparation、显式 cgroup/PID/container_id/runtime container/k8s_pod scope、Agent 退出恢复和 cleanup 无残留，以及 `policy_engine` 消费 `burst_execve` anomaly 后触发 Resource Control 降级。Security 121 最新结果目录为 `results/security_policy/integration-20260624-114838`；Security 122 最新结果目录为 `results/security_policy/integration-20260624-115440`；联动验证 121 结果目录为 `results/policy_engine/security-resource-20260629-163949`，122 结果目录为 `results/policy_engine/security-resource-20260629-164135`。121 最新质量门禁为 `reports/final_quality_gate_20260624_security_cred_prepare.log`。
 
 下一阶段正式验收：在已完成 `lsm/socket_connect`、bprm `exec_prefix`、file_open `file_access/path_prefix`、`lsm/ptrace_traceme`、`lsm/capable`、`lsm/task_fix_setuid`、`lsm/task_fix_setgid`、`lsm/task_fix_setgroups` 和 `lsm/cred_prepare` 的基础上，继续补 cred_transfer/cred_alloc_blank 等更多 cred 生命周期规则、更多异常行为规则和联动处置。所有新增 hook 都必须复用当前 target/cgroup scope，不要重新实现 Pod/container 解析。
+
+## v3.1 anomaly 增强
+
+v3.1 为服务联动补充了三类小范围 anomaly 规则，不新增大规模 LSM hook，优先复用已有 syscall/LSM/ringbuf 事件：
+
+- `burst_connect`：短时间大量 `connect` 或命中敏感端口，用于触发 `security_policy -> policy_engine -> resource_control + network_qos` 第二条联动。
+- `burst_openat_sensitive`：短时间频繁访问 `/proc/sys`、`/etc`、`/root` 等敏感路径。
+- `capability_abuse`：目标 cgroup 内频繁触发 capability/credential 相关事件。
+
+这些规则继续复用 `target_ref/cgroup scope`，事件写入 `reports/events/security_policy.jsonl`。其中 `burst_connect` 是 v3.1 默认触发源，要求 anomaly 事件在触发后 1 秒内可见，并携带可被 Policy Engine 读取的 `event_id`，作为后续 `trigger_event_id`。

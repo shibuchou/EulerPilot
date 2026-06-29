@@ -8,6 +8,9 @@ namespace eulerpilot {
 struct JournalAction {
     std::string action_id;
     std::string skill;
+    std::string transaction_id;
+    std::string trigger_event_id;
+    std::string policy_id;
     std::string target;
     std::string operation;
     std::map<std::string, std::string> old_values;

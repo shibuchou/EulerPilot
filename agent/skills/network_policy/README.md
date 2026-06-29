@@ -32,3 +32,7 @@
 2. 将 TC QoS 从单 lab veth 扩展到多规则和速率误差 Benchmark。
 3. 在真实 Kubernetes lab Pod 上验证 Pod host veth 的 TC/XDP 挂载。
 4. 将 isolated-veth XDP 从 ICMP/TCP 多规则扩展到 UDP 和更多报文特征。
+
+## v3.1 network_qos 联动
+
+`network_qos` 已作为 Policy Engine 第二条联动动作之一。Policy Engine 只允许对 `ep-*`、`eulerpilot-*`、`lab-*` 前缀的 lab netdev 写入 tc/tbf qdisc；v3.1 测试脚本自行创建 `ep-veth-pe0 <-> ep-veth-pe1`，并在 Agent 停止后删除 qdisc。

@@ -22,3 +22,14 @@
 ## 后续测试
 
 - `test_sched_ext.sh`
+
+## Policy Engine Security + Network + Resource
+
+新增 v3.1 集成测试：
+
+```bash
+sudo tests/integration/test_policy_engine_security_network_resource.sh
+sudo tests/integration/test_policy_engine_security_network_resource.sh --repeat 10
+```
+
+覆盖链路：`security_policy burst_connect -> policy_engine -> resource_control cpu.max/memory.high -> network_qos tc/tbf -> rollback`。脚本会创建 isolated veth 和 lab cgroup，验证 `transaction_id` 可串起 security、policy_engine、resource_control、network_qos 和 ActionJournal，并包含 Resource 成功但 Network 失败时的回滚测试。

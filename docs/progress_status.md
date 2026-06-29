@@ -1,5 +1,18 @@
 # EulerPilot 进度状态看板
 
+## v3.1 最新进展（2026-06-29）
+
+- v3.1 主线已进入“跨 Skill 联动与争奖证据收口”：不切换 SP4 主平台，不把 K8s 真实验证作为本阶段完成条件，不继续堆大规模底层 hook。
+- 已生成开始前一致性快照：`docs/v3_1_start_status_20260629.md`、`reports/v3_1_start_repo_status_20260629-1859.log`；其中明确 `9c4ccce` 是上一功能提交，`7b2cb84` 是完成度报告提交。
+- 已新增独立强联动配置：`configs/policy_engine_security_network_resource.yaml` 与 `configs/policy_engine_security_network_resource.skills.yaml`，默认 `configs/agent.yaml` 保持保守。
+- 121 已完成第二条跨 Skill 联动：`security_policy burst_connect -> policy_engine -> resource_control demo_cgroup -> network_qos lab_netdev -> rollback`。
+- 121 已通过 `tests/integration/test_policy_engine_security_network_resource.sh --repeat 10`，并在文档/脚本收口后再次通过单次集成测试，最新结果目录：`results/policy_engine/security-network-resource-20260629-214952`。122 已通过同一核心集成测试，结果目录：`results/policy_engine/security-network-resource-20260629-215950`。
+- 第二条联动已具备统一 `transaction_id`、`trigger_event_id`、`policy_id`，可串起 security、policy_engine、resource_control、network_qos 和 ActionJournal。
+- `network_qos` 已加入 lab netdev 白名单边界，只允许 `ep-*`、`eulerpilot-*`、`lab-*`，默认拒绝生产网卡前缀。
+- 新增最终演示与证据入口：`demo/demo_all_final.sh`、`docs/demo_final_runbook.md`、`docs/final_evidence_index.md`；121 最新 `scripts/final_quality_gate.sh` 已保持 21/21 P0、100 轮 smoke、5 轮 doctor 通过。
+- SP4 验证后置，准备文档为 `docs/sp4_validation_plan.md`，检查脚本为 `scripts/check_sp4_env.sh`。
+- Kubernetes/真实 runtime/真实 Pod veth 不作为 v3.1 完成条件，但保留为 v3.2 第一优先级。
+
 更新时间：`2026-06-29`
 
 当前执行口径：`docs/next_phase_plan_v2_1.md`

@@ -119,3 +119,12 @@ EulerPilot/
   reports/
   demo/
 ```
+
+## v3.1 执行与收口规则
+
+- v3.1 主线是第二条 Policy Engine 跨 Skill 联动与争奖证据收口；不得在本阶段把 SP4、Kubernetes/真实 runtime 作为阻塞条件，但必须把 K8s 真实 Pod target 保留为 v3.2 第一优先级。
+- 第二条联动必须使用独立配置 `configs/policy_engine_security_network_resource.yaml`，默认 `configs/agent.yaml` 保持安全、保守、适合普通启动和 doctor。
+- 跨 Skill 联动事件必须使用统一 `transaction_id`，贯穿 `security_policy`、`policy_engine`、`resource_control`、`network_qos`、`AuditBus` 和 `ActionJournal`。
+- `network_qos` 只能作用于测试脚本创建的 lab netdev，允许前缀为 `ep-*`、`eulerpilot-*`、`lab-*`，默认禁止操作生产网卡或管理网卡。
+- 每完成一个阶段或关键子任务，必须同步更新 `docs/progress_status.md`、相关 Skill 文档、对应模块 README、结果目录说明和 `docs/final_evidence_index.md`，保证新开 Agent 只读仓库也能判断任务完成状态。
+- C/C++ 代码风格继续贴近 openEuler 开源项目：命名直接、错误路径显式、系统副作用有清晰安全边界和 rollback 注释，避免过度封装。

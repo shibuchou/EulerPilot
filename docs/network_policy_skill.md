@@ -253,3 +253,22 @@ results/network_policy/
 1. 为 TC QoS 增加多规则验证。
 2. 在真实 Kubernetes lab Pod 上验证 TC QoS / XDP 挂载到解析出的 host veth。
 3. 将 isolated-veth XDP 扩展到 UDP 和更多报文特征。
+
+## v3.1 Policy Engine 联动边界
+
+v3.1 中 `network_qos` 被纳入第二条跨 Skill 联动：
+
+```text
+security_policy burst_connect anomaly
+  -> policy_engine
+  -> network_qos lab_netdev tc/tbf 2mbit
+  -> rollback
+```
+
+安全边界固定为只操作测试脚本创建的 lab netdev。允许前缀：`ep-*`、`eulerpilot-*`、`lab-*`；默认拒绝：`eth*`、`ens*`、`eno*`、`wlan*`、`bond*`、`br*`、`cni*`、`flannel*`。v3.1 测试创建 `ep-veth-pe0 <-> ep-veth-pe1`，并只在 `ep-veth-pe0` 上写入 `tc/tbf rate 2mbit`，不操作生产网卡或管理网卡。
+
+验证入口：
+
+```bash
+sudo tests/integration/test_policy_engine_security_network_resource.sh
+```

@@ -145,3 +145,18 @@
 ## 当前结论
 
 项目仍处于争奖增强阶段，不应停留在“最终材料整理”。当前已完成 Security anomaly -> Policy Engine -> Resource Control 降级的第一条跨 Skill 链路。下一步重点是补强 Network/Security/Resource 的成品化深度：Pod veth 真实 lab 演示、Security 更多 cred 生命周期规则/更多异常规则、Network QoS 与 Resource Control 同步限流、Resource 真实 container runtime / Kubernetes Pod target 现场 pass，以及 Redis/Nginx 多 workload quota profile 调参。当前 121/122 的真实 runtime/Pod target 脚本已经具备一键验收入口，但环境仍缺 docker/podman/kubectl；补齐 runtime、镜像与 `eulerpilot-lab` demo Pod 后优先把 blocked 证据转成 pass 证据。
+
+## v3.1 提交前新增检查
+
+- [x] `make agent` 通过。
+- [x] `./build/eulerpilot-agent --validate-config configs/agent.yaml` 通过。
+- [x] `./build/eulerpilot-agent --validate-config configs/policy_engine_security_network_resource.yaml` 通过。
+- [x] `./build/eulerpilot-agent --status --json` 可输出状态 JSON。
+- [x] `tests/integration/test_policy_engine_security_network_resource.sh` 在 121/122 通过。
+- [x] `tests/integration/test_policy_engine_security_network_resource.sh --repeat 10` 在 121 通过。
+- [x] 失败恢复场景通过：Resource 已写入、Network QoS 写入失败时，Policy Engine 回滚 Resource。
+- [x] 结果目录包含 `summary.txt`、`report.md`、四类事件 JSONL、ActionJournal、qdisc/rate 证据。
+- [x] `transaction_id` 可串起 security、policy_engine、resource_control、network_qos 和 ActionJournal。
+- [x] `demo/demo_all_final.sh --mode live|offline|cleanup` 已完成脚本语法检查；live 依赖 root 环境。
+- [x] `scripts/check_sp4_env.sh` 已完成脚本语法检查，且不把 SP4 作为 v3.1 阻塞条件。
+- [ ] 121/122/本地/GitHub 同步后生成最终一致性日志。

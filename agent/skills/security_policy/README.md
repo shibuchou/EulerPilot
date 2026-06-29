@@ -50,3 +50,13 @@ sudo tests/integration/test_security_policy.sh
 脚本会构建 Agent 和 demo BPF 对象，先启动正式 `security_policy` 的 audit 模式，确认目标文件和 demo 可执行文件不被阻断，且写入 `lsm_file_open`、`lsm_bprm_check_security`、`sys_enter_execve`、`sys_enter_openat`、`sys_enter_connect`、`sys_enter_ptrace` 等 BPF ringbuf hit 事件；随后启用 `burst_execve` 异常规则；再启动 enforce 模式，验证目标文件、demo 可执行文件、scoped writable-dir exec_prefix、scoped file_access 写打开、scoped path_prefix 只读目录写打开、scoped IPv4 socket connect、scoped `PTRACE_TRACEME`、scoped `CAP_SYS_ADMIN`、scoped setuid/setgid/setgroups credential 转换和 scoped cred_prepare credential preparation 在策略生效期间被拒绝并写入 blocked hit 事件，并在 Agent 退出后恢复可访问。脚本还会创建动态 `/tmp` 目标和临时 cgroup，验证显式 cgroup、PID、container_id、runtime container name 和 k8s_pod target scope。当前集成脚本仍以 `/root/EulerPilot` 为基准；121 最新通过结果为 `results/security_policy/integration-20260624-114838`，122 最新通过结果为 `results/security_policy/integration-20260624-115440`。
 
 更完整的设计、验收口径和下一步清单见 `docs/security_policy_skill.md`。
+
+## v3.1 anomaly 规则
+
+v3.1 新增三条服务联动 anomaly：
+
+- `burst_connect`
+- `burst_openat_sensitive`
+- `capability_abuse`
+
+默认用于第二条 Policy Engine 联动的是 `burst_connect`。该规则复用 connect 相关 syscall/LSM 事件，不额外扩大 hook 面，事件进入 `reports/events/security_policy.jsonl` 后由 `policy_engine` 消费。

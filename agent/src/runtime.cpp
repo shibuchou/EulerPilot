@@ -200,15 +200,24 @@ RuntimeConfig parse_args(int argc, char **argv) {
             }
             config.warmup_cycles = static_cast<std::uint32_t>(std::strtoul(argv[++i], nullptr, 10));
         } else if (std::strcmp(argv[i], "--help") == 0) {
-            throw std::runtime_error("usage: eulerpilot-agent [--config PATH] [--interval-ms N] [--duration-s N] [--warmup-cycles N] [--backend cgroup_v2|sched_ext] [--gate-mode always-active|psi|normal] [--active] [--verbose] [--jsonl] [--list-skills] [--doctor-skills]");
+            throw std::runtime_error("usage: eulerpilot-agent [--config PATH] [--interval-ms N] [--duration-s N] [--warmup-cycles N] [--backend cgroup_v2|sched_ext] [--gate-mode always-active|psi|normal] [--active] [--verbose] [--jsonl] [--list-skills] [--doctor-skills] [--validate-config PATH] [--status --json]");
         } else if (std::strcmp(argv[i], "--verbose") == 0) {
             config.verbose = true;
         } else if (std::strcmp(argv[i], "--jsonl") == 0) {
+            config.jsonl = true;
+        } else if (std::strcmp(argv[i], "--json") == 0) {
             config.jsonl = true;
         } else if (std::strcmp(argv[i], "--list-skills") == 0) {
             config.list_skills_only = true;
         } else if (std::strcmp(argv[i], "--doctor-skills") == 0) {
             config.doctor_skills_only = true;
+        } else if (std::strcmp(argv[i], "--validate-config") == 0) {
+            config.validate_config_only = true;
+            if (i + 1 < argc && argv[i + 1][0] != '-') {
+                config.config_path = argv[++i];
+            }
+        } else if (std::strcmp(argv[i], "--status") == 0) {
+            config.status_only = true;
         } else {
             throw std::runtime_error(std::string("unknown argument: ") + argv[i]);
         }
@@ -453,7 +462,7 @@ std::vector<WorkloadDecision> run_once(const RuntimeConfig &config) {
 }
 
 std::vector<WorkloadDecision> run_cycles(const RuntimeConfig &config) {
-    if (config.list_skills_only || config.doctor_skills_only) {
+    if (config.list_skills_only || config.doctor_skills_only || config.validate_config_only || config.status_only) {
         return {};
     }
 

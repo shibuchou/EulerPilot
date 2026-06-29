@@ -6,137 +6,154 @@
 
 ## 当前完成度
 
-当前版本完成了第一条跨 Skill 联动链路：
+当前版本已完成两条跨 Skill 联动链路。
+
+第一条链路：
 
 ```text
 security_policy burst_execve anomaly
-  -> policy_engine 监听 security_policy JSONL 事件
-  -> 对显式 cgroup target 写入 cpu.max / memory.high
-  -> policy_engine.jsonl 记录 cross_skill_response
-  -> ActionJournal 记录旧值和新值
-  -> Agent stop 后恢复旧值
+  -> policy_engine
+  -> resource_control cgroup cpu.max / memory.high
+  -> ActionJournal
+  -> Agent stop rollback
 ```
 
-121 与 122 都已通过 `tests/integration/test_policy_engine_security_resource.sh`。该测试会创建独立 cgroup `/sys/fs/cgroup/eulerpilot/policy-engine-background`，运行 background workload，触发 `security_policy` 的 `burst_execve` anomaly，然后验证 `policy_engine` 把目标 cgroup 降级为：
+第二条 v3.1 链路：
 
 ```text
-cpu.max=10000 100000
-memory.high=1048576
+security_policy burst_connect anomaly
+  -> policy_engine decision
+  -> resource_control demo_cgroup cpu.max / memory.high
+  -> network_qos lab_netdev tc/tbf 2mbit
+  -> AuditBus + ActionJournal
+  -> Agent stop rollback
 ```
 
-Agent 退出后，测试确认旧值恢复为：
+121 已通过 `tests/integration/test_policy_engine_security_network_resource.sh --repeat 10`，122 已通过同一核心集成测试。最新结果目录为：
 
 ```text
-cpu.max=max 100000
-memory.high=max
+121: results/policy_engine/security-network-resource-20260629-214952
+122: results/policy_engine/security-network-resource-20260629-215950
 ```
 
-## YAML 配置
+## 独立配置
 
-默认配置位于 `configs/skills.yaml`，`policy_engine` 默认关闭。启用时使用 schema v2 Skill 配置：
+v3.1 强联动不改默认安全配置，使用专用配置：
 
-```yaml
-- name: policy_engine
-  kind: runtime
-  enabled: false
-  config:
-    mode: enforce
-    source:
-      audit_path: reports/events/security_policy.jsonl
-    watch:
-      skill: security_policy
-      operation: anomaly
-      rule_id: burst_execve
-      result: observed
-    targets:
-      anomaly_background:
-        type: cgroup
-        path: /sys/fs/cgroup/eulerpilot/policy-engine-background
-    actions:
-      - name: throttle_anomaly_background_cpu
-        target_ref: anomaly_background
-        file: cpu.max
-        value: '10000 100000'
-      - name: cap_anomaly_background_memory
-        target_ref: anomaly_background
-        file: memory.high
-        value: '1048576'
+```text
+configs/policy_engine_security_network_resource.yaml
+configs/policy_engine_security_network_resource.skills.yaml
 ```
 
-当前实现只接受 `type: cgroup` target，目标路径必须位于 `/sys/fs/cgroup/` 下。第一版不自动创建 cgroup，也不解析 container/Pod；真实容器和 Pod target 继续由 `resource_control` 与 `TargetResolver` 负责。
+运行入口：
+
+```bash
+./build/eulerpilot-agent --validate-config configs/policy_engine_security_network_resource.yaml
+sudo tests/integration/test_policy_engine_security_network_resource.sh
+```
+
+默认动作作用域：
+
+```text
+resource_control:
+  target_ref = demo_cgroup
+  cpu.max = 20000 100000
+  memory.high = 134217728
+
+network_qos:
+  target_ref = lab_netdev
+  tc/tbf rate = 2mbit
+```
+
+`resource_control` target 是 cgroup，`network_qos` target 是测试脚本创建的 lab netdev，二者在配置和测试中明确区分。
+
+## transaction_id 证据链
+
+v3.1 所有跨 Skill 事件都带统一事务字段：
+
+```json
+{
+  "transaction_id": "pe-v3-1-xxxx",
+  "trigger_event_id": "sec-xxxx",
+  "policy_id": "security_network_resource_response",
+  "stage": "decision|applied|restored|failed"
+}
+```
+
+验收时必须能用同一个 `transaction_id` 串起：
+
+```text
+security anomaly
+policy_engine decision
+resource_control applied/restored
+network_qos applied/restored
+ActionJournal action records
+```
 
 ## 安全边界
 
-`policy_engine` 第一版采用保守边界：
+`policy_engine` 采用白名单动作，不执行外部命令：
 
 - 默认 `enabled: false`，只在明确配置和测试中启用。
-- 只监听本机 JSONL 事件，不执行外部命令。
-- 只支持 cgroup v2 控制文件写入。
-- cgroup 目标路径必须以 `/sys/fs/cgroup/` 开头。
-- 控制文件采用白名单：`cpu.max`、`cpu.weight`、`memory.high`、`memory.low`、`memory.max`、`io.max`、`io.weight`。
-- 对同一轮 Agent 生命周期只响应一次匹配事件，避免异常风暴导致重复写入。
-- 每次写入先读取旧值，写入后复读验证，并在 stop/rollback 恢复旧值。
-
-这些边界保证 `policy_engine` 是可演示的联动层，而不是不受控的通用 shell 执行器。
+- 只监听本机 JSONL 事件。
+- cgroup target 必须位于 `/sys/fs/cgroup/` 下。
+- cgroup 控制文件白名单：`cpu.max`、`cpu.weight`、`memory.high`、`memory.low`、`memory.max`、`io.max`、`io.weight`。
+- 写入 `memory.high=134217728` 前检查 `memory.max == max` 或 `memory.max > 134217728`，否则跳过 memory 子动作并记录 reason。
+- netdev target 只允许 `ep-*`、`eulerpilot-*`、`lab-*` 前缀，默认拒绝 `eth*`、`ens*`、`eno*`、`wlan*`、`bond*`、`br*`、`cni*`、`flannel*`。
+- 写入前读取旧值，写入后复读验证，并在 stop/rollback 恢复旧值或删除 lab qdisc。
+- 多动作事务失败时按逆序回滚已成功动作，例如 Resource 已写入但 Network QoS 失败时必须恢复 Resource 旧值。
 
 ## 事件与审计
 
-触发源来自 `reports/events/security_policy.jsonl`，当前匹配条件为：
+事件文件：
 
-```text
-skill=security_policy
-operation=anomaly
-rule_id=burst_execve
-result=observed
-```
+- `reports/events/security_policy.jsonl`
+- `reports/events/policy_engine.jsonl`
+- `reports/events/resource_control.jsonl`
+- `reports/events/network_policy.jsonl`
+- `run/eulerpilot/action_journal.jsonl`
 
-处置事件写入 `reports/events/policy_engine.jsonl`，核心字段包括：
+核心验收字段：
 
-- `skill=policy_engine`
+- `policy_id=security_network_resource_response`
 - `operation=cross_skill_response`
-- `source_skill=security_policy`
-- `source_rule=burst_execve`
-- `target_ref=anomaly_background`
-- `file=cpu.max|memory.high`
+- `stage=decision|applied|restored|failed`
+- `transaction_id`
+- `trigger_event_id`
+- `target_ref`
+- `file` 或 `rate`
 - `old_value`
 - `new_value`
-- `result=applied|restored`
-
-事务记录写入 `run/eulerpilot/action_journal.jsonl`，用于证明旧值、新值、目标路径和回滚动作都可追踪。
+- `result=applied|restored|failed|skipped`
 
 ## 验收入口
 
-不依赖 Kubernetes 的验证入口：
+第一条联动：
 
 ```bash
 sudo tests/integration/test_policy_engine_security_resource.sh
 ```
 
-脚本会完成以下检查：
+第二条联动：
 
-1. 构建 `agent` 和 `security-policy-demo`。
-2. 初始化 cgroup v2 CPU/Memory controller。
-3. 创建目标 cgroup 并启动 background workload。
-4. 启用 `security_policy` audit anomaly 与 `policy_engine` enforce。
-5. 连续执行系统 `true` 触发 `burst_execve`。
-6. 验证目标 cgroup 出现 `cpu.max=10000 100000` 与 `memory.high=1048576`。
-7. 验证 `security_policy` anomaly 事件和 `policy_engine` applied 事件。
-8. 验证 `ActionJournal` 存在对应记录。
-9. 停止 Agent 后验证 `cpu.max` 与 `memory.high` 恢复旧值。
-10. 复制 summary、事件和 journal 到结果目录。
+```bash
+sudo tests/integration/test_policy_engine_security_network_resource.sh
+sudo tests/integration/test_policy_engine_security_network_resource.sh --repeat 10
+```
 
-当前双机结果：
+第二条测试会完成：
 
-- 121：`results/policy_engine/security-resource-20260629-163949`
-- 122：`results/policy_engine/security-resource-20260629-164135`
-
-两个结果目录已互相同步，便于现场只看任一机器的交付材料。
+1. 构建 Agent、Security demo 和 Network QoS demo。
+2. 创建 `/sys/fs/cgroup/eulerpilot/policy-engine-v3-resource`。
+3. 创建 isolated veth `ep-veth-pe0 <-> ep-veth-pe1` 和 netns `ep-pe-ns`。
+4. 启动 Agent，并使用 `burst_connect` 触发 security anomaly。
+5. 验证 `cpu.max=20000 100000` 和 `memory.high=134217728` 写入。
+6. 验证 `ep-veth-pe0` 上出现 `tc/tbf rate 2mbit`。
+7. 验证限速前后吞吐证据、qdisc 证据、事务事件和 ActionJournal。
+8. 停止 Agent 后验证 cgroup 和 qdisc rollback。
+9. 模拟 Network QoS 失败，要求 Policy Engine 回滚已写入 Resource Control 动作。
+10. `--repeat 10` 连续 apply/rollback 无残留。
 
 ## 后续扩展
 
-下一步不应把 `policy_engine` 扩成任意动作引擎，而应沿着比赛演示路径补两类可解释能力：
-
-- Security 更多 anomaly 规则：例如敏感路径异常、短时连接突增、异常 capability 请求，再复用当前处置链路。
-- Network QoS 联动：当 `security_policy` 或 workload 指标触发异常时，调用 `network_qos` 对对应 netdev/container/Pod target 限速，并与 Resource Control 同时回滚。
-
-所有新增动作仍必须满足：显式 target、白名单动作、复读验证、审计事件、ActionJournal 和 stop rollback。
+v3.1 不把 Kubernetes/真实 runtime 作为完成条件，但不删除该路线。v3.2 第一优先级是将当前显式 cgroup + lab netdev 目标扩展到真实 runtime、Kubernetes Pod 和 Pod veth target，同时保持白名单、审计和 rollback 证据。

@@ -48,7 +48,17 @@ bool append_journal_action(const std::string &path, const JournalAction &action,
 
     out << "{"
         << "\"action_id\":\"" << escape_json(action.action_id) << "\","
-        << "\"skill\":\"" << escape_json(action.skill) << "\","
+        << "\"skill\":\"" << escape_json(action.skill) << "\",";
+    if (!action.transaction_id.empty()) {
+        out << "\"transaction_id\":\"" << escape_json(action.transaction_id) << "\",";
+    }
+    if (!action.trigger_event_id.empty()) {
+        out << "\"trigger_event_id\":\"" << escape_json(action.trigger_event_id) << "\",";
+    }
+    if (!action.policy_id.empty()) {
+        out << "\"policy_id\":\"" << escape_json(action.policy_id) << "\",";
+    }
+    out
         << "\"target\":\"" << escape_json(action.target) << "\","
         << "\"operation\":\"" << escape_json(action.operation) << "\","
         << "\"old_values\":";
