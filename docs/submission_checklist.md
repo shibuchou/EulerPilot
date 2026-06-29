@@ -1,6 +1,6 @@
 # EulerPilot 提交清单
 
-更新时间：`2026-06-27`
+更新时间：`2026-06-28`
 
 ## 已完成
 
@@ -35,6 +35,7 @@
 - [x] `resource_control` `target_ref` cgroup 最小闭环 121/122 验证：`targets + profiles.<name>.target_ref`、目标 cgroup 限制、非目标 cgroup 不误改、审计和 Agent JSONL 携带 `target_ref`
 - [x] `resource_control` runtime target 解析闭环 121/122 验证：`type: container_id/container/k8s_pod` 均能解析到目标 cgroup，并复用 CPU/Memory 控制器写入、审计和 rollback
 - [x] `resource_control` 真实 runtime readiness 诊断 121/122 完成：两台机器当前均缺少 docker/podman/containerd/crictl/kubectl 和 Kubernetes lab，真实容器 / Pod target 现场实测需等环境补齐
+- [x] `resource_control` 真实 runtime / Pod target 演示入口 121/122 完成：新增 docker/podman 真实容器脚本与 Kubernetes lab Pod 脚本，缺环境时输出 blocked 证据，具备 runtime/kubectl 后可直接验证 `target_ref` 写入、审计和 rollback
 - [x] `resource_control` CPU quota 效果指标 121/122 验证：`cpu.stat usage_usec/nr_throttled/throttled_usec` 证明 `cpu.max=10000 100000` 后实际 CPU 使用率下降并触发 throttling
 - [x] `resource_control` Redis + background CPU quota Compare Benchmark 121/122 验证：拆分 `default_noisy`、`eulerpilot_no_quota`、`eulerpilot_quota` 三阶段，记录 Redis GET/SET RPS 与 background cgroup CPU 使用率，结论限定为同样 Agent 放置下后台限额效果显著，不写成 Redis 性能提升
 - [x] `resource_control` Redis quota profile sweep 121/122 验证：扫描 `max/50%/20%/10%/5%` background `cpu.max`，121 推荐 `quota_05`，122 最佳折中 `quota_10`，跨机保守默认演示 profile 暂定 `cpu.max=10000 100000`
@@ -99,8 +100,12 @@
 - Resource Control target_ref 122：`results/resource_control/target-20260624-172916`
 - Resource Control runtime target 121：`results/resource_control/runtime-target-20260624-212403`
 - Resource Control runtime target 122：`results/resource_control/runtime-target-20260624-212529`
-- Resource Control runtime readiness 121：`results/resource_control/runtime-readiness-20260625-104844`
-- Resource Control runtime readiness 122：`results/resource_control/runtime-readiness-20260625-104857`
+- Resource Control runtime readiness 121：`results/resource_control/runtime-readiness-20260628-214925`
+- Resource Control runtime readiness 122：`results/resource_control/runtime-readiness-20260628-215010`
+- Resource Control real runtime target 121：`results/resource_control/real-runtime-target-20260628-215812`
+- Resource Control real runtime target 122：`results/resource_control/real-runtime-target-20260628-215854`
+- Resource Control real Pod target 121：`results/resource_control/real-pod-target-20260628-220051`
+- Resource Control real Pod target 122：`results/resource_control/real-pod-target-20260628-220106`
 - Resource Control CPU quota 121：`results/resource_control/cpu-quota-20260625-095030`
 - Resource Control CPU quota 122：`results/resource_control/cpu-quota-20260625-095114`
 - Resource Control Redis quota Compare Benchmark 121：`results/resource_control/redis-quota-compare-20260625-102426`
@@ -130,9 +135,9 @@
 ## 质量与安全审计
 
 - `scripts/final_quality_gate.sh`：TAP 风格 21 项 P0 质量门禁脚本
-- `reports/final_quality_gate_20260628_resource_mixed_multi_resource.log`：121 最新门禁通过记录，21/21 P0 通过，100 轮 smoke 与 5 轮 doctor 通过
+- `reports/final_quality_gate_20260628_resource_real_runtime_target.log`：121 最新门禁通过记录，21/21 P0 通过，100 轮 smoke 与 5 轮 doctor 通过
 - `docs/final_security_audit.md`：最终安全与质量审计报告
 
 ## 当前结论
 
-项目仍处于争奖增强阶段，不应停留在“最终材料整理”。下一步重点是补强 Network/Security/Resource 的成品化深度：Pod veth、Security 更多 cred 生命周期规则/更多异常规则、Resource 真实 container runtime / Kubernetes Pod target 实测，以及 Redis/Nginx 多 workload quota profile 调参。当前 121/122 不具备真实 runtime 环境，Resource 真实容器/Pod target 实测需要先安装或启动 docker/podman/containerd/cri-o，或提供 `eulerpilot-lab` namespace 与 demo Pod。
+项目仍处于争奖增强阶段，不应停留在“最终材料整理”。下一步重点是补强 Network/Security/Resource 的成品化深度：Pod veth、Security 更多 cred 生命周期规则/更多异常规则、Resource 真实 container runtime / Kubernetes Pod target 现场 pass，以及 Redis/Nginx 多 workload quota profile 调参。当前 121/122 的真实 runtime/Pod target 脚本已经具备一键验收入口，但环境仍缺 docker/podman/kubectl；补齐 runtime、镜像与 `eulerpilot-lab` demo Pod 后优先把 blocked 证据转成 pass 证据。

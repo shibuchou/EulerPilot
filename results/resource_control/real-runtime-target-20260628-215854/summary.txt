@@ -1,0 +1,12 @@
+result=blocked
+reason=missing-docker-or-podman
+host=localhost.localdomain
+date=2026-06-28T21:58:54+08:00
+kernel=6.6.0-olk66-scx
+runtime_kind=auto
+runtime_bin=missing
+runtime_image=busybox:latest
+container_name=eulerpilot-rc-real-runtime
+docker_command=
+podman_command=
+next_action=install-or-start-docker-or-podman-then-rerun-this-script

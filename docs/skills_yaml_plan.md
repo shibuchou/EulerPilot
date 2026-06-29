@@ -1,6 +1,6 @@
 # EulerPilot Skills 与 YAML 能力规划 v2.1
 
-更新时间：`2026-06-24`
+更新时间：`2026-06-28`
 
 ## 1. 当前判断
 
@@ -57,7 +57,7 @@ PID
 - `cgroup path -> cgroup id`
 - `container_id -> cgroup path / cgroup id`，支持限定 `cgroup_root` 扫描匹配 container ID 字符串
 - `container_name -> container_id -> cgroup path / cgroup id`，当前优先支持 `crictl/docker/podman` CLI 解析，集成测试用 fake `crictl` 固定最小闭环
-- `k8s_pod namespace/name -> Pod UID -> cgroup path / cgroup id`，当前通过 `kubectl` 查询 Pod UID，集成测试用 fake `kubectl` 固定最小闭环
+- `k8s_pod namespace/name -> Pod UID -> cgroup path / cgroup id`，当前通过 `kubectl` 查询 Pod UID，集成测试用 fake `kubectl` 固定最小闭环；真实 Pod target 演示脚本已补齐，待 `kubectl + eulerpilot-lab` 环境可用即可转为 pass
 - `k8s pod -> cgroup path`
 - `k8s pod -> veth/ifindex`
 - 拒绝解析到非 `eulerpilot-lab` 的 enforce 目标，除非显式 override
@@ -544,6 +544,7 @@ Resource Control 不能只保留 `cpu.weight`。当前 `resource_control` 已完
 - `targets + profiles.<name>.target_ref` 已接入 `TargetResolver`，支持 `type: cgroup/pid/container_id/container/k8s_pod` 解析为 cgroup path；未命中 target scope 的 workload 会跳过，不写控制器。
 - 121/122 已通过 `tests/integration/test_resource_control.sh` 和 `tests/integration/test_resource_control_io.sh`，最新结果目录为 `results/resource_control/integration-20260624-160317`、`results/resource_control/integration-20260624-160349`、`results/resource_control/io-20260624-160008` 与 `results/resource_control/io-20260624-160208`。
 - 121/122 已通过 `tests/integration/test_resource_control_target.sh`，结果目录为 `results/resource_control/target-20260624-172139` 与 `results/resource_control/target-20260624-172916`，验证 target cgroup 被限额、非目标 cgroup 不被误改、审计和 Agent JSONL 携带 `target_ref`。
+- 真实 runtime / Pod target 演示入口已完成：`tests/integration/test_resource_control_real_runtime_target.sh` 面向 docker/podman 容器，`tests/integration/test_resource_control_real_pod_target.sh` 面向 Kubernetes lab Pod；当前 121/122 因缺 docker/podman/kubectl 输出 blocked 证据，不自动安装软件、拉镜像或创建集群资源。
 
 target_ref 示例：
 
