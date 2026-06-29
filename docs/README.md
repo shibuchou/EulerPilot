@@ -8,6 +8,7 @@
 - `next_phase_plan_v2_1.md`：当前下一阶段执行口径。
 - `skills_yaml_plan.md`：Skill/YAML 控制面规划。
 - `progress_status.md`：当前阶段进度状态看板。
+- `current_completion_report_20260629.md`：当前已完成工作、质量状态、未完成项和下一步建议汇报。
 - `public_control_plane_design.md`：TargetResolver、AuditBus、ActionJournal、CapabilityDetector 公共控制面设计。
 - `network_policy_skill.md`：NetworkPolicySkill 阶段 B 设计、YAML、hook 作用域、审计与回滚口径。
 - `network_pod_veth_target.md`：Network Pod/veth target 解析预备能力、reason code 和安全边界。
