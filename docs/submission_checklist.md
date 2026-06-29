@@ -159,4 +159,4 @@
 - [x] `transaction_id` 可串起 security、policy_engine、resource_control、network_qos 和 ActionJournal。
 - [x] `demo/demo_all_final.sh --mode live|offline|cleanup` 已完成脚本语法检查；live 依赖 root 环境。
 - [x] `scripts/check_sp4_env.sh` 已完成脚本语法检查，且不把 SP4 作为 v3.1 阻塞条件。
-- [ ] 121/122/本地/GitHub 同步后生成最终一致性日志。
+- [x] 121/122/本地/GitHub 同步后生成最终一致性日志。
