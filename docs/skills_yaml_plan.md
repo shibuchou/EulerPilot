@@ -625,7 +625,45 @@ cpu_scheduling:
 
 ## 10. Policy Engine 联动 YAML
 
-至少支持两个联动场景的配置表达。
+当前已落地第一版 `policy_engine` Skill，默认关闭，只负责把明确的 Security anomaly 事件转换成白名单 cgroup 控制动作：
+
+```yaml
+- name: policy_engine
+  kind: runtime
+  enabled: false
+  config:
+    mode: enforce
+    source:
+      audit_path: reports/events/security_policy.jsonl
+    watch:
+      skill: security_policy
+      operation: anomaly
+      rule_id: burst_execve
+      result: observed
+    targets:
+      anomaly_background:
+        type: cgroup
+        path: /sys/fs/cgroup/eulerpilot/policy-engine-background
+    actions:
+      - name: throttle_anomaly_background_cpu
+        target_ref: anomaly_background
+        file: cpu.max
+        value: '10000 100000'
+      - name: cap_anomaly_background_memory
+        target_ref: anomaly_background
+        file: memory.high
+        value: '1048576'
+```
+
+当前验证口径：
+
+- 触发源：`reports/events/security_policy.jsonl` 中的 `operation=anomaly`、`rule_id=burst_execve`、`result=observed`。
+- 执行动作：只允许写 `/sys/fs/cgroup/` 下显式 cgroup target 的白名单控制文件。
+- 审计：写入 `reports/events/policy_engine.jsonl`，包含 `cross_skill_response result=applied/restored`。
+- 回滚：`ActionJournal` 记录旧值和新值，Agent stop 后恢复 `cpu.max` 与 `memory.high`。
+- 121/122 验收：`results/policy_engine/security-resource-20260629-163949` 与 `results/policy_engine/security-resource-20260629-164135`。
+
+长期目标至少支持两个联动场景的配置表达。下面是后续扩展方向，不代表当前全量完成：
 
 ```yaml
 policy_engine:
@@ -704,7 +742,7 @@ policy_engine:
 6. 将 `network_policy_demo` 包装或迁移为 `network_policy`。
 7. 将 `security_policy_demo` 包装或迁移为 `security_policy`。（已完成正式注册名、最小 audit/enforce 语义、YAML 驱动多目标 target_map、file/exec/socket/ptrace/capable ringbuf hit 事件、规则级 LSM blocked 事件、显式 cgroup scope、PID target 自动解析、container_id target cgroup 解析、runtime container name 解析、k8s pod name 解析、`lsm_socket_connect` scoped IPv4 endpoint enforce、`lsm_bprm_check_security` scoped exec_prefix enforce、`lsm_file_open` scoped file_access write enforce、`lsm_file_open` scoped path_prefix read-only directory enforce、`lsm_ptrace_traceme` scoped enforce、`lsm_capable` scoped capability enforce、`burst_execve` 用户态异常规则和四类 syscall tracepoint 观测）
 8. 扩展 `resource_control` 的 CPU/Memory/IO 配置模型。（已完成 CPU+Memory+IO 事务化写入、审计、journal、rollback 和 121/122 集成测试）
-9. 增加 Policy Engine 联动配置。
+9. 增加 Policy Engine 联动配置。（已完成第一版 `security_policy burst_execve anomaly -> policy_engine -> cgroup cpu.max/memory.high` 链路，121/122 集成测试通过；Network QoS 联动和更多 anomaly 规则待扩展）
 10. 将最终质量门禁从 demo target 切换到正式 Skill target。
 
 一句话结论：

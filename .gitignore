@@ -9,6 +9,9 @@ build/
 run/
 *.pid
 *.sock
+reports/events/policy_engine.jsonl
+reports/events/resource_control.jsonl
+reports/events/security_policy.jsonl
 
 # Python/cache artifacts
 __pycache__/

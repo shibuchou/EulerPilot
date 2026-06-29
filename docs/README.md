@@ -13,6 +13,7 @@
 - `network_pod_veth_target.md`：Network Pod/veth target 解析预备能力、reason code 和安全边界。
 - `security_policy_skill.md`：SecurityPolicySkill 正式化设计、复用边界、最小验证入口和下一步清单。
 - `resource_control_skill.md`：ResourceControlSkill CPU+Memory 自动闭环、事务化写入、回滚与验收入口。
+- `policy_engine_skill.md`：PolicyEngineSkill 跨 Skill 联动、Security anomaly 到 Resource Control 降级、审计与回滚口径。
 - `design_proposal.md`：总体设计方案。
 - `final_report_submission.md`：已有阶段最终报告草稿。
 
@@ -24,5 +25,5 @@
   - `network_policy_skill.md`
   - `security_policy_skill.md`
   - `resource_control_skill.md`
-  - `cross_agent_policy.md`
+  - `policy_engine_skill.md`
 - 文档不得把未完成能力写成已完成；必须区分规划、进行中、已验证。

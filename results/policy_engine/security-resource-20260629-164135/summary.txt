@@ -1,0 +1,11 @@
+result=pass
+linkage=security_anomaly_to_resource_degrade
+source_skill=security_policy
+source_rule=burst_execve
+target_skill=policy_engine
+target_cgroup=/sys/fs/cgroup/eulerpilot/policy-engine-background
+cpu_max_response=10000 100000
+memory_high_response=1048576
+old_cpu_max=max 100000
+old_memory_high=max
+target_pid=250347

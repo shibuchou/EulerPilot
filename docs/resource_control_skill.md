@@ -181,6 +181,8 @@ select profile
 - Mixed Redis+Nginx quota Sweep Benchmark 122：`results/resource_control/mixed-quota-sweep-20260627-103139/summary.txt`
 - Mixed Redis+Nginx Multi-Resource Benchmark 121：`results/resource_control/mixed-multi-resource-20260628-211631/summary.txt`
 - Mixed Redis+Nginx Multi-Resource Benchmark 122：`results/resource_control/mixed-multi-resource-20260628-212132/summary.txt`
+- Policy Engine Security -> Resource Control 联动 121：`results/policy_engine/security-resource-20260629-163949/summary.txt`
+- Policy Engine Security -> Resource Control 联动 122：`results/policy_engine/security-resource-20260629-164135/summary.txt`
 
 测试命令：
 
@@ -200,6 +202,7 @@ tests/benchmark/test_resource_control_redis_quota_sweep.sh
 tests/benchmark/test_resource_control_nginx_quota_sweep.sh
 tests/benchmark/test_resource_control_mixed_quota_sweep.sh
 tests/benchmark/test_resource_control_mixed_multi_resource.sh
+tests/integration/test_policy_engine_security_resource.sh
 ```
 
 测试覆盖：
@@ -230,6 +233,7 @@ tests/benchmark/test_resource_control_mixed_multi_resource.sh
 - Nginx quota Sweep Benchmark 使用 `nginx + wrk + background CPU hog` 在同样 Agent 放置路径下扫描相同 profile；121/122 均推荐 `quota_05`，background ratio 均为 `0.0125`，可作为 Nginx 场景的激进候选 profile，但不覆盖 Redis 场景的保守默认 profile
 - Mixed Redis+Nginx quota Sweep Benchmark 在同一窗口并发运行 Redis GET/SET 与 Nginx wrk，扫描相同 background `cpu.max` profile；它使用 Redis GET/SET ratio、Nginx RPS ratio 和三者最低保留率作为混合业务边界，121 推荐 `quota_20`，122 推荐 `quota_50`，说明混合场景不能直接套用单 workload 最优 profile
 - Mixed Redis+Nginx Multi-Resource Benchmark 在同一混合业务上比较 CPU/cpuset 与 `cpu.max + cpuset.cpus + memory.low/high` 组合 profile；它验证 Agent 对 latency/background cgroup 写入 `cpuset.cpus`、latency `memory.low=67108864`、background `memory.high=134217728`，并验证 applied/restored 审计事件和业务最低保留率
+- Policy Engine 联动测试验证 `security_policy` 的 `burst_execve` anomaly 可触发 `policy_engine` 对显式 background cgroup 写入 `cpu.max=10000 100000` 与 `memory.high=1048576`；事件包含 `cross_skill_response result=applied/restored`，ActionJournal 记录旧值和新值，Agent 退出后恢复 `cpu.max=max 100000` 与 `memory.high=max`
 
 当前 121 结果摘要：
 
@@ -581,4 +585,4 @@ Multi-Resource 跨机解释：两台机器都验证了 `cpuset.cpus`、`memory.l
 ## 后续 TODO
 
 - 在真实 docker/podman/crictl 或 Kubernetes lab Pod 环境中补现场演示，把 fake runtime 自测升级为真实运行时证据。
-- 继续扩展跨 Skill 联动，例如 Security anomaly 触发 Resource Control 降级、Network QoS 与 Resource Control 同步限流。
+- 将当前 Security anomaly -> Resource Control 降级链路扩展到 Network QoS 与 Resource Control 同步限流，并补更多 anomaly 触发源。

@@ -60,6 +60,31 @@ skills:
   kind: runtime
   enabled: true
   config: {}
+- name: policy_engine
+  kind: runtime
+  enabled: false
+  config:
+    mode: enforce
+    source:
+      audit_path: reports/events/security_policy.jsonl
+    watch:
+      skill: security_policy
+      operation: anomaly
+      rule_id: burst_execve
+      result: observed
+    targets:
+      anomaly_background:
+        type: cgroup
+        path: /sys/fs/cgroup/eulerpilot/policy-engine-background
+    actions:
+      - name: throttle_anomaly_background_cpu
+        target_ref: anomaly_background
+        file: cpu.max
+        value: '10000 100000'
+      - name: cap_anomaly_background_memory
+        target_ref: anomaly_background
+        file: memory.high
+        value: '1048576'
 - name: network_policy
   kind: runtime
   enabled: false

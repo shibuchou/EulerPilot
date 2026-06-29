@@ -1,6 +1,6 @@
 # EulerPilot 提交清单
 
-更新时间：`2026-06-28`
+更新时间：`2026-06-29`
 
 ## 已完成
 
@@ -42,6 +42,7 @@
 - [x] `resource_control` Nginx quota profile sweep 121/122 验证：使用 `nginx + wrk + background CPU hog` 扫描相同 profile，两端均推荐 `quota_05`，作为 Nginx 场景激进候选
 - [x] `resource_control` Mixed Redis+Nginx quota profile sweep 121/122 验证：同一窗口并发 Redis GET/SET 与 Nginx wrk，121 推荐 `quota_20`，122 推荐 `quota_50`，证明混合业务 profile 需要同时满足多前台最低保留率
 - [x] `resource_control` Mixed Redis+Nginx multi-resource profile 121/122 验证：比较 CPU/cpuset 与 `cpu.max + cpuset.cpus + memory.low/high` 组合 profile，两端均推荐 `multi_quota50`，并验证 applied/restored 审计事件
+- [x] `policy_engine` Security anomaly -> Resource Control 降级联动 121/122 验证：消费 `security_policy burst_execve` anomaly，对显式 background cgroup 写 `cpu.max=10000 100000` 与 `memory.high=1048576`，并验证审计、ActionJournal 和 rollback
 - [x] `security_policy_demo` BPF LSM file_open 最小闭环
 - [x] `security_policy_demo` BPF LSM attach/deny/rollback 集成测试 121/122 均通过
 - [x] Runtime 生命周期收拢与 ActionJournal/AuditBus 最小接入
@@ -118,6 +119,8 @@
 - Resource Control Mixed Redis+Nginx quota Sweep Benchmark 122：`results/resource_control/mixed-quota-sweep-20260627-103139`
 - Resource Control Mixed Redis+Nginx Multi-Resource Benchmark 121：`results/resource_control/mixed-multi-resource-20260628-211631`
 - Resource Control Mixed Redis+Nginx Multi-Resource Benchmark 122：`results/resource_control/mixed-multi-resource-20260628-212132`
+- Policy Engine Security -> Resource Control 联动 121：`results/policy_engine/security-resource-20260629-163949`
+- Policy Engine Security -> Resource Control 联动 122：`results/policy_engine/security-resource-20260629-164135`
 
 ## 当前核心文档
 
@@ -127,6 +130,7 @@
 - `docs/network_pod_veth_target.md`：Pod/veth target 解析预备能力说明
 - `docs/security_policy_skill.md`：Security Policy 正式化设计与最小验收入口
 - `docs/resource_control_skill.md`：Resource Control CPU+Memory+IO 自动闭环设计与验收入口
+- `docs/policy_engine_skill.md`：Policy Engine 跨 Skill 联动、审计与回滚说明
 - `docs/skills_yaml_plan.md`：Skills/YAML 控制面规划
 - `docs/final_quality_gate.md`：质量门禁说明
 - `docs/reference_repos.md`：参考仓库与复用边界
@@ -135,9 +139,9 @@
 ## 质量与安全审计
 
 - `scripts/final_quality_gate.sh`：TAP 风格 21 项 P0 质量门禁脚本
-- `reports/final_quality_gate_20260628_resource_real_runtime_target.log`：121 最新门禁通过记录，21/21 P0 通过，100 轮 smoke 与 5 轮 doctor 通过
+- `reports/final_quality_gate_20260629_policy_engine.log`：121 最新门禁通过记录，21/21 P0 通过，100 轮 smoke 与 5 轮 doctor 通过
 - `docs/final_security_audit.md`：最终安全与质量审计报告
 
 ## 当前结论
 
-项目仍处于争奖增强阶段，不应停留在“最终材料整理”。下一步重点是补强 Network/Security/Resource 的成品化深度：Pod veth、Security 更多 cred 生命周期规则/更多异常规则、Resource 真实 container runtime / Kubernetes Pod target 现场 pass，以及 Redis/Nginx 多 workload quota profile 调参。当前 121/122 的真实 runtime/Pod target 脚本已经具备一键验收入口，但环境仍缺 docker/podman/kubectl；补齐 runtime、镜像与 `eulerpilot-lab` demo Pod 后优先把 blocked 证据转成 pass 证据。
+项目仍处于争奖增强阶段，不应停留在“最终材料整理”。当前已完成 Security anomaly -> Policy Engine -> Resource Control 降级的第一条跨 Skill 链路。下一步重点是补强 Network/Security/Resource 的成品化深度：Pod veth 真实 lab 演示、Security 更多 cred 生命周期规则/更多异常规则、Network QoS 与 Resource Control 同步限流、Resource 真实 container runtime / Kubernetes Pod target 现场 pass，以及 Redis/Nginx 多 workload quota profile 调参。当前 121/122 的真实 runtime/Pod target 脚本已经具备一键验收入口，但环境仍缺 docker/podman/kubectl；补齐 runtime、镜像与 `eulerpilot-lab` demo Pod 后优先把 blocked 证据转成 pass 证据。

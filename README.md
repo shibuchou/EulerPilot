@@ -19,7 +19,7 @@ eBPF Observer
 
 ## 当前状态
 
-截至 `2026-06-28`，项目已经完成：
+截至 `2026-06-29`，项目已经完成：
 
 - `SP3 + cgroup v2` 主闭环
 - `OLK-6.6 + sched_ext` 正式对照线
@@ -61,6 +61,11 @@ eBPF Observer
   - 121/122 Nginx + background CPU quota Sweep Benchmark 通过，同样 Agent 放置下 `quota_05` 在两台机器均满足 `0.85` RPS 保留阈值，background CPU ratio 均为 `0.0125`；该结果作为 Nginx 场景的激进候选 profile 证据，不直接覆盖 Redis 的保守默认 profile
   - 121/122 Redis + Nginx 混合业务 quota Sweep Benchmark 通过，Redis GET/SET 与 Nginx wrk 同时运行；121 推荐 `quota_20`，122 推荐 `quota_50`，两端均证明 `quota_10` 可把 background CPU ratio 压到约 `0.025`，但混合业务下 Redis 保留率低于 `0.70`，因此混合演示 profile 需按业务保留率选择，不直接套用单 workload 最优值
   - 121/122 Redis + Nginx 多资源组合 profile Benchmark 通过，验证 `cpu.max + cpuset.cpus + memory.low/high` 组合写入、审计和 rollback；两端均推荐 `multi_quota50`，121/122 业务最低保留率分别为 `0.7302` / `0.7939`，background ratio 分别为 `0.1257` / `0.1257`
+- Policy Engine 阶段 F 最小联动闭环：
+  - 新增正式 `policy_engine` Skill，默认关闭，用于消费其他 Skill 的审计事件并下发可回滚处置动作
+  - 当前完成 `security_policy` 的 `burst_execve` anomaly 到 Resource Control cgroup 降级链路：匹配 `reports/events/security_policy.jsonl` 后，对显式 background cgroup 写入 `cpu.max=10000 100000` 与 `memory.high=1048576`
+  - 写入流程复用保守事务语义：读取旧值、白名单控制文件校验、写入、复读验证、`reports/events/policy_engine.jsonl` 审计、`ActionJournal` 记录和 Agent 退出恢复旧值
+  - 121/122 集成测试通过，已验证 anomaly 事件、`cross_skill_response result=applied/restored`、目标 cgroup 降级和 rollback
 
 当前最重要的候选结果目录为：
 
@@ -94,7 +99,9 @@ eBPF Observer
 - Resource Control Mixed Redis+Nginx quota Sweep Benchmark 122：`/root/EulerPilot/results/resource_control/mixed-quota-sweep-20260627-103139`
 - Resource Control Mixed Redis+Nginx Multi-Resource Benchmark 121：`/root/EulerPilot/results/resource_control/mixed-multi-resource-20260628-211631`
 - Resource Control Mixed Redis+Nginx Multi-Resource Benchmark 122：`/root/EulerPilot/results/resource_control/mixed-multi-resource-20260628-212132`
-- 121 最新质量门禁：`/root/EulerPilot/reports/final_quality_gate_20260628_resource_real_runtime_target.log`
+- Policy Engine Security -> Resource Control 联动 121：`/root/EulerPilot/results/policy_engine/security-resource-20260629-163949`
+- Policy Engine Security -> Resource Control 联动 122：`/root/EulerPilot/results/policy_engine/security-resource-20260629-164135`
+- 121 最新质量门禁：`/root/EulerPilot/reports/final_quality_gate_20260629_policy_engine.log`
 
 当前图表目录为：
 
@@ -134,6 +141,7 @@ eBPF Observer
 - Resource Control Nginx quota Sweep Benchmark：`/root/EulerPilot/tests/benchmark/test_resource_control_nginx_quota_sweep.sh`
 - Resource Control Mixed Redis+Nginx quota Sweep Benchmark：`/root/EulerPilot/tests/benchmark/test_resource_control_mixed_quota_sweep.sh`
 - Resource Control Mixed Redis+Nginx Multi-Resource Benchmark：`/root/EulerPilot/tests/benchmark/test_resource_control_mixed_multi_resource.sh`
+- Policy Engine Security -> Resource Control 联动测试：`/root/EulerPilot/tests/integration/test_policy_engine_security_resource.sh`
 - 质量门禁：`/root/EulerPilot/scripts/final_quality_gate.sh`
 
 ### 最终候选结果
