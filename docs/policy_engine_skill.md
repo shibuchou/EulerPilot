@@ -177,4 +177,4 @@ sudo EULERPILOT_KUBECONFIG=/etc/rancher/k3s/k3s.yaml \
 
 ## 后续扩展
 
-v3.2 已完成真实 Kubernetes Pod 联动：同一个 `target_ref=lab_pod(type=k8s_pod)` 可在 `policy_engine` 内按动作类型解析为 Pod cgroup 或 Pod host veth，并保留 `target_type=k8s_pod`、`resolved_target_type=cgroup|netdev`、Pod namespace/name/UID、`transaction_id` 和 ActionJournal 证据。后续争奖增强重点转向 XDP on Pod host veth、更多 Security anomaly 与最终答辩证据压缩。
+v3.2 已完成真实 Kubernetes Pod 联动：同一个 `target_ref=lab_pod(type=k8s_pod)` 可在 `policy_engine` 内按动作类型解析为 Pod cgroup 或 Pod host veth，并保留 `target_type=k8s_pod`、`resolved_target_type=cgroup|netdev`、Pod namespace/name/UID、`transaction_id` 和 ActionJournal 证据。后续争奖增强重点转向更多 Security anomaly、Network XDP 更多报文特征与最终答辩证据压缩；Pod host veth XDP 已在 121/122 通过，结果目录为 `results/network_policy/real-pod-veth-xdp-20260630-k3s-121-v1` 和 `results/network_policy/real-pod-veth-xdp-20260630-k3s-122-v1`。

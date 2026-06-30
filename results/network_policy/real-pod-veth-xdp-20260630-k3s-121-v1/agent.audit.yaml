@@ -1,0 +1,9 @@
+agent:
+  name: EulerPilot
+  mode: active
+skills_config_path: /root/EulerPilot/results/network_policy/real-pod-veth-xdp-20260630-k3s-121-v1/skills.audit.yaml
+scheduler:
+  type: cgroup_v2
+exporter:
+  prometheus:
+    enabled: false

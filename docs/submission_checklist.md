@@ -151,7 +151,7 @@
 
 ## 当前结论
 
-项目仍处于争奖增强阶段，不应停留在“最终材料整理”。当前已完成 Security anomaly -> Policy Engine -> Resource Control 降级的第一条跨 Skill 链路。下一步重点是补强 Network/Security/Resource 的成品化深度：Pod veth 真实 lab 演示、Security 更多 cred 生命周期规则/更多异常规则、Network QoS 与 Resource Control 同步限流、Resource 真实 container runtime / Kubernetes Pod target 现场 pass，以及 Redis/Nginx 多 workload quota profile 调参。当前 121/122 的真实 Podman container target、k3s Pod target、Network QoS Pod host veth 和真实 Pod Policy Engine 跨 Skill 联动已转为 pass；下一步重点是补 XDP on Pod host veth、更多 Security anomaly 和最终证据压缩。
+项目仍处于争奖增强阶段，不应停留在“最终材料整理”。当前已完成 Security anomaly -> Policy Engine -> Resource Control 降级的第一条跨 Skill 链路。下一步重点是补强 Network/Security/Resource 的成品化深度：Pod veth 真实 lab 演示、Security 更多 cred 生命周期规则/更多异常规则、Network QoS 与 Resource Control 同步限流、Resource 真实 container runtime / Kubernetes Pod target 现场 pass，以及 Redis/Nginx 多 workload quota profile 调参。当前 121/122 的真实 Podman container target、k3s Pod target、Network QoS Pod host veth、Network XDP Pod host veth 和真实 Pod Policy Engine 跨 Skill 联动已转为 pass；下一步重点是更多 Security anomaly、Network XDP 更多报文特征和最终证据压缩。
 
 ## v3.1 提交前新增检查
 

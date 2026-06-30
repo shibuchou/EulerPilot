@@ -50,7 +50,7 @@ SP4 环境探测：
 - `TargetResolver` 已支持 Podman/systemd cgroup v2 的 PID cgroup fallback，真实目标定位到 `.../libpod-*.scope/container`，并保留 fake `container_id` 扫描路径。
 - fake runtime target 回归已刷新：121 `results/resource_control/runtime-target-20260630-113310`，122 `results/resource_control/runtime-target-20260630-113354`。
 - 121 最新质量门禁日志：`reports/final_quality_gate_20260630-v32-podman-121.log`，21/21 P0、100 轮 smoke、5 轮 doctor 通过。
-- Kubernetes lab Pod 与 Pod host veth QoS 已完成双机 pass；下一步转向 Pod host veth XDP 与真实 Pod 跨 Skill 联动。
+- Kubernetes lab Pod、Pod host veth QoS、Pod host veth XDP 与真实 Pod 跨 Skill 联动已完成双机 pass；下一步转向更多异常规则与答辩证据压缩。
 ## Key Changes
 
 ### 1. openEuler runtime 兼容性
@@ -118,7 +118,7 @@ sudo tests/integration/test_resource_control_real_pod_target.sh
 
 ### 4. Network Pod veth pass
 
-Resource Control real Pod pass 后，再推进 Network 真实 Pod veth。当前 `network_qos` on Pod host veth 已在 121/122 完成，`network_xdp` on Pod host veth 仍待补：
+Resource Control real Pod pass 后，再推进 Network 真实 Pod veth。当前 `network_qos` 和 `network_xdp` on Pod host veth 均已在 121/122 完成：
 
 ```text
 k8s_pod target
@@ -181,7 +181,7 @@ scripts/final_quality_gate.sh
 - 121/122 已完成真实 Podman container target pass。
 - 真实 Kubernetes Pod target 已完成：121/122 k3s lab Pod 均通过 cgroup 写入与 rollback。
 - `TargetResolver` 支持 docker、podman、crictl、containerd/ctr 场景外，还覆盖 openEuler 常见 iSulad/isula。
-- Network Pod veth QoS 演示已完成：121/122 只操作 `eulerpilot-lab` Pod host veth，不操作生产网卡；XDP Pod veth 是下一步。
+- Network Pod veth QoS/XDP 演示已完成：121/122 只操作 `eulerpilot-lab` Pod host veth，不操作生产网卡；XDP 通过 Pod netns 到 cni bridge 的 ICMP drop 和 rollback 证明生效。
 - Policy Engine 的真实 target 联动仍保留 transaction_id、ActionJournal 和 rollback。
 - 121/122/GitHub/本地同步后，更新 `docs/progress_status.md`、`docs/final_evidence_index.md` 和对应结果目录。
 

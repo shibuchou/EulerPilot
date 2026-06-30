@@ -1,0 +1,5 @@
+#!/bin/sh
+if command -v k3s >/dev/null 2>&1; then
+    exec k3s crictl "$@"
+fi
+exec crictl "$@"

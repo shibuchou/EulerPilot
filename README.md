@@ -31,8 +31,8 @@ eBPF Observer
   - `network_policy`：cgroup/connect4 audit/enforce/rollback
   - `network_qos`：TC egress classifier + TBF 限速闭环
   - `network_qos` Benchmark：2 Mbit/s 目标下 121/122 实测误差约 -1.22% / -1.45%
-  - `network_xdp`：isolated-veth generic XDP ICMP + TCP 多规则闭环
-  - `TargetResolver`：`container/k8s_pod -> runtime PID -> netns -> host veth/ifindex` 解析预备能力
+  - `network_xdp`：isolated-veth generic XDP ICMP + TCP 多规则闭环；真实 k3s lab Pod host veth generic XDP attach/drop/rollback 已在 121/122 通过
+  - `TargetResolver`：`container/k8s_pod -> runtime PID -> netns -> host veth/ifindex` 已接入 Network QoS/XDP 真实 Pod host veth 验证
 - Security Policy 阶段 C 最小闭环：
   - `security_policy`：YAML v2 `targets + rules + target_ref`
   - BPF LSM：`file_open`、`bprm_check_security`、`socket_connect`、`ptrace_traceme`、`capable`、`task_fix_setuid`、`task_fix_setgid`、`task_fix_setgroups` 与 `cred_prepare` enforce
@@ -89,6 +89,8 @@ eBPF Observer
 - Resource Control real Pod target 122：`/root/EulerPilot/results/resource_control/real-pod-target-20260630-k3s-122-v1`
 - Network QoS real Pod host veth 121：`/root/EulerPilot/results/network_policy/real-pod-veth-qos-20260630-k3s-121-v2`
 - Network QoS real Pod host veth 122：`/root/EulerPilot/results/network_policy/real-pod-veth-qos-20260630-k3s-122-v1`
+- Network XDP real Pod host veth 121：`/root/EulerPilot/results/network_policy/real-pod-veth-xdp-20260630-k3s-121-v1`
+- Network XDP real Pod host veth 122：`/root/EulerPilot/results/network_policy/real-pod-veth-xdp-20260630-k3s-122-v1`
 - Resource Control CPU quota 121：`/root/EulerPilot/results/resource_control/cpu-quota-20260625-095030`
 - Resource Control CPU quota 122：`/root/EulerPilot/results/resource_control/cpu-quota-20260625-095114`
 - Resource Control Redis quota Compare Benchmark 121：`/root/EulerPilot/results/resource_control/redis-quota-compare-20260625-102426`
@@ -133,6 +135,7 @@ eBPF Observer
 - Network TC QoS 集成测试：`/root/EulerPilot/tests/integration/test_network_qos_tc.sh`
 - Network TC QoS 速率 Benchmark：`/root/EulerPilot/tests/benchmark/test_network_qos_rate.sh`
 - Network XDP 集成测试：`/root/EulerPilot/tests/integration/test_network_xdp.sh`
+- Network XDP 真实 Pod host veth 演示入口：`/root/EulerPilot/tests/integration/test_network_xdp_real_pod_veth.sh`
 - Security Policy 集成测试：`/root/EulerPilot/tests/integration/test_security_policy.sh`
 - Resource Control 集成测试：`/root/EulerPilot/tests/integration/test_resource_control.sh`
 - Resource Control IO 集成测试：`/root/EulerPilot/tests/integration/test_resource_control_io.sh`

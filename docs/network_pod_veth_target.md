@@ -149,4 +149,28 @@ k3s eulerpilot-lab/eulerpilot-rc-pod
 - 只有 `type: k8s_pod/pod` 且通过 `eulerpilot-lab` namespace resolver 的目标，才允许 runtime 生成的非生产 host veth 名，例如 `veth998e0158`、`vethc59976b2`。
 - `network_qos` 事件会记录 `target_ref=lab_pod`、`target_type=k8s_pod`、真实 `ifname/ifindex`、`packet_count` 和 rollback 证据。
 
-后续增强：`network_xdp` 复用同一 Pod host veth resolver，补 XDP attach/drop/rollback 真实 Pod 演示。
+## 7. 真实 k3s Pod veth XDP 证据
+
+2026-06-30 已在 121/122 完成真实 Kubernetes lab Pod host veth XDP 验证：
+
+- 121：`results/network_policy/real-pod-veth-xdp-20260630-k3s-121-v1`
+- 122：`results/network_policy/real-pod-veth-xdp-20260630-k3s-122-v1`
+
+验证链路：
+
+```text
+k3s eulerpilot-lab/eulerpilot-rc-pod
+  -> TargetResolver 解析 Pod runtime PID / netns / host veth
+  -> 脚本用 nsenter 进入 Pod netns 发起 Pod-to-bridge ICMP 流量
+  -> network_xdp 在 host veth 挂 generic XDP
+  -> XDP_DROP 命中，drop_count 增长
+  -> Agent stop rollback detach XDP
+  -> Pod-to-bridge 连通性恢复
+```
+
+说明：
+
+- 测试不依赖容器镜像内置 `ping/ip/cat`，而是使用宿主机 `nsenter -t <pod-pid> -n` 进入 Pod netns 发包。
+- 121 目标为 `traffic_target_ip=10.42.0.1`、`host_bridge=cni0`、`host_veth=veth998e0158`，`xdp_drop_count=1`。
+- 122 目标为 `traffic_target_ip=10.42.0.1`、`host_bridge=cni0`、`host_veth=vethc59976b2`，`xdp_drop_count=1`。
+- rollback 后 `xdp_link_rollback.txt` 无 XDP attachment，`rollback_ping.txt` 证明连通性恢复。
