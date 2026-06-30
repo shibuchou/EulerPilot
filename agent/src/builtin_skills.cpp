@@ -1469,6 +1469,7 @@ public:
                 return false;
             }
             const std::string target_prefix = "targets." + target_ref_ + ".";
+            target_type_ = config_value_or(spec, target_prefix + "type", "");
             if (!resolve_network_target_ifname(spec, target_prefix, target_ref_,
                                                "network-qos", ifname_, last_error_)) {
                 return false;
@@ -1500,6 +1501,7 @@ public:
             latency_ = latency->second;
             action_ = config_value_or(spec, "action", "limit");
             target_ref_ = config_value_or(spec, "target_ref", "legacy_netdev");
+            target_type_ = "netdev";
             rule_id_ = "tc-egress-qos-" + ifname_;
         }
 
@@ -1532,7 +1534,10 @@ public:
             last_error_ = "invalid-tc-token";
             return false;
         }
-        if (!is_allowed_lab_netdev_name(ifname_)) {
+        const bool resolved_lab_pod_veth =
+            (target_type_ == "k8s_pod" || target_type_ == "pod") &&
+            !is_denied_host_netdev_name(ifname_);
+        if (!is_allowed_lab_netdev_name(ifname_) && !resolved_lab_pod_veth) {
             last_error_ = "network-qos-non-lab-netdev-denied:" + ifname_;
             return false;
         }
@@ -1655,6 +1660,7 @@ public:
         snapshot.evidence["ifname"] = ifname_;
         snapshot.evidence["ifindex"] = std::to_string(ifindex_);
         snapshot.evidence["target_ref"] = target_ref_;
+        snapshot.evidence["target_type"] = target_type_;
         snapshot.evidence["rule_id"] = rule_id_;
         snapshot.evidence["protocol"] = protocol_;
         snapshot.evidence["dst_port"] = dst_port_;
@@ -1788,6 +1794,7 @@ private:
             {"ifname", ifname_},
             {"ifindex", std::to_string(ifindex_)},
             {"target_ref", target_ref_},
+            {"target_type", target_type_},
         };
         event.operation = operation;
         event.evidence = {
@@ -1820,6 +1827,7 @@ private:
             {"mode", mode_},
             {"hook", hook_},
             {"target_ref", target_ref_},
+            {"target_type", target_type_},
             {"rule_id", rule_id_},
             {"protocol", protocol_},
             {"dst_port", dst_port_},
@@ -1849,6 +1857,7 @@ private:
     std::string mode_ = "audit";
     std::string ifname_ = "ep-veth-qos0";
     std::string target_ref_ = "legacy_netdev";
+    std::string target_type_ = "netdev";
     std::string rule_id_ = "tc-egress-qos-ep-veth-qos0";
     std::string protocol_ = "any";
     std::string dst_port_ = "0";

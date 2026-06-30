@@ -1,0 +1,2 @@
+filter protocol all pref 1 bpf chain 0
+filter protocol all pref 1 bpf chain 0 handle 0x1 network_qos_cla:[65084] direct-action not_in_hw id 65084 name network_qos_cla tag c4c7c6e5e4eb2b5f jited

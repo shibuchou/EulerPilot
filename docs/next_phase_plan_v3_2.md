@@ -25,8 +25,8 @@ v3.2 不以 SP4 为阻塞条件。SP4 发布后只作为追加平台验证；当
 
 | 机器 | Kernel | Runtime/K8s 状态 | 结果目录 |
 |------|--------|------------------|----------|
-| 121 | `6.6.0-132.0.0.111.oe2403sp3.x86_64` | Podman ready，K8s lab missing | `results/resource_control/runtime-readiness-20260630-podman-121` |
-| 122 | `6.6.0-olk66-scx` | Podman ready，K8s lab missing | `results/resource_control/runtime-readiness-20260630-podman-122` |
+| 121 | `6.6.0-132.0.0.111.oe2403sp3.x86_64` | Podman + k3s ready | `results/resource_control/runtime-readiness-20260630-k3s-121` |
+| 122 | `6.6.0-olk66-scx` | Podman + k3s ready | `results/resource_control/runtime-readiness-20260630-k3s-122` |
 
 真实 runtime target 当前证据：
 
@@ -35,8 +35,8 @@ v3.2 不以 SP4 为阻塞条件。SP4 发布后只作为追加平台验证；当
 
 真实 Pod target 当前证据：
 
-- 121：`results/resource_control/real-pod-target-20260630-1020-121`，`reason=missing-kubectl`
-- 122：`results/resource_control/real-pod-target-20260630-1020-122`，`reason=missing-kubectl`
+- 121：`results/resource_control/real-pod-target-20260630-k3s-121-v2`，`result=pass`
+- 122：`results/resource_control/real-pod-target-20260630-k3s-122-v1`，`result=pass`
 
 SP4 环境探测：
 
@@ -50,7 +50,7 @@ SP4 环境探测：
 - `TargetResolver` 已支持 Podman/systemd cgroup v2 的 PID cgroup fallback，真实目标定位到 `.../libpod-*.scope/container`，并保留 fake `container_id` 扫描路径。
 - fake runtime target 回归已刷新：121 `results/resource_control/runtime-target-20260630-113310`，122 `results/resource_control/runtime-target-20260630-113354`。
 - 121 最新质量门禁日志：`reports/final_quality_gate_20260630-v32-podman-121.log`，21/21 P0、100 轮 smoke、5 轮 doctor 通过。
-- Kubernetes lab Pod 与 Pod host veth 仍是下一步，不从路线中删除。
+- Kubernetes lab Pod 与 Pod host veth QoS 已完成双机 pass；下一步转向 Pod host veth XDP 与真实 Pod 跨 Skill 联动。
 ## Key Changes
 
 ### 1. openEuler runtime 兼容性
@@ -93,7 +93,7 @@ sudo tests/integration/test_resource_control_real_runtime_target.sh
 
 ### 3. 真实 Kubernetes Pod target pass
 
-目标：在 `eulerpilot-lab` namespace 中准备 demo Pod，并把 Pod cgroup target 从 blocked 转 pass。
+目标：在 `eulerpilot-lab` namespace 中准备 demo Pod，并把 Pod cgroup target 从 blocked 转 pass。当前 121/122 已完成。
 
 环境前置：
 
@@ -118,7 +118,7 @@ sudo tests/integration/test_resource_control_real_pod_target.sh
 
 ### 4. Network Pod veth pass
 
-Resource Control real Pod pass 后，再推进 Network 真实 Pod veth：
+Resource Control real Pod pass 后，再推进 Network 真实 Pod veth。当前 `network_qos` on Pod host veth 已在 121/122 完成，`network_xdp` on Pod host veth 仍待补：
 
 ```text
 k8s_pod target
@@ -179,9 +179,9 @@ scripts/final_quality_gate.sh
 ## Success Criteria
 
 - 121/122 已完成真实 Podman container target pass。
-- 真实 Kubernetes Pod target 尚未完成；当前缺 K8s lab 环境，必须保留 blocked 证据和明确 next_action。
+- 真实 Kubernetes Pod target 已完成：121/122 k3s lab Pod 均通过 cgroup 写入与 rollback。
 - `TargetResolver` 支持 docker、podman、crictl、containerd/ctr 场景外，还覆盖 openEuler 常见 iSulad/isula。
-- Network Pod veth 演示不操作生产网卡，只操作 lab Pod host veth。
+- Network Pod veth QoS 演示已完成：121/122 只操作 `eulerpilot-lab` Pod host veth，不操作生产网卡；XDP Pod veth 是下一步。
 - Policy Engine 的真实 target 联动仍保留 transaction_id、ActionJournal 和 rollback。
 - 121/122/GitHub/本地同步后，更新 `docs/progress_status.md`、`docs/final_evidence_index.md` 和对应结果目录。
 
@@ -189,5 +189,5 @@ scripts/final_quality_gate.sh
 
 - 安装或启动 runtime 是系统级动作，v3.2 不默认自动执行，需要用户明确允许。
 - 镜像拉取依赖网络，默认不拉取；优先使用本地已有镜像。
-- Kubernetes 环境可能不可用，必须保持 blocked 结果可解释，不能把环境缺失写成功能失败。
+- Kubernetes 环境若在新机器不可用，仍需保持 blocked 结果可解释，不能把环境缺失写成功能失败。
 - Pod host veth attach 需要严格白名单，避免影响 SSH、管理网卡、CNI 主链路。

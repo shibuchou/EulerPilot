@@ -97,21 +97,30 @@ check_env
 ```
 
 
-## v3.2 真实 runtime 证据
+## v3.2 真实 runtime / Kubernetes Pod 证据
 
 v3.2 计划：`docs/next_phase_plan_v3_2.md`
 
 2026-06-30 Podman 真实 runtime 已转 pass：
 
-- 121 runtime readiness：`results/resource_control/runtime-readiness-20260630-podman-121`，`container_runtime_ready=1`、`kubernetes_ready=0`
-- 122 runtime readiness：`results/resource_control/runtime-readiness-20260630-podman-122`，`container_runtime_ready=1`、`kubernetes_ready=0`
+- 121 Podman runtime readiness：`results/resource_control/runtime-readiness-20260630-podman-121`，`container_runtime_ready=1`、`kubernetes_ready=0`
+- 122 Podman runtime readiness：`results/resource_control/runtime-readiness-20260630-podman-122`，`container_runtime_ready=1`、`kubernetes_ready=0`
 - 121 fake runtime target 回归：`results/resource_control/runtime-target-20260630-113310`
 - 122 fake runtime target 回归：`results/resource_control/runtime-target-20260630-113354`
 - 121 real Podman container target：`results/resource_control/real-runtime-target-20260630-podman-121-final2`
 - 122 real Podman container target：`results/resource_control/real-runtime-target-20260630-podman-122-final2`
-- 121 v3.2 质量门禁：`reports/final_quality_gate_20260630-v32-podman-121.log`
 
-当前结论：Docker/Podman 包已安装；Docker 18.09 daemon 在当前 cgroup v2 环境下因 `Devices cgroup isn't mounted` 不作为主验证 runtime，Podman 4.9.4 可用。两台机器均已使用本地 `localhost/eulerpilot-busybox:latest` 镜像完成真实 container cgroup 写入与 rollback 验证。Kubernetes/真实 Pod target 仍缺 `kubectl`、`eulerpilot-lab` namespace 和 demo Pod，继续作为 v3.2 下一优先级。
+2026-06-30 k3s Kubernetes lab 已转 pass：
+
+- 121 k3s readiness：`results/resource_control/runtime-readiness-20260630-k3s-121`，`container_runtime_ready=1`、`kubernetes_ready=1`
+- 122 k3s readiness：`results/resource_control/runtime-readiness-20260630-k3s-122`，`container_runtime_ready=1`、`kubernetes_ready=1`
+- 121 real Pod cgroup target：`results/resource_control/real-pod-target-20260630-k3s-121-v2`
+- 122 real Pod cgroup target：`results/resource_control/real-pod-target-20260630-k3s-122-v1`
+- 121 real Pod host veth QoS：`results/network_policy/real-pod-veth-qos-20260630-k3s-121-v2`
+- 122 real Pod host veth QoS：`results/network_policy/real-pod-veth-qos-20260630-k3s-122-v1`
+- 121 v3.2 k3s 后质量门禁：`reports/final_quality_gate_20260630-v32-k3s-121.log`
+
+当前结论：Docker/Podman/k3s/kubectl 包已安装；Docker 18.09 daemon 在当前 cgroup v2 环境下因 `Devices cgroup isn't mounted` 不作为主验证 runtime，Podman 4.9.4 与 k3s v1.24.2 可用。两台机器均已使用本地 `localhost/eulerpilot-busybox:latest` 镜像完成真实 container cgroup、真实 Kubernetes Pod cgroup、真实 Pod host veth QoS 写入/限速/rollback 验证。为避免 Docker Hub 依赖，k3s 使用本地构造的 `docker.io/rancher/mirrored-pause:3.6` pause 镜像。
 
 SP4 环境探测：
 
@@ -126,8 +135,8 @@ SP4 环境探测：
 - 122 isula real runtime blocked：`results/resource_control/real-runtime-target-20260630-isula-check-122`
 - 121 v3.1 回归：`results/policy_engine/security-network-resource-20260630-102629`
 
-121 在 Podman 真实 runtime 代码接入后再次通过 `scripts/final_quality_gate.sh`：21/21 P0、100 轮 smoke、5 轮 doctor 均通过。
+121 在 k3s/Pod veth 代码接入后再次通过 `scripts/final_quality_gate.sh`：21/21 P0、100 轮 smoke、5 轮 doctor 均通过。
 ## 后置事项
 
 - SP4 验证不作为 v3.1 完成条件，准备文档为 `docs/sp4_validation_plan.md`，检查脚本为 `scripts/check_sp4_env.sh`。
-- Kubernetes/真实 Pod target 与 Pod host veth 仍作为 v3.2 下一优先级，不得从最终争奖路线中删除。
+- 真实 Kubernetes Pod target 与 Pod host veth QoS 已转 pass；下一优先级是 XDP on Pod host veth，以及把 v3.1 Policy Engine 第二条联动扩展到真实 Pod target。

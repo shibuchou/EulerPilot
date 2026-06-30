@@ -1,0 +1,16 @@
+result=pass
+reason=real-pod-target-applied-and-restored
+host=localhost.localdomain
+date=2026-06-30T16:02:30+08:00
+kernel=6.6.0-olk66-scx
+kubectl_bin=kubectl
+pod_namespace=eulerpilot-lab
+pod_name=eulerpilot-rc-pod
+pod_container_name=
+pod_uid=03a42fb7-0c29-4c32-9dde-bd5367b9cfcc
+target_ref=lab_pod
+target_cgroup=/sys/fs/cgroup/kubepods/besteffort/pod03a42fb7-0c29-4c32-9dde-bd5367b9cfcc
+cpu_max_pressure=10000 100000
+memory_high_pressure=1048576
+old_cpu_max=max 100000
+old_memory_high=max

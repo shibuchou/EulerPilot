@@ -1,0 +1,6 @@
+$ ctr -n k8s.io containers list
+CONTAINER                                                           IMAGE                                   RUNTIME
+68241ad48333055c52e3174ed908d5ea33feff942c8f786d913d08c9ed877f06    docker.io/rancher/mirrored-pause:3.6    io.containerd.runc.v2
+b84f2bf0e28a05bf1381971d8b73d0836f7674038912232f2d47e7a3db7a0354    docker.io/rancher/mirrored-pause:3.6    io.containerd.runc.v2
+f519641e3f273297aa06bf8af15ed795ec52ad1f6e62df6be023517061f8b157    localhost/eulerpilot-busybox:latest     io.containerd.runc.v2
+fe8f2068dd8cb2aac7efdd4e69cceb3cc864abc0bcccf6d8e8ac3419492b6f57    docker.io/rancher/mirrored-pause:3.6    io.containerd.runc.v2

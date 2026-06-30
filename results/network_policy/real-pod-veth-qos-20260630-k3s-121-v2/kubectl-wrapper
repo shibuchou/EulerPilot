@@ -1,0 +1,5 @@
+#!/bin/sh
+if [ -n "/etc/rancher/k3s/k3s.yaml" ]; then
+    exec "kubectl" --kubeconfig "/etc/rancher/k3s/k3s.yaml" "$@"
+fi
+exec "kubectl" "$@"

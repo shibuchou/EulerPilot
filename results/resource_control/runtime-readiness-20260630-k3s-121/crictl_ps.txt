@@ -1,0 +1,3 @@
+$ crictl ps -a
+CONTAINER           IMAGE               CREATED             STATE               NAME                ATTEMPT             POD ID              POD
+0c5f17f8cee29       7c4ec8c8b39a7       15 minutes ago      Running             eulerpilot-rc-pod   0                   c36ab7dc1c178       eulerpilot-rc-pod

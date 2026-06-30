@@ -5,12 +5,16 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT_DIR"
 
 RESULT_DIR="${RESULT_DIR:-results/resource_control/real-pod-target-$(date +%Y%m%d-%H%M%S)}"
+RESULT_ABS_DIR=""
 KUBECTL_BIN="${EULERPILOT_KUBECTL_BIN:-kubectl}"
 POD_NAMESPACE="${EULERPILOT_POD_NAMESPACE:-eulerpilot-lab}"
 POD_NAME="${EULERPILOT_POD_NAME:-eulerpilot-rc-pod}"
 POD_CONTAINER_NAME="${EULERPILOT_POD_CONTAINER_NAME:-}"
 POD_IMAGE="${EULERPILOT_POD_IMAGE:-busybox:latest}"
+POD_IMAGE_PULL_POLICY="${EULERPILOT_POD_IMAGE_PULL_POLICY:-IfNotPresent}"
 ALLOW_K8S_CREATE="${EULERPILOT_ALLOW_K8S_CREATE:-0}"
+AGENT_DURATION_S="${EULERPILOT_REAL_POD_AGENT_DURATION_S:-3}"
+AGENT_TIMEOUT_S="${EULERPILOT_REAL_POD_AGENT_TIMEOUT_S:-15}"
 
 AGENT_PID=""
 POD_CREATED=0
@@ -60,6 +64,7 @@ write_blocked() {
         printf 'pod_name=%s\n' "$POD_NAME"
         printf 'pod_container_name=%s\n' "$POD_CONTAINER_NAME"
         printf 'pod_image=%s\n' "$POD_IMAGE"
+        printf 'pod_image_pull_policy=%s\n' "$POD_IMAGE_PULL_POLICY"
         printf 'next_action=%s\n' "$next_action"
     } > "$RESULT_DIR/summary.txt"
 }
@@ -77,6 +82,7 @@ write_report() {
 - kernel: \`$(uname -r)\`
 - namespace: \`${POD_NAMESPACE}\`
 - pod: \`${POD_NAME}\`
+- image pull policy: \`${POD_IMAGE_PULL_POLICY}\`
 
 ## Purpose
 
@@ -156,7 +162,7 @@ write_agent_config() {
 agent:
   name: EulerPilot
   mode: active
-skills_config_path: $RESULT_DIR/skills.yaml
+skills_config_path: $RESULT_ABS_DIR/skills.yaml
 scheduler:
   type: cgroup_v2
 exporter:
@@ -222,6 +228,8 @@ YAML
 
 [ "$(id -u)" -eq 0 ] || fail 'real pod target test must run as root'
 
+RESULT_ABS_DIR="$(cd "$RESULT_DIR" && pwd)"
+
 if ! command -v "$KUBECTL_BIN" >/dev/null 2>&1; then
     write_blocked "missing-kubectl" \
         "install-kubectl-and-provide-eulerpilot-lab-demo-pod"
@@ -253,7 +261,8 @@ if ! timeout 8s "$KUBECTL_BIN" -n "$POD_NAMESPACE" get pod "$POD_NAME" \
         exit 0
     fi
     log_cmd "$KUBECTL_BIN" -n "$POD_NAMESPACE" run "$POD_NAME" \
-        --image="$POD_IMAGE" --restart=Never --command -- sh -c 'yes >/dev/null'
+        --image="$POD_IMAGE" --image-pull-policy="$POD_IMAGE_PULL_POLICY" \
+        --restart=Never --command -- sh -c 'yes >/dev/null'
     POD_CREATED=1
 fi
 
@@ -308,12 +317,12 @@ OLD_CPU_MAX="$(cat "$TARGET_CGROUP/cpu.max")"
 OLD_MEMORY_HIGH="$(cat "$TARGET_CGROUP/memory.high")"
 write_agent_config
 
-timeout 35s ./build/eulerpilot-agent \
+timeout "${AGENT_TIMEOUT_S}s" ./build/eulerpilot-agent \
     --config "$RESULT_DIR/agent.yaml" \
     --backend cgroup_v2 \
     --gate-mode always-active \
     --active \
-    --duration-s 12 \
+    --duration-s "$AGENT_DURATION_S" \
     --interval-ms 500 \
     --jsonl \
     > "$RESULT_DIR/agent.log" 2>&1 &

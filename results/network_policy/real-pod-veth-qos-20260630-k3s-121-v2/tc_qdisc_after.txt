@@ -1,0 +1,2 @@
+qdisc tbf 8023: root refcnt 17 rate 1Mbit burst 32Kb lat 50ms
+qdisc clsact ffff: parent ffff:fff1

@@ -1,0 +1,3 @@
+$ kubectl get namespace eulerpilot-lab
+NAME             STATUS   AGE
+eulerpilot-lab   Active   15m
