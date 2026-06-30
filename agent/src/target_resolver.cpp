@@ -381,6 +381,17 @@ bool path_contains_any(const std::string &path,
     return false;
 }
 
+bool path_is_at_or_under(const std::string &path, const std::string &root) {
+    if (path == root) {
+        return true;
+    }
+    if (root.empty() || path.size() <= root.size() ||
+        path.compare(0, root.size(), root) != 0) {
+        return false;
+    }
+    return root.back() == '/' || path[root.size()] == '/';
+}
+
 std::string find_cgroup_by_needles(const std::string &cgroup_root,
                                    const std::vector<std::string> &needles,
                                    std::string &reason) {
@@ -828,6 +839,44 @@ TargetIdentity resolve_container_target(const ContainerTargetSpec &spec) {
     }
 
     std::string reason;
+    const bool runtime_backed_target = !spec.container_name.empty() ||
+        (!spec.runtime.empty() && spec.runtime != "auto");
+    if (runtime_backed_target) {
+        TargetResolverOptions runtime_options;
+        runtime_options.crictl_path.clear();
+        runtime_options.docker_path.clear();
+        runtime_options.podman_path.clear();
+        runtime_options.isula_path.clear();
+        if (spec.runtime.empty() || spec.runtime == "auto") {
+            runtime_options.crictl_path = spec.crictl_path;
+            runtime_options.docker_path = spec.docker_path;
+            runtime_options.podman_path = spec.podman_path;
+            runtime_options.isula_path = spec.isula_path;
+        } else if (spec.runtime == "crictl") {
+            runtime_options.crictl_path = spec.crictl_path;
+        } else if (spec.runtime == "docker") {
+            runtime_options.docker_path = spec.docker_path;
+        } else if (spec.runtime == "podman") {
+            runtime_options.podman_path = spec.podman_path;
+        } else if (spec.runtime == "isula" || spec.runtime == "isulad") {
+            runtime_options.isula_path = spec.isula_path;
+        }
+
+        const int pid = runtime_container_pid(target.container_id, runtime_options, reason);
+        if (pid > 0) {
+            const TargetIdentity pid_target = resolve_pid_target(pid);
+            if (pid_target.resolved &&
+                path_is_at_or_under(pid_target.cgroup_path, spec.cgroup_root)) {
+                target.pid = pid;
+                target.cgroup_path = pid_target.cgroup_path;
+                target.cgroup_id = pid_target.cgroup_id;
+                target.resolved = true;
+                target.reason = "ok";
+                return target;
+            }
+        }
+    }
+
     const std::string cgroup_path = find_cgroup_by_needles(
         spec.cgroup_root,
         {target.container_id},

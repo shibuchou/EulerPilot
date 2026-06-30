@@ -1,0 +1,50 @@
+schema_version: 2
+skills:
+- name: resource_control
+  kind: runtime
+  enabled: true
+  config:
+    mode: enforce
+    controllers:
+      cpu:
+        max:
+          enabled: true
+      memory:
+        enabled: true
+        high:
+          enabled: true
+        low:
+          enabled: true
+        max:
+          enabled: true
+        reclaim:
+          enabled: false
+      io:
+        enabled: false
+        weight:
+          enabled: false
+        max:
+          enabled: false
+    targets:
+      container_name_scope:
+        type: container
+        container_name: ep-runtime-worker
+        runtime: crictl
+        crictl_path: /tmp/tmp.Q7ruXGi6XC/crictl
+        cgroup_root: /sys/fs/cgroup/eulerpilot
+        require_runtime_socket: false
+    profiles:
+      background:
+        target_ref: container_name_scope
+        normal:
+          cpu_max: max
+          memory_high: max
+        pressure:
+          cpu_max: '10000 100000'
+          memory_high: '1048576'
+          memory_low: '0'
+          memory_max: max
+- name: psi_gate
+  kind: runtime
+  enabled: true
+  config: {}

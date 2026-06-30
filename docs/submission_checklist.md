@@ -1,6 +1,6 @@
 # EulerPilot 提交清单
 
-更新时间：`2026-06-29`
+更新时间：`2026-06-30`
 
 ## 已完成
 
@@ -34,8 +34,8 @@
 - [x] `resource_control` CPU+Memory+IO 自动闭环 121/122 验证：YAML v2 `controllers + profiles`、`cpu.max`、`memory.high/low/max`、`io.weight/io.max`、事务化写入、`AuditBus`、`ActionJournal` 和 Agent stop rollback
 - [x] `resource_control` `target_ref` cgroup 最小闭环 121/122 验证：`targets + profiles.<name>.target_ref`、目标 cgroup 限制、非目标 cgroup 不误改、审计和 Agent JSONL 携带 `target_ref`
 - [x] `resource_control` runtime target 解析闭环 121/122 验证：`type: container_id/container/k8s_pod` 均能解析到目标 cgroup，并复用 CPU/Memory 控制器写入、审计和 rollback
-- [x] `resource_control` 真实 runtime readiness 诊断 121/122 完成：两台机器当前均缺少 docker/podman/containerd/crictl/kubectl 和 Kubernetes lab，真实容器 / Pod target 现场实测需等环境补齐
-- [x] `resource_control` 真实 runtime / Pod target 演示入口 121/122 完成：新增 docker/podman 真实容器脚本与 Kubernetes lab Pod 脚本，缺环境时输出 blocked 证据，具备 runtime/kubectl 后可直接验证 `target_ref` 写入、审计和 rollback
+- [x] `resource_control` 真实 runtime readiness 诊断 121/122 刷新：Podman runtime ready，Kubernetes lab 仍缺失；Docker 18.09 daemon 因 cgroup v2 devices controller 问题不作为主验证 runtime
+- [x] `resource_control` 真实 Podman container target 121/122 pass：验证 `type: container + container_name + runtime` 解析真实容器 cgroup，写入并恢复 `cpu.max/memory.high`；Kubernetes lab Pod target 仍等待 kubectl/demo Pod
 - [x] `resource_control` CPU quota 效果指标 121/122 验证：`cpu.stat usage_usec/nr_throttled/throttled_usec` 证明 `cpu.max=10000 100000` 后实际 CPU 使用率下降并触发 throttling
 - [x] `resource_control` Redis + background CPU quota Compare Benchmark 121/122 验证：拆分 `default_noisy`、`eulerpilot_no_quota`、`eulerpilot_quota` 三阶段，记录 Redis GET/SET RPS 与 background cgroup CPU 使用率，结论限定为同样 Agent 放置下后台限额效果显著，不写成 Redis 性能提升
 - [x] `resource_control` Redis quota profile sweep 121/122 验证：扫描 `max/50%/20%/10%/5%` background `cpu.max`，121 推荐 `quota_05`，122 最佳折中 `quota_10`，跨机保守默认演示 profile 暂定 `cpu.max=10000 100000`
@@ -46,7 +46,7 @@
 - [x] `security_policy_demo` BPF LSM file_open 最小闭环
 - [x] `security_policy_demo` BPF LSM attach/deny/rollback 集成测试 121/122 均通过
 - [x] Runtime 生命周期收拢与 ActionJournal/AuditBus 最小接入
-- [x] 121 SP3 编译、集成测试和 21 项质量门禁通过，最新 100 轮 smoke 与 5 轮 doctor 通过
+- [x] 121 SP3 编译、集成测试和 21 项质量门禁通过，最新 v3.2 Podman 后质量门禁 `reports/final_quality_gate_20260630-v32-podman-121.log` 通过，100 轮 smoke 与 5 轮 doctor 通过
 - [x] 静态 Dashboard：`reports/dashboard/index.html`
 - [x] Prometheus `/metrics` 端点：默认关闭，监听 `127.0.0.1:9108`
 - [x] 中文最终报告主稿与答辩材料
@@ -99,12 +99,12 @@
 - Resource Control IO 122：`results/resource_control/io-20260624-160208`
 - Resource Control target_ref 121：`results/resource_control/target-20260624-172139`
 - Resource Control target_ref 122：`results/resource_control/target-20260624-172916`
-- Resource Control runtime target 121：`results/resource_control/runtime-target-20260624-212403`
-- Resource Control runtime target 122：`results/resource_control/runtime-target-20260624-212529`
-- Resource Control runtime readiness 121：`results/resource_control/runtime-readiness-20260630-1020-121`
-- Resource Control runtime readiness 122：`results/resource_control/runtime-readiness-20260630-1020-122`
-- Resource Control real runtime target 121：`results/resource_control/real-runtime-target-20260630-1020-121`
-- Resource Control real runtime target 122：`results/resource_control/real-runtime-target-20260630-1020-122`
+- Resource Control runtime target 121：`results/resource_control/runtime-target-20260630-113310`
+- Resource Control runtime target 122：`results/resource_control/runtime-target-20260630-113354`
+- Resource Control runtime readiness 121：`results/resource_control/runtime-readiness-20260630-podman-121`
+- Resource Control runtime readiness 122：`results/resource_control/runtime-readiness-20260630-podman-122`
+- Resource Control real runtime target 121：`results/resource_control/real-runtime-target-20260630-podman-121-final2`
+- Resource Control real runtime target 122：`results/resource_control/real-runtime-target-20260630-podman-122-final2`
 - Resource Control real Pod target 121：`results/resource_control/real-pod-target-20260630-1020-121`
 - Resource Control real Pod target 122：`results/resource_control/real-pod-target-20260630-1020-122`
 - Resource Control CPU quota 121：`results/resource_control/cpu-quota-20260625-095030`
@@ -139,12 +139,12 @@
 ## 质量与安全审计
 
 - `scripts/final_quality_gate.sh`：TAP 风格 21 项 P0 质量门禁脚本
-- `reports/final_quality_gate_20260629_policy_engine.log`：121 最新门禁通过记录，21/21 P0 通过，100 轮 smoke 与 5 轮 doctor 通过
+- `reports/final_quality_gate_20260630-v32-podman-121.log`：121 最新门禁通过记录，21/21 P0 通过，100 轮 smoke 与 5 轮 doctor 通过
 - `docs/final_security_audit.md`：最终安全与质量审计报告
 
 ## 当前结论
 
-项目仍处于争奖增强阶段，不应停留在“最终材料整理”。当前已完成 Security anomaly -> Policy Engine -> Resource Control 降级的第一条跨 Skill 链路。下一步重点是补强 Network/Security/Resource 的成品化深度：Pod veth 真实 lab 演示、Security 更多 cred 生命周期规则/更多异常规则、Network QoS 与 Resource Control 同步限流、Resource 真实 container runtime / Kubernetes Pod target 现场 pass，以及 Redis/Nginx 多 workload quota profile 调参。当前 121/122 的真实 runtime/Pod target 脚本已经具备一键验收入口，但环境仍缺 docker/podman/kubectl；补齐 runtime、镜像与 `eulerpilot-lab` demo Pod 后优先把 blocked 证据转成 pass 证据。
+项目仍处于争奖增强阶段，不应停留在“最终材料整理”。当前已完成 Security anomaly -> Policy Engine -> Resource Control 降级的第一条跨 Skill 链路。下一步重点是补强 Network/Security/Resource 的成品化深度：Pod veth 真实 lab 演示、Security 更多 cred 生命周期规则/更多异常规则、Network QoS 与 Resource Control 同步限流、Resource 真实 container runtime / Kubernetes Pod target 现场 pass，以及 Redis/Nginx 多 workload quota profile 调参。当前 121/122 的真实 Podman container target 已转为 pass；下一步重点是补齐 `kubectl`、`eulerpilot-lab` demo Pod 与 Pod host veth，把 Kubernetes/Network 真实 Pod 证据继续转 pass。
 
 ## v3.1 提交前新增检查
 
@@ -163,7 +163,10 @@
 
 ## v3.2 iSulad/isula 与真实 target 检查
 
-- [ ] TargetResolver 支持 untime=isula / untime=isulad。
-- [ ] 	ests/integration/test_resource_control_runtime_readiness.sh 输出 isula_command/isulad_service/isulad_socket/isula_ps_rc。
-- [ ] 真实 runtime target 在 docker/podman/isula 任一 runtime 可用时从 blocked 转 pass。
-- [ ] 真实 Kubernetes Pod target 在 kubectl + eulerpilot-lab 可用时从 blocked 转 pass。
+- [x] TargetResolver 支持 `runtime=isula` / `runtime=isulad`。
+- [x] `tests/integration/test_resource_control_runtime_readiness.sh` 输出 `isula_command/isulad_service/isulad_socket/isula_ps_rc`。
+- [x] 真实 runtime target 在 Podman 可用时从 blocked 转 pass，121/122 双机通过。
+- [x] Podman/systemd cgroup v2 真实容器 cgroup 解析修正为 PID cgroup fallback，定位 `.../libpod-*.scope/container`。
+- [x] 121 最新 `scripts/final_quality_gate.sh` 通过 21/21 P0、100 轮 smoke、5 轮 doctor。
+- [ ] 真实 Kubernetes Pod target 在 `kubectl + eulerpilot-lab` 可用时从 blocked 转 pass。
+- [ ] Network QoS/XDP 真实 Pod host veth 演示。

@@ -1,0 +1,7 @@
+$ /usr/bin/podman run -d --name eulerpilot-rc-real-runtime localhost/eulerpilot-busybox:latest sh -c yes >/dev/null
+ec7d8e495a28e20b210d45a653865dcfad670d6bcae6f6050f3ccb7def061e80
+[rollback] scx binary: /root/olk/kernel-OLK-6.6-atomgit/tools/sched_ext/build/bin/scx_eulerpilot
+[Rollback] restore cgroup parameters and stop active sched_ext scheduler if configured.
+[Rollback] done.
+time="2026-06-30T11:34:57+08:00" level=warning msg="StopSignal SIGTERM failed to stop container eulerpilot-rc-real-runtime in 10 seconds, resorting to SIGKILL"
+eulerpilot-rc-real-runtime

@@ -21,17 +21,17 @@ v3.2 不以 SP4 为阻塞条件。SP4 发布后只作为追加平台验证；当
 
 ## 当前事实
 
-2026-06-30 已刷新只读诊断：
+2026-06-30 已完成 Podman 真实 runtime 验证刷新：
 
 | 机器 | Kernel | Runtime/K8s 状态 | 结果目录 |
 |------|--------|------------------|----------|
-| 121 | `6.6.0-132.0.0.111.oe2403sp3.x86_64` | `missing-container-runtime-and-kubernetes-lab` | `results/resource_control/runtime-readiness-20260630-1020-121` |
-| 122 | `6.6.0-olk66-scx` | `missing-container-runtime-and-kubernetes-lab` | `results/resource_control/runtime-readiness-20260630-1020-122` |
+| 121 | `6.6.0-132.0.0.111.oe2403sp3.x86_64` | Podman ready，K8s lab missing | `results/resource_control/runtime-readiness-20260630-podman-121` |
+| 122 | `6.6.0-olk66-scx` | Podman ready，K8s lab missing | `results/resource_control/runtime-readiness-20260630-podman-122` |
 
 真实 runtime target 当前证据：
 
-- 121：`results/resource_control/real-runtime-target-20260630-1020-121`，`reason=missing-docker-podman-or-isula`
-- 122：`results/resource_control/real-runtime-target-20260630-1020-122`，`reason=missing-docker-podman-or-isula`
+- 121：`results/resource_control/real-runtime-target-20260630-podman-121-final2`，`result=pass`
+- 122：`results/resource_control/real-runtime-target-20260630-podman-122-final2`，`result=pass`
 
 真实 Pod target 当前证据：
 
@@ -42,7 +42,15 @@ SP4 环境探测：
 
 - 121：`results/resource_control/sp4-env-20260630-101422-121.log`，`sp4_detected=no`
 - 122：`results/resource_control/sp4-env-20260630-101422-122.log`，`sp4_detected=no`
+## 2026-06-30 执行更新
 
+- 真实 container target 已在 121/122 使用 Podman 转为 pass；结果目录为 `results/resource_control/real-runtime-target-20260630-podman-121-final2` 与 `results/resource_control/real-runtime-target-20260630-podman-122-final2`。
+- 121/122 均安装了 `docker-engine` 与 `podman`。Docker 18.09 daemon 在当前 cgroup v2 环境下因 `Devices cgroup isn't mounted` 不作为主验证 runtime；Podman 4.9.4 正常工作。
+- 为避免外部 registry 不稳定，测试使用 openEuler `busybox` 包构造本地 `localhost/eulerpilot-busybox:latest` 镜像。
+- `TargetResolver` 已支持 Podman/systemd cgroup v2 的 PID cgroup fallback，真实目标定位到 `.../libpod-*.scope/container`，并保留 fake `container_id` 扫描路径。
+- fake runtime target 回归已刷新：121 `results/resource_control/runtime-target-20260630-113310`，122 `results/resource_control/runtime-target-20260630-113354`。
+- 121 最新质量门禁日志：`reports/final_quality_gate_20260630-v32-podman-121.log`，21/21 P0、100 轮 smoke、5 轮 doctor 通过。
+- Kubernetes lab Pod 与 Pod host veth 仍是下一步，不从路线中删除。
 ## Key Changes
 
 ### 1. openEuler runtime 兼容性
@@ -170,8 +178,8 @@ scripts/final_quality_gate.sh
 
 ## Success Criteria
 
-- 至少一台 openEuler 机器完成真实 container target pass。
-- 至少一台 openEuler 机器完成真实 Kubernetes Pod target pass；如果没有 K8s 环境，必须保留 blocked 证据和明确 next_action。
+- 121/122 已完成真实 Podman container target pass。
+- 真实 Kubernetes Pod target 尚未完成；当前缺 K8s lab 环境，必须保留 blocked 证据和明确 next_action。
 - `TargetResolver` 支持 docker、podman、crictl、containerd/ctr 场景外，还覆盖 openEuler 常见 iSulad/isula。
 - Network Pod veth 演示不操作生产网卡，只操作 lab Pod host veth。
 - Policy Engine 的真实 target 联动仍保留 transaction_id、ActionJournal 和 rollback。

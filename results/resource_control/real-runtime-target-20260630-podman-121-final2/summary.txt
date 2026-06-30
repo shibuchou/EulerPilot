@@ -1,0 +1,17 @@
+result=pass
+reason=real-runtime-target-applied-and-restored
+host=localhost.localdomain
+date=2026-06-30T11:34:03+08:00
+kernel=6.6.0-132.0.0.111.oe2403sp3.x86_64
+runtime_kind=podman
+runtime_bin=/usr/bin/podman
+runtime_image=localhost/eulerpilot-busybox:latest
+container_name=eulerpilot-rc-real-runtime
+container_id=b006a774b98a2d7bf1071875829c87cbc56c340198d35d09a926dce829329060
+container_pid=527688
+target_ref=real_container
+target_cgroup=/sys/fs/cgroup/machine.slice/libpod-b006a774b98a2d7bf1071875829c87cbc56c340198d35d09a926dce829329060.scope/container
+cpu_max_pressure=10000 100000
+memory_high_pressure=1048576
+old_cpu_max=max 100000
+old_memory_high=max

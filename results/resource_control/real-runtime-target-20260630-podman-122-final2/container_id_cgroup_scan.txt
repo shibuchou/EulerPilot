@@ -1,0 +1,3 @@
+/sys/fs/cgroup/machine.slice/libpod-conmon-ec7d8e495a28e20b210d45a653865dcfad670d6bcae6f6050f3ccb7def061e80.scope
+/sys/fs/cgroup/machine.slice/libpod-ec7d8e495a28e20b210d45a653865dcfad670d6bcae6f6050f3ccb7def061e80.scope
+/sys/fs/cgroup/machine.slice/libpod-ec7d8e495a28e20b210d45a653865dcfad670d6bcae6f6050f3ccb7def061e80.scope/container

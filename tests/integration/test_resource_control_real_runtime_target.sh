@@ -5,11 +5,14 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT_DIR"
 
 RESULT_DIR="${RESULT_DIR:-results/resource_control/real-runtime-target-$(date +%Y%m%d-%H%M%S)}"
+RESULT_ABS_DIR=""
 RUNTIME_KIND="${EULERPILOT_RUNTIME_KIND:-auto}"
 RUNTIME_BIN="${EULERPILOT_RUNTIME_BIN:-}"
 RUNTIME_IMAGE="${EULERPILOT_RUNTIME_IMAGE:-busybox:latest}"
 ALLOW_IMAGE_PULL="${EULERPILOT_ALLOW_IMAGE_PULL:-0}"
 CONTAINER_NAME="${EULERPILOT_RUNTIME_CONTAINER_NAME:-eulerpilot-rc-real-runtime}"
+AGENT_DURATION_S="${EULERPILOT_REAL_RUNTIME_AGENT_DURATION_S:-3}"
+AGENT_TIMEOUT_S="${EULERPILOT_REAL_RUNTIME_AGENT_TIMEOUT_S:-15}"
 
 AGENT_PID=""
 CONTAINER_STARTED=0
@@ -196,7 +199,7 @@ write_agent_config() {
 agent:
   name: EulerPilot
   mode: active
-skills_config_path: $RESULT_DIR/skills.yaml
+skills_config_path: $RESULT_ABS_DIR/skills.yaml
 scheduler:
   type: cgroup_v2
 exporter:
@@ -261,6 +264,9 @@ YAML
 }
 
 [ "$(id -u)" -eq 0 ] || fail 'real runtime target test must run as root'
+
+mkdir -p "$RESULT_DIR"
+RESULT_ABS_DIR="$(cd "$RESULT_DIR" && pwd)"
 
 if ! select_runtime; then
     write_blocked "missing-docker-podman-or-isula" \
@@ -343,12 +349,12 @@ OLD_CPU_MAX="$(cat "$TARGET_CGROUP/cpu.max")"
 OLD_MEMORY_HIGH="$(cat "$TARGET_CGROUP/memory.high")"
 write_agent_config
 
-timeout 35s ./build/eulerpilot-agent \
+timeout "${AGENT_TIMEOUT_S}s" ./build/eulerpilot-agent \
     --config "$RESULT_DIR/agent.yaml" \
     --backend cgroup_v2 \
     --gate-mode always-active \
     --active \
-    --duration-s 12 \
+    --duration-s "$AGENT_DURATION_S" \
     --interval-ms 500 \
     --jsonl \
     > "$RESULT_DIR/agent.log" 2>&1 &

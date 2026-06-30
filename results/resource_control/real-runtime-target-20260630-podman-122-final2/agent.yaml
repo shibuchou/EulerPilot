@@ -1,0 +1,9 @@
+agent:
+  name: EulerPilot
+  mode: active
+skills_config_path: /root/EulerPilot/results/resource_control/real-runtime-target-20260630-podman-122-final2/skills.yaml
+scheduler:
+  type: cgroup_v2
+exporter:
+  prometheus:
+    enabled: false

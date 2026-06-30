@@ -12,7 +12,7 @@
 - Memory：`memory.high`、`memory.low`、`memory.max`
 - IO：`io.weight`、`io.max`
 - Target：`target_ref` 可解析 cgroup、PID、container ID、runtime container name 和 Kubernetes Pod cgroup
-- Real target harness：真实 docker/podman/iSulad 容器与 Kubernetes lab Pod 演示脚本已补齐；缺 runtime/kubectl 时输出 `result=blocked` 诊断，不自动安装软件、拉镜像或创建集群资源
+- Real target harness：真实 Podman 容器 target 已在 121/122 转 pass；真实 docker/podman/iSulad 容器与 Kubernetes lab Pod 演示脚本均可输出明确诊断，脚本默认不自动安装软件、拉镜像或创建集群资源
 - 可选 Memory reclaim：`memory.reclaim` 已有配置开关，默认关闭，后续只在明确 pressure 策略中启用
 - 自动模式：`GateState::Active/Cooldown` 或非 `normal_profile` 时进入 pressure 模式
 - 事务化执行：读取旧值、校验新值、写入控制器、复读验证、写 `AuditBus`、写 `ActionJournal`、停止时恢复旧值
@@ -161,12 +161,12 @@ select profile
 - target_ref 改动后 IO 回归 121：`results/resource_control/io-regression-20260624-174400/summary.txt`
 - target_ref cgroup 闭环 121：`results/resource_control/target-20260624-172139/summary.txt`
 - target_ref cgroup 闭环 122：`results/resource_control/target-20260624-172916/summary.txt`
-- runtime target 闭环 121：`results/resource_control/runtime-target-20260624-212403/summary.txt`
-- runtime target 闭环 122：`results/resource_control/runtime-target-20260624-212529/summary.txt`
-- runtime readiness 诊断 121：`results/resource_control/runtime-readiness-20260630-1020-121/summary.txt`
-- runtime readiness 诊断 122：`results/resource_control/runtime-readiness-20260630-1020-122/summary.txt`
-- real runtime target 诊断 121：`results/resource_control/real-runtime-target-20260630-1020-121/summary.txt`
-- real runtime target 诊断 122：`results/resource_control/real-runtime-target-20260630-1020-122/summary.txt`
+- runtime target 闭环 121：`results/resource_control/runtime-target-20260624-212403/summary.txt`；v3.2 回归：`results/resource_control/runtime-target-20260630-113310/summary.txt`
+- runtime target 闭环 122：`results/resource_control/runtime-target-20260624-212529/summary.txt`；v3.2 回归：`results/resource_control/runtime-target-20260630-113354/summary.txt`
+- runtime readiness 诊断 121：`results/resource_control/runtime-readiness-20260630-podman-121/summary.txt`
+- runtime readiness 诊断 122：`results/resource_control/runtime-readiness-20260630-podman-122/summary.txt`
+- real runtime target Podman 121：`results/resource_control/real-runtime-target-20260630-podman-121-final2/summary.txt`
+- real runtime target Podman 122：`results/resource_control/real-runtime-target-20260630-podman-122-final2/summary.txt`
 - real Pod target 诊断 121：`results/resource_control/real-pod-target-20260630-1020-121/summary.txt`
 - real Pod target 诊断 122：`results/resource_control/real-pod-target-20260630-1020-122/summary.txt`
 - CPU quota 效果 121：`results/resource_control/cpu-quota-20260625-095030/summary.txt`
@@ -224,8 +224,8 @@ tests/integration/test_policy_engine_security_resource.sh
 - Target 测试验证 Agent JSONL 和 `resource_control_events.jsonl` 都携带 `target_ref` 与目标 cgroup path，并在退出后恢复旧值
 - Runtime target 测试验证 `container_id`、runtime container name 和 `k8s_pod` 名称解析均能落到目标 cgroup，只对目标 cgroup 写 `cpu.max/memory.high`，scope 外 cgroup 保持原值
 - Runtime target 测试使用 fake `crictl/kubectl` 固定解析路径；v3.2 起 TargetResolver 额外支持 openEuler 常见 `iSulad/isula` runtime，不依赖真实容器服务；它验证的是 Resource Control 与 `TargetResolver` 的解析、写入、审计和回滚链路，真实容器/Kubernetes lab Pod 仍作为后续现场演示项
-- Runtime readiness 诊断只读检查 docker/podman/nerdctl/ctr/crictl/kubectl、systemd 服务、runtime socket、runtime cgroup 和 Kubernetes lab namespace；当前 121/122 均输出 `result=blocked`，说明真实容器/Pod target 现场实测需要先安装或启动 runtime，或提供 `eulerpilot-lab` demo Pod
-- Real runtime target 脚本在 docker/podman/iSulad 与本地镜像可用时启动 `busybox` CPU workload 容器，通过 `type: container + container_name + runtime` 配置 `target_ref`，验证容器 cgroup 上 `cpu.max=10000 100000`、`memory.high=1048576` 的 applied/restored 事件；当前 121/122 因缺 docker/podman/isula 输出 `result=blocked`
+- Runtime readiness 诊断只读检查 docker/podman/isula/nerdctl/ctr/crictl/kubectl、systemd 服务、runtime socket、runtime cgroup 和 Kubernetes lab namespace；当前 121/122 均已通过 Podman 变为 `container_runtime_ready=1`，Kubernetes lab 仍缺失
+- Real runtime target 脚本在 docker/podman/iSulad 与本地镜像可用时启动 CPU workload 容器，通过 `type: container + container_name + runtime` 配置 `target_ref`，验证容器 cgroup 上 `cpu.max=10000 100000`、`memory.high=1048576` 的 applied/restored 事件；当前 121/122 已使用 Podman 与本地 `localhost/eulerpilot-busybox:latest` 镜像通过
 - Real Pod target 脚本在 `kubectl` 与 `eulerpilot-lab` demo Pod 可用时通过 `type: k8s_pod + namespace + pod_name` 配置 `target_ref`，验证 Pod cgroup 上 CPU/Memory 控制器写入、审计和 rollback；默认只使用已有 Pod，只有显式设置 `EULERPILOT_ALLOW_K8S_CREATE=1` 才创建 demo Pod；当前 121/122 因缺 `kubectl` 输出 `result=blocked`
 - CPU quota 测试先在 `cpu.max=max` 下采样 CPU hog 的 `cpu.stat usage_usec`，再由 Agent 写入 `cpu.max=10000 100000` 后采样同一指标；测试要求 `usage_rate_ratio < 0.70`，且限额窗口 `nr_throttled/throttled_usec` 均增加
 - Redis quota Compare Benchmark 在 Redis GET/SET 压测与 background CPU hog 同时运行时记录业务 RPS 和 background cgroup `cpu.stat`；它包含 `default_noisy`、`eulerpilot_no_quota` 和 `eulerpilot_quota` 三阶段，当前通过线聚焦同样 Agent 放置下后台限额是否生效，Redis RPS 作为业务侧证据记录，不包装成性能提升结论
@@ -313,34 +313,30 @@ container_name_memory_high_pressure=1048576
 k8s_pod_memory_high_pressure=1048576
 ```
 
-当前 121 runtime readiness 诊断摘要（2026-06-28）：
+当前 121 runtime readiness 诊断摘要（2026-06-30）：
 
 ```text
-result=blocked
-reason=missing-container-runtime-and-kubernetes-lab
-container_runtime_ready=0
+result=partial
+reason=container-runtime-ready-kubernetes-lab-missing
+container_runtime_ready=1
 kubernetes_ready=0
-runtime_cgroup_count=0
-docker_command=missing
-podman_command=missing
-crictl_command=missing
-kubectl_command=missing
-next_action=install-or-start-docker-podman-containerd-crio-or-provide-eulerpilot-lab-pod
+podman_command=/usr/bin/podman
+podman_ps_rc=0
+docker_service=failed
+next_action=create-eulerpilot-lab-namespace-and-demo-pod
 ```
 
-当前 122 runtime readiness 诊断摘要（2026-06-28）：
+当前 122 runtime readiness 诊断摘要（2026-06-30）：
 
 ```text
-result=blocked
-reason=missing-container-runtime-and-kubernetes-lab
-container_runtime_ready=0
+result=partial
+reason=container-runtime-ready-kubernetes-lab-missing
+container_runtime_ready=1
 kubernetes_ready=0
-runtime_cgroup_count=0
-docker_command=missing
-podman_command=missing
-crictl_command=missing
-kubectl_command=missing
-next_action=install-or-start-docker-podman-containerd-crio-or-provide-eulerpilot-lab-pod
+podman_command=/usr/bin/podman
+podman_ps_rc=0
+docker_service=failed
+next_action=create-eulerpilot-lab-namespace-and-demo-pod
 ```
 
 ## 真实 runtime / Pod target 演示入口
@@ -348,21 +344,33 @@ next_action=install-or-start-docker-podman-containerd-crio-or-provide-eulerpilot
 当前 121 real runtime target 摘要：
 
 ```text
-result=blocked
-reason=missing-docker-or-podman
+result=pass
+reason=real-runtime-target-applied-and-restored
 kernel=6.6.0-132.0.0.111.oe2403sp3.x86_64
-runtime_image=busybox:latest
-next_action=install-or-start-docker-or-podman-then-rerun-this-script
+runtime_kind=podman
+runtime_image=localhost/eulerpilot-busybox:latest
+target_ref=real_container
+target_cgroup=/sys/fs/cgroup/machine.slice/libpod-*.scope/container
+cpu_max_pressure=10000 100000
+memory_high_pressure=1048576
+old_cpu_max=max 100000
+old_memory_high=max
 ```
 
 当前 122 real runtime target 摘要：
 
 ```text
-result=blocked
-reason=missing-docker-or-podman
+result=pass
+reason=real-runtime-target-applied-and-restored
 kernel=6.6.0-olk66-scx
-runtime_image=busybox:latest
-next_action=install-or-start-docker-or-podman-then-rerun-this-script
+runtime_kind=podman
+runtime_image=localhost/eulerpilot-busybox:latest
+target_ref=real_container
+target_cgroup=/sys/fs/cgroup/machine.slice/libpod-*.scope/container
+cpu_max_pressure=10000 100000
+memory_high_pressure=1048576
+old_cpu_max=max 100000
+old_memory_high=max
 ```
 
 当前 121 real Pod target 摘要：
@@ -385,11 +393,10 @@ pod_name=eulerpilot-rc-pod
 next_action=install-kubectl-and-provide-eulerpilot-lab-demo-pod
 ```
 
-变成 `pass` 的条件：
+继续转 pass 的条件：
 
-- real runtime target：安装并启动 docker、podman 或 iSulad/isula，准备本地 `busybox:latest` 或通过 `EULERPILOT_RUNTIME_IMAGE` 指定已有镜像；如需联网拉取镜像，显式设置 `EULERPILOT_ALLOW_IMAGE_PULL=1`。
+- real runtime target：当前 Podman 路径已在 121/122 pass；Docker 18.09 daemon 因 `Devices cgroup isn't mounted` 暂不作为主验证 runtime，iSulad/isula 可在后续 openEuler 原生 runtime 环境中追加验证。
 - real Pod target：准备 `kubectl`、`eulerpilot-lab` namespace 和一个持续运行的 demo Pod；若允许脚本创建 demo Pod，显式设置 `EULERPILOT_ALLOW_K8S_CREATE=1`。
-
 当前 121 CPU quota 结果摘要：
 
 ```text
@@ -584,5 +591,5 @@ Multi-Resource 跨机解释：两台机器都验证了 `cpuset.cpus`、`memory.l
 
 ## 后续 TODO
 
-- 在真实 docker/podman/iSulad/crictl 或 Kubernetes lab Pod 环境中补现场演示，把 fake runtime 自测升级为真实运行时证据。
+- Kubernetes lab Pod 环境仍需补现场演示；真实 Podman container target 已完成双机 pass，后续可追加 iSulad/isula 与真实 Pod veth。
 - 将当前 Security anomaly -> Resource Control 降级链路扩展到 Network QoS 与 Resource Control 同步限流，并补更多 anomaly 触发源。
