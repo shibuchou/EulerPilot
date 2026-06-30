@@ -3671,8 +3671,12 @@ struct PolicyEngineAction {
     std::string name;
     std::string target_ref;
     std::string target_type = "cgroup";
+    std::string resolved_target_type = "cgroup";
     std::string target_path;
     std::string target_ifname;
+    std::string pod_namespace;
+    std::string pod_name;
+    std::string pod_uid;
     std::string file;
     std::string value;
     std::string burst = "32kb";
@@ -3763,6 +3767,9 @@ public:
                                              config_value_or(spec, target_prefix + "latency", "50ms"));
             action.memory_high_guard =
                 config_bool_or(spec, prefix + "memory_high_guard", default_memory_high_guard);
+            if (!resolve_action_target(spec, target_prefix, action)) {
+                return false;
+            }
             if (!validate_action(action)) {
                 return false;
             }
@@ -3791,7 +3798,7 @@ public:
                 available_ = false;
                 return false;
             }
-            if (action.target_type == "cgroup") {
+            if (action.resolved_target_type == "cgroup") {
                 if (!fs::exists(action.target_path)) {
                     last_error_ = "policy-engine-target-missing:" + action.target_ref;
                     available_ = false;
@@ -3802,7 +3809,7 @@ public:
                     available_ = false;
                     return false;
                 }
-            } else if (action.target_type == "netdev") {
+            } else if (action.resolved_target_type == "netdev") {
                 if (!command_available("tc") || !command_available("ip")) {
                     last_error_ = "policy-engine-iproute2-missing";
                     available_ = false;
@@ -3881,13 +3888,119 @@ public:
     std::string last_error() const override { return last_error_; }
 
 private:
+    bool is_pod_target_type(const std::string &target_type) const {
+        return target_type == "k8s_pod" || target_type == "pod";
+    }
+
+    TargetResolverOptions policy_target_resolver_options(
+        const SkillSpec &spec,
+        const std::string &target_prefix) const {
+        TargetResolverOptions options;
+        options.allow_non_lab_pods =
+            config_bool_or(spec, target_prefix + "allow_non_lab_pods", false);
+        options.allow_host_network_pods =
+            config_bool_or(spec, target_prefix + "allow_host_network_pods", false);
+        options.require_runtime_socket =
+            config_bool_or(spec, target_prefix + "require_runtime_socket", true);
+        options.lab_namespace =
+            config_value_or(spec, target_prefix + "lab_namespace", "eulerpilot-lab");
+        options.kubectl_path =
+            config_value_or(spec, target_prefix + "kubectl_path", "kubectl");
+        options.crictl_path =
+            config_value_or(spec, target_prefix + "crictl_path", "crictl");
+        options.docker_path =
+            config_value_or(spec, target_prefix + "docker_path", "docker");
+        options.podman_path =
+            config_value_or(spec, target_prefix + "podman_path", "podman");
+        options.isula_path =
+            config_value_or(spec, target_prefix + "isula_path", "isula");
+        options.ip_path = config_value_or(spec, target_prefix + "ip_path", "ip");
+        options.nsenter_path =
+            config_value_or(spec, target_prefix + "nsenter_path", "nsenter");
+        return options;
+    }
+
+    K8sPodTargetSpec policy_k8s_pod_target_spec(
+        const SkillSpec &spec,
+        const std::string &target_prefix,
+        const std::string &target_ref) const {
+        K8sPodTargetSpec target_spec;
+        target_spec.name = target_ref;
+        target_spec.pod_namespace =
+            config_value_or(spec, target_prefix + "namespace",
+                            config_value_or(spec, target_prefix + "pod_namespace", ""));
+        target_spec.pod_name =
+            config_value_or(spec, target_prefix + "pod_name",
+                            config_value_or(spec, target_prefix + "name", ""));
+        target_spec.pod_uid =
+            config_value_or(spec, target_prefix + "pod_uid", "");
+        target_spec.container_id =
+            config_value_or(spec, target_prefix + "container_id", "");
+        target_spec.container_name =
+            config_value_or(spec, target_prefix + "container_name", "");
+        target_spec.cgroup_root =
+            config_value_or(spec, target_prefix + "cgroup_root", "/sys/fs/cgroup");
+        return target_spec;
+    }
+
+    bool resolve_action_target(const SkillSpec &spec,
+                               const std::string &target_prefix,
+                               PolicyEngineAction &action) const {
+        if (action.target_type == "cgroup" || action.target_type == "netdev") {
+            action.resolved_target_type = action.target_type;
+            return true;
+        }
+        if (!is_pod_target_type(action.target_type)) {
+            action.resolved_target_type = action.target_type;
+            return true;
+        }
+
+        const K8sPodTargetSpec target_spec =
+            policy_k8s_pod_target_spec(spec, target_prefix, action.target_ref);
+        const TargetResolverOptions options =
+            policy_target_resolver_options(spec, target_prefix);
+
+        if (is_allowed_control_file(action.file)) {
+            const auto target = resolve_k8s_pod_cgroup_target(target_spec, options);
+            if (!target.resolved || target.cgroup_path.empty()) {
+                last_error_ = "policy-engine-target-pod-cgroup-resolve-failed:" +
+                              target.reason;
+                return false;
+            }
+            action.resolved_target_type = "cgroup";
+            action.target_path = target.cgroup_path;
+            action.pod_namespace = target.pod_namespace;
+            action.pod_name = target.pod_name;
+            action.pod_uid = target.pod_uid;
+            return true;
+        }
+
+        if (is_allowed_network_qos_file(action.file)) {
+            const auto target = resolve_k8s_pod_target(target_spec, options);
+            if (!target.resolved || target.ifname.empty()) {
+                last_error_ = "policy-engine-target-pod-veth-resolve-failed:" +
+                              target.reason;
+                return false;
+            }
+            action.resolved_target_type = "netdev";
+            action.target_ifname = target.ifname;
+            action.pod_namespace = target.pod_namespace;
+            action.pod_name = target.pod_name;
+            action.pod_uid = target.pod_uid;
+            return true;
+        }
+
+        last_error_ = "policy-engine-action-file-not-allowed:" + action.file;
+        return false;
+    }
+
     bool validate_action(const PolicyEngineAction &action) const {
         if (action.value.empty() || action.value.find('\n') != std::string::npos ||
             action.value.find('\r') != std::string::npos) {
             last_error_ = "policy-engine-invalid-value";
             return false;
         }
-        if (action.target_type == "cgroup") {
+        if (action.resolved_target_type == "cgroup") {
             if (action.target_path.empty() ||
                 action.target_path.rfind("/sys/fs/cgroup/", 0) != 0) {
                 last_error_ = "policy-engine-target-outside-cgroup";
@@ -3899,7 +4012,7 @@ private:
             }
             return true;
         }
-        if (action.target_type == "netdev") {
+        if (action.resolved_target_type == "netdev") {
             if (!is_allowed_network_qos_file(action.file)) {
                 last_error_ = "policy-engine-network-action-not-allowed:" + action.file;
                 return false;
@@ -3909,7 +4022,11 @@ private:
                 last_error_ = "policy-engine-invalid-tc-token";
                 return false;
             }
-            if (!is_allowed_lab_netdev_name(action.target_ifname)) {
+            const bool resolved_lab_pod_veth =
+                is_pod_target_type(action.target_type) &&
+                !is_denied_host_netdev_name(action.target_ifname);
+            if (!is_allowed_lab_netdev_name(action.target_ifname) &&
+                !resolved_lab_pod_veth) {
                 last_error_ = "policy-engine-non-lab-netdev-denied:" + action.target_ifname;
                 return false;
             }
@@ -4075,13 +4192,14 @@ private:
                              const std::string &trigger_event_id,
                              const std::string &source_line) {
         action.skip_reason.clear();
-        if (action.target_type == "cgroup") {
+        if (action.resolved_target_type == "cgroup") {
             return apply_cgroup_action(action, transaction_id, trigger_event_id, source_line);
         }
-        if (action.target_type == "netdev") {
+        if (action.resolved_target_type == "netdev") {
             return apply_netdev_action(action, transaction_id, trigger_event_id, source_line);
         }
-        last_error_ = "policy-engine-unsupported-action-target:" + action.target_type;
+        last_error_ = "policy-engine-unsupported-action-target:" +
+                      action.target_type + "->" + action.resolved_target_type;
         return "failed";
     }
 
@@ -4186,10 +4304,10 @@ private:
                 continue;
             }
             bool restored = false;
-            if (action.target_type == "cgroup") {
+            if (action.resolved_target_type == "cgroup") {
                 const fs::path control_path = fs::path(action.target_path) / action.file;
                 restored = !action.old_value.empty() && write_value(control_path, action.old_value);
-            } else if (action.target_type == "netdev") {
+            } else if (action.resolved_target_type == "netdev") {
                 restored = run_tc_command("tc qdisc del dev " + action.target_ifname + " root");
             }
             if (restored) {
@@ -4235,10 +4353,20 @@ private:
         }
         event.target["target_ref"] = action->target_ref;
         event.target["target_type"] = action->target_type;
-        if (action->target_type == "cgroup") {
+        event.target["resolved_target_type"] = action->resolved_target_type;
+        if (!action->pod_namespace.empty()) {
+            event.target["pod_namespace"] = action->pod_namespace;
+        }
+        if (!action->pod_name.empty()) {
+            event.target["pod_name"] = action->pod_name;
+        }
+        if (!action->pod_uid.empty()) {
+            event.target["pod_uid"] = action->pod_uid;
+        }
+        if (action->resolved_target_type == "cgroup") {
             event.target["cgroup_path"] = action->target_path;
             event.target["file"] = action->file;
-        } else if (action->target_type == "netdev") {
+        } else if (action->resolved_target_type == "netdev") {
             event.target["ifname"] = action->target_ifname;
             event.target["file"] = action->file;
         }
@@ -4290,7 +4418,7 @@ private:
                                   const std::string &transaction_id,
                                   const std::string &trigger_event_id,
                                   const std::string &source_line) const {
-        const bool is_netdev = action.target_type == "netdev";
+        const bool is_netdev = action.resolved_target_type == "netdev";
         const fs::path path = is_netdev ? fs::path("reports/events/network_policy.jsonl")
                                         : fs::path("reports/events/resource_control.jsonl");
         ensure_parent_dir(path);
@@ -4311,6 +4439,8 @@ private:
         if (is_netdev) {
             event.target = {
                 {"target_ref", action.target_ref},
+                {"target_type", action.target_type},
+                {"resolved_target_type", action.resolved_target_type},
                 {"ifname", action.target_ifname},
                 {"file", action.file},
             };
@@ -4326,6 +4456,8 @@ private:
         } else {
             event.target = {
                 {"target_ref", action.target_ref},
+                {"target_type", action.target_type},
+                {"resolved_target_type", action.resolved_target_type},
                 {"cgroup", action.target_path},
                 {"file", action.file},
             };
@@ -4354,17 +4486,27 @@ private:
         entry.transaction_id = transaction_id;
         entry.trigger_event_id = trigger_event_id;
         entry.policy_id = policy_id_;
-        entry.target = action.target_type == "netdev" ? action.target_ifname : action.target_path;
+        entry.target = action.resolved_target_type == "netdev" ? action.target_ifname : action.target_path;
         entry.operation = operation;
         entry.old_values = {{action.file, action.old_value}};
         entry.new_values = {{action.file, action.value}};
         entry.handles = {
             {"target_ref", action.target_ref},
             {"target_type", action.target_type},
+            {"resolved_target_type", action.resolved_target_type},
             {"control_file", action.file},
             {"source_audit_path", source_path_},
         };
-        if (action.target_type == "netdev") {
+        if (!action.pod_namespace.empty()) {
+            entry.handles["pod_namespace"] = action.pod_namespace;
+        }
+        if (!action.pod_name.empty()) {
+            entry.handles["pod_name"] = action.pod_name;
+        }
+        if (!action.pod_uid.empty()) {
+            entry.handles["pod_uid"] = action.pod_uid;
+        }
+        if (action.resolved_target_type == "netdev") {
             entry.handles["ifname"] = action.target_ifname;
             entry.handles["qdisc"] = "tbf";
         }

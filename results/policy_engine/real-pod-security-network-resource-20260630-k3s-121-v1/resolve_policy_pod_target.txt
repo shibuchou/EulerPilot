@@ -1,0 +1,12 @@
+cgroup_resolved=1
+cgroup_reason=ok
+cgroup_path=/sys/fs/cgroup/kubepods/besteffort/podec49c0af-8ae7-462b-8a6d-9fef2b0b62b3
+cgroup_id=91641
+pod_uid=ec49c0af-8ae7-462b-8a6d-9fef2b0b62b3
+netdev_resolved=1
+netdev_reason=ok
+ifname=veth998e0158
+ifindex=144
+pid=538236
+container_id=0c5f17f8cee29b12219652da904121b83fb3774e2fe6b5fcc8ac3ad0b6a672f4
+netns_path=/proc/538236/ns/net

@@ -1,12 +1,12 @@
 # Policy Engine Skill 设计与验收说明
 
-更新时间：`2026-06-29`
+更新时间：`2026-06-30`
 
 本文说明 EulerPilot `policy_engine` Skill 的当前能力、配置方式、安全边界和验收入口。它的定位不是替代 `security_policy`、`resource_control` 或 `network_policy`，而是在统一 Agent 内消费各 Skill 事件，并把异常信号转换为可审计、可回滚的处置动作。
 
 ## 当前完成度
 
-当前版本已完成两条跨 Skill 联动链路。
+当前版本已完成三条跨 Skill 联动链路，其中第三条已经把 v3.1 的 lab cgroup/netdev 目标推进到真实 Kubernetes Pod cgroup 与 Pod host veth。
 
 第一条链路：
 
@@ -29,11 +29,25 @@ security_policy burst_connect anomaly
   -> Agent stop rollback
 ```
 
-121 已通过 `tests/integration/test_policy_engine_security_network_resource.sh --repeat 10`，122 已通过同一核心集成测试。最新结果目录为：
+第三条 v3.2 真实 Pod 链路：
 
 ```text
-121: results/policy_engine/security-network-resource-20260629-214952
-122: results/policy_engine/security-network-resource-20260629-215950
+security_policy burst_connect anomaly
+  -> policy_engine decision
+  -> target_ref=lab_pod(type=k8s_pod)
+  -> resource_control 解析为真实 Pod cgroup 并写 cpu.max / memory.high
+  -> network_qos 解析为真实 Pod host veth 并写 tc/tbf 2mbit
+  -> AuditBus + ActionJournal
+  -> Agent stop rollback
+```
+
+121 已通过 `tests/integration/test_policy_engine_security_network_resource.sh --repeat 10`，122 已通过同一核心集成测试；真实 Pod 联动也已在 121/122 通过。最新结果目录为：
+
+```text
+v3.1 lab 121: results/policy_engine/security-network-resource-20260629-214952
+v3.1 lab 122: results/policy_engine/security-network-resource-20260629-215950
+real Pod 121: results/policy_engine/real-pod-security-network-resource-20260630-k3s-121-v1
+real Pod 122: results/policy_engine/real-pod-security-network-resource-20260630-k3s-122-v1
 ```
 
 ## 独立配置
@@ -99,7 +113,7 @@ ActionJournal action records
 - cgroup target 必须位于 `/sys/fs/cgroup/` 下。
 - cgroup 控制文件白名单：`cpu.max`、`cpu.weight`、`memory.high`、`memory.low`、`memory.max`、`io.max`、`io.weight`。
 - 写入 `memory.high=134217728` 前检查 `memory.max == max` 或 `memory.max > 134217728`，否则跳过 memory 子动作并记录 reason。
-- netdev target 只允许 `ep-*`、`eulerpilot-*`、`lab-*` 前缀，默认拒绝 `eth*`、`ens*`、`eno*`、`wlan*`、`bond*`、`br*`、`cni*`、`flannel*`。
+- netdev target 默认只允许 `ep-*`、`eulerpilot-*`、`lab-*` 前缀，默认拒绝 `eth*`、`ens*`、`eno*`、`wlan*`、`bond*`、`br*`、`cni*`、`flannel*`；当 target 为 `type: k8s_pod/pod` 且通过 `eulerpilot-lab` resolver 解析出 runtime host veth 时，允许非生产 veth 名并继续拒绝生产/CNI 主设备前缀。
 - 写入前读取旧值，写入后复读验证，并在 stop/rollback 恢复旧值或删除 lab qdisc。
 - 多动作事务失败时按逆序回滚已成功动作，例如 Resource 已写入但 Network QoS 失败时必须恢复 Resource 旧值。
 
@@ -141,6 +155,13 @@ sudo tests/integration/test_policy_engine_security_network_resource.sh
 sudo tests/integration/test_policy_engine_security_network_resource.sh --repeat 10
 ```
 
+真实 Pod 联动：
+
+```bash
+sudo EULERPILOT_KUBECONFIG=/etc/rancher/k3s/k3s.yaml \
+  tests/integration/test_policy_engine_real_pod_network_resource.sh
+```
+
 第二条测试会完成：
 
 1. 构建 Agent、Security demo 和 Network QoS demo。
@@ -156,4 +177,4 @@ sudo tests/integration/test_policy_engine_security_network_resource.sh --repeat 
 
 ## 后续扩展
 
-v3.1 不把 Kubernetes/真实 runtime 作为完成条件，但不删除该路线。v3.2 第一优先级是将当前显式 cgroup + lab netdev 目标扩展到真实 runtime、Kubernetes Pod 和 Pod veth target，同时保持白名单、审计和 rollback 证据。
+v3.2 已完成真实 Kubernetes Pod 联动：同一个 `target_ref=lab_pod(type=k8s_pod)` 可在 `policy_engine` 内按动作类型解析为 Pod cgroup 或 Pod host veth，并保留 `target_type=k8s_pod`、`resolved_target_type=cgroup|netdev`、Pod namespace/name/UID、`transaction_id` 和 ActionJournal 证据。后续争奖增强重点转向 XDP on Pod host veth、更多 Security anomaly 与最终答辩证据压缩。

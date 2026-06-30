@@ -38,6 +38,7 @@
 - [x] `resource_control` 真实 Podman container target 121/122 pass：验证 `type: container + container_name + runtime` 解析真实容器 cgroup，写入并恢复 `cpu.max/memory.high`
 - [x] `resource_control` 真实 k3s Pod target 121/122 pass：验证 `type: k8s_pod + namespace + pod_name` 解析真实 Pod cgroup，写入并恢复 `cpu.max/memory.high`
 - [x] `network_qos` 真实 k3s Pod host veth 121/122 pass：解析 lab Pod host veth，安装 TC/TBF，流量命中，rollback 无 qdisc 残留
+- [x] `policy_engine` 真实 k3s Pod 联动 121/122 pass：同一个 `target_ref=lab_pod(type=k8s_pod)` 解析为 Pod cgroup 与 Pod host veth，触发 `security_policy burst_connect -> resource_control cpu.max/memory.high + network_qos 2mbit -> rollback`
 - [x] `resource_control` CPU quota 效果指标 121/122 验证：`cpu.stat usage_usec/nr_throttled/throttled_usec` 证明 `cpu.max=10000 100000` 后实际 CPU 使用率下降并触发 throttling
 - [x] `resource_control` Redis + background CPU quota Compare Benchmark 121/122 验证：拆分 `default_noisy`、`eulerpilot_no_quota`、`eulerpilot_quota` 三阶段，记录 Redis GET/SET RPS 与 background cgroup CPU 使用率，结论限定为同样 Agent 放置下后台限额效果显著，不写成 Redis 性能提升
 - [x] `resource_control` Redis quota profile sweep 121/122 验证：扫描 `max/50%/20%/10%/5%` background `cpu.max`，121 推荐 `quota_05`，122 最佳折中 `quota_10`，跨机保守默认演示 profile 暂定 `cpu.max=10000 100000`
@@ -48,7 +49,7 @@
 - [x] `security_policy_demo` BPF LSM file_open 最小闭环
 - [x] `security_policy_demo` BPF LSM attach/deny/rollback 集成测试 121/122 均通过
 - [x] Runtime 生命周期收拢与 ActionJournal/AuditBus 最小接入
-- [x] 121 SP3 编译、集成测试和 21 项质量门禁通过，最新 v3.2 k3s/Pod veth 后质量门禁 `reports/final_quality_gate_20260630-v32-k3s-121.log` 通过，100 轮 smoke 与 5 轮 doctor 通过
+- [x] 121 SP3 编译、集成测试和 21 项质量门禁通过，最新 v3.2 k3s/Pod veth 后质量门禁 `reports/final_quality_gate_20260630-v32-real-pod-policy-121.log` 通过，100 轮 smoke 与 5 轮 doctor 通过
 - [x] 静态 Dashboard：`reports/dashboard/index.html`
 - [x] Prometheus `/metrics` 端点：默认关闭，监听 `127.0.0.1:9108`
 - [x] 中文最终报告主稿与答辩材料
@@ -125,6 +126,8 @@
 - Resource Control Mixed Redis+Nginx Multi-Resource Benchmark 122：`results/resource_control/mixed-multi-resource-20260628-212132`
 - Policy Engine Security -> Resource Control 联动 121：`results/policy_engine/security-resource-20260629-163949`
 - Policy Engine Security -> Resource Control 联动 122：`results/policy_engine/security-resource-20260629-164135`
+- Policy Engine real Pod Security -> Network + Resource 联动 121：`results/policy_engine/real-pod-security-network-resource-20260630-k3s-121-v1`
+- Policy Engine real Pod Security -> Network + Resource 联动 122：`results/policy_engine/real-pod-security-network-resource-20260630-k3s-122-v1`
 
 ## 当前核心文档
 
@@ -143,12 +146,12 @@
 ## 质量与安全审计
 
 - `scripts/final_quality_gate.sh`：TAP 风格 21 项 P0 质量门禁脚本
-- `reports/final_quality_gate_20260630-v32-podman-121.log`：121 最新门禁通过记录，21/21 P0 通过，100 轮 smoke 与 5 轮 doctor 通过
+- `reports/final_quality_gate_20260630-v32-real-pod-policy-121.log`：121 最新门禁通过记录，21/21 P0 通过，100 轮 smoke 与 5 轮 doctor 通过
 - `docs/final_security_audit.md`：最终安全与质量审计报告
 
 ## 当前结论
 
-项目仍处于争奖增强阶段，不应停留在“最终材料整理”。当前已完成 Security anomaly -> Policy Engine -> Resource Control 降级的第一条跨 Skill 链路。下一步重点是补强 Network/Security/Resource 的成品化深度：Pod veth 真实 lab 演示、Security 更多 cred 生命周期规则/更多异常规则、Network QoS 与 Resource Control 同步限流、Resource 真实 container runtime / Kubernetes Pod target 现场 pass，以及 Redis/Nginx 多 workload quota profile 调参。当前 121/122 的真实 Podman container target、k3s Pod target 和 Network QoS Pod host veth 已转为 pass；下一步重点是补 XDP on Pod host veth，并把 v3.1 第二条跨 Skill 联动扩展到真实 Pod target。
+项目仍处于争奖增强阶段，不应停留在“最终材料整理”。当前已完成 Security anomaly -> Policy Engine -> Resource Control 降级的第一条跨 Skill 链路。下一步重点是补强 Network/Security/Resource 的成品化深度：Pod veth 真实 lab 演示、Security 更多 cred 生命周期规则/更多异常规则、Network QoS 与 Resource Control 同步限流、Resource 真实 container runtime / Kubernetes Pod target 现场 pass，以及 Redis/Nginx 多 workload quota profile 调参。当前 121/122 的真实 Podman container target、k3s Pod target、Network QoS Pod host veth 和真实 Pod Policy Engine 跨 Skill 联动已转为 pass；下一步重点是补 XDP on Pod host veth、更多 Security anomaly 和最终证据压缩。
 
 ## v3.1 提交前新增检查
 
@@ -173,4 +176,5 @@
 - [x] Podman/systemd cgroup v2 真实容器 cgroup 解析修正为 PID cgroup fallback，定位 `.../libpod-*.scope/container`。
 - [x] 121 最新 `scripts/final_quality_gate.sh` 通过 21/21 P0、100 轮 smoke、5 轮 doctor。
 - [x] 真实 Kubernetes Pod target 在 `kubectl + eulerpilot-lab` 可用时从 blocked 转 pass，121/122 已通过。
-- [ ] Network QoS/XDP 真实 Pod host veth 演示。
+- [x] Network QoS 真实 Pod host veth 演示 121/122 通过。
+- [ ] Network XDP 真实 Pod host veth 演示。

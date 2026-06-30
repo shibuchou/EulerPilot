@@ -19,6 +19,7 @@
 - `test_resource_control_real_pod_target.sh`：真实 Kubernetes lab Pod target 演示入口。`kubectl` 和 `eulerpilot-lab` demo Pod 可用时通过 `type: k8s_pod + namespace + pod_name` 验证 Pod cgroup 写入、审计和 rollback；默认只使用已有 Pod，只有显式设置 `EULERPILOT_ALLOW_K8S_CREATE=1` 才创建 demo Pod。121 当前结果：`results/resource_control/real-pod-target-20260630-k3s-121-v2`；122 当前结果：`results/resource_control/real-pod-target-20260630-k3s-122-v1`，两台均为 `result=pass`。
 - `test_resource_control_cpu_quota.sh`：验证正式 `resource_control` 的 CPU quota 效果指标。脚本先在 `cpu.max=max` 下采样 CPU hog 的 `cpu.stat usage_usec`，再让 Agent 写入 `cpu.max=10000 100000`，验证限额后单位时间 CPU 使用量下降、`nr_throttled/throttled_usec` 增长，并确认 rollback 恢复旧值。121 最新通过结果：`results/resource_control/cpu-quota-20260625-095030`；122 最新通过结果：`results/resource_control/cpu-quota-20260625-095114`。
 - `test_policy_engine_security_resource.sh`：验证正式 `policy_engine` 的 Security anomaly -> Resource Control 降级联动。脚本启用 `security_policy` 的 `burst_execve` anomaly 和 `policy_engine` enforce，触发异常后确认目标 cgroup 写入 `cpu.max=10000 100000` 与 `memory.high=1048576`，`policy_engine_events.jsonl` 包含 `cross_skill_response result=applied/restored`，`ActionJournal` 记录旧值和新值，Agent 停止后恢复 `cpu.max=max 100000` 与 `memory.high=max`。121 最新通过结果：`results/policy_engine/security-resource-20260629-163949`；122 最新通过结果：`results/policy_engine/security-resource-20260629-164135`。
+- `test_policy_engine_real_pod_network_resource.sh`：真实 Kubernetes Pod 版 Policy Engine 联动演示入口。脚本使用同一个 `target_ref=lab_pod(type=k8s_pod)`，在 `policy_engine` 内按动作类型解析为 Pod cgroup 和 Pod host veth，验证 `security_policy burst_connect -> policy_engine -> resource_control cpu.max/memory.high -> network_qos tc/tbf -> rollback`，并要求同一 `transaction_id` 串起四类事件和 ActionJournal。121 当前结果：`results/policy_engine/real-pod-security-network-resource-20260630-k3s-121-v1`；122 当前结果：`results/policy_engine/real-pod-security-network-resource-20260630-k3s-122-v1`。
 
 ## 后续测试
 
@@ -33,4 +34,9 @@ sudo tests/integration/test_policy_engine_security_network_resource.sh
 sudo tests/integration/test_policy_engine_security_network_resource.sh --repeat 10
 ```
 
-覆盖链路：`security_policy burst_connect -> policy_engine -> resource_control cpu.max/memory.high -> network_qos tc/tbf -> rollback`。脚本会创建 isolated veth 和 lab cgroup，验证 `transaction_id` 可串起 security、policy_engine、resource_control、network_qos 和 ActionJournal，并包含 Resource 成功但 Network 失败时的回滚测试。
+覆盖链路：`security_policy burst_connect -> policy_engine -> resource_control cpu.max/memory.high -> network_qos tc/tbf -> rollback`。脚本会创建 isolated veth 和 lab cgroup，验证 `transaction_id` 可串起 security、policy_engine、resource_control、network_qos 和 ActionJournal，并包含 Resource 成功但 Network 失败时的回滚测试。真实 Pod 版本使用：
+
+```bash
+sudo EULERPILOT_KUBECONFIG=/etc/rancher/k3s/k3s.yaml \
+  tests/integration/test_policy_engine_real_pod_network_resource.sh
+```

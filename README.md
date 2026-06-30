@@ -19,7 +19,7 @@ eBPF Observer
 
 ## 当前状态
 
-截至 `2026-06-29`，项目已经完成：
+截至 `2026-06-30`，项目已经完成：
 
 - `SP3 + cgroup v2` 主闭环
 - `OLK-6.6 + sched_ext` 正式对照线
@@ -54,8 +54,8 @@ eBPF Observer
   - 121/122 CPU+Memory+IO 集成测试通过，已验证 background pressure 下 `cpu.max=10000 100000`、`memory.high=1048576`、`io.max wbps=1048576`、`memory.events high` 与 `io.stat wbytes` 增长和 rollback 恢复
   - 121/122 `target_ref` 集成测试通过，已验证只对目标 cgroup 写 `cpu.max/memory.high`，非目标 cgroup 不被误改
   - 121/122 runtime target 集成测试通过，已验证 `container_id`、runtime container name 和 `k8s_pod` 名称解析后进入同一套 CPU/Memory 控制器写入、审计和 rollback
-  - 121/122 真实 runtime readiness 诊断已完成，当前两台机器均缺少 docker/podman/containerd/crictl/kubectl 和 Kubernetes lab，因此真实容器 / Pod target 现场实测被环境阻塞；已有诊断结果明确下一步需要安装或启动真实 runtime，或提供 `eulerpilot-lab` namespace 与 demo Pod
-  - 真实 runtime / Pod target 演示入口已补齐：`test_resource_control_real_runtime_target.sh` 可在 docker/podman + 本地镜像可用时启动真实容器并验证 `type: container` 的 `target_ref` 写入与 rollback；`test_resource_control_real_pod_target.sh` 可在 Kubernetes lab Pod 可用时验证 `type: k8s_pod` 的 Pod 名称解析、cgroup 写入、审计和 rollback。当前 121/122 运行结果均为环境 blocked，不会自动安装 runtime、拉镜像或创建集群资源
+  - 121/122 真实 runtime readiness 已刷新为 Podman runtime ready、k3s Kubernetes lab ready；Docker 18.09 daemon 因 cgroup v2 devices controller 问题不作为主验证 runtime
+  - 真实 runtime / Pod target 已转 pass：`test_resource_control_real_runtime_target.sh` 在 Podman + 本地 `localhost/eulerpilot-busybox:latest` 镜像下完成真实容器 cgroup 写入与 rollback；`test_resource_control_real_pod_target.sh` 在 `eulerpilot-lab/eulerpilot-rc-pod` 上完成 `type: k8s_pod` 的 Pod cgroup 写入、审计和 rollback
   - 121/122 CPU quota 效果测试通过，已用 `cpu.stat usage_usec/nr_throttled/throttled_usec` 证明 `cpu.max=10000 100000` 后单位时间 CPU 使用量约降至 10%，且 throttling 计数明显增加
   - 121/122 Redis + background CPU quota Compare/Sweep Benchmark 通过，已分离 `default_noisy`、`eulerpilot_no_quota` 与多档 `eulerpilot_quota` 阶段；同样 Agent 放置下，`quota_10` 在 121/122 的 background CPU ratio 分别为 `0.0247` / `0.0246`，并触发 throttling；sweep 结果显示 121 可尝试 `quota_05`，但 122 在 `0.85` RPS 保留阈值下无 profile 完全达标，因此跨机保守建议仍以 `quota_10` 作为 Redis 默认演示 profile，Redis GET/SET RPS 作为业务侧边界指标记录，不写成提升结论
   - 121/122 Nginx + background CPU quota Sweep Benchmark 通过，同样 Agent 放置下 `quota_05` 在两台机器均满足 `0.85` RPS 保留阈值，background CPU ratio 均为 `0.0125`；该结果作为 Nginx 场景的激进候选 profile 证据，不直接覆盖 Redis 的保守默认 profile
@@ -63,9 +63,9 @@ eBPF Observer
   - 121/122 Redis + Nginx 多资源组合 profile Benchmark 通过，验证 `cpu.max + cpuset.cpus + memory.low/high` 组合写入、审计和 rollback；两端均推荐 `multi_quota50`，121/122 业务最低保留率分别为 `0.7302` / `0.7939`，background ratio 分别为 `0.1257` / `0.1257`
 - Policy Engine 阶段 F 最小联动闭环：
   - 新增正式 `policy_engine` Skill，默认关闭，用于消费其他 Skill 的审计事件并下发可回滚处置动作
-  - 当前完成 `security_policy` 的 `burst_execve` anomaly 到 Resource Control cgroup 降级链路：匹配 `reports/events/security_policy.jsonl` 后，对显式 background cgroup 写入 `cpu.max=10000 100000` 与 `memory.high=1048576`
-  - 写入流程复用保守事务语义：读取旧值、白名单控制文件校验、写入、复读验证、`reports/events/policy_engine.jsonl` 审计、`ActionJournal` 记录和 Agent 退出恢复旧值
-  - 121/122 集成测试通过，已验证 anomaly 事件、`cross_skill_response result=applied/restored`、目标 cgroup 降级和 rollback
+  - 已完成三条联动：`burst_execve -> resource_control cgroup 降级`、`burst_connect -> lab cgroup + lab netdev`、`burst_connect -> real Pod cgroup + real Pod host veth`
+  - `policy_engine` 对 `type: k8s_pod` target 会按动作类型解析为 Pod cgroup 或 Pod host veth，事件保留 `target_type=k8s_pod`、`resolved_target_type=cgroup|netdev`、Pod namespace/name/UID 与统一 `transaction_id`
+  - 写入流程复用保守事务语义：读取旧值、白名单动作校验、写入、复读验证、`reports/events/policy_engine.jsonl` 审计、`ActionJournal` 记录和 Agent 退出恢复旧值；121/122 已验证三条链路、rollback 和跨 Skill 证据链
 
 当前最重要的候选结果目录为：
 
@@ -79,14 +79,16 @@ eBPF Observer
 - Resource Control IO 122：`/root/EulerPilot/results/resource_control/io-20260624-160208`
 - Resource Control target_ref 121：`/root/EulerPilot/results/resource_control/target-20260624-172139`
 - Resource Control target_ref 122：`/root/EulerPilot/results/resource_control/target-20260624-172916`
-- Resource Control runtime target 121：`/root/EulerPilot/results/resource_control/runtime-target-20260624-212403`
-- Resource Control runtime target 122：`/root/EulerPilot/results/resource_control/runtime-target-20260624-212529`
-- Resource Control runtime readiness 121：`/root/EulerPilot/results/resource_control/runtime-readiness-20260628-214925`
-- Resource Control runtime readiness 122：`/root/EulerPilot/results/resource_control/runtime-readiness-20260628-215010`
-- Resource Control real runtime target 121：`/root/EulerPilot/results/resource_control/real-runtime-target-20260628-215812`
-- Resource Control real runtime target 122：`/root/EulerPilot/results/resource_control/real-runtime-target-20260628-215854`
-- Resource Control real Pod target 121：`/root/EulerPilot/results/resource_control/real-pod-target-20260628-220051`
-- Resource Control real Pod target 122：`/root/EulerPilot/results/resource_control/real-pod-target-20260628-220106`
+- Resource Control runtime target 121：`/root/EulerPilot/results/resource_control/runtime-target-20260630-113310`
+- Resource Control runtime target 122：`/root/EulerPilot/results/resource_control/runtime-target-20260630-113354`
+- Resource Control runtime readiness 121：`/root/EulerPilot/results/resource_control/runtime-readiness-20260630-k3s-121`
+- Resource Control runtime readiness 122：`/root/EulerPilot/results/resource_control/runtime-readiness-20260630-k3s-122`
+- Resource Control real runtime target 121：`/root/EulerPilot/results/resource_control/real-runtime-target-20260630-podman-121-final2`
+- Resource Control real runtime target 122：`/root/EulerPilot/results/resource_control/real-runtime-target-20260630-podman-122-final2`
+- Resource Control real Pod target 121：`/root/EulerPilot/results/resource_control/real-pod-target-20260630-k3s-121-v2`
+- Resource Control real Pod target 122：`/root/EulerPilot/results/resource_control/real-pod-target-20260630-k3s-122-v1`
+- Network QoS real Pod host veth 121：`/root/EulerPilot/results/network_policy/real-pod-veth-qos-20260630-k3s-121-v2`
+- Network QoS real Pod host veth 122：`/root/EulerPilot/results/network_policy/real-pod-veth-qos-20260630-k3s-122-v1`
 - Resource Control CPU quota 121：`/root/EulerPilot/results/resource_control/cpu-quota-20260625-095030`
 - Resource Control CPU quota 122：`/root/EulerPilot/results/resource_control/cpu-quota-20260625-095114`
 - Resource Control Redis quota Compare Benchmark 121：`/root/EulerPilot/results/resource_control/redis-quota-compare-20260625-102426`
@@ -101,7 +103,11 @@ eBPF Observer
 - Resource Control Mixed Redis+Nginx Multi-Resource Benchmark 122：`/root/EulerPilot/results/resource_control/mixed-multi-resource-20260628-212132`
 - Policy Engine Security -> Resource Control 联动 121：`/root/EulerPilot/results/policy_engine/security-resource-20260629-163949`
 - Policy Engine Security -> Resource Control 联动 122：`/root/EulerPilot/results/policy_engine/security-resource-20260629-164135`
-- 121 最新质量门禁：`/root/EulerPilot/reports/final_quality_gate_20260629_policy_engine.log`
+- Policy Engine Security -> Network + Resource lab 联动 121：`/root/EulerPilot/results/policy_engine/security-network-resource-20260629-214952`
+- Policy Engine Security -> Network + Resource lab 联动 122：`/root/EulerPilot/results/policy_engine/security-network-resource-20260629-215950`
+- Policy Engine real Pod Security -> Network + Resource 联动 121：`/root/EulerPilot/results/policy_engine/real-pod-security-network-resource-20260630-k3s-121-v1`
+- Policy Engine real Pod Security -> Network + Resource 联动 122：`/root/EulerPilot/results/policy_engine/real-pod-security-network-resource-20260630-k3s-122-v1`
+- 121 最新质量门禁：`/root/EulerPilot/reports/final_quality_gate_20260630-v32-real-pod-policy-121.log`
 
 当前图表目录为：
 
@@ -142,6 +148,8 @@ eBPF Observer
 - Resource Control Mixed Redis+Nginx quota Sweep Benchmark：`/root/EulerPilot/tests/benchmark/test_resource_control_mixed_quota_sweep.sh`
 - Resource Control Mixed Redis+Nginx Multi-Resource Benchmark：`/root/EulerPilot/tests/benchmark/test_resource_control_mixed_multi_resource.sh`
 - Policy Engine Security -> Resource Control 联动测试：`/root/EulerPilot/tests/integration/test_policy_engine_security_resource.sh`
+- Policy Engine Security -> Network + Resource lab 联动测试：`/root/EulerPilot/tests/integration/test_policy_engine_security_network_resource.sh`
+- Policy Engine real Pod Security -> Network + Resource 联动测试：`/root/EulerPilot/tests/integration/test_policy_engine_real_pod_network_resource.sh`
 - 质量门禁：`/root/EulerPilot/scripts/final_quality_gate.sh`
 
 ### 最终候选结果

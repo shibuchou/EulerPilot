@@ -1,0 +1,9 @@
+agent:
+  name: EulerPilot
+  mode: active
+skills_config_path: /root/EulerPilot/results/policy_engine/real-pod-security-network-resource-20260630-k3s-122-v1/skills.yaml
+scheduler:
+  type: cgroup_v2
+exporter:
+  prometheus:
+    enabled: false

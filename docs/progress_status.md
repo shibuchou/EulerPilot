@@ -2,7 +2,7 @@
 
 ## v3.2 最新进展（2026-06-30）
 
-- v3.2 已把真实 container runtime、Kubernetes Pod cgroup target 和 Pod host veth QoS 从 blocked 推进到 121/122 双机 pass。
+- v3.2 已把真实 container runtime、Kubernetes Pod cgroup target、Pod host veth QoS 和真实 Pod Policy Engine 跨 Skill 联动从 blocked/待增强推进到 121/122 双机 pass。
 - 121/122 均安装 `docker-engine`、`podman`、`k3s` 与 `kubernetes-client`。Docker 18.09 daemon 在当前 cgroup v2 环境下因 `Devices cgroup isn't mounted` 不作为主验证 runtime；Podman 4.9.4 与 k3s v1.24.2 作为当前真实 target 验证入口。
 - 为避免依赖 Docker Hub，121/122 均使用 openEuler `busybox` 包和 glibc 依赖构造本地 `localhost/eulerpilot-busybox:latest` 镜像，并基于它构造本地 `docker.io/rancher/mirrored-pause:3.6` pause 镜像导入 k3s/containerd。
 - readiness 刷新后，121/122 均为 `container_runtime_ready=1`、`kubernetes_ready=1`：121 `results/resource_control/runtime-readiness-20260630-k3s-121`，122 `results/resource_control/runtime-readiness-20260630-k3s-122`。
@@ -10,8 +10,9 @@
 - 真实 Kubernetes Pod cgroup target 已在 121/122 通过：121 `results/resource_control/real-pod-target-20260630-k3s-121-v2`，122 `results/resource_control/real-pod-target-20260630-k3s-122-v1`；验证 `type: k8s_pod + namespace + pod_name` 解析真实 Pod cgroup，写入并恢复 `cpu.max=10000 100000` 与 `memory.high=1048576`。
 - 真实 Pod host veth QoS 已在 121/122 通过：121 `results/network_policy/real-pod-veth-qos-20260630-k3s-121-v2`，122 `results/network_policy/real-pod-veth-qos-20260630-k3s-122-v1`；验证 `network_qos` 解析 lab Pod host veth，安装 TC/TBF `1mbit`，本机到 Pod 流量命中，退出后无 qdisc 残留。
 - `network_qos` 安全边界已扩展：默认仍只允许 `ep-*`、`eulerpilot-*`、`lab-*`；仅当 target 为 `type: k8s_pod/pod` 且通过 `eulerpilot-lab` namespace resolver 时，允许 runtime 生成的非生产 host veth 名，并继续拒绝 `eth/ens/eno/wlan/bond/br/cni/flannel` 等生产或 CNI 主设备前缀。
-- 121 最新质量门禁通过：`reports/final_quality_gate_20260630-v32-k3s-121.log`，21/21 P0、100 轮 Agent smoke、5 轮 doctor 均通过。
-- v3.2 剩余争奖增强重点转为：将 v3.1 第二条 Policy Engine 联动从 lab cgroup/veth 扩展到真实 Pod target，并补 Network XDP on Pod host veth 演示。
+- 真实 Pod Policy Engine 联动已在 121/122 通过：121 `results/policy_engine/real-pod-security-network-resource-20260630-k3s-121-v1`，122 `results/policy_engine/real-pod-security-network-resource-20260630-k3s-122-v1`；验证同一个 `target_ref=lab_pod(type=k8s_pod)` 在 `policy_engine` 内解析为 Pod cgroup 与 Pod host veth，写入 `cpu.max=20000 100000`、`memory.high=134217728` 和 `tc/tbf 2mbit`，并用同一 `transaction_id` 串起 security、policy_engine、resource_control、network_qos 与 ActionJournal，Agent 退出后全部 rollback。
+- 121 最新质量门禁通过：`reports/final_quality_gate_20260630-v32-real-pod-policy-121.log`，21/21 P0、100 轮 Agent smoke、5 轮 doctor 均通过。
+- v3.2 剩余争奖增强重点转为：补 Network XDP on Pod host veth 演示、更多 Security anomaly 和最终答辩证据压缩。
 ## v3.1 最新进展（2026-06-29）
 
 - v3.1 主线已进入“跨 Skill 联动与争奖证据收口”：不切换 SP4 主平台，不把 K8s 真实验证作为本阶段完成条件，不继续堆大规模底层 hook。
@@ -37,17 +38,17 @@
 
 阶段 D：Resource Control，状态：`CPU + Memory + IO 自动闭环、target_ref/runtime target 闭环、Redis/Nginx 单项与混合 quota sweep、多资源组合 profile 证据已完成；真实 Podman container 与 k3s Pod target 已在 121/122 双机 pass`
 
-阶段 F：Kubernetes 与跨 Agent 联动，状态：`v3.1 第二条跨 Skill 联动已完成；v3.2 真实 k3s Pod target 与 Pod host veth QoS 双机 pass，真实 Pod 联动待增强`
+阶段 F：Kubernetes 与跨 Agent 联动，状态：`v3.1 第二条跨 Skill 联动已完成；v3.2 真实 k3s Pod target、Pod host veth QoS 与真实 Pod 联动均已双机 pass`
 
 目标：
 
 - 将 `network_policy_demo` 升级为正式 `network_policy` Skill。
 - 先完成 `cgroup/connect4` 的 `audit/enforce/status/rollback` 正式口径。
 - 再补 TC QoS 和 isolated-veth XDP，并继续扩展 Benchmark、多规则和 Pod veth。
-- `TargetResolver` 已从 netdev 与 `k8s_pod` 诊断入口推进到 container name/ID、Pod UID、runtime PID、netns 和 host veth/ifindex 真实解析；真实 k3s lab Pod 已接入 TC QoS 演示，后续重点是补 XDP Pod veth 与真实 Pod 跨 Skill 联动。
+- `TargetResolver` 已从 netdev 与 `k8s_pod` 诊断入口推进到 container name/ID、Pod UID、runtime PID、netns 和 host veth/ifindex 真实解析；真实 k3s lab Pod 已接入 TC QoS 和 Policy Engine 跨 Skill 联动演示，后续重点是补 XDP Pod veth。
 - 所有 Network 事件接入 `AuditBus`，所有挂载/卸载动作接入 `ActionJournal`。
 - Resource Control 已从 CPU-only 扩展到 CPU + Memory + IO：pressure 模式下写 `cpu.max`、`memory.high`、`io.weight` 与 `io.max`，latency 组使用 `memory.low` 保护，IO 默认解析根文件系统块设备，并通过事务化写入、`AuditBus`、`ActionJournal` 和 stop rollback 闭环验证；`target_ref` 已接入 `TargetResolver`，可将 profile 绑定到 cgroup/PID/container/Pod 解析出的真实 cgroup；121/122 已完成 `container_id`、runtime container name 和 `k8s_pod` 名称解析的 runtime target 集成测试，并用 `cpu.stat usage_usec/nr_throttled/throttled_usec` 证明 CPU quota 实际生效；Redis/Nginx quota Sweep Benchmark 已拆分 `default_noisy`、`eulerpilot_no_quota` 和多档 `eulerpilot_quota` 阶段，当前结论限定为同样 Agent 放置下后台限额效果显著，业务 RPS 只作为边界证据；Redis 跨机保守默认演示 profile 为 `quota_10`，Nginx 跨机激进候选为 `quota_05`；Redis+Nginx 混合业务 sweep 显示 121 推荐 `quota_20`、122 推荐 `quota_50`，混合场景必须同时看 Redis GET/SET 与 Nginx RPS 保留率，不能直接套用单 workload 最优 profile；真实 runtime readiness 已在安装 Podman 与 k3s 后刷新：121/122 均为 `container_runtime_ready=1`、`kubernetes_ready=1`；真实 Podman container target 已在两端转为 pass，能对 runtime 创建的容器 cgroup 写入并恢复 `cpu.max/memory.high`；真实 k3s Pod target 已在 121/122 通过，Pod cgroup 写入和 Pod host veth QoS 均具备双机证据。
-- Policy Engine 已完成两条跨 Skill 链路：第一条为 `burst_execve -> resource_control cgroup 降级`；第二条 v3.1 为 `burst_connect -> resource_control demo_cgroup + network_qos lab_netdev 限速`，并通过统一 `transaction_id`、`AuditBus`、`ActionJournal` 和 stop rollback 串起完整证据链。
+- Policy Engine 已完成三条跨 Skill 链路：第一条为 `burst_execve -> resource_control cgroup 降级`；第二条 v3.1 为 `burst_connect -> resource_control demo_cgroup + network_qos lab_netdev 限速`；第三条 v3.2 为 `burst_connect -> target_ref=lab_pod(type=k8s_pod) -> Pod cgroup CPU/Memory 降级 + Pod host veth TC/TBF 限速`，并通过统一 `transaction_id`、`AuditBus`、`ActionJournal` 和 stop rollback 串起完整证据链。
 
 ## 阶段完成情况
 
@@ -58,7 +59,7 @@
 | C. Security Agent | 九类 LSM + 四类 syscall tracing + runtime anomaly + 多目标 target_map + 规则级事件标识 + cgroup/pid/container/runtime/pod scope 最小闭环已完成 | 正式 `security_policy` 注册名已落地；YAML v2 target/rule、最多 8 项 BPF `target_map`、audit BPF attach 不阻断、enforce BPF LSM blocked hit、`lsm_socket_connect`、`lsm_bprm_check_security` exec_prefix、`lsm_file_open` file_access/path_prefix、`lsm_ptrace_traceme`、`lsm_capable`、`lsm_task_fix_setuid`、`lsm_task_fix_setgid`、`lsm_task_fix_setgroups`、`lsm_cred_prepare`、`burst_execve` 用户态异常规则、规则级事件、显式 cgroup/PID/container_id/runtime container/k8s_pod scope 和 rollback 无残留已在 121/122 通过；下一步转向 cred_transfer/cred_alloc_blank 等更多 cred 生命周期规则、更多异常行为规则和联动处置 | `docs/security_policy_skill.md`、`agent/skills/security_policy/README.md`、`tests/integration/test_security_policy.sh`、`demo/security_policy_demo/README.md` |
 | D. Resource Control | CPU + Memory + IO 自动闭环、target_ref/runtime target 闭环、Redis/Nginx 单项与混合 quota sweep、多资源组合 profile 证据已完成；真实 Podman container 与 k3s Pod target 双机 pass | 正式 `resource_control` 已读取 YAML v2 `controllers + targets + profiles`；cgroup v2 后端已支持 `cpu.weight/cpu.max/cpuset`、`memory.high/memory.low/memory.max` 与 `io.weight/io.max`；写入流程包含旧值读取、值校验、写入、复读验证、`AuditBus` 事件、`ActionJournal` 记录和 Agent stop rollback；121/122 已验证 CPU+Memory+IO、显式 cgroup target、fake runtime target、CPU quota、Redis/Nginx/mixed quota sweep 和 multi-resource profile；v3.2 已在两端使用 Podman 与本地 `localhost/eulerpilot-busybox:latest` 镜像完成真实 container cgroup 写入与 rollback，结果目录为 `results/resource_control/real-runtime-target-20260630-podman-121-final2` 与 `results/resource_control/real-runtime-target-20260630-podman-122-final2`；真实 k3s Pod target 已补齐，121/122 均通过 Pod cgroup 写入与 rollback | `docs/resource_control_skill.md`、`tests/integration/test_resource_control_real_runtime_target.sh`、`results/resource_control/runtime-readiness-20260630-podman-121`、`results/resource_control/runtime-readiness-20260630-podman-122`、`results/resource_control/runtime-target-20260630-113310`、`results/resource_control/runtime-target-20260630-113354`、`results/resource_control/real-runtime-target-20260630-podman-121-final2`、`results/resource_control/real-runtime-target-20260630-podman-122-final2` |
 | E. SP4/sched_ext 复核 | 未开始 | 等待 SP4/123 环境 | `docs/next_phase_plan_v2_1.md` |
-| F. Kubernetes 与跨 Agent 联动 | v3.1 第二条跨 Skill 联动已完成；v3.2 真实 k3s Pod target 与 Pod host veth QoS 双机 pass | `policy_engine` 已完成两条链路：`burst_execve -> resource_control` 第一条联动，以及 v3.1 `burst_connect -> resource_control + network_qos` 第二条联动；第二条链路区分 cgroup target 与 lab netdev target，支持统一 `transaction_id`、多动作失败回滚、ActionJournal、限速证据和 stop rollback；121 已通过 repeat 10，122 已通过核心集成测试；真实 k3s Pod target 和 Pod host veth QoS 已转 pass；下一步扩展到真实 Pod 跨 Skill 联动 | `docs/policy_engine_skill.md`、`agent/skills/policy_engine/README.md`、`tests/integration/test_policy_engine_security_resource.sh`、`tests/integration/test_policy_engine_security_network_resource.sh`、`results/policy_engine/security-resource-20260629-163949`、`results/policy_engine/security-resource-20260629-164135`、`results/policy_engine/security-network-resource-20260629-214952`、`results/policy_engine/security-network-resource-20260629-215950` |
+| F. Kubernetes 与跨 Agent 联动 | v3.1 第二条跨 Skill 联动已完成；v3.2 真实 k3s Pod target、Pod host veth QoS 与真实 Pod Policy Engine 联动双机 pass | `policy_engine` 已完成三条链路：`burst_execve -> resource_control` 第一条联动，v3.1 `burst_connect -> resource_control + network_qos` 第二条联动，以及 v3.2 `burst_connect -> real Pod cgroup + real Pod host veth` 第三条联动；第二条链路区分 cgroup target 与 lab netdev target，第三条链路使用同一个 `target_ref=lab_pod(type=k8s_pod)` 并按动作类型解析为 cgroup/netdev；支持统一 `transaction_id`、多动作失败回滚、ActionJournal、限速证据和 stop rollback；121 已通过 repeat 10，122 已通过核心集成测试，真实 Pod 跨 Skill 联动已在 121/122 pass；下一步补 XDP Pod veth | `docs/policy_engine_skill.md`、`agent/skills/policy_engine/README.md`、`tests/integration/test_policy_engine_security_resource.sh`、`tests/integration/test_policy_engine_security_network_resource.sh`、`results/policy_engine/security-resource-20260629-163949`、`results/policy_engine/security-resource-20260629-164135`、`results/policy_engine/security-network-resource-20260629-214952`、`results/policy_engine/security-network-resource-20260629-215950`、`results/policy_engine/real-pod-security-network-resource-20260630-k3s-121-v1`、`results/policy_engine/real-pod-security-network-resource-20260630-k3s-122-v1` |
 | G. Benchmark 与冻结材料 | 未开始 | 等待正式能力完成 | `docs/next_phase_plan_v2_1.md` |
 
 ## 当前已完成基线
@@ -90,13 +91,14 @@
 
 - 正式 `policy_engine` Skill 已注册，默认 `enabled: false`，只在明确配置中启用。
 - 第一版监听 `reports/events/security_policy.jsonl`，匹配 `skill=security_policy`、`operation=anomaly`、`rule_id=burst_execve`、`result=observed`。
-- 当前只支持 `type: cgroup` target，目标必须位于 `/sys/fs/cgroup/`；控制文件白名单为 `cpu.max`、`cpu.weight`、`memory.high`、`memory.low`、`memory.max`、`io.max`、`io.weight`。
+- 当前支持 `type: cgroup`、`type: netdev` 和 `type: k8s_pod/pod` target。cgroup 目标必须位于 `/sys/fs/cgroup/`；控制文件白名单为 `cpu.max`、`cpu.weight`、`memory.high`、`memory.low`、`memory.max`、`io.max`、`io.weight`。netdev 动作只允许 `network_qos.rate/tc.tbf.rate/tc.rate`，并受 lab netdev 或 lab Pod host veth 白名单保护；`type: k8s_pod` 会按动作文件解析为 Pod cgroup 或 Pod host veth。
 - `tests/integration/test_policy_engine_security_resource.sh` 已在 121/122 通过，验证链路为：`security_policy` 触发 `burst_execve` anomaly，`policy_engine` 对 `/sys/fs/cgroup/eulerpilot/policy-engine-background` 写入 `cpu.max=10000 100000` 和 `memory.high=1048576`。
 - `reports/events/policy_engine.jsonl` 已输出 `operation=cross_skill_response`、`result=applied/restored`、`source_skill=security_policy`、`source_rule=burst_execve`、`file=cpu.max|memory.high`。
 - `run/eulerpilot/action_journal.jsonl` 已记录旧值、新值和目标路径；Agent 退出后测试确认 `cpu.max` 恢复为 `max 100000`，`memory.high` 恢复为 `max`。
 - 121 结果目录：`results/policy_engine/security-resource-20260629-163949`。
 - 122 结果目录：`results/policy_engine/security-resource-20260629-164135`。
 - 两个结果目录已互相同步，任一验证机都能查看双机证据。
+- v3.2 真实 Pod 联动结果目录：121 `results/policy_engine/real-pod-security-network-resource-20260630-k3s-121-v1`，122 `results/policy_engine/real-pod-security-network-resource-20260630-k3s-122-v1`。
 
 ## 阶段 A 任务收口
 

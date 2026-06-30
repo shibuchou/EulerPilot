@@ -118,9 +118,11 @@ v3.2 计划：`docs/next_phase_plan_v3_2.md`
 - 122 real Pod cgroup target：`results/resource_control/real-pod-target-20260630-k3s-122-v1`
 - 121 real Pod host veth QoS：`results/network_policy/real-pod-veth-qos-20260630-k3s-121-v2`
 - 122 real Pod host veth QoS：`results/network_policy/real-pod-veth-qos-20260630-k3s-122-v1`
-- 121 v3.2 k3s 后质量门禁：`reports/final_quality_gate_20260630-v32-k3s-121.log`
+- 121 real Pod Policy Engine 联动：`results/policy_engine/real-pod-security-network-resource-20260630-k3s-121-v1`
+- 122 real Pod Policy Engine 联动：`results/policy_engine/real-pod-security-network-resource-20260630-k3s-122-v1`
+- 121 v3.2 k3s 后质量门禁：`reports/final_quality_gate_20260630-v32-real-pod-policy-121.log`
 
-当前结论：Docker/Podman/k3s/kubectl 包已安装；Docker 18.09 daemon 在当前 cgroup v2 环境下因 `Devices cgroup isn't mounted` 不作为主验证 runtime，Podman 4.9.4 与 k3s v1.24.2 可用。两台机器均已使用本地 `localhost/eulerpilot-busybox:latest` 镜像完成真实 container cgroup、真实 Kubernetes Pod cgroup、真实 Pod host veth QoS 写入/限速/rollback 验证。为避免 Docker Hub 依赖，k3s 使用本地构造的 `docker.io/rancher/mirrored-pause:3.6` pause 镜像。
+当前结论：Docker/Podman/k3s/kubectl 包已安装；Docker 18.09 daemon 在当前 cgroup v2 环境下因 `Devices cgroup isn't mounted` 不作为主验证 runtime，Podman 4.9.4 与 k3s v1.24.2 可用。两台机器均已使用本地 `localhost/eulerpilot-busybox:latest` 镜像完成真实 container cgroup、真实 Kubernetes Pod cgroup、真实 Pod host veth QoS 写入/限速/rollback 验证，并已把 `policy_engine` 第二条跨 Skill 联动扩展到真实 Pod cgroup + host veth。为避免 Docker Hub 依赖，k3s 使用本地构造的 `docker.io/rancher/mirrored-pause:3.6` pause 镜像。
 
 SP4 环境探测：
 
@@ -139,4 +141,4 @@ SP4 环境探测：
 ## 后置事项
 
 - SP4 验证不作为 v3.1 完成条件，准备文档为 `docs/sp4_validation_plan.md`，检查脚本为 `scripts/check_sp4_env.sh`。
-- 真实 Kubernetes Pod target 与 Pod host veth QoS 已转 pass；下一优先级是 XDP on Pod host veth，以及把 v3.1 Policy Engine 第二条联动扩展到真实 Pod target。
+- 真实 Kubernetes Pod target、Pod host veth QoS 与真实 Pod Policy Engine 跨 Skill 联动均已转 pass；下一优先级是 XDP on Pod host veth、更多异常规则和最终证据压缩。
