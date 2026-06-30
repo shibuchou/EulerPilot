@@ -1,0 +1,51 @@
+schema_version: 2
+skills:
+- name: resource_control
+  kind: runtime
+  enabled: true
+  config:
+    mode: enforce
+    controllers:
+      cpu:
+        max:
+          enabled: true
+      memory:
+        enabled: true
+        high:
+          enabled: true
+        low:
+          enabled: true
+        max:
+          enabled: true
+        reclaim:
+          enabled: false
+      io:
+        enabled: false
+        weight:
+          enabled: false
+        max:
+          enabled: false
+    targets:
+      pod_scope:
+        type: k8s_pod
+        namespace: eulerpilot-lab
+        pod_name: ep-web-demo
+        kubectl_path: /tmp/tmp.DJ8vnYIxSK/kubectl
+        cgroup_root: /sys/fs/cgroup/eulerpilot
+        lab_namespace: eulerpilot-lab
+        require_runtime_socket: false
+    profiles:
+      background:
+        target_ref: pod_scope
+        normal:
+          cpu_max: max
+          memory_high: max
+        pressure:
+          cpu_max: '10000 100000'
+          memory_high: '1048576'
+          memory_low: '0'
+          memory_max: max
+- name: psi_gate
+  kind: runtime
+  enabled: true
+  config: {}

@@ -1,0 +1,13 @@
+result=blocked
+reason=missing-docker-podman-or-isula
+host=localhost.localdomain
+date=2026-06-30T10:26:13+08:00
+kernel=6.6.0-olk66-scx
+runtime_kind=auto
+runtime_bin=missing
+runtime_image=busybox:latest
+container_name=eulerpilot-rc-real-runtime
+docker_command=
+podman_command=
+isula_command=
+next_action=install-or-start-docker-podman-or-isula-then-rerun-this-script

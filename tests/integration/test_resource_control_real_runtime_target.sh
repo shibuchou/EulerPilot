@@ -59,6 +59,7 @@ write_blocked() {
         printf 'container_name=%s\n' "$CONTAINER_NAME"
         printf 'docker_command=%s\n' "$(command_path docker || true)"
         printf 'podman_command=%s\n' "$(command_path podman || true)"
+        printf 'isula_command=%s\n' "$(command_path isula || true)"
         printf 'next_action=%s\n' "$next_action"
     } > "$RESULT_DIR/summary.txt"
 }
@@ -79,9 +80,9 @@ write_report() {
 
 ## Purpose
 
-This test is the real-runtime companion of \`test_resource_control_runtime_target.sh\`. It runs a real docker or podman container when a local runtime and image are available, configures \`resource_control.target_ref\` with \`type: container\`, and verifies that EulerPilot applies and restores \`cpu.max\` and \`memory.high\` on the resolved container cgroup.
+This test is the real-runtime companion of \`test_resource_control_runtime_target.sh\`. It runs a real docker, podman, or iSulad/isula container when a local runtime and image are available, configures \`resource_control.target_ref\` with \`type: container\`, and verifies that EulerPilot applies and restores \`cpu.max\` and \`memory.high\` on the resolved container cgroup.
 
-When docker/podman or the requested image is missing, the script exits with \`result=blocked\` and records the exact next action instead of silently installing packages or pulling images.
+When docker/podman/isula or the requested image is missing, the script exits with \`result=blocked\` and records the exact next action instead of silently installing packages or pulling images.
 
 ## Artifacts
 
@@ -153,6 +154,14 @@ select_runtime() {
         fi
     fi
 
+    if [ "$RUNTIME_KIND" = "isula" ] || [ "$RUNTIME_KIND" = "isulad" ] || [ "$RUNTIME_KIND" = "auto" ]; then
+        RUNTIME_BIN="$(command_path isula)"
+        if [ -n "$RUNTIME_BIN" ]; then
+            RUNTIME_KIND="isula"
+            return 0
+        fi
+    fi
+
     return 1
 }
 
@@ -161,7 +170,11 @@ runtime_ready() {
 }
 
 image_available() {
-    "$RUNTIME_BIN" image inspect "$RUNTIME_IMAGE" >/dev/null 2>"$RESULT_DIR/image_inspect.err"
+    if [ "$RUNTIME_KIND" = "isula" ]; then
+        "$RUNTIME_BIN" inspect "$RUNTIME_IMAGE" >/dev/null 2>"$RESULT_DIR/image_inspect.err"
+    else
+        "$RUNTIME_BIN" image inspect "$RUNTIME_IMAGE" >/dev/null 2>"$RESULT_DIR/image_inspect.err"
+    fi
 }
 
 container_cgroup_for_pid() {
@@ -227,6 +240,7 @@ skills:
         cgroup_root: /sys/fs/cgroup
         docker_path: $RUNTIME_BIN
         podman_path: $RUNTIME_BIN
+        isula_path: $RUNTIME_BIN
     profiles:
       background:
         target_ref: real_container
@@ -249,8 +263,8 @@ YAML
 [ "$(id -u)" -eq 0 ] || fail 'real runtime target test must run as root'
 
 if ! select_runtime; then
-    write_blocked "missing-docker-or-podman" \
-        "install-or-start-docker-or-podman-then-rerun-this-script"
+    write_blocked "missing-docker-podman-or-isula" \
+        "install-or-start-docker-podman-or-isula-then-rerun-this-script"
     write_report
     info "result directory: $RESULT_DIR"
     exit 0

@@ -1,5 +1,12 @@
 # EulerPilot 进度状态看板
 
+## v3.2 启动状态（2026-06-30）
+
+- v3.2 第一优先级固定为真实 runtime / Kubernetes target：把 `resource_control` 真实 container、真实 Pod、Network Pod veth 和 Policy Engine 真实 target 联动从 blocked 推进到 pass。
+- 121/122 最新 runtime readiness 均为 `result=blocked`、`reason=missing-container-runtime-and-kubernetes-lab`；121 结果目录为 `results/resource_control/runtime-readiness-20260630-1020-121`，122 结果目录为 `results/resource_control/runtime-readiness-20260630-1020-122`。
+- 真实 runtime target 当前均为 `missing-docker-podman-or-isula`，真实 Pod target 当前均为 `missing-kubectl`；这属于环境缺失，不作为 v3.1 功能失败。
+- 已开始补 openEuler 原生 runtime 兼容：`TargetResolver`、readiness 和真实 runtime target 脚本新增 `iSulad/isula` 入口；121/122 已通过构建、`test_target_resolver.sh`、fake runtime target 回归和 isula readiness blocked 输出验证。
+- SP4 检查脚本已在 121/122 运行，当前两台机器均 `sp4_detected=no`，SP4 仍不作为 v3.2 初始阻塞条件；121 在 iSulad/isula 接入后再次通过 v3.1 Policy Engine 核心链路和最终质量门禁。
 ## v3.1 最新进展（2026-06-29）
 
 - v3.1 主线已进入“跨 Skill 联动与争奖证据收口”：不切换 SP4 主平台，不把 K8s 真实验证作为本阶段完成条件，不继续堆大规模底层 hook。

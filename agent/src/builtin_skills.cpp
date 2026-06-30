@@ -299,6 +299,7 @@ ResourceControlTargetSpec parse_resource_control_target(const SkillSpec &spec,
     target.crictl_path = config_value_or(spec, prefix + "crictl_path", target.crictl_path);
     target.docker_path = config_value_or(spec, prefix + "docker_path", target.docker_path);
     target.podman_path = config_value_or(spec, prefix + "podman_path", target.podman_path);
+    target.isula_path = config_value_or(spec, prefix + "isula_path", target.isula_path);
     target.kubectl_path = config_value_or(spec, prefix + "kubectl_path", target.kubectl_path);
     target.lab_namespace = config_value_or(spec, prefix + "lab_namespace", target.lab_namespace);
     target.allow_non_lab_pods =
@@ -490,6 +491,8 @@ bool resolve_network_target_ifname(const SkillSpec &spec,
             config_value_or(spec, target_prefix + "docker_path", "docker");
         options.podman_path =
             config_value_or(spec, target_prefix + "podman_path", "podman");
+        options.isula_path =
+            config_value_or(spec, target_prefix + "isula_path", "isula");
         options.ip_path = config_value_or(spec, target_prefix + "ip_path", "ip");
         options.nsenter_path =
             config_value_or(spec, target_prefix + "nsenter_path", "nsenter");
@@ -521,6 +524,8 @@ bool resolve_network_target_ifname(const SkillSpec &spec,
             config_value_or(spec, target_prefix + "docker_path", "docker");
         target_spec.podman_path =
             config_value_or(spec, target_prefix + "podman_path", "podman");
+        target_spec.isula_path =
+            config_value_or(spec, target_prefix + "isula_path", "isula");
 
         TargetResolverOptions options;
         options.require_runtime_socket =
@@ -533,6 +538,7 @@ bool resolve_network_target_ifname(const SkillSpec &spec,
         options.crictl_path = target_spec.crictl_path;
         options.docker_path = target_spec.docker_path;
         options.podman_path = target_spec.podman_path;
+        options.isula_path = target_spec.isula_path;
         options.ip_path = config_value_or(spec, target_prefix + "ip_path", "ip");
         options.nsenter_path =
             config_value_or(spec, target_prefix + "nsenter_path", "nsenter");
@@ -2469,6 +2475,8 @@ public:
                         config_value_or(spec, target_prefix + "docker_path", "docker");
                     target_spec.podman_path =
                         config_value_or(spec, target_prefix + "podman_path", "podman");
+                    target_spec.isula_path =
+                        config_value_or(spec, target_prefix + "isula_path", "isula");
                     const auto target = resolve_container_target(target_spec);
                     if (!target.resolved) {
                         last_error_ = "security-policy-target-container-resolve-failed:" + target.reason;

@@ -1,0 +1,12 @@
+result=blocked
+reason=missing-kubectl
+host=localhost.localdomain
+date=2026-06-30T10:15:23+08:00
+kernel=6.6.0-132.0.0.111.oe2403sp3.x86_64
+kubectl_bin=kubectl
+kubectl_command=
+pod_namespace=eulerpilot-lab
+pod_name=eulerpilot-rc-pod
+pod_container_name=
+pod_image=busybox:latest
+next_action=install-kubectl-and-provide-eulerpilot-lab-demo-pod

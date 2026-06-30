@@ -1,0 +1,45 @@
+
+== OS ==
+NAME="openEuler"
+VERSION="24.03 (LTS-SP3)"
+ID="openEuler"
+VERSION_ID="24.03"
+PRETTY_NAME="openEuler 24.03 (LTS-SP3)"
+ANSI_COLOR="0;31"
+
+
+== Kernel ==
+Linux localhost.localdomain 6.6.0-132.0.0.111.oe2403sp3.x86_64 #1 SMP Mon Dec 29 23:07:38 CST 2025 x86_64 x86_64 x86_64 GNU/Linux
+
+== openEuler SP4 marker ==
+sp4_detected=no
+note=SP4 is not required for v3.1; this check is preparatory.
+
+== cgroup v2 ==
+cgroup2=mounted
+controllers=cpuset cpu io memory hugetlb pids rdma misc
+
+== BPF/BTF ==
+btf=yes
+bpftool v7.2.0
+using libbpf v1.2
+features: llvm, skeletons
+
+== Toolchain ==
+clang=/usr/bin/clang
+llc=/usr/bin/llc
+llvm-strip=/usr/bin/llvm-strip
+make=/usr/bin/make
+gcc=/usr/bin/gcc
+g++=/usr/bin/g++
+tc=/usr/sbin/tc
+ip=/usr/sbin/ip
+
+== Kernel config hints ==
+CONFIG_BPF=y
+CONFIG_BPF_SYSCALL=y
+CONFIG_DEBUG_INFO_BTF=y
+CONFIG_BPF_LSM=y
+
+== EulerPilot config smoke ==
+EulerPilot config valid: /root/EulerPilot/configs/agent.yaml

@@ -36,6 +36,7 @@ struct ResourceControlTargetSpec {
     std::string crictl_path = "crictl";
     std::string docker_path = "docker";
     std::string podman_path = "podman";
+    std::string isula_path = "isula";
     std::string kubectl_path = "kubectl";
     std::string lab_namespace = "eulerpilot-lab";
     int pid = -1;

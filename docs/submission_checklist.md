@@ -101,12 +101,12 @@
 - Resource Control target_ref 122：`results/resource_control/target-20260624-172916`
 - Resource Control runtime target 121：`results/resource_control/runtime-target-20260624-212403`
 - Resource Control runtime target 122：`results/resource_control/runtime-target-20260624-212529`
-- Resource Control runtime readiness 121：`results/resource_control/runtime-readiness-20260628-214925`
-- Resource Control runtime readiness 122：`results/resource_control/runtime-readiness-20260628-215010`
-- Resource Control real runtime target 121：`results/resource_control/real-runtime-target-20260628-215812`
-- Resource Control real runtime target 122：`results/resource_control/real-runtime-target-20260628-215854`
-- Resource Control real Pod target 121：`results/resource_control/real-pod-target-20260628-220051`
-- Resource Control real Pod target 122：`results/resource_control/real-pod-target-20260628-220106`
+- Resource Control runtime readiness 121：`results/resource_control/runtime-readiness-20260630-1020-121`
+- Resource Control runtime readiness 122：`results/resource_control/runtime-readiness-20260630-1020-122`
+- Resource Control real runtime target 121：`results/resource_control/real-runtime-target-20260630-1020-121`
+- Resource Control real runtime target 122：`results/resource_control/real-runtime-target-20260630-1020-122`
+- Resource Control real Pod target 121：`results/resource_control/real-pod-target-20260630-1020-121`
+- Resource Control real Pod target 122：`results/resource_control/real-pod-target-20260630-1020-122`
 - Resource Control CPU quota 121：`results/resource_control/cpu-quota-20260625-095030`
 - Resource Control CPU quota 122：`results/resource_control/cpu-quota-20260625-095114`
 - Resource Control Redis quota Compare Benchmark 121：`results/resource_control/redis-quota-compare-20260625-102426`
@@ -160,3 +160,10 @@
 - [x] `demo/demo_all_final.sh --mode live|offline|cleanup` 已完成脚本语法检查；live 依赖 root 环境。
 - [x] `scripts/check_sp4_env.sh` 已完成脚本语法检查，且不把 SP4 作为 v3.1 阻塞条件。
 - [x] 121/122/本地/GitHub 同步后生成最终一致性日志。
+
+## v3.2 iSulad/isula 与真实 target 检查
+
+- [ ] TargetResolver 支持 untime=isula / untime=isulad。
+- [ ] 	ests/integration/test_resource_control_runtime_readiness.sh 输出 isula_command/isulad_service/isulad_socket/isula_ps_rc。
+- [ ] 真实 runtime target 在 docker/podman/isula 任一 runtime 可用时从 blocked 转 pass。
+- [ ] 真实 Kubernetes Pod target 在 kubectl + eulerpilot-lab 可用时从 blocked 转 pass。

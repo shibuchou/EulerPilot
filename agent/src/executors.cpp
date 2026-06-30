@@ -661,6 +661,7 @@ TargetIdentity resolve_resource_target(const ResourceControlTargetSpec &spec) {
         container.crictl_path = spec.crictl_path;
         container.docker_path = spec.docker_path;
         container.podman_path = spec.podman_path;
+        container.isula_path = spec.isula_path;
         return resolve_container_target(container);
     }
 
@@ -682,6 +683,7 @@ TargetIdentity resolve_resource_target(const ResourceControlTargetSpec &spec) {
         options.crictl_path = spec.crictl_path;
         options.docker_path = spec.docker_path;
         options.podman_path = spec.podman_path;
+        options.isula_path = spec.isula_path;
         return resolve_k8s_pod_cgroup_target(pod, options);
     }
 

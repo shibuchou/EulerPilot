@@ -43,6 +43,7 @@ struct ContainerTargetSpec {
     std::string crictl_path = "crictl";
     std::string docker_path = "docker";
     std::string podman_path = "podman";
+    std::string isula_path = "isula";
 };
 
 struct TargetResolverOptions {
@@ -54,6 +55,7 @@ struct TargetResolverOptions {
     std::string crictl_path = "crictl";
     std::string docker_path = "docker";
     std::string podman_path = "podman";
+    std::string isula_path = "isula";
     std::string ip_path = "ip";
     std::string nsenter_path = "nsenter";
     std::vector<std::string> runtime_socket_paths = {
@@ -61,6 +63,8 @@ struct TargetResolverOptions {
         "/run/crio/crio.sock",
         "/var/run/cri-dockerd.sock",
         "/var/run/dockershim.sock",
+        "/var/run/isulad.sock",
+        "/run/isulad.sock",
     };
 };
 

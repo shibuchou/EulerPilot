@@ -96,6 +96,35 @@ check_env
 -> rollback/status
 ```
 
+
+## v3.2 启动证据
+
+v3.2 计划：`docs/next_phase_plan_v3_2.md`
+
+2026-06-30 真实 runtime/Kubernetes readiness 证据：
+
+- 121：`results/resource_control/runtime-readiness-20260630-1020-121`
+- 122：`results/resource_control/runtime-readiness-20260630-1020-122`
+- 121 real runtime：`results/resource_control/real-runtime-target-20260630-1020-121`
+- 122 real runtime：`results/resource_control/real-runtime-target-20260630-1020-122`
+- 121 real Pod：`results/resource_control/real-pod-target-20260630-1020-121`
+- 122 real Pod：`results/resource_control/real-pod-target-20260630-1020-122`
+- SP4 check 121：`results/resource_control/sp4-env-20260630-101422-121.log`
+- SP4 check 122：`results/resource_control/sp4-env-20260630-101422-122.log`
+
+当前结论：121/122 均仍缺 container runtime 与 Kubernetes lab；v3.2 第一阶段先补 openEuler iSulad/isula 兼容，再在用户允许安装或提供 runtime 后把 blocked 转为 pass。
+v3.2 iSulad/isula 回归证据：
+
+- 121 TargetResolver + fake runtime target：`results/resource_control/runtime-target-20260630-102314`
+- 122 TargetResolver + fake runtime target：`results/resource_control/runtime-target-20260630-102535`
+- 121 isula readiness：`results/resource_control/runtime-readiness-20260630-isula-check-121`
+- 122 isula readiness：`results/resource_control/runtime-readiness-20260630-isula-check-122`
+- 121 isula real runtime blocked：`results/resource_control/real-runtime-target-20260630-isula-check-121`
+- 122 isula real runtime blocked：`results/resource_control/real-runtime-target-20260630-isula-check-122`
+- 121 v3.1 回归：`results/policy_engine/security-network-resource-20260630-102629`
+
+121 在 iSulad/isula 代码接入后再次通过 `scripts/final_quality_gate.sh`，仍为 21/21 P0、100 轮 smoke、5 轮 doctor 通过。
+
 ## 后置事项
 
 - SP4 验证不作为 v3.1 完成条件，准备文档为 `docs/sp4_validation_plan.md`，检查脚本为 `scripts/check_sp4_env.sh`。

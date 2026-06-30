@@ -319,6 +319,19 @@ std::string runtime_container_id(const ContainerTargetSpec &spec,
         }
     }
 
+    if ((auto_runtime || spec.runtime == "isula" || spec.runtime == "isulad") &&
+        command_exists(spec.isula_path)) {
+        std::string id = resolve_container_id_with_command(
+            {spec.isula_path, "inspect", "-f", "{{.Id}}", spec.container_name});
+        if (!id.empty()) {
+            return id;
+        }
+        if (!auto_runtime) {
+            reason = "isula-container-id-not-found";
+            return {};
+        }
+    }
+
     reason = auto_runtime ? "container-runtime-id-not-found"
                           : "missing-runtime-command";
     return {};
@@ -543,6 +556,21 @@ int runtime_container_pid(const std::string &container_id,
         int rc = -1;
         const std::string output = capture_command_stdout(
             {options.podman_path, "inspect", "-f", "{{.State.Pid}}", container_id}, rc);
+        if (rc == 0) {
+            try {
+                const int pid = std::stoi(trim_copy(output));
+                if (pid > 0) {
+                    return pid;
+                }
+            } catch (...) {
+            }
+        }
+    }
+
+    if (command_exists(options.isula_path)) {
+        int rc = -1;
+        const std::string output = capture_command_stdout(
+            {options.isula_path, "inspect", "-f", "{{.State.Pid}}", container_id}, rc);
         if (rc == 0) {
             try {
                 const int pid = std::stoi(trim_copy(output));
@@ -830,6 +858,7 @@ TargetIdentity resolve_container_netdev_target(const ContainerTargetSpec &spec,
     runtime_options.crictl_path = spec.crictl_path;
     runtime_options.docker_path = spec.docker_path;
     runtime_options.podman_path = spec.podman_path;
+    runtime_options.isula_path = spec.isula_path;
 
     if (target.container_id.empty() && !spec.container_name.empty()) {
         std::string reason;

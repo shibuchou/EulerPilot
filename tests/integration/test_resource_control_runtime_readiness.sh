@@ -83,6 +83,7 @@ write_summary() {
         printf 'runtime_cgroup_count=%s\n' "$RUNTIME_CGROUP_COUNT"
         printf 'docker_command=%s\n' "$DOCKER_CMD"
         printf 'podman_command=%s\n' "$PODMAN_CMD"
+        printf 'isula_command=%s\n' "$ISULA_CMD"
         printf 'nerdctl_command=%s\n' "$NERDCTL_CMD"
         printf 'ctr_command=%s\n' "$CTR_CMD"
         printf 'crictl_command=%s\n' "$CRICTL_CMD"
@@ -90,11 +91,14 @@ write_summary() {
         printf 'docker_service=%s\n' "$DOCKER_SERVICE"
         printf 'containerd_service=%s\n' "$CONTAINERD_SERVICE"
         printf 'crio_service=%s\n' "$CRIO_SERVICE"
+        printf 'isulad_service=%s\n' "$ISULAD_SERVICE"
         printf 'docker_socket=%s\n' "$DOCKER_SOCKET"
         printf 'containerd_socket=%s\n' "$CONTAINERD_SOCKET"
         printf 'crio_socket=%s\n' "$CRIO_SOCKET"
+        printf 'isulad_socket=%s\n' "$ISULAD_SOCKET"
         printf 'docker_ps_rc=%s\n' "$DOCKER_PS_RC"
         printf 'podman_ps_rc=%s\n' "$PODMAN_PS_RC"
+        printf 'isula_ps_rc=%s\n' "$ISULA_PS_RC"
         printf 'crictl_ps_rc=%s\n' "$CRICTL_PS_RC"
         printf 'ctr_list_rc=%s\n' "$CTR_LIST_RC"
         printf 'kubectl_get_ns_rc=%s\n' "$KUBECTL_GET_NS_RC"
@@ -117,6 +121,7 @@ write_report() {
 |------|-------|
 | docker command | \`$DOCKER_CMD\` |
 | podman command | \`$PODMAN_CMD\` |
+| isula command | \`$ISULA_CMD\` |
 | nerdctl command | \`$NERDCTL_CMD\` |
 | ctr command | \`$CTR_CMD\` |
 | crictl command | \`$CRICTL_CMD\` |
@@ -124,27 +129,30 @@ write_report() {
 | docker service | \`$DOCKER_SERVICE\` |
 | containerd service | \`$CONTAINERD_SERVICE\` |
 | crio service | \`$CRIO_SERVICE\` |
+| isulad service | \`$ISULAD_SERVICE\` |
 | docker socket | \`$DOCKER_SOCKET\` |
 | containerd socket | \`$CONTAINERD_SOCKET\` |
 | crio socket | \`$CRIO_SOCKET\` |
+| isulad socket | \`$ISULAD_SOCKET\` |
 | runtime cgroup count | \`$RUNTIME_CGROUP_COUNT\` |
 
 ## Interpretation
 
-This diagnostic is intentionally read-only. It records whether the host can run a real container or Kubernetes target validation for \`resource_control.target_ref\`. When \`container_runtime_ready=0\`, the existing fake-runtime integration test remains the functional regression gate, and the next step is to install or start a real docker/podman/containerd/cri-o runtime or provide an \`eulerpilot-lab\` Kubernetes namespace with a demo Pod.
+This diagnostic is intentionally read-only. It records whether the host can run a real container or Kubernetes target validation for \`resource_control.target_ref\`. When \`container_runtime_ready=0\`, the existing fake-runtime integration test remains the functional regression gate, and the next step is to install or start a real docker/podman/iSulad/containerd/cri-o runtime or provide an \`eulerpilot-lab\` Kubernetes namespace with a demo Pod.
 
 ## Artifacts
 
 - \`summary.txt\`
 - \`commands.log\`
 - \`runtime_cgroups.txt\`
-- \`docker_ps.txt\`, \`podman_ps.txt\`, \`crictl_ps.txt\`, \`ctr_list.txt\`
+- \`docker_ps.txt\`, \`podman_ps.txt\`, \`isula_ps.txt\`, \`crictl_ps.txt\`, \`ctr_list.txt\`
 - \`kubectl_get_ns.txt\`
 EOF_REPORT
 }
 
 DOCKER_CMD="$(command_path docker)"
 PODMAN_CMD="$(command_path podman)"
+ISULA_CMD="$(command_path isula)"
 NERDCTL_CMD="$(command_path nerdctl)"
 CTR_CMD="$(command_path ctr)"
 CRICTL_CMD="$(command_path crictl)"
@@ -153,19 +161,25 @@ KUBECTL_CMD="$(command_path kubectl)"
 DOCKER_SERVICE="$(systemd_state docker)"
 CONTAINERD_SERVICE="$(systemd_state containerd)"
 CRIO_SERVICE="$(systemd_state crio)"
+ISULAD_SERVICE="$(systemd_state isulad)"
 
 DOCKER_SOCKET="$(socket_state /var/run/docker.sock)"
 CONTAINERD_SOCKET="$(socket_state /run/containerd/containerd.sock)"
 CRIO_SOCKET="$(socket_state /var/run/crio/crio.sock)"
+ISULAD_SOCKET="$(socket_state /var/run/isulad.sock)"
+if [ "$ISULAD_SOCKET" = "missing" ]; then
+    ISULAD_SOCKET="$(socket_state /run/isulad.sock)"
+fi
 
 find /sys/fs/cgroup -maxdepth 5 -type d \
-    \( -name '*docker*' -o -name '*kubepods*' -o -name '*containerd*' -o -name '*crio*' \) \
+    \( -name '*docker*' -o -name '*kubepods*' -o -name '*containerd*' -o -name '*crio*' -o -name '*isulad*' -o -name '*isula*' \) \
     2>/dev/null | sort > "$RESULT_DIR/runtime_cgroups.txt" || true
 RUNTIME_CGROUP_COUNT="$(line_count "$RESULT_DIR/runtime_cgroups.txt")"
 
 DOCKER_PS_RC="127"
 PODMAN_PS_RC="127"
 CRICTL_PS_RC="127"
+ISULA_PS_RC="127"
 CTR_LIST_RC="127"
 KUBECTL_GET_NS_RC="127"
 
@@ -174,6 +188,9 @@ if has_command docker; then
 fi
 if has_command podman; then
     PODMAN_PS_RC="$(run_probe podman_ps podman ps --format '{{.ID}} {{.Names}} {{.Status}}')"
+fi
+if has_command isula; then
+    ISULA_PS_RC="$(run_probe isula_ps isula ps -a)"
 fi
 if has_command crictl; then
     CRICTL_PS_RC="$(run_probe crictl_ps crictl ps -a)"
@@ -190,7 +207,8 @@ fi
 
 CONTAINER_RUNTIME_READY=0
 if [ "$DOCKER_PS_RC" = "0" ] || [ "$PODMAN_PS_RC" = "0" ] ||
-   [ "$CRICTL_PS_RC" = "0" ] || [ "$CTR_LIST_RC" = "0" ]; then
+   [ "$CRICTL_PS_RC" = "0" ] || [ "$CTR_LIST_RC" = "0" ] ||
+   [ "$ISULA_PS_RC" = "0" ]; then
     CONTAINER_RUNTIME_READY=1
 fi
 
@@ -205,7 +223,7 @@ REASON="runtime-ready"
 if [ "$CONTAINER_RUNTIME_READY" = "0" ] && [ "$KUBERNETES_READY" = "0" ]; then
     RESULT="blocked"
     REASON="missing-container-runtime-and-kubernetes-lab"
-    NEXT_ACTION="install-or-start-docker-podman-containerd-crio-or-provide-eulerpilot-lab-pod"
+    NEXT_ACTION="install-or-start-docker-podman-isulad-containerd-crio-or-provide-eulerpilot-lab-pod"
 elif [ "$CONTAINER_RUNTIME_READY" = "0" ]; then
     RESULT="partial"
     REASON="kubernetes-visible-but-container-runtime-unavailable"
