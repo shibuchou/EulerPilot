@@ -1,0 +1,61 @@
+schema_version: 2
+skills:
+- name: resource_control
+  kind: runtime
+  enabled: true
+  config: {}
+- name: psi_gate
+  kind: runtime
+  enabled: true
+  config: {}
+- name: security_policy
+  kind: runtime
+  enabled: true
+  config:
+    mode: audit
+    targets:
+      sensitive_file:
+        type: path
+        path: /etc/hostname
+      loopback_connect:
+        type: path
+        dst_ip: 127.0.0.1
+        dst_port: '65000'
+      capable_scope:
+        type: cgroup
+        cgroup_path: /sys/fs/cgroup/eulerpilot/security-anomaly-capability
+        capability: CAP_SYS_ADMIN
+    rules:
+      - name: observe_sensitive_file
+        hook: lsm_file_open
+        target_ref: sensitive_file
+        action: deny
+      - name: observe_loopback_connect
+        hook: lsm_socket_connect
+        target_ref: loopback_connect
+        action: deny
+      - name: observe_cap_sys_admin
+        hook: lsm_capable
+        target_ref: capable_scope
+        action: deny
+    anomaly_rules:
+      - name: burst_connect
+        type: rate
+        syscall: connect
+        threshold: 3
+        window_ms: 1000
+        severity: high
+      - name: burst_openat_sensitive
+        type: rate
+        syscall: openat
+        path_prefix: /etc
+        threshold: 3
+        window_ms: 2000
+        severity: medium
+      - name: capability_abuse
+        type: rate
+        syscall: capability
+        capability: CAP_SYS_ADMIN
+        threshold: 2
+        window_ms: 2000
+        severity: high

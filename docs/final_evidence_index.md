@@ -1,6 +1,6 @@
 # EulerPilot 最终证据索引
 
-更新时间：`2026-06-30`
+更新时间：`2026-07-03`
 
 本文作为答辩和最终提交前的证据入口，集中索引 EulerPilot 当前已经具备的设计文档、测试脚本、结果目录和演示材料。日期快照文档不反复覆盖；滚动进度以 `docs/progress_status.md` 为准。
 
@@ -40,6 +40,12 @@ security_policy burst_connect anomaly
 - `configs/policy_engine_security_network_resource.yaml`
 - `configs/policy_engine_security_network_resource.skills.yaml`
 
+服务联动 Security anomaly 证据：
+
+- 121：`results/security_policy/anomaly-rules-20260703-121-v4`
+- 122：`results/security_policy/anomaly-rules-20260703-122-v2`
+- 关键文件：`security_policy_events.anomaly-rules.jsonl`、`anomaly_event_summary.txt`、`summary.txt`、`report.md`
+
 验证入口：
 
 ```bash
@@ -47,7 +53,7 @@ sudo tests/integration/test_policy_engine_security_network_resource.sh
 sudo tests/integration/test_policy_engine_security_network_resource.sh --repeat 10
 ```
 
-121 已通过结果目录：
+双机已通过结果目录：
 
 - 121：`results/policy_engine/security-network-resource-20260629-214952`
 - 122：`results/policy_engine/security-network-resource-20260629-215950`

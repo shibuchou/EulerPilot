@@ -1,0 +1,2 @@
+=== SecurityPolicy anomaly rules integration test ===
+PASS: security_policy observes burst_connect, burst_openat_sensitive and capability_abuse anomalies

@@ -19,7 +19,7 @@ eBPF Observer
 
 ## 当前状态
 
-截至 `2026-06-30`，项目已经完成：
+截至 `2026-07-03`，项目已经完成：
 
 - `SP3 + cgroup v2` 主闭环
 - `OLK-6.6 + sched_ext` 正式对照线
@@ -41,7 +41,7 @@ eBPF Observer
   - capability policy：`lsm/capable`，已验证仅目标 cgroup 内 `CAP_SYS_ADMIN` 被拒绝
   - credential policy：`lsm/task_fix_setuid`、`lsm/task_fix_setgid`、`lsm/task_fix_setgroups` 与 `lsm/cred_prepare`，已验证仅目标 cgroup 内 setuid/setgid/setgroups credential 转换和 cred_prepare credential preparation 被拒绝，并输出 `uid/euid/suid/setuid_flags`、`gid/egid/sgid/setgid_flags`、`group_count/old_group_count`、`cred_gfp`
   - syscall tracing：`execve/openat/connect/ptrace` audit 观测
-  - runtime anomaly：`anomaly_rules` 已支持 `burst_execve` 速率规则，基于 `sys_enter_execve` ringbuf 事件在用户态聚合并输出 `operation=anomaly`
+  - runtime anomaly：`anomaly_rules` 已支持 `burst_execve`、`burst_connect`、`burst_openat_sensitive` 与 `capability_abuse` 速率规则，基于 syscall/LSM ringbuf 事件在用户态聚合并输出 `operation=anomaly`
   - target scope：path、path_prefix、file_access、exec_path、exec_prefix、socket endpoint、ptrace/capability/setuid/setgid/setgroups/cred_prepare cgroup scope、显式 cgroup、PID 自动解析、container_id cgroup tree 解析、container runtime name 解析、Kubernetes Pod 名称解析
   - 121/122 集成测试和 121 质量门禁通过
 - Resource Control 阶段 D CPU+Memory+IO + target_ref 闭环：
@@ -73,6 +73,8 @@ eBPF Observer
 - Nginx：`/root/EulerPilot/results/final/nginx-scx-compare-20260612-194018`
 - Security scoped credential/cred_prepare 121：`/root/EulerPilot/results/security_policy/integration-20260624-114838`
 - Security scoped credential/cred_prepare 122：`/root/EulerPilot/results/security_policy/integration-20260624-115440`
+- Security 服务联动 anomaly 121：`/root/EulerPilot/results/security_policy/anomaly-rules-20260703-121-v4`
+- Security 服务联动 anomaly 122：`/root/EulerPilot/results/security_policy/anomaly-rules-20260703-122-v2`
 - Resource Control CPU+Memory 回归 121：`/root/EulerPilot/results/resource_control/integration-20260624-160317`
 - Resource Control CPU+Memory 回归 122：`/root/EulerPilot/results/resource_control/integration-20260624-160349`
 - Resource Control IO 121：`/root/EulerPilot/results/resource_control/io-20260624-160008`
@@ -137,6 +139,7 @@ eBPF Observer
 - Network XDP 集成测试：`/root/EulerPilot/tests/integration/test_network_xdp.sh`
 - Network XDP 真实 Pod host veth 演示入口：`/root/EulerPilot/tests/integration/test_network_xdp_real_pod_veth.sh`
 - Security Policy 集成测试：`/root/EulerPilot/tests/integration/test_security_policy.sh`
+- Security anomaly 规则集成测试：`/root/EulerPilot/tests/integration/test_security_policy_anomaly_rules.sh`
 - Resource Control 集成测试：`/root/EulerPilot/tests/integration/test_resource_control.sh`
 - Resource Control IO 集成测试：`/root/EulerPilot/tests/integration/test_resource_control_io.sh`
 - Resource Control target_ref 集成测试：`/root/EulerPilot/tests/integration/test_resource_control_target.sh`

@@ -1,6 +1,6 @@
 # EulerPilot 提交清单
 
-更新时间：`2026-06-30`
+更新时间：`2026-07-03`
 
 ## 已完成
 
@@ -31,6 +31,7 @@
 - [x] `security_policy` `lsm_bprm_check_security` 通过 `exec_prefix/cgroup_id` 阻断目标 cgroup 内可写目录前缀执行，scope 外允许，事件携带 `exec_prefix` 证据
 - [x] `security_policy` `lsm_file_open` 支持 `file_access=write` 与 `path_prefix + file_access=write`，验证目标 cgroup 内读放行、写阻断
 - [x] `security_policy` `lsm_ptrace_traceme`、`lsm_capable`、`lsm_task_fix_setuid`、`lsm_task_fix_setgid`、`lsm_task_fix_setgroups` 与 `lsm_cred_prepare` 均要求 scoped cgroup target，分别验证 ptrace、CAP_SYS_ADMIN、setuid、setgid、setgroups credential 转换与 cred_prepare credential preparation 阻断
+- [x] `security_policy` 服务联动 anomaly 121/122 pass：`burst_connect`、`burst_openat_sensitive`、`capability_abuse` 均输出 `operation=anomaly/result=observed`，结果目录为 `results/security_policy/anomaly-rules-20260703-121-v4` 与 `results/security_policy/anomaly-rules-20260703-122-v2`
 - [x] `resource_control` CPU+Memory+IO 自动闭环 121/122 验证：YAML v2 `controllers + profiles`、`cpu.max`、`memory.high/low/max`、`io.weight/io.max`、事务化写入、`AuditBus`、`ActionJournal` 和 Agent stop rollback
 - [x] `resource_control` `target_ref` cgroup 最小闭环 121/122 验证：`targets + profiles.<name>.target_ref`、目标 cgroup 限制、非目标 cgroup 不误改、审计和 Agent JSONL 携带 `target_ref`
 - [x] `resource_control` runtime target 解析闭环 121/122 验证：`type: container_id/container/k8s_pod` 均能解析到目标 cgroup，并复用 CPU/Memory 控制器写入、审计和 rollback
@@ -128,6 +129,8 @@
 - Policy Engine Security -> Resource Control 联动 122：`results/policy_engine/security-resource-20260629-164135`
 - Policy Engine real Pod Security -> Network + Resource 联动 121：`results/policy_engine/real-pod-security-network-resource-20260630-k3s-121-v1`
 - Policy Engine real Pod Security -> Network + Resource 联动 122：`results/policy_engine/real-pod-security-network-resource-20260630-k3s-122-v1`
+- Security 服务联动 anomaly 121：`results/security_policy/anomaly-rules-20260703-121-v4`
+- Security 服务联动 anomaly 122：`results/security_policy/anomaly-rules-20260703-122-v2`
 
 ## 当前核心文档
 
@@ -151,7 +154,7 @@
 
 ## 当前结论
 
-项目仍处于争奖增强阶段，不应停留在“最终材料整理”。当前已完成 Security anomaly -> Policy Engine -> Resource Control 降级的第一条跨 Skill 链路。下一步重点是补强 Network/Security/Resource 的成品化深度：Pod veth 真实 lab 演示、Security 更多 cred 生命周期规则/更多异常规则、Network QoS 与 Resource Control 同步限流、Resource 真实 container runtime / Kubernetes Pod target 现场 pass，以及 Redis/Nginx 多 workload quota profile 调参。当前 121/122 的真实 Podman container target、k3s Pod target、Network QoS Pod host veth、Network XDP Pod host veth 和真实 Pod Policy Engine 跨 Skill 联动已转为 pass；下一步重点是更多 Security anomaly、Network XDP 更多报文特征和最终证据压缩。
+项目仍处于争奖增强阶段，不应停留在“最终材料整理”。当前已完成 Security anomaly -> Policy Engine -> Resource Control 降级、Security anomaly -> Policy Engine -> Network+Resource 联动，以及真实 Pod 版 Network+Resource 联动。当前 121/122 的真实 Podman container target、k3s Pod target、Network QoS Pod host veth、Network XDP Pod host veth、真实 Pod Policy Engine 跨 Skill 联动和服务联动 Security anomaly 规则均已转为 pass；下一步重点是 Network XDP 更多报文特征、Security 更细 cred 生命周期规则和最终证据压缩。
 
 ## v3.1 提交前新增检查
 
@@ -177,4 +180,5 @@
 - [x] 121 最新 `scripts/final_quality_gate.sh` 通过 21/21 P0、100 轮 smoke、5 轮 doctor。
 - [x] 真实 Kubernetes Pod target 在 `kubectl + eulerpilot-lab` 可用时从 blocked 转 pass，121/122 已通过。
 - [x] Network QoS 真实 Pod host veth 演示 121/122 通过。
-- [ ] Network XDP 真实 Pod host veth 演示。
+- [x] Network XDP 真实 Pod host veth 演示 121/122 通过。
+- [x] Security 服务联动 anomaly 规则 121/122 通过。

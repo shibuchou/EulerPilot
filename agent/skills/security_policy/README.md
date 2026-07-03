@@ -24,7 +24,7 @@
 
 - BPF 程序：`bpf/security_policy_demo.bpf.c`
 - Hook：`lsm/file_open`、`lsm/bprm_check_security`、`lsm/socket_connect`、`lsm/ptrace_traceme`、`lsm/capable`、`lsm/task_fix_setuid`、`lsm/task_fix_setgid`、`lsm/task_fix_setgroups`、`lsm/cred_prepare`，以及 `tracepoint/syscalls/sys_enter_execve`、`tracepoint/syscalls/sys_enter_openat`、`tracepoint/syscalls/sys_enter_connect`、`tracepoint/syscalls/sys_enter_ptrace`
-- 行为：`lsm/file_open` 可在 enforce 模式拒绝 `target_map` 中的目标文件，并支持 `file_access=any/read/write`；`path_prefix + file_access=write` 可表达只读目录保护；`lsm/bprm_check_security` 可拒绝精确执行路径或字面执行前缀；`lsm/socket_connect` 可按 `dst_ip + dst_port + cgroup_id` 拒绝 scoped IPv4 connect；`lsm/ptrace_traceme`、`lsm/capable`、`lsm/task_fix_setuid`、`lsm/task_fix_setgid`、`lsm/task_fix_setgroups` 与 `lsm/cred_prepare` 都只允许 scoped cgroup target，分别验证 ptrace、CAP_SYS_ADMIN、setuid、setgid、setgroups 与 cred_prepare 阻断；credential 事件分别输出 `uid/euid/suid/setuid_flags`、`gid/egid/sgid/setgid_flags`、`group_count/old_group_count`、`uid/euid/suid/gid/egid/sgid/group_count/old_group_count/cred_gfp`；四类 syscall 当前只做 audit 观测；`anomaly_rules` 当前支持 `burst_execve` 速率规则。
+- 行为：`lsm/file_open` 可在 enforce 模式拒绝 `target_map` 中的目标文件，并支持 `file_access=any/read/write`；`path_prefix + file_access=write` 可表达只读目录保护；`lsm/bprm_check_security` 可拒绝精确执行路径或字面执行前缀；`lsm/socket_connect` 可按 `dst_ip + dst_port + cgroup_id` 拒绝 scoped IPv4 connect；`lsm/ptrace_traceme`、`lsm/capable`、`lsm/task_fix_setuid`、`lsm/task_fix_setgid`、`lsm/task_fix_setgroups` 与 `lsm/cred_prepare` 都只允许 scoped cgroup target，分别验证 ptrace、CAP_SYS_ADMIN、setuid、setgid、setgroups 与 cred_prepare 阻断；credential 事件分别输出 `uid/euid/suid/setuid_flags`、`gid/egid/sgid/setgid_flags`、`group_count/old_group_count`、`uid/euid/suid/gid/egid/sgid/group_count/old_group_count/cred_gfp`；四类 syscall 当前只做 audit 观测；`anomaly_rules` 当前支持 `burst_execve`、`burst_connect`、`burst_openat_sensitive` 与 `capability_abuse` 速率规则。
 - 用户态：`SecurityPolicyDemoSkill` 同时服务 `security_policy` 和 `security_policy_demo`；正式名读取 YAML v2 `targets + rules + target_ref`，并从最多 8 条规则引用的 `targets.<target_ref>` 解析 path、path_prefix、file_access、exec_path、exec_prefix、dst_ip、dst_port、capability、cgroup_path、PID、container_id、container name 和 k8s_pod 后填充 BPF `target_map`；`lsm_ptrace_traceme`、`lsm_capable`、`lsm_task_fix_setuid`、`lsm_task_fix_setgid`、`lsm_task_fix_setgroups` 与 `lsm_cred_prepare` 要求 target 已解析出 cgroup scope；LSM blocked 事件会根据 BPF `target_index` 映射回单条 YAML `rule_id/target_ref`，并输出 cgroup、endpoint、exec_prefix、file_access、capability 和 credential 证据。
 - audit：attach BPF LSM + 四类 syscall tracepoint，但通过 `policy_map.enforce=0` 保持允许，命中后通过 ringbuf 写入 `reports/events/security_policy.jsonl`
 - enforce：通过 libbpf 打开 `/root/EulerPilot/build/security_policy_demo.bpf.o` 并 attach LSM + tracepoint；当前九类 LSM 会对 `target_map` 中最多 8 组 path/path_prefix/file_access/exec/exec_prefix/socket/ptrace/capability/setuid/setgid/setgroups/cred_prepare/cgroup scope 目标返回拒绝；未配置 scope 时兼容路径匹配，配置 `cgroup_path`、`type: pid`、`type: container_id`、`type: container` 或 `type: k8s_pod` 后只对解析出的目标 cgroup 生效；ptrace、capable、setuid、setgid、setgroups 与 cred_prepare 规则必须带 scope。
@@ -32,7 +32,7 @@
 
 当前尚未完成：
 
-- cred_transfer/cred_alloc_blank 等更多 cred 生命周期规则、更多 LSM hook、更多异常规则和进程过滤
+- cred_transfer/cred_alloc_blank 等更多 cred 生命周期规则、更多 LSM hook、异常策略组合和进程过滤
 - syscall 事件与 Pod/container target 联动处置
 
 ## 参考复用
@@ -45,9 +45,12 @@
 
 ```bash
 sudo tests/integration/test_security_policy.sh
+sudo tests/integration/test_security_policy_anomaly_rules.sh
 ```
 
-脚本会构建 Agent 和 demo BPF 对象，先启动正式 `security_policy` 的 audit 模式，确认目标文件和 demo 可执行文件不被阻断，且写入 `lsm_file_open`、`lsm_bprm_check_security`、`sys_enter_execve`、`sys_enter_openat`、`sys_enter_connect`、`sys_enter_ptrace` 等 BPF ringbuf hit 事件；随后启用 `burst_execve` 异常规则；再启动 enforce 模式，验证目标文件、demo 可执行文件、scoped writable-dir exec_prefix、scoped file_access 写打开、scoped path_prefix 只读目录写打开、scoped IPv4 socket connect、scoped `PTRACE_TRACEME`、scoped `CAP_SYS_ADMIN`、scoped setuid/setgid/setgroups credential 转换和 scoped cred_prepare credential preparation 在策略生效期间被拒绝并写入 blocked hit 事件，并在 Agent 退出后恢复可访问。脚本还会创建动态 `/tmp` 目标和临时 cgroup，验证显式 cgroup、PID、container_id、runtime container name 和 k8s_pod target scope。当前集成脚本仍以 `/root/EulerPilot` 为基准；121 最新通过结果为 `results/security_policy/integration-20260624-114838`，122 最新通过结果为 `results/security_policy/integration-20260624-115440`。
+基础脚本会构建 Agent 和 demo BPF 对象，先启动正式 `security_policy` 的 audit 模式，确认目标文件和 demo 可执行文件不被阻断，且写入 `lsm_file_open`、`lsm_bprm_check_security`、`sys_enter_execve`、`sys_enter_openat`、`sys_enter_connect`、`sys_enter_ptrace` 等 BPF ringbuf hit 事件；随后启用 `burst_execve` 异常规则；再启动 enforce 模式，验证目标文件、demo 可执行文件、scoped writable-dir exec_prefix、scoped file_access 写打开、scoped path_prefix 只读目录写打开、scoped IPv4 socket connect、scoped `PTRACE_TRACEME`、scoped `CAP_SYS_ADMIN`、scoped setuid/setgid/setgroups credential 转换和 scoped cred_prepare credential preparation 在策略生效期间被拒绝并写入 blocked hit 事件，并在 Agent 退出后恢复可访问。脚本还会创建动态 `/tmp` 目标和临时 cgroup，验证显式 cgroup、PID、container_id、runtime container name 和 k8s_pod target scope。当前集成脚本仍以 `/root/EulerPilot` 为基准；121 最新通过结果为 `results/security_policy/integration-20260624-114838`，122 最新通过结果为 `results/security_policy/integration-20260624-115440`。
+
+服务联动 anomaly 脚本会单独验证 `burst_connect`、`burst_openat_sensitive` 和 `capability_abuse`，121 最新通过结果为 `results/security_policy/anomaly-rules-20260703-121-v4`，122 最新通过结果为 `results/security_policy/anomaly-rules-20260703-122-v2`。
 
 更完整的设计、验收口径和下一步清单见 `docs/security_policy_skill.md`。
 

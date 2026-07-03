@@ -1,0 +1,8 @@
+result=pass
+reason=service-linkage-anomaly-rules-observed
+host=localhost.localdomain
+date=2026-07-03T09:14:48+08:00
+kernel=6.6.0-olk66-scx
+rules=burst_connect,burst_openat_sensitive,capability_abuse
+cgroup_path=/sys/fs/cgroup/eulerpilot/security-anomaly-capability
+event_file=security_policy_events.anomaly-rules.jsonl
