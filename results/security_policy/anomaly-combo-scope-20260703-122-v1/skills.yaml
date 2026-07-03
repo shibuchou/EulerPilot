@@ -1,0 +1,35 @@
+schema_version: 2
+skills:
+- name: resource_control
+  kind: runtime
+  enabled: true
+  config: {}
+- name: psi_gate
+  kind: runtime
+  enabled: true
+  config: {}
+- name: security_policy
+  kind: runtime
+  enabled: true
+  config:
+    mode: audit
+    targets:
+      scoped_python_etc:
+        type: path
+        path_prefix: /etc
+        cgroup_path: /sys/fs/cgroup/eulerpilot/security-anomaly-combo-scope
+    rules:
+      - name: observe_scoped_python_etc
+        hook: lsm_file_open
+        target_ref: scoped_python_etc
+        action: deny
+    anomaly_rules:
+      - name: burst_openat_python_scoped_etc
+        type: rate
+        syscall: openat
+        target_ref: scoped_python_etc
+        path_prefix: /etc
+        comm_prefix: python
+        threshold: 3
+        window_ms: 2000
+        severity: high

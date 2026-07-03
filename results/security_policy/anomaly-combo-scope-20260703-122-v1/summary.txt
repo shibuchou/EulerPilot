@@ -1,0 +1,10 @@
+result=pass
+reason=security-anomaly-combo-scope-observed
+host=localhost.localdomain
+date=2026-07-03T16:23:53+08:00
+kernel=6.6.0-olk66-scx
+rule=burst_openat_python_scoped_etc
+target_ref=scoped_python_etc
+cgroup_path=/sys/fs/cgroup/eulerpilot/security-anomaly-combo-scope
+filters=syscall=openat,path_prefix=/etc,comm_prefix=python,target_ref=scoped_python_etc
+event_file=security_policy_events.anomaly-combo-scope.jsonl

@@ -1,8 +1,23 @@
 {
-  "generated_at": "2026-07-03T16:13:24+08:00",
+  "generated_at": "2026-07-03T16:33:29+08:00",
   "manifest_path": "configs/final_evidence_manifest.json",
   "manifest_title": "EulerPilot final evidence manifest",
-  "git_status_short": [],
+  "git_status_short": [
+    " M README.md",
+    " M agent/skills/security_policy/README.md",
+    " M configs/final_evidence_manifest.json",
+    " M docs/final_evidence_index.md",
+    " M docs/final_security_audit.md",
+    " M docs/next_phase_plan_v3_2.md",
+    " M docs/policy_engine_skill.md",
+    " M docs/progress_status.md",
+    " M docs/security_policy_skill.md",
+    " M docs/submission_checklist.md",
+    " M scripts/README.md",
+    " M tests/integration/README.md",
+    "?? results/security_policy/anomaly-combo-scope-20260703-121-v1/",
+    "?? results/security_policy/anomaly-combo-scope-20260703-122-v1/"
+  ],
   "entries": [
     {
       "category": "quality_gate",
@@ -650,6 +665,88 @@
           "path": "results/security_policy/anomaly-process-filter-20260703-122-v1/report.md",
           "exists": true,
           "bytes": 673
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "category": "security",
+      "name": "anomaly combo scope 121",
+      "host": "121",
+      "path": "results/security_policy/anomaly-combo-scope-20260703-121-v1",
+      "kind": "result_dir",
+      "required": true,
+      "exists": true,
+      "status": "pass",
+      "notes": "target_ref plus path_prefix plus comm_prefix scoped openat anomaly evidence.",
+      "summary": {
+        "result": "pass",
+        "reason": "security-anomaly-combo-scope-observed",
+        "host": "localhost.localdomain",
+        "date": "2026-07-03T16:23:53+08:00",
+        "kernel": "6.6.0-132.0.0.111.oe2403sp3.x86_64",
+        "rule": "burst_openat_python_scoped_etc",
+        "target_ref": "scoped_python_etc",
+        "cgroup_path": "/sys/fs/cgroup/eulerpilot/security-anomaly-combo-scope",
+        "filters": "syscall=openat,path_prefix=/etc,comm_prefix=python,target_ref=scoped_python_etc",
+        "event_file": "security_policy_events.anomaly-combo-scope.jsonl"
+      },
+      "evidence_files": [
+        {
+          "path": "results/security_policy/anomaly-combo-scope-20260703-121-v1/security_policy_events.anomaly-combo-scope.jsonl",
+          "exists": true,
+          "bytes": 10396
+        },
+        {
+          "path": "results/security_policy/anomaly-combo-scope-20260703-121-v1/anomaly_combo_scope_summary.txt",
+          "exists": true,
+          "bytes": 2422
+        },
+        {
+          "path": "results/security_policy/anomaly-combo-scope-20260703-121-v1/report.md",
+          "exists": true,
+          "bytes": 843
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "category": "security",
+      "name": "anomaly combo scope 122",
+      "host": "122",
+      "path": "results/security_policy/anomaly-combo-scope-20260703-122-v1",
+      "kind": "result_dir",
+      "required": true,
+      "exists": true,
+      "status": "pass",
+      "notes": "target_ref plus path_prefix plus comm_prefix scoped openat anomaly evidence.",
+      "summary": {
+        "result": "pass",
+        "reason": "security-anomaly-combo-scope-observed",
+        "host": "localhost.localdomain",
+        "date": "2026-07-03T16:23:53+08:00",
+        "kernel": "6.6.0-olk66-scx",
+        "rule": "burst_openat_python_scoped_etc",
+        "target_ref": "scoped_python_etc",
+        "cgroup_path": "/sys/fs/cgroup/eulerpilot/security-anomaly-combo-scope",
+        "filters": "syscall=openat,path_prefix=/etc,comm_prefix=python,target_ref=scoped_python_etc",
+        "event_file": "security_policy_events.anomaly-combo-scope.jsonl"
+      },
+      "evidence_files": [
+        {
+          "path": "results/security_policy/anomaly-combo-scope-20260703-122-v1/security_policy_events.anomaly-combo-scope.jsonl",
+          "exists": true,
+          "bytes": 10396
+        },
+        {
+          "path": "results/security_policy/anomaly-combo-scope-20260703-122-v1/anomaly_combo_scope_summary.txt",
+          "exists": true,
+          "bytes": 2422
+        },
+        {
+          "path": "results/security_policy/anomaly-combo-scope-20260703-122-v1/report.md",
+          "exists": true,
+          "bytes": 824
         }
       ],
       "warnings": []

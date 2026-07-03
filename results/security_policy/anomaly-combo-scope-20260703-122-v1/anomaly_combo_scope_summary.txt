@@ -1,0 +1,14 @@
+burst_openat_python_scoped_etc hook=lsm_file_open comm=python3 path_prefix=/etc target_ref_filter=scoped_python_etc target_ref=scoped_python_etc cgroup_id=57240 hit_count=3
+burst_openat_python_scoped_etc hook=lsm_file_open comm=python3 path_prefix=/etc target_ref_filter=scoped_python_etc target_ref=scoped_python_etc cgroup_id=57240 hit_count=3
+burst_openat_python_scoped_etc hook=lsm_file_open comm=python3 path_prefix=/etc target_ref_filter=scoped_python_etc target_ref=scoped_python_etc cgroup_id=57240 hit_count=3
+burst_openat_python_scoped_etc hook=lsm_file_open comm=python3 path_prefix=/etc target_ref_filter=scoped_python_etc target_ref=scoped_python_etc cgroup_id=57240 hit_count=3
+burst_openat_python_scoped_etc hook=lsm_file_open comm=python3 path_prefix=/etc target_ref_filter=scoped_python_etc target_ref=scoped_python_etc cgroup_id=57240 hit_count=3
+burst_openat_python_scoped_etc hook=lsm_file_open comm=python3 path_prefix=/etc target_ref_filter=scoped_python_etc target_ref=scoped_python_etc cgroup_id=57240 hit_count=3
+burst_openat_python_scoped_etc hook=lsm_file_open comm=python3 path_prefix=/etc target_ref_filter=scoped_python_etc target_ref=scoped_python_etc cgroup_id=57240 hit_count=3
+burst_openat_python_scoped_etc hook=lsm_file_open comm=python3 path_prefix=/etc target_ref_filter=scoped_python_etc target_ref=scoped_python_etc cgroup_id=57240 hit_count=3
+burst_openat_python_scoped_etc hook=lsm_file_open comm=python3 path_prefix=/etc target_ref_filter=scoped_python_etc target_ref=scoped_python_etc cgroup_id=57240 hit_count=3
+burst_openat_python_scoped_etc hook=lsm_file_open comm=python3 path_prefix=/etc target_ref_filter=scoped_python_etc target_ref=scoped_python_etc cgroup_id=57240 hit_count=3
+burst_openat_python_scoped_etc hook=lsm_file_open comm=python3 path_prefix=/etc target_ref_filter=scoped_python_etc target_ref=scoped_python_etc cgroup_id=57240 hit_count=3
+burst_openat_python_scoped_etc hook=lsm_file_open comm=python3 path_prefix=/etc target_ref_filter=scoped_python_etc target_ref=scoped_python_etc cgroup_id=57240 hit_count=3
+burst_openat_python_scoped_etc hook=lsm_file_open comm=python3 path_prefix=/etc target_ref_filter=scoped_python_etc target_ref=scoped_python_etc cgroup_id=57240 hit_count=3
+burst_openat_python_scoped_etc hook=lsm_file_open comm=python3 path_prefix=/etc target_ref_filter=scoped_python_etc target_ref=scoped_python_etc cgroup_id=57240 hit_count=3

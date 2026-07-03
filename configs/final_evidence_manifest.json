@@ -155,6 +155,28 @@
     },
     {
       "category": "security",
+      "name": "anomaly combo scope 121",
+      "host": "121",
+      "path": "results/security_policy/anomaly-combo-scope-20260703-121-v1",
+      "kind": "result_dir",
+      "summary": "summary.txt",
+      "files": ["security_policy_events.anomaly-combo-scope.jsonl", "anomaly_combo_scope_summary.txt", "report.md"],
+      "required": true,
+      "notes": "target_ref plus path_prefix plus comm_prefix scoped openat anomaly evidence."
+    },
+    {
+      "category": "security",
+      "name": "anomaly combo scope 122",
+      "host": "122",
+      "path": "results/security_policy/anomaly-combo-scope-20260703-122-v1",
+      "kind": "result_dir",
+      "summary": "summary.txt",
+      "files": ["security_policy_events.anomaly-combo-scope.jsonl", "anomaly_combo_scope_summary.txt", "report.md"],
+      "required": true,
+      "notes": "target_ref plus path_prefix plus comm_prefix scoped openat anomaly evidence."
+    },
+    {
+      "category": "security",
       "name": "credential anomaly 121",
       "host": "121",
       "path": "results/security_policy/credential-anomaly-20260703-121-v4",

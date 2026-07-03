@@ -1,0 +1,2 @@
+=== SecurityPolicy anomaly combo scope integration test ===
+PASS: security_policy anomaly rules support target_ref + path + process filtering

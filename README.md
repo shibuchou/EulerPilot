@@ -41,7 +41,7 @@ eBPF Observer
   - capability policy：`lsm/capable`，已验证仅目标 cgroup 内 `CAP_SYS_ADMIN` 被拒绝
   - credential policy：`lsm/task_fix_setuid`、`lsm/task_fix_setgid`、`lsm/task_fix_setgroups` 与 `lsm/cred_prepare`，已验证仅目标 cgroup 内 setuid/setgid/setgroups credential 转换和 cred_prepare credential preparation 被拒绝，并输出 `uid/euid/suid/setuid_flags`、`gid/egid/sgid/setgid_flags`、`group_count/old_group_count`、`cred_gfp`
   - syscall tracing：`execve/openat/connect/ptrace` audit 观测
-  - runtime anomaly：`anomaly_rules` 已支持 `burst_execve`、`burst_connect`、`burst_openat_sensitive`、`capability_abuse` 与 `credential_churn` 速率规则，基于 syscall/LSM ringbuf 事件在用户态聚合并输出 `operation=anomaly`；规则可用 `comm/process_comm` 或 `comm_prefix/process_comm_prefix` 限定进程名，credential anomaly 会输出 `credential_stage` 以及对应 uid/gid/group/gfp 生命周期证据
+  - runtime anomaly：`anomaly_rules` 已支持 `burst_execve`、`burst_connect`、`burst_openat_sensitive`、`capability_abuse` 与 `credential_churn` 速率规则，基于 syscall/LSM ringbuf 事件在用户态聚合并输出 `operation=anomaly`；规则可用 `target_ref/scope_target_ref` 限定已解析的 cgroup/target scope，可用 `comm/process_comm` 或 `comm_prefix/process_comm_prefix` 限定进程名，credential anomaly 会输出 `credential_stage` 以及对应 uid/gid/group/gfp 生命周期证据
   - target scope：path、path_prefix、file_access、exec_path、exec_prefix、socket endpoint、ptrace/capability/setuid/setgid/setgroups/cred_prepare cgroup scope、显式 cgroup、PID 自动解析、container_id cgroup tree 解析、container runtime name 解析、Kubernetes Pod 名称解析
   - 121/122 集成测试和 121 质量门禁通过
 - Resource Control 阶段 D CPU+Memory+IO + target_ref 闭环：
@@ -77,6 +77,8 @@ eBPF Observer
 - Security 服务联动 anomaly 122：`/root/EulerPilot/results/security_policy/anomaly-rules-20260703-122-v2`
 - Security anomaly process filter 121：`/root/EulerPilot/results/security_policy/anomaly-process-filter-20260703-121-v1`
 - Security anomaly process filter 122：`/root/EulerPilot/results/security_policy/anomaly-process-filter-20260703-122-v1`
+- Security anomaly combo scope 121：`/root/EulerPilot/results/security_policy/anomaly-combo-scope-20260703-121-v1`
+- Security anomaly combo scope 122：`/root/EulerPilot/results/security_policy/anomaly-combo-scope-20260703-122-v1`
 - Security credential anomaly 121：`/root/EulerPilot/results/security_policy/credential-anomaly-20260703-121-v4`
 - Security credential anomaly 122：`/root/EulerPilot/results/security_policy/credential-anomaly-20260703-122-v4`
 - Security credential deep hook 评估 121：`/root/EulerPilot/results/security_policy/credential-deep-hooks-20260703-121-v2`
@@ -150,6 +152,8 @@ eBPF Observer
 - Network XDP 真实 Pod host veth 演示入口：`/root/EulerPilot/tests/integration/test_network_xdp_real_pod_veth.sh`
 - Security Policy 集成测试：`/root/EulerPilot/tests/integration/test_security_policy.sh`
 - Security anomaly 规则集成测试：`/root/EulerPilot/tests/integration/test_security_policy_anomaly_rules.sh`
+- Security anomaly 进程过滤测试：`/root/EulerPilot/tests/integration/test_security_policy_anomaly_process_filter.sh`
+- Security anomaly 组合 scope 过滤测试：`/root/EulerPilot/tests/integration/test_security_policy_anomaly_combo_scope.sh`
 - Security credential anomaly 集成测试：`/root/EulerPilot/tests/integration/test_security_policy_credential_anomaly.sh`
 - Resource Control 集成测试：`/root/EulerPilot/tests/integration/test_resource_control.sh`
 - Resource Control IO 集成测试：`/root/EulerPilot/tests/integration/test_resource_control_io.sh`

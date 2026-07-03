@@ -27,7 +27,7 @@
 python3 scripts/collect_final_evidence.py --strict
 ```
 
-当前压缩报告覆盖 26 个核心条目：质量门禁、仓库快照、Redis/Nginx sched_ext、Network QoS/XDP、Security anomaly/process filter/deep hook、Resource Control CPU/Memory/IO/Pod target、Policy Engine 双机联动与真实 Pod 联动。`--strict` 当前通过，必需证据缺失为 0、清单警告为 0。
+当前压缩报告覆盖 28 个核心条目：质量门禁、仓库快照、Redis/Nginx sched_ext、Network QoS/XDP、Security anomaly/process filter/combo scope/deep hook、Resource Control CPU/Memory/IO/Pod target、Policy Engine 双机联动与真实 Pod 联动。`--strict` 当前通过，必需证据缺失为 0、清单警告为 0。
 
 ## Skill 证据
 
@@ -66,6 +66,13 @@ Security anomaly 进程过滤证据：
 - 121：`results/security_policy/anomaly-process-filter-20260703-121-v1`
 - 122：`results/security_policy/anomaly-process-filter-20260703-122-v1`
 - 关键文件：`security_policy_events.anomaly-process-filter.jsonl`、`anomaly_process_filter_summary.txt`、`summary.txt`、`report.md`
+
+Security anomaly 组合 scope 过滤证据：
+
+- 121：`results/security_policy/anomaly-combo-scope-20260703-121-v1`
+- 122：`results/security_policy/anomaly-combo-scope-20260703-122-v1`
+- 关键文件：`security_policy_events.anomaly-combo-scope.jsonl`、`anomaly_combo_scope_summary.txt`、`summary.txt`、`report.md`
+- 验证口径：scope 外同样的 Python `/etc` open burst 不触发；进入目标 cgroup 后，同一条规则同时匹配 `target_ref`、`path_prefix` 和 `comm_prefix` 才触发。
 
 Credential 生命周期 anomaly 证据：
 
@@ -165,6 +172,8 @@ v3.2 计划：`docs/next_phase_plan_v3_2.md`
 - 122 isolated-veth XDP ICMP/TCP/UDP + UDP tuple：`results/network_policy/xdp-20260703-122-fields-v1`
 - 121 Security credential anomaly：`results/security_policy/credential-anomaly-20260703-121-v4`
 - 122 Security credential anomaly：`results/security_policy/credential-anomaly-20260703-122-v4`
+- 121 Security anomaly combo scope：`results/security_policy/anomaly-combo-scope-20260703-121-v1`
+- 122 Security anomaly combo scope：`results/security_policy/anomaly-combo-scope-20260703-122-v1`
 - 121 Security credential deep hooks：`results/security_policy/credential-deep-hooks-20260703-121-v2`
 - 122 Security credential deep hooks：`results/security_policy/credential-deep-hooks-20260703-122-v2`
 - 121 real Pod Policy Engine 联动：`results/policy_engine/real-pod-security-network-resource-20260630-k3s-121-v1`
@@ -190,4 +199,4 @@ SP4 环境探测：
 ## 后置事项
 
 - SP4 验证不作为 v3.1 完成条件，准备文档为 `docs/sp4_validation_plan.md`，检查脚本为 `scripts/check_sp4_env.sh`。
-- 真实 Kubernetes Pod target、Pod host veth QoS、Pod host veth XDP 与真实 Pod Policy Engine 跨 Skill 联动均已转 pass；isolated-veth 与 real Pod host veth XDP 均已补齐 ICMP/TCP/UDP + UDP tuple 四规则和 per-rule 字段证据；Security 已补齐 `credential_churn` 生命周期 anomaly 与 `cred_alloc_blank/cred_transfer` scoped attach 评估双机证据。下一优先级是更多异常策略组合、进程过滤评估和最终证据压缩。
+- 真实 Kubernetes Pod target、Pod host veth QoS、Pod host veth XDP 与真实 Pod Policy Engine 跨 Skill 联动均已转 pass；isolated-veth 与 real Pod host veth XDP 均已补齐 ICMP/TCP/UDP + UDP tuple 四规则和 per-rule 字段证据；Security 已补齐 `credential_churn` 生命周期 anomaly、`cred_alloc_blank/cred_transfer` scoped attach 评估、anomaly 进程过滤和组合 scope 过滤双机证据。下一优先级是答辩材料冻结、现场演示压测和 SP4 发布后平台复核。

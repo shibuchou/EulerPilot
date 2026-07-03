@@ -50,7 +50,7 @@ SP4 环境探测：
 - `TargetResolver` 已支持 Podman/systemd cgroup v2 的 PID cgroup fallback，真实目标定位到 `.../libpod-*.scope/container`，并保留 fake `container_id` 扫描路径。
 - fake runtime target 回归已刷新：121 `results/resource_control/runtime-target-20260630-113310`，122 `results/resource_control/runtime-target-20260630-113354`。
 - 121 最新质量门禁日志：`reports/final_quality_gate_20260630-v32-podman-121.log`，21/21 P0、100 轮 smoke、5 轮 doctor 通过。
-- Kubernetes lab Pod、Pod host veth QoS、Pod host veth XDP 与真实 Pod 跨 Skill 联动已完成双机 pass；下一步转向更多异常规则与答辩证据压缩。
+- Kubernetes lab Pod、Pod host veth QoS、Pod host veth XDP 与真实 Pod 跨 Skill 联动已完成双机 pass；Security anomaly 进程过滤与组合 scope 过滤也已完成双机 pass，下一步转向答辩材料冻结、现场演示压测和 SP4 发布后平台复核。
 
 ## 2026-07-03 执行更新
 
@@ -58,7 +58,7 @@ SP4 环境探测：
 - 121/122 均已通过 `tests/integration/test_network_xdp.sh`，新增 UDP tuple `10.89.0.2:39094 -> 10.89.0.1:19094` 命中验证。
 - 结果目录：121 `results/network_policy/xdp-20260703-121-fields-v1`，122 `results/network_policy/xdp-20260703-122-fields-v1`。
 - 两端统计一致：ICMP 1、TCP 4、UDP 8、UDP tuple 8，总 drop 21；rollback 事件携带每条规则的 `protocol/src_ip/dst_ip/src_port/dst_port/drop_count/byte_count`。
-- 下一步不再把 isolated-veth XDP 字段匹配列为 blocked debt；real Pod host veth tuple 演示与 credential 深层 hook scoped attach 评估已在后续更新中完成，剩余重点转向更多异常策略组合、进程过滤评估和最终证据压缩。
+- 下一步不再把 isolated-veth XDP 字段匹配列为 blocked debt；real Pod host veth tuple 演示、credential 深层 hook scoped attach 评估、anomaly 进程过滤和组合 scope 过滤已在后续更新中完成，剩余重点转向答辩材料冻结、现场演示压测和 SP4 发布后平台复核。
 
 ## 2026-07-03 real Pod XDP tuple 更新
 
@@ -66,7 +66,7 @@ SP4 环境探测：
 - 121/122 均已通过 `tests/integration/test_network_xdp_real_pod_veth.sh`，新增 UDP tuple `pod_ip:39094 -> 10.42.0.1:19094` 命中验证。
 - 结果目录：121 `results/network_policy/real-pod-veth-xdp-20260703-k3s-121-tuple-v1`，122 `results/network_policy/real-pod-veth-xdp-20260703-k3s-122-tuple-v1`。
 - 两端统计一致：ICMP 1、TCP 4、UDP 8、UDP tuple 8，总 drop 21；rollback 事件携带真实 Pod `src_ip/dst_ip/src_port/dst_port` 字段证据。
-- 下一步不再把 real Pod host veth XDP tuple 或 credential 深层 hook scoped attach 列为待评估项，转为更多异常策略组合、进程过滤评估和最终证据压缩。
+- 下一步不再把 real Pod host veth XDP tuple、credential 深层 hook scoped attach、anomaly 进程过滤或组合 scope 过滤列为待评估项，转为答辩材料冻结、现场演示压测和 SP4 发布后平台复核。
 ## Key Changes
 
 ### 1. openEuler runtime 兼容性
