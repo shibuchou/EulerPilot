@@ -659,6 +659,8 @@ struct SecurityAnomalyRule {
     std::string syscall = "execve";
     std::string severity = "medium";
     std::string path_prefix;
+    std::string comm;
+    std::string comm_prefix;
     std::int32_t capability = -1;
     std::uint32_t threshold = 5;
     std::uint32_t window_ms = 1000;
@@ -2979,6 +2981,19 @@ private:
         return !path.empty() && path[0] == '/' && path.size() < 256;
     }
 
+    static bool valid_security_comm_filter(const std::string &comm) {
+        if (comm.empty() || comm.size() >= 16) {
+            return false;
+        }
+        for (char ch : comm) {
+            const unsigned char c = static_cast<unsigned char>(ch);
+            if (!(std::isalnum(c) || ch == '_' || ch == '-' || ch == '.')) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     static bool is_supported_security_hook(const std::string &hook) {
         return hook == "lsm_file_open" || hook == "lsm_bprm_check_security" ||
                hook == "lsm_socket_connect" || hook == "lsm_ptrace_traceme" ||
@@ -3048,12 +3063,19 @@ private:
             const std::string path_prefix =
                 config_value_or(spec, prefix + "path_prefix",
                                 config_value_or(spec, prefix + "sensitive_path_prefix", ""));
+            const std::string comm =
+                config_value_or(spec, prefix + "comm",
+                                config_value_or(spec, prefix + "process_comm", ""));
+            const std::string comm_prefix =
+                config_value_or(spec, prefix + "comm_prefix",
+                                config_value_or(spec, prefix + "process_comm_prefix", ""));
             const std::string capability_text =
                 config_value_or(spec, prefix + "capability",
                                 config_value_or(spec, prefix + "cap", ""));
             if (name.empty() && type.empty() && syscall.empty() &&
                 threshold_text.empty() && window_text.empty() &&
-                path_prefix.empty() && capability_text.empty()) {
+                path_prefix.empty() && comm.empty() && comm_prefix.empty() &&
+                capability_text.empty()) {
                 continue;
             }
 
@@ -3063,6 +3085,8 @@ private:
             rule.syscall = syscall.empty() ? "execve" : syscall;
             rule.severity = config_value_or(spec, prefix + "severity", "medium");
             rule.path_prefix = path_prefix;
+            rule.comm = comm;
+            rule.comm_prefix = comm_prefix;
             if (rule.type != "rate") {
                 last_error_ = "security-policy-anomaly-type-unsupported";
                 return false;
@@ -3095,6 +3119,15 @@ private:
             }
             if (!rule.path_prefix.empty() && !valid_security_path(rule.path_prefix)) {
                 last_error_ = "security-policy-anomaly-path-prefix-invalid";
+                return false;
+            }
+            if (!rule.comm.empty() && !valid_security_comm_filter(rule.comm)) {
+                last_error_ = "security-policy-anomaly-comm-invalid";
+                return false;
+            }
+            if (!rule.comm_prefix.empty() &&
+                !valid_security_comm_filter(rule.comm_prefix)) {
+                last_error_ = "security-policy-anomaly-comm-prefix-invalid";
                 return false;
             }
             if (!capability_text.empty() &&
@@ -3728,6 +3761,13 @@ private:
             if (!rule.path_prefix.empty() && path.rfind(rule.path_prefix, 0) != 0) {
                 continue;
             }
+            if (!rule.comm.empty() && comm != rule.comm) {
+                continue;
+            }
+            if (!rule.comm_prefix.empty() &&
+                comm.rfind(rule.comm_prefix, 0) != 0) {
+                continue;
+            }
             if (rule.capability >= 0 && hit.capability != rule.capability) {
                 continue;
             }
@@ -3768,6 +3808,12 @@ private:
             };
             if (!rule.path_prefix.empty()) {
                 event.evidence["path_prefix"] = rule.path_prefix;
+            }
+            if (!rule.comm.empty()) {
+                event.evidence["comm_filter"] = rule.comm;
+            }
+            if (!rule.comm_prefix.empty()) {
+                event.evidence["comm_prefix"] = rule.comm_prefix;
             }
             if (hit.daddr != 0) {
                 const std::string dst_ip = ipv4_to_string(hit.daddr);
