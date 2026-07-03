@@ -20,6 +20,7 @@
 - isolated-veth XDP 更多报文特征已在 121/122 通过：121 `results/network_policy/xdp-20260703-121-fields-v1`，122 `results/network_policy/xdp-20260703-122-fields-v1`；验证 `drop_icmp_lab`、`drop_tcp_probe_lab`、`drop_udp_probe_lab` 与 `drop_udp_tuple_lab` 四条规则，并在 rollback 事件中输出 per-rule `protocol/src_ip/dst_ip/src_port/dst_port/drop_count/byte_count`。两端当前统计一致：ICMP 1、TCP 4、UDP 8、UDP tuple 8，总 drop 21。
 - 121 最新质量门禁通过：`reports/final_quality_gate_20260703-creddeep-121.log`，21/21 P0、100 轮 Agent smoke、5 轮 doctor 均通过。
 - 最终答辩证据压缩入口已完成：`configs/final_evidence_manifest.json`、`scripts/collect_final_evidence.py`、`reports/final_evidence_compact.md`、`reports/final_evidence_compact.json`。当前 `python3 scripts/collect_final_evidence.py --strict` 通过，覆盖 28 个核心证据条目，必需证据缺失为 0、清单警告为 0。
+- Web Console v1 已作为旁路展示控制台落地：`web_console/` 独立存在，不修改 `agent/`、`bpf/`、`sched/` 主干；支持 Evidence-first 展示、白名单 Demo、SSE 日志、`demo/lab/cleanup` 单任务锁和 121 loopback 部署。设计文档：`docs/web_console_design.md`，安全说明：`web_console/docs/security.md`。
 - v3.2 剩余争奖增强重点转为：答辩材料冻结、现场演示压测和 SP4 发布后平台复核。
 ## v3.1 最新进展（2026-06-29）
 
@@ -69,6 +70,7 @@
 | E. SP4/sched_ext 复核 | 未开始 | 等待 SP4/123 环境 | `docs/next_phase_plan_v2_1.md` |
 | F. Kubernetes 与跨 Agent 联动 | v3.1 第二条跨 Skill 联动已完成；v3.2 真实 k3s Pod target、Pod host veth QoS/XDP 与真实 Pod Policy Engine 联动双机 pass | `policy_engine` 已完成三条链路：`burst_execve -> resource_control` 第一条联动，v3.1 `burst_connect -> resource_control + network_qos` 第二条联动，以及 v3.2 `burst_connect -> real Pod cgroup + real Pod host veth` 第三条联动；第二条链路区分 cgroup target 与 lab netdev target，第三条链路使用同一个 `target_ref=lab_pod(type=k8s_pod)` 并按动作类型解析为 cgroup/netdev；支持统一 `transaction_id`、多动作失败回滚、ActionJournal、限速证据和 stop rollback；121 已通过 repeat 10，122 已通过核心集成测试，真实 Pod 跨 Skill 联动与 Pod host veth XDP 已在 121/122 pass | `docs/policy_engine_skill.md`、`agent/skills/policy_engine/README.md`、`tests/integration/test_policy_engine_security_resource.sh`、`tests/integration/test_policy_engine_security_network_resource.sh`、`results/policy_engine/security-resource-20260629-163949`、`results/policy_engine/security-resource-20260629-164135`、`results/policy_engine/security-network-resource-20260629-214952`、`results/policy_engine/security-network-resource-20260629-215950`、`results/policy_engine/real-pod-security-network-resource-20260630-k3s-121-v1`、`results/policy_engine/real-pod-security-network-resource-20260630-k3s-122-v1` |
 | G. Benchmark 与冻结材料 | 未开始 | 等待正式能力完成 | `docs/next_phase_plan_v2_1.md` |
+| H. Web Console | v1 已完成 | Evidence-first + 白名单 Demo + 旁路展示控制台已落地；121 已完成 npm test/lint/build、API health/system/evidence/jobs、非白名单 404、demo_offline job 和 SSE snapshot/done 验证；默认通过 SSH 隧道访问 `127.0.0.1:18080` | `web_console/README.md`、`web_console/config/actions.yaml`、`web_console/docs/api.md`、`web_console/docs/security.md`、`docs/web_console_design.md` |
 
 ## 当前已完成基线
 

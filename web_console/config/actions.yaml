@@ -1,0 +1,143 @@
+actions:
+  check_env:
+    id: check_env
+    title: Environment Check
+    kind: readonly
+    command: ["bash", "scripts/check_env.sh"]
+    timeout_seconds: 30
+    max_output_bytes: 1048576
+    requires_confirm: false
+    cleanup_action: ""
+    parse_json: false
+    safe_description: "只读环境检查，读取内核、cgroup、BTF、PSI、sched_ext 等状态。"
+    risk_description: "不修改系统状态。"
+
+  list_skills:
+    id: list_skills
+    title: List Skills
+    kind: readonly
+    command: ["build/eulerpilot-agent", "--list-skills"]
+    timeout_seconds: 10
+    max_output_bytes: 524288
+    requires_confirm: false
+    cleanup_action: ""
+    parse_json: false
+    safe_description: "只读取 Agent 已注册 Skill 列表。"
+    risk_description: "不修改系统状态。"
+
+  status_json:
+    id: status_json
+    title: Agent Status JSON
+    kind: readonly
+    command: ["build/eulerpilot-agent", "--status", "--json"]
+    timeout_seconds: 10
+    max_output_bytes: 524288
+    requires_confirm: false
+    cleanup_action: ""
+    parse_json: true
+    safe_description: "只读取 Agent status JSON，用于结构化展示 Skill 状态。"
+    risk_description: "不修改系统状态。"
+
+  validate_default_config:
+    id: validate_default_config
+    title: Validate Default Config
+    kind: verify
+    command: ["build/eulerpilot-agent", "--validate-config", "configs/agent.yaml"]
+    timeout_seconds: 20
+    max_output_bytes: 524288
+    requires_confirm: false
+    cleanup_action: ""
+    parse_json: false
+    safe_description: "校验默认配置文件，不启动系统控制动作。"
+    risk_description: "不修改系统状态。"
+
+  validate_policy_engine_config:
+    id: validate_policy_engine_config
+    title: Validate Policy Engine Config
+    kind: verify
+    command: ["build/eulerpilot-agent", "--validate-config", "configs/policy_engine_security_network_resource.yaml"]
+    timeout_seconds: 20
+    max_output_bytes: 524288
+    requires_confirm: false
+    cleanup_action: ""
+    parse_json: false
+    safe_description: "校验 v3.1 Policy Engine 联动配置，不启动系统控制动作。"
+    risk_description: "不修改系统状态。"
+
+  doctor_skills:
+    id: doctor_skills
+    title: Doctor Skills
+    kind: verify
+    command: ["build/eulerpilot-agent", "--doctor-skills", "--config", "configs/agent.yaml"]
+    timeout_seconds: 45
+    max_output_bytes: 1048576
+    requires_confirm: false
+    cleanup_action: ""
+    parse_json: false
+    safe_description: "执行 Skill doctor 与能力探测，用于展示当前环境支持情况。"
+    risk_description: "不创建 lab cgroup/veth/qdisc。"
+
+  demo_offline:
+    id: demo_offline
+    title: Offline Demo
+    kind: demo
+    command: ["bash", "demo/demo_all_final.sh", "--mode", "offline"]
+    timeout_seconds: 120
+    max_output_bytes: 2097152
+    requires_confirm: false
+    cleanup_action: ""
+    parse_json: false
+    safe_description: "离线演示，只读取现有证据和生成展示日志，不创建 lab cgroup/veth/qdisc。"
+    risk_description: "不会修改 EulerPilot 主干状态；运行期间会占用一个 demo job slot。"
+
+  policy_engine_lab:
+    id: policy_engine_lab
+    title: Policy Engine Lab
+    kind: lab
+    command: ["bash", "tests/integration/test_policy_engine_security_network_resource.sh"]
+    timeout_seconds: 240
+    max_output_bytes: 4194304
+    requires_confirm: true
+    cleanup_action: demo_cleanup
+    parse_json: false
+    safe_description: "运行代表性跨 Skill 联动链路，用于现场证明 Security -> Policy Engine -> Resource + Network -> rollback。"
+    risk_description: "会创建 EulerPilot lab cgroup/veth/qdisc，结束后需要 cleanup。"
+
+  policy_engine_real_pod:
+    id: policy_engine_real_pod
+    title: Policy Engine Real Pod
+    kind: lab
+    command: ["bash", "tests/integration/test_policy_engine_real_pod_network_resource.sh"]
+    timeout_seconds: 300
+    max_output_bytes: 4194304
+    requires_confirm: true
+    cleanup_action: demo_cleanup
+    parse_json: false
+    safe_description: "高级可选演示，复用真实 k3s lab Pod target 证据链。"
+    risk_description: "依赖 Kubernetes lab 状态，只在环境确认后运行；结束后需要 cleanup。"
+
+  demo_cleanup:
+    id: demo_cleanup
+    title: Cleanup
+    kind: cleanup
+    command: ["bash", "demo/demo_all_final.sh", "--cleanup"]
+    timeout_seconds: 120
+    max_output_bytes: 2097152
+    requires_confirm: true
+    cleanup_action: ""
+    parse_json: false
+    safe_description: "清理 EulerPilot lab cgroup、veth、qdisc 和演示临时状态。"
+    risk_description: "会执行清理脚本，但只作用于 EulerPilot lab 资源。"
+
+  final_quality_gate:
+    id: final_quality_gate
+    title: Final Quality Gate
+    kind: lab
+    command: ["bash", "scripts/final_quality_gate.sh"]
+    timeout_seconds: 900
+    max_output_bytes: 8388608
+    requires_confirm: true
+    cleanup_action: demo_cleanup
+    parse_json: false
+    safe_description: "高级可选验收入口，用于运行最终质量门禁。"
+    risk_description: "运行时间较长，可能调用多项测试；建议答辩前离线确认，现场谨慎运行。"

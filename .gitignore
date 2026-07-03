@@ -18,6 +18,13 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 
+# Web Console local artifacts
+web_console/node_modules/
+web_console/dist/
+web_console/runtime/
+*.tsbuildinfo
+.playwright-cli/
+
 # Temporary and backup files
 *.bak
 *.tmp
