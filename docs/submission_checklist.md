@@ -34,6 +34,7 @@
 - [x] `security_policy` `lsm_file_open` 支持 `file_access=write` 与 `path_prefix + file_access=write`，验证目标 cgroup 内读放行、写阻断
 - [x] `security_policy` `lsm_ptrace_traceme`、`lsm_capable`、`lsm_task_fix_setuid`、`lsm_task_fix_setgid`、`lsm_task_fix_setgroups` 与 `lsm_cred_prepare` 均要求 scoped cgroup target，分别验证 ptrace、CAP_SYS_ADMIN、setuid、setgid、setgroups credential 转换与 cred_prepare credential preparation 阻断
 - [x] `security_policy` 服务联动 anomaly 121/122 pass：`burst_connect`、`burst_openat_sensitive`、`capability_abuse` 均输出 `operation=anomaly/result=observed`，结果目录为 `results/security_policy/anomaly-rules-20260703-121-v4` 与 `results/security_policy/anomaly-rules-20260703-122-v2`
+- [x] `security_policy` anomaly 进程过滤 121/122 pass：`comm_prefix=python` 的 `/etc` openat burst 正向规则输出 anomaly，`comm=nohit-proc` 的负向规则不输出 anomaly，结果目录为 `results/security_policy/anomaly-process-filter-20260703-121-v1` 与 `results/security_policy/anomaly-process-filter-20260703-122-v1`
 - [x] `security_policy` credential 生命周期 anomaly 121/122 pass：`credential_churn` 输出 `credential_stage`、`uid` 和 cred hit 细节，结果目录为 `results/security_policy/credential-anomaly-20260703-121-v4` 与 `results/security_policy/credential-anomaly-20260703-122-v4`
 - [x] `security_policy` credential deep hook 评估 121/122 pass：`lsm_cred_alloc_blank/lsm_cred_transfer` 已 scoped 配置并随 Agent attach，`hook_type` 映射保证同 cgroup 多 credential 规则不串错；普通用户态 workload 下 deep hook hit=0，结果明确记录为评估边界
 - [x] `resource_control` CPU+Memory+IO 自动闭环 121/122 验证：YAML v2 `controllers + profiles`、`cpu.max`、`memory.high/low/max`、`io.weight/io.max`、事务化写入、`AuditBus`、`ActionJournal` 和 Agent stop rollback
@@ -143,6 +144,8 @@
 - Policy Engine real Pod Security -> Network + Resource 联动 122：`results/policy_engine/real-pod-security-network-resource-20260630-k3s-122-v1`
 - Security 服务联动 anomaly 121：`results/security_policy/anomaly-rules-20260703-121-v4`
 - Security 服务联动 anomaly 122：`results/security_policy/anomaly-rules-20260703-122-v2`
+- Security anomaly process filter 121：`results/security_policy/anomaly-process-filter-20260703-121-v1`
+- Security anomaly process filter 122：`results/security_policy/anomaly-process-filter-20260703-122-v1`
 - Security credential anomaly 121：`results/security_policy/credential-anomaly-20260703-121-v4`
 - Security credential anomaly 122：`results/security_policy/credential-anomaly-20260703-122-v4`
 - Security credential deep hooks 121：`results/security_policy/credential-deep-hooks-20260703-121-v2`
@@ -168,13 +171,13 @@
 - `reports/final_quality_gate_20260703-creddeep-121.log`：121 最新门禁通过记录，21/21 P0 通过，100 轮 smoke 与 5 轮 doctor 通过
 - `configs/final_evidence_manifest.json`：最终证据压缩白名单清单
 - `scripts/collect_final_evidence.py`：最终证据压缩报告生成脚本
-- `reports/final_evidence_compact.md`：答辩入口压缩报告，当前覆盖 24 个核心证据条目
+- `reports/final_evidence_compact.md`：答辩入口压缩报告，当前覆盖 26 个核心证据条目
 - `reports/final_evidence_compact.json`：机器可读证据状态，当前 `--strict` 检查必需缺失 0、警告 0
 - `docs/final_security_audit.md`：最终安全与质量审计报告
 
 ## 当前结论
 
-项目仍处于争奖增强阶段，不应停留在“最终材料整理”。当前已完成 Security anomaly -> Policy Engine -> Resource Control 降级、Security anomaly -> Policy Engine -> Network+Resource 联动，以及真实 Pod 版 Network+Resource 联动。当前 121/122 的真实 Podman container target、k3s Pod target、Network QoS Pod host veth、Network XDP Pod host veth、真实 Pod Policy Engine 跨 Skill 联动、服务联动 Security anomaly 规则、credential 生命周期 anomaly、credential deep hook scoped attach 评估、isolated-veth XDP ICMP/TCP/UDP + UDP tuple 四规则、real Pod host veth XDP ICMP/TCP/UDP + UDP tuple 四规则和最终证据压缩入口均已转为 pass；下一步重点是更多异常策略组合、进程过滤评估和答辩材料冻结。
+项目仍处于争奖增强阶段，不应停留在“最终材料整理”。当前已完成 Security anomaly -> Policy Engine -> Resource Control 降级、Security anomaly -> Policy Engine -> Network+Resource 联动，以及真实 Pod 版 Network+Resource 联动。当前 121/122 的真实 Podman container target、k3s Pod target、Network QoS Pod host veth、Network XDP Pod host veth、真实 Pod Policy Engine 跨 Skill 联动、服务联动 Security anomaly 规则、anomaly 进程过滤、credential 生命周期 anomaly、credential deep hook scoped attach 评估、isolated-veth XDP ICMP/TCP/UDP + UDP tuple 四规则、real Pod host veth XDP ICMP/TCP/UDP + UDP tuple 四规则和最终证据压缩入口均已转为 pass；下一步重点是更多异常策略组合和答辩材料冻结。
 
 ## v3.1 提交前新增检查
 
@@ -202,6 +205,7 @@
 - [x] Network QoS 真实 Pod host veth 演示 121/122 通过。
 - [x] Network XDP 真实 Pod host veth 演示 121/122 通过。
 - [x] Security 服务联动 anomaly 规则 121/122 通过。
+- [x] Security anomaly 进程过滤 121/122 通过。
 - [x] Network XDP isolated-veth tuple 字段演示 121/122 通过。
 - [x] Network XDP real Pod host veth tuple 字段演示 121/122 通过。
-- [x] `python3 scripts/collect_final_evidence.py --strict` 通过，最终证据压缩报告覆盖 24 个核心条目，必需缺失 0、警告 0。
+- [x] `python3 scripts/collect_final_evidence.py --strict` 通过，最终证据压缩报告覆盖 26 个核心条目，必需缺失 0、警告 0。

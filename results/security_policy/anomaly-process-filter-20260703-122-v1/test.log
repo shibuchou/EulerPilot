@@ -1,0 +1,2 @@
+=== SecurityPolicy anomaly process filter integration test ===
+PASS: security_policy anomaly rules support process comm filtering

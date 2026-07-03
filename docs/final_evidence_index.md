@@ -27,7 +27,7 @@
 python3 scripts/collect_final_evidence.py --strict
 ```
 
-当前压缩报告覆盖 24 个核心条目：质量门禁、仓库快照、Redis/Nginx sched_ext、Network QoS/XDP、Security anomaly/deep hook、Resource Control CPU/Memory/IO/Pod target、Policy Engine 双机联动与真实 Pod 联动。`--strict` 当前通过，必需证据缺失为 0、清单警告为 0。
+当前压缩报告覆盖 26 个核心条目：质量门禁、仓库快照、Redis/Nginx sched_ext、Network QoS/XDP、Security anomaly/process filter/deep hook、Resource Control CPU/Memory/IO/Pod target、Policy Engine 双机联动与真实 Pod 联动。`--strict` 当前通过，必需证据缺失为 0、清单警告为 0。
 
 ## Skill 证据
 
@@ -60,6 +60,12 @@ security_policy burst_connect anomaly
 - 121：`results/security_policy/anomaly-rules-20260703-121-v4`
 - 122：`results/security_policy/anomaly-rules-20260703-122-v2`
 - 关键文件：`security_policy_events.anomaly-rules.jsonl`、`anomaly_event_summary.txt`、`summary.txt`、`report.md`
+
+Security anomaly 进程过滤证据：
+
+- 121：`results/security_policy/anomaly-process-filter-20260703-121-v1`
+- 122：`results/security_policy/anomaly-process-filter-20260703-122-v1`
+- 关键文件：`security_policy_events.anomaly-process-filter.jsonl`、`anomaly_process_filter_summary.txt`、`summary.txt`、`report.md`
 
 Credential 生命周期 anomaly 证据：
 

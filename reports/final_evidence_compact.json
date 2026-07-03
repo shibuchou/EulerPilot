@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-03T15:56:54+08:00",
+  "generated_at": "2026-07-03T16:13:24+08:00",
   "manifest_path": "configs/final_evidence_manifest.json",
   "manifest_title": "EulerPilot final evidence manifest",
   "git_status_short": [],
@@ -568,6 +568,88 @@
           "path": "results/security_policy/anomaly-rules-20260703-122-v2/report.md",
           "exists": true,
           "bytes": 754
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "category": "security",
+      "name": "anomaly process filter 121",
+      "host": "121",
+      "path": "results/security_policy/anomaly-process-filter-20260703-121-v1",
+      "kind": "result_dir",
+      "required": true,
+      "exists": true,
+      "status": "pass",
+      "notes": "comm_prefix positive filter and comm exact negative filter for openat anomaly.",
+      "summary": {
+        "result": "pass",
+        "reason": "security-anomaly-process-filter-observed",
+        "host": "localhost.localdomain",
+        "date": "2026-07-03T16:07:16+08:00",
+        "kernel": "6.6.0-132.0.0.111.oe2403sp3.x86_64",
+        "positive_rule": "burst_openat_python_prefix",
+        "positive_comm_prefix": "python",
+        "negative_rule": "burst_openat_nohit_comm",
+        "negative_comm": "nohit-proc",
+        "event_file": "security_policy_events.anomaly-process-filter.jsonl"
+      },
+      "evidence_files": [
+        {
+          "path": "results/security_policy/anomaly-process-filter-20260703-121-v1/security_policy_events.anomaly-process-filter.jsonl",
+          "exists": true,
+          "bytes": 17537
+        },
+        {
+          "path": "results/security_policy/anomaly-process-filter-20260703-121-v1/anomaly_process_filter_summary.txt",
+          "exists": true,
+          "bytes": 2751
+        },
+        {
+          "path": "results/security_policy/anomaly-process-filter-20260703-121-v1/report.md",
+          "exists": true,
+          "bytes": 692
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "category": "security",
+      "name": "anomaly process filter 122",
+      "host": "122",
+      "path": "results/security_policy/anomaly-process-filter-20260703-122-v1",
+      "kind": "result_dir",
+      "required": true,
+      "exists": true,
+      "status": "pass",
+      "notes": "comm_prefix positive filter and comm exact negative filter for openat anomaly.",
+      "summary": {
+        "result": "pass",
+        "reason": "security-anomaly-process-filter-observed",
+        "host": "localhost.localdomain",
+        "date": "2026-07-03T16:07:17+08:00",
+        "kernel": "6.6.0-olk66-scx",
+        "positive_rule": "burst_openat_python_prefix",
+        "positive_comm_prefix": "python",
+        "negative_rule": "burst_openat_nohit_comm",
+        "negative_comm": "nohit-proc",
+        "event_file": "security_policy_events.anomaly-process-filter.jsonl"
+      },
+      "evidence_files": [
+        {
+          "path": "results/security_policy/anomaly-process-filter-20260703-122-v1/security_policy_events.anomaly-process-filter.jsonl",
+          "exists": true,
+          "bytes": 17537
+        },
+        {
+          "path": "results/security_policy/anomaly-process-filter-20260703-122-v1/anomaly_process_filter_summary.txt",
+          "exists": true,
+          "bytes": 2751
+        },
+        {
+          "path": "results/security_policy/anomaly-process-filter-20260703-122-v1/report.md",
+          "exists": true,
+          "bytes": 673
         }
       ],
       "warnings": []

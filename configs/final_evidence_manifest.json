@@ -133,6 +133,28 @@
     },
     {
       "category": "security",
+      "name": "anomaly process filter 121",
+      "host": "121",
+      "path": "results/security_policy/anomaly-process-filter-20260703-121-v1",
+      "kind": "result_dir",
+      "summary": "summary.txt",
+      "files": ["security_policy_events.anomaly-process-filter.jsonl", "anomaly_process_filter_summary.txt", "report.md"],
+      "required": true,
+      "notes": "comm_prefix positive filter and comm exact negative filter for openat anomaly."
+    },
+    {
+      "category": "security",
+      "name": "anomaly process filter 122",
+      "host": "122",
+      "path": "results/security_policy/anomaly-process-filter-20260703-122-v1",
+      "kind": "result_dir",
+      "summary": "summary.txt",
+      "files": ["security_policy_events.anomaly-process-filter.jsonl", "anomaly_process_filter_summary.txt", "report.md"],
+      "required": true,
+      "notes": "comm_prefix positive filter and comm exact negative filter for openat anomaly."
+    },
+    {
+      "category": "security",
       "name": "credential anomaly 121",
       "host": "121",
       "path": "results/security_policy/credential-anomaly-20260703-121-v4",

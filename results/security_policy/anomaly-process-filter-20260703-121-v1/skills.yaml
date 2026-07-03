@@ -1,0 +1,41 @@
+schema_version: 2
+skills:
+- name: resource_control
+  kind: runtime
+  enabled: true
+  config: {}
+- name: psi_gate
+  kind: runtime
+  enabled: true
+  config: {}
+- name: security_policy
+  kind: runtime
+  enabled: true
+  config:
+    mode: audit
+    targets:
+      sensitive_file:
+        type: path
+        path: /etc/hostname
+    rules:
+      - name: observe_sensitive_file
+        hook: lsm_file_open
+        target_ref: sensitive_file
+        action: deny
+    anomaly_rules:
+      - name: burst_openat_python_prefix
+        type: rate
+        syscall: openat
+        path_prefix: /etc
+        comm_prefix: python
+        threshold: 3
+        window_ms: 2000
+        severity: medium
+      - name: burst_openat_nohit_comm
+        type: rate
+        syscall: openat
+        path_prefix: /etc
+        comm: nohit-proc
+        threshold: 3
+        window_ms: 2000
+        severity: medium

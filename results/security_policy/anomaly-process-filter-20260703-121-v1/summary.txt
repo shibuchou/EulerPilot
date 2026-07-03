@@ -1,0 +1,10 @@
+result=pass
+reason=security-anomaly-process-filter-observed
+host=localhost.localdomain
+date=2026-07-03T16:07:16+08:00
+kernel=6.6.0-132.0.0.111.oe2403sp3.x86_64
+positive_rule=burst_openat_python_prefix
+positive_comm_prefix=python
+negative_rule=burst_openat_nohit_comm
+negative_comm=nohit-proc
+event_file=security_policy_events.anomaly-process-filter.jsonl
