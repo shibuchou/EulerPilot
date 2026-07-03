@@ -1,0 +1,10 @@
+total_drop_count=21
+drop_icmp_real_pod=1
+drop_tcp_real_pod=4
+drop_udp_real_pod=8
+drop_udp_tuple_real_pod=8
+drop_udp_tuple_real_pod.src_ip=10.42.0.4
+drop_udp_tuple_real_pod.dst_ip=10.42.0.1
+drop_udp_tuple_real_pod.src_port=39094
+drop_udp_tuple_real_pod.dst_port=19094
+rule_stats=drop_icmp_real_pod:proto=icmp,src_ip=any,dst_ip=any,src_port=0,dst_port=0,pass=0,drop=1,bytes=98;drop_tcp_real_pod:proto=tcp,src_ip=any,dst_ip=any,src_port=0,dst_port=19092,pass=0,drop=4,bytes=296;drop_udp_real_pod:proto=udp,src_ip=any,dst_ip=any,src_port=0,dst_port=19093,pass=0,drop=8,bytes=1200;drop_udp_tuple_real_pod:proto=udp,src_ip=10.42.0.4,dst_ip=10.42.0.1,src_port=39094,dst_port=19094,pass=0,drop=8,bytes=1200

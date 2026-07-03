@@ -1,0 +1,10 @@
+total_drop_count=21
+drop_icmp_lab=1
+drop_tcp_probe_lab=4
+drop_udp_probe_lab=8
+drop_udp_tuple_lab=8
+drop_udp_tuple_lab.src_ip=10.89.0.2
+drop_udp_tuple_lab.dst_ip=10.89.0.1
+drop_udp_tuple_lab.src_port=39094
+drop_udp_tuple_lab.dst_port=19094
+rule_stats=drop_icmp_lab:proto=icmp,src_ip=any,dst_ip=any,src_port=0,dst_port=0,pass=0,drop=1,bytes=98;drop_tcp_probe_lab:proto=tcp,src_ip=any,dst_ip=any,src_port=0,dst_port=19092,pass=0,drop=4,bytes=296;drop_udp_probe_lab:proto=udp,src_ip=any,dst_ip=any,src_port=0,dst_port=19093,pass=0,drop=8,bytes=1104;drop_udp_tuple_lab:proto=udp,src_ip=10.89.0.2,dst_ip=10.89.0.1,src_port=39094,dst_port=19094,pass=0,drop=8,bytes=1104

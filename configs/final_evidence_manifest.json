@@ -1,0 +1,267 @@
+{
+  "version": 1,
+  "title": "EulerPilot final evidence manifest",
+  "description": "Curated evidence used by scripts/collect_final_evidence.py. Keep this list small and stable for defense review.",
+  "entries": [
+    {
+      "category": "quality_gate",
+      "name": "121 final quality gate after credential deep hooks",
+      "host": "121",
+      "path": "reports/final_quality_gate_20260703-creddeep-121.log",
+      "kind": "quality_gate",
+      "required": true,
+      "notes": "21/21 P0, 100-round smoke and 5-round doctor evidence."
+    },
+    {
+      "category": "repo_status",
+      "name": "v3.1 start repository snapshot",
+      "host": "local",
+      "path": "reports/v3_1_start_repo_status_20260629-1859.log",
+      "kind": "file",
+      "required": true,
+      "notes": "Start snapshot for the v3.1 execution baseline."
+    },
+    {
+      "category": "cpu_sched_ext",
+      "name": "Redis sched_ext comparison",
+      "host": "121",
+      "path": "results/final/redis-scx-compare-20260612-191543",
+      "kind": "result_dir",
+      "summary": "summary.md",
+      "files": ["compare_summary_avg.csv", "run_manifest.json", "report.md"],
+      "required": true,
+      "notes": "RUNS=5 Redis candidate result."
+    },
+    {
+      "category": "cpu_sched_ext",
+      "name": "Nginx sched_ext comparison",
+      "host": "121",
+      "path": "results/final/nginx-scx-compare-20260612-194018",
+      "kind": "result_dir",
+      "summary": "summary.md",
+      "files": ["compare_summary_avg.csv", "run_manifest.json", "report.md"],
+      "required": true,
+      "notes": "RUNS=5 Nginx candidate result."
+    },
+    {
+      "category": "network",
+      "name": "isolated-veth XDP field tuple 121",
+      "host": "121",
+      "path": "results/network_policy/xdp-20260703-121-fields-v1",
+      "kind": "result_dir",
+      "summary": "summary.txt",
+      "files": ["network_policy_events.jsonl", "action_journal.network_xdp.jsonl", "xdp_rule_stats.txt", "README.md"],
+      "required": true,
+      "notes": "ICMP/TCP/UDP and UDP tuple per-rule XDP evidence."
+    },
+    {
+      "category": "network",
+      "name": "isolated-veth XDP field tuple 122",
+      "host": "122",
+      "path": "results/network_policy/xdp-20260703-122-fields-v1",
+      "kind": "result_dir",
+      "summary": "summary.txt",
+      "files": ["network_policy_events.jsonl", "action_journal.network_xdp.jsonl", "xdp_rule_stats.txt", "README.md"],
+      "required": true,
+      "notes": "ICMP/TCP/UDP and UDP tuple per-rule XDP evidence."
+    },
+    {
+      "category": "network",
+      "name": "real Pod host veth XDP tuple 121",
+      "host": "121",
+      "path": "results/network_policy/real-pod-veth-xdp-20260703-k3s-121-tuple-v1",
+      "kind": "result_dir",
+      "summary": "summary.txt",
+      "files": ["network_policy.jsonl", "action_journal.jsonl", "xdp_rule_stats.txt", "report.md"],
+      "required": true,
+      "notes": "Kubernetes Pod host veth XDP evidence with UDP tuple fields."
+    },
+    {
+      "category": "network",
+      "name": "real Pod host veth XDP tuple 122",
+      "host": "122",
+      "path": "results/network_policy/real-pod-veth-xdp-20260703-k3s-122-tuple-v1",
+      "kind": "result_dir",
+      "summary": "summary.txt",
+      "files": ["network_policy.jsonl", "action_journal.jsonl", "xdp_rule_stats.txt", "report.md"],
+      "required": true,
+      "notes": "Kubernetes Pod host veth XDP evidence with UDP tuple fields."
+    },
+    {
+      "category": "network",
+      "name": "real Pod host veth QoS 121",
+      "host": "121",
+      "path": "results/network_policy/real-pod-veth-qos-20260630-k3s-121-v2",
+      "kind": "result_dir",
+      "summary": "summary.txt",
+      "files": ["network_policy.jsonl", "action_journal.jsonl", "tc_qdisc_after.txt", "tc_qdisc_rollback.txt", "report.md"],
+      "required": true,
+      "notes": "TC/TBF apply and rollback on lab Pod host veth."
+    },
+    {
+      "category": "network",
+      "name": "real Pod host veth QoS 122",
+      "host": "122",
+      "path": "results/network_policy/real-pod-veth-qos-20260630-k3s-122-v1",
+      "kind": "result_dir",
+      "summary": "summary.txt",
+      "files": ["network_policy.jsonl", "action_journal.jsonl", "tc_qdisc_after.txt", "tc_qdisc_rollback.txt", "report.md"],
+      "required": true,
+      "notes": "TC/TBF apply and rollback on lab Pod host veth."
+    },
+    {
+      "category": "security",
+      "name": "service anomaly rules 121",
+      "host": "121",
+      "path": "results/security_policy/anomaly-rules-20260703-121-v4",
+      "kind": "result_dir",
+      "summary": "summary.txt",
+      "files": ["security_policy_events.anomaly-rules.jsonl", "anomaly_event_summary.txt", "report.md"],
+      "required": true,
+      "notes": "burst_connect, burst_openat_sensitive and capability_abuse evidence."
+    },
+    {
+      "category": "security",
+      "name": "service anomaly rules 122",
+      "host": "122",
+      "path": "results/security_policy/anomaly-rules-20260703-122-v2",
+      "kind": "result_dir",
+      "summary": "summary.txt",
+      "files": ["security_policy_events.anomaly-rules.jsonl", "anomaly_event_summary.txt", "report.md"],
+      "required": true,
+      "notes": "burst_connect, burst_openat_sensitive and capability_abuse evidence."
+    },
+    {
+      "category": "security",
+      "name": "credential anomaly 121",
+      "host": "121",
+      "path": "results/security_policy/credential-anomaly-20260703-121-v4",
+      "kind": "result_dir",
+      "summary": "summary.txt",
+      "files": ["security_policy_events.credential-anomaly.jsonl", "security_policy_events.credential-hits.jsonl", "report.md"],
+      "required": true,
+      "notes": "credential_churn anomaly and credential lifecycle fields."
+    },
+    {
+      "category": "security",
+      "name": "credential anomaly 122",
+      "host": "122",
+      "path": "results/security_policy/credential-anomaly-20260703-122-v4",
+      "kind": "result_dir",
+      "summary": "summary.txt",
+      "files": ["security_policy_events.credential-anomaly.jsonl", "security_policy_events.credential-hits.jsonl", "report.md"],
+      "required": true,
+      "notes": "credential_churn anomaly and credential lifecycle fields."
+    },
+    {
+      "category": "security",
+      "name": "credential deep hook evaluation 121",
+      "host": "121",
+      "path": "results/security_policy/credential-deep-hooks-20260703-121-v2",
+      "kind": "result_dir",
+      "summary": "summary.txt",
+      "files": ["deep_hook_status.txt", "security_policy_events.credential-deep-hits.jsonl", "security_policy_events.credential-deep-anomaly.jsonl", "report.md"],
+      "required": true,
+      "notes": "cred_alloc_blank and cred_transfer scoped attach boundary evidence."
+    },
+    {
+      "category": "security",
+      "name": "credential deep hook evaluation 122",
+      "host": "122",
+      "path": "results/security_policy/credential-deep-hooks-20260703-122-v2",
+      "kind": "result_dir",
+      "summary": "summary.txt",
+      "files": ["deep_hook_status.txt", "security_policy_events.credential-deep-hits.jsonl", "security_policy_events.credential-deep-anomaly.jsonl", "report.md"],
+      "required": true,
+      "notes": "cred_alloc_blank and cred_transfer scoped attach boundary evidence."
+    },
+    {
+      "category": "resource_control",
+      "name": "IO controller 121",
+      "host": "121",
+      "path": "results/resource_control/io-20260624-160008",
+      "kind": "result_dir",
+      "summary": "summary.txt",
+      "files": ["resource_control_events.jsonl", "agent.log", "rollback.log"],
+      "required": true,
+      "notes": "io.max/io.weight apply, effect and rollback evidence."
+    },
+    {
+      "category": "resource_control",
+      "name": "IO controller 122",
+      "host": "122",
+      "path": "results/resource_control/io-20260624-160208",
+      "kind": "result_dir",
+      "summary": "summary.txt",
+      "files": ["resource_control_events.jsonl", "agent.log", "rollback.log"],
+      "required": true,
+      "notes": "io.max/io.weight apply, effect and rollback evidence."
+    },
+    {
+      "category": "resource_control",
+      "name": "real Kubernetes Pod cgroup 121",
+      "host": "121",
+      "path": "results/resource_control/real-pod-target-20260630-k3s-121-v2",
+      "kind": "result_dir",
+      "summary": "summary.txt",
+      "files": ["resource_control.jsonl", "agent.log", "report.md"],
+      "required": true,
+      "notes": "k8s_pod target resolves to real Pod cgroup and restores CPU/Memory."
+    },
+    {
+      "category": "resource_control",
+      "name": "real Kubernetes Pod cgroup 122",
+      "host": "122",
+      "path": "results/resource_control/real-pod-target-20260630-k3s-122-v1",
+      "kind": "result_dir",
+      "summary": "summary.txt",
+      "files": ["resource_control.jsonl", "agent.log", "report.md"],
+      "required": true,
+      "notes": "k8s_pod target resolves to real Pod cgroup and restores CPU/Memory."
+    },
+    {
+      "category": "policy_engine",
+      "name": "security to network and resource 121",
+      "host": "121",
+      "path": "results/policy_engine/security-network-resource-20260629-214952",
+      "kind": "result_dir",
+      "summary": "summary.txt",
+      "files": ["summary.txt", "setup.log", "report.md"],
+      "required": true,
+      "notes": "v3.1 second cross-skill link, including failure rollback test."
+    },
+    {
+      "category": "policy_engine",
+      "name": "security to network and resource 122",
+      "host": "122",
+      "path": "results/policy_engine/security-network-resource-20260629-215950",
+      "kind": "result_dir",
+      "summary": "summary.txt",
+      "files": ["summary.txt", "setup.log", "report.md"],
+      "required": true,
+      "notes": "v3.1 second cross-skill link, including failure rollback test."
+    },
+    {
+      "category": "policy_engine",
+      "name": "real Pod security to network and resource 121",
+      "host": "121",
+      "path": "results/policy_engine/real-pod-security-network-resource-20260630-k3s-121-v1",
+      "kind": "result_dir",
+      "summary": "summary.txt",
+      "files": ["policy_engine_events.jsonl", "security_policy_events.jsonl", "network_policy_events.jsonl", "resource_control_events.jsonl", "action_journal.jsonl", "report.md"],
+      "required": true,
+      "notes": "v3.2 real Pod cgroup plus host veth cross-skill evidence."
+    },
+    {
+      "category": "policy_engine",
+      "name": "real Pod security to network and resource 122",
+      "host": "122",
+      "path": "results/policy_engine/real-pod-security-network-resource-20260630-k3s-122-v1",
+      "kind": "result_dir",
+      "summary": "summary.txt",
+      "files": ["policy_engine_events.jsonl", "security_policy_events.jsonl", "network_policy_events.jsonl", "resource_control_events.jsonl", "action_journal.jsonl", "report.md"],
+      "required": true,
+      "notes": "v3.2 real Pod cgroup plus host veth cross-skill evidence."
+    }
+  ]
+}

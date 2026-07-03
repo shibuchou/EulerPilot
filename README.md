@@ -75,8 +75,10 @@ eBPF Observer
 - Security scoped credential/cred_prepare 122：`/root/EulerPilot/results/security_policy/integration-20260624-115440`
 - Security 服务联动 anomaly 121：`/root/EulerPilot/results/security_policy/anomaly-rules-20260703-121-v4`
 - Security 服务联动 anomaly 122：`/root/EulerPilot/results/security_policy/anomaly-rules-20260703-122-v2`
-- Security credential anomaly 121：`/root/EulerPilot/results/security_policy/credential-anomaly-20260703-121-v3`
-- Security credential anomaly 122：`/root/EulerPilot/results/security_policy/credential-anomaly-20260703-122-v3`
+- Security credential anomaly 121：`/root/EulerPilot/results/security_policy/credential-anomaly-20260703-121-v4`
+- Security credential anomaly 122：`/root/EulerPilot/results/security_policy/credential-anomaly-20260703-122-v4`
+- Security credential deep hook 评估 121：`/root/EulerPilot/results/security_policy/credential-deep-hooks-20260703-121-v2`
+- Security credential deep hook 评估 122：`/root/EulerPilot/results/security_policy/credential-deep-hooks-20260703-122-v2`
 - Resource Control CPU+Memory 回归 121：`/root/EulerPilot/results/resource_control/integration-20260624-160317`
 - Resource Control CPU+Memory 回归 122：`/root/EulerPilot/results/resource_control/integration-20260624-160349`
 - Resource Control IO 121：`/root/EulerPilot/results/resource_control/io-20260624-160008`
@@ -115,7 +117,9 @@ eBPF Observer
 - Policy Engine Security -> Network + Resource lab 联动 122：`/root/EulerPilot/results/policy_engine/security-network-resource-20260629-215950`
 - Policy Engine real Pod Security -> Network + Resource 联动 121：`/root/EulerPilot/results/policy_engine/real-pod-security-network-resource-20260630-k3s-121-v1`
 - Policy Engine real Pod Security -> Network + Resource 联动 122：`/root/EulerPilot/results/policy_engine/real-pod-security-network-resource-20260630-k3s-122-v1`
-- 121 最新质量门禁：`/root/EulerPilot/reports/final_quality_gate_20260630-v32-real-pod-policy-121.log`
+- 最终证据压缩清单：`/root/EulerPilot/configs/final_evidence_manifest.json`
+- 最终证据压缩报告：`/root/EulerPilot/reports/final_evidence_compact.md`
+- 121 最新质量门禁：`/root/EulerPilot/reports/final_quality_gate_20260703-creddeep-121.log`
 
 当前图表目录为：
 
@@ -125,7 +129,7 @@ eBPF Observer
 
 - 上述最终结果目录与图表目录已经回收到主交付仓库 `192.168.1.121:/root/EulerPilot`。
 - `192.168.1.122` 当前作为第二台 openEuler 24.03 LTS SP3 验证环境，保留 `OLK-6.6 / sched_ext` 验证能力，并同步 Network/Security 关键结果。
-- 本地当前主要保存代码镜像、脚本与中文文档入口。
+- 本地当前保存代码镜像、关键结果目录、脚本、中文文档入口和最终证据压缩报告；其中 `python3 scripts/collect_final_evidence.py --strict` 可用于提交前检查证据完整性。
 
 ---
 

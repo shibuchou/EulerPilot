@@ -1,0 +1,1172 @@
+{
+  "generated_at": "2026-07-03T15:56:54+08:00",
+  "manifest_path": "configs/final_evidence_manifest.json",
+  "manifest_title": "EulerPilot final evidence manifest",
+  "git_status_short": [],
+  "entries": [
+    {
+      "category": "quality_gate",
+      "name": "121 final quality gate after credential deep hooks",
+      "host": "121",
+      "path": "reports/final_quality_gate_20260703-creddeep-121.log",
+      "kind": "quality_gate",
+      "required": true,
+      "exists": true,
+      "status": "pass",
+      "notes": "21/21 P0, 100-round smoke and 5-round doctor evidence.",
+      "summary": {
+        "result": "pass",
+        "planned": 21,
+        "ok_count": 21,
+        "not_ok_count": 0,
+        "optional_ok_count": 2,
+        "quality_gate_complete": true
+      },
+      "evidence_files": [],
+      "warnings": []
+    },
+    {
+      "category": "repo_status",
+      "name": "v3.1 start repository snapshot",
+      "host": "local",
+      "path": "reports/v3_1_start_repo_status_20260629-1859.log",
+      "kind": "file",
+      "required": true,
+      "exists": true,
+      "status": "present",
+      "notes": "Start snapshot for the v3.1 execution baseline.",
+      "summary": {
+        "timestamp": "20260629-1859",
+        "timezone": "Asia/Shanghai",
+        "note": "9c4ccce is previous policy_engine feature commit; 7b2cb84 is completion report commit.",
+        "local_index_lock": "removed_before_snapshot",
+        "head": "7b2cb84cd37d11cd7d920dc5ba801e847d595a5e",
+        "log": "73e8ff8 Add real runtime and pod target harness",
+        "remote": "origin\thttps://github.com/shibuchou/EulerPilot.git (push)",
+        "status": "clean",
+        "bytes": 1461
+      },
+      "evidence_files": [],
+      "warnings": []
+    },
+    {
+      "category": "cpu_sched_ext",
+      "name": "Redis sched_ext comparison",
+      "host": "121",
+      "path": "results/final/redis-scx-compare-20260612-191543",
+      "kind": "result_dir",
+      "required": true,
+      "exists": true,
+      "status": "present",
+      "notes": "RUNS=5 Redis candidate result.",
+      "summary": {
+        "summary_excerpt": "# Redis sched_ext 正式对照 / - timestamp: 2026-06-12T19:28:10+08:00 / - runs: 5",
+        "csv_rows": 4,
+        "test": "GET",
+        "quiet_default_rps_avg": "31665.698",
+        "quiet_scx_normal_rps_avg": "31044.572",
+        "noisy_default_rps_avg": "34279.036",
+        "noisy_cgroup_v2_rps_avg": "37760.060",
+        "noisy_scx_psi_rps_avg": "36582.858"
+      },
+      "evidence_files": [
+        {
+          "path": "results/final/redis-scx-compare-20260612-191543/compare_summary_avg.csv",
+          "exists": true,
+          "bytes": 1629
+        },
+        {
+          "path": "results/final/redis-scx-compare-20260612-191543/run_manifest.json",
+          "exists": true,
+          "bytes": 6032
+        },
+        {
+          "path": "results/final/redis-scx-compare-20260612-191543/report.md",
+          "exists": true,
+          "bytes": 3548
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "category": "cpu_sched_ext",
+      "name": "Nginx sched_ext comparison",
+      "host": "121",
+      "path": "results/final/nginx-scx-compare-20260612-194018",
+      "kind": "result_dir",
+      "required": true,
+      "exists": true,
+      "status": "present",
+      "notes": "RUNS=5 Nginx candidate result.",
+      "summary": {
+        "summary_excerpt": "# Nginx sched_ext 正式对照 / - timestamp: 2026-06-12T19:52:03+08:00 / - runs: 5",
+        "csv_rows": 1,
+        "quiet_default_rps_avg": "29707.964",
+        "quiet_scx_normal_rps_avg": "13533.460",
+        "noisy_default_rps_avg": "33526.336",
+        "noisy_cgroup_v2_rps_avg": "35872.500",
+        "noisy_scx_psi_rps_avg": "33859.416"
+      },
+      "evidence_files": [
+        {
+          "path": "results/final/nginx-scx-compare-20260612-194018/compare_summary_avg.csv",
+          "exists": true,
+          "bytes": 948
+        },
+        {
+          "path": "results/final/nginx-scx-compare-20260612-194018/run_manifest.json",
+          "exists": true,
+          "bytes": 6018
+        },
+        {
+          "path": "results/final/nginx-scx-compare-20260612-194018/report.md",
+          "exists": true,
+          "bytes": 1584
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "category": "network",
+      "name": "isolated-veth XDP field tuple 121",
+      "host": "121",
+      "path": "results/network_policy/xdp-20260703-121-fields-v1",
+      "kind": "result_dir",
+      "required": true,
+      "exists": true,
+      "status": "pass",
+      "notes": "ICMP/TCP/UDP and UDP tuple per-rule XDP evidence.",
+      "summary": {
+        "result": "pass",
+        "host": "localhost.localdomain",
+        "ifname": "ep-veth-xdp0",
+        "rules": "drop_icmp_lab,drop_tcp_probe_lab,drop_udp_probe_lab,drop_udp_tuple_lab",
+        "tcp_port": "19092",
+        "udp_port": "19093",
+        "udp_tuple_src_ip": "10.89.0.2",
+        "udp_tuple_dst_ip": "10.89.0.1",
+        "udp_tuple_src_port": "39094",
+        "udp_tuple_dst_port": "19094",
+        "events": "network_policy_events.jsonl",
+        "journal": "action_journal.network_xdp.jsonl"
+      },
+      "evidence_files": [
+        {
+          "path": "results/network_policy/xdp-20260703-121-fields-v1/network_policy_events.jsonl",
+          "exists": true,
+          "bytes": 4532
+        },
+        {
+          "path": "results/network_policy/xdp-20260703-121-fields-v1/action_journal.network_xdp.jsonl",
+          "exists": true,
+          "bytes": 3384
+        },
+        {
+          "path": "results/network_policy/xdp-20260703-121-fields-v1/xdp_rule_stats.txt",
+          "exists": true,
+          "bytes": 663
+        },
+        {
+          "path": "results/network_policy/xdp-20260703-121-fields-v1/README.md",
+          "exists": true,
+          "bytes": 629
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "category": "network",
+      "name": "isolated-veth XDP field tuple 122",
+      "host": "122",
+      "path": "results/network_policy/xdp-20260703-122-fields-v1",
+      "kind": "result_dir",
+      "required": true,
+      "exists": true,
+      "status": "pass",
+      "notes": "ICMP/TCP/UDP and UDP tuple per-rule XDP evidence.",
+      "summary": {
+        "result": "pass",
+        "host": "localhost.localdomain",
+        "ifname": "ep-veth-xdp0",
+        "rules": "drop_icmp_lab,drop_tcp_probe_lab,drop_udp_probe_lab,drop_udp_tuple_lab",
+        "tcp_port": "19092",
+        "udp_port": "19093",
+        "udp_tuple_src_ip": "10.89.0.2",
+        "udp_tuple_dst_ip": "10.89.0.1",
+        "udp_tuple_src_port": "39094",
+        "udp_tuple_dst_port": "19094",
+        "events": "network_policy_events.jsonl",
+        "journal": "action_journal.network_xdp.jsonl"
+      },
+      "evidence_files": [
+        {
+          "path": "results/network_policy/xdp-20260703-122-fields-v1/network_policy_events.jsonl",
+          "exists": true,
+          "bytes": 4530
+        },
+        {
+          "path": "results/network_policy/xdp-20260703-122-fields-v1/action_journal.network_xdp.jsonl",
+          "exists": true,
+          "bytes": 3384
+        },
+        {
+          "path": "results/network_policy/xdp-20260703-122-fields-v1/xdp_rule_stats.txt",
+          "exists": true,
+          "bytes": 663
+        },
+        {
+          "path": "results/network_policy/xdp-20260703-122-fields-v1/README.md",
+          "exists": true,
+          "bytes": 629
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "category": "network",
+      "name": "real Pod host veth XDP tuple 121",
+      "host": "121",
+      "path": "results/network_policy/real-pod-veth-xdp-20260703-k3s-121-tuple-v1",
+      "kind": "result_dir",
+      "required": true,
+      "exists": true,
+      "status": "pass",
+      "notes": "Kubernetes Pod host veth XDP evidence with UDP tuple fields.",
+      "summary": {
+        "result": "pass",
+        "reason": "real-pod-veth-xdp-attached-dropped-and-restored",
+        "host": "localhost.localdomain",
+        "date": "2026-07-03T14:46:22+08:00",
+        "kernel": "6.6.0-132.0.0.111.oe2403sp3.x86_64",
+        "pod_namespace": "eulerpilot-lab",
+        "pod_name": "eulerpilot-rc-pod",
+        "pod_ip": "10.42.0.4",
+        "host_ip": "192.168.1.121",
+        "traffic_target_ip": "10.42.0.1",
+        "host_bridge": "cni0",
+        "target_ref": "lab_pod",
+        "host_veth": "veth998e0158",
+        "ifindex": "144",
+        "pid": "538236",
+        "pod_uid": "ec49c0af-8ae7-462b-8a6d-9fef2b0b62b3",
+        "container_id": "0c5f17f8cee29b12219652da904121b83fb3774e2fe6b5fcc8ac3ad0b6a672f4",
+        "netns_path": "/proc/538236/ns/net",
+        "cgroup_path": "/sys/fs/cgroup/kubepods/besteffort/podec49c0af-8ae7-462b-8a6d-9fef2b0b62b3/0c5f17f8cee29b12219652da904121b83fb3774e2fe6b5fcc8ac3ad0b6a672f4",
+        "xdp_mode": "generic",
+        "xdp_drop_count": "21",
+        "xdp_tcp_port": "19092",
+        "xdp_tcp_drop_count": "4",
+        "xdp_udp_port": "19093",
+        "xdp_udp_drop_count": "8",
+        "xdp_udp_tuple_src_ip": "10.42.0.4",
+        "xdp_udp_tuple_dst_ip": "10.42.0.1",
+        "xdp_udp_tuple_src_port": "39094",
+        "xdp_udp_tuple_dst_port": "19094",
+        "xdp_udp_tuple_drop_count": "8",
+        "total_drop_count": "21",
+        "drop_icmp_real_pod": "1",
+        "drop_tcp_real_pod": "4",
+        "drop_udp_real_pod": "8",
+        "drop_udp_tuple_real_pod": "8",
+        "drop_udp_tuple_real_pod.src_ip": "10.42.0.4",
+        "drop_udp_tuple_real_pod.dst_ip": "10.42.0.1",
+        "drop_udp_tuple_real_pod.src_port": "39094",
+        "drop_udp_tuple_real_pod.dst_port": "19094",
+        "rule_stats": "drop_icmp_real_pod:proto=icmp,src_ip=any,dst_ip=any,src_port=0,dst_port=0,pass=0,drop=1,bytes=98;drop_tcp_real_pod:proto=tcp,src_ip=any,dst_ip=any,src_port=0,dst_port=19092,pass=0,drop=4,bytes=296;drop_udp_real_pod:proto=udp,src_ip=any,dst_ip=any,src_port=0,dst_port=19093,pass=0,drop=8,bytes=1200;drop_udp_tuple_real_pod:proto=udp,src_ip=10.42.0.4,dst_ip=10.42.0.1,src_port=39094,dst_port=19094,pass=0,drop=8,bytes=1200"
+      },
+      "evidence_files": [
+        {
+          "path": "results/network_policy/real-pod-veth-xdp-20260703-k3s-121-tuple-v1/network_policy.jsonl",
+          "exists": true,
+          "bytes": 9362
+        },
+        {
+          "path": "results/network_policy/real-pod-veth-xdp-20260703-k3s-121-tuple-v1/action_journal.jsonl",
+          "exists": true,
+          "bytes": 1746
+        },
+        {
+          "path": "results/network_policy/real-pod-veth-xdp-20260703-k3s-121-tuple-v1/xdp_rule_stats.txt",
+          "exists": true,
+          "bytes": 699
+        },
+        {
+          "path": "results/network_policy/real-pod-veth-xdp-20260703-k3s-121-tuple-v1/report.md",
+          "exists": true,
+          "bytes": 1279
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "category": "network",
+      "name": "real Pod host veth XDP tuple 122",
+      "host": "122",
+      "path": "results/network_policy/real-pod-veth-xdp-20260703-k3s-122-tuple-v1",
+      "kind": "result_dir",
+      "required": true,
+      "exists": true,
+      "status": "pass",
+      "notes": "Kubernetes Pod host veth XDP evidence with UDP tuple fields.",
+      "summary": {
+        "result": "pass",
+        "reason": "real-pod-veth-xdp-attached-dropped-and-restored",
+        "host": "localhost.localdomain",
+        "date": "2026-07-03T14:46:22+08:00",
+        "kernel": "6.6.0-olk66-scx",
+        "pod_namespace": "eulerpilot-lab",
+        "pod_name": "eulerpilot-rc-pod",
+        "pod_ip": "10.42.0.4",
+        "host_ip": "192.168.1.122",
+        "traffic_target_ip": "10.42.0.1",
+        "host_bridge": "cni0",
+        "target_ref": "lab_pod",
+        "host_veth": "vethc59976b2",
+        "ifindex": "39",
+        "pid": "285464",
+        "pod_uid": "03a42fb7-0c29-4c32-9dde-bd5367b9cfcc",
+        "container_id": "f519641e3f273297aa06bf8af15ed795ec52ad1f6e62df6be023517061f8b157",
+        "netns_path": "/proc/285464/ns/net",
+        "cgroup_path": "/sys/fs/cgroup/kubepods/besteffort/pod03a42fb7-0c29-4c32-9dde-bd5367b9cfcc/f519641e3f273297aa06bf8af15ed795ec52ad1f6e62df6be023517061f8b157",
+        "xdp_mode": "generic",
+        "xdp_drop_count": "21",
+        "xdp_tcp_port": "19092",
+        "xdp_tcp_drop_count": "4",
+        "xdp_udp_port": "19093",
+        "xdp_udp_drop_count": "8",
+        "xdp_udp_tuple_src_ip": "10.42.0.4",
+        "xdp_udp_tuple_dst_ip": "10.42.0.1",
+        "xdp_udp_tuple_src_port": "39094",
+        "xdp_udp_tuple_dst_port": "19094",
+        "xdp_udp_tuple_drop_count": "8",
+        "total_drop_count": "21",
+        "drop_icmp_real_pod": "1",
+        "drop_tcp_real_pod": "4",
+        "drop_udp_real_pod": "8",
+        "drop_udp_tuple_real_pod": "8",
+        "drop_udp_tuple_real_pod.src_ip": "10.42.0.4",
+        "drop_udp_tuple_real_pod.dst_ip": "10.42.0.1",
+        "drop_udp_tuple_real_pod.src_port": "39094",
+        "drop_udp_tuple_real_pod.dst_port": "19094",
+        "rule_stats": "drop_icmp_real_pod:proto=icmp,src_ip=any,dst_ip=any,src_port=0,dst_port=0,pass=0,drop=1,bytes=98;drop_tcp_real_pod:proto=tcp,src_ip=any,dst_ip=any,src_port=0,dst_port=19092,pass=0,drop=4,bytes=296;drop_udp_real_pod:proto=udp,src_ip=any,dst_ip=any,src_port=0,dst_port=19093,pass=0,drop=8,bytes=1200;drop_udp_tuple_real_pod:proto=udp,src_ip=10.42.0.4,dst_ip=10.42.0.1,src_port=39094,dst_port=19094,pass=0,drop=8,bytes=1200"
+      },
+      "evidence_files": [
+        {
+          "path": "results/network_policy/real-pod-veth-xdp-20260703-k3s-122-tuple-v1/network_policy.jsonl",
+          "exists": true,
+          "bytes": 9358
+        },
+        {
+          "path": "results/network_policy/real-pod-veth-xdp-20260703-k3s-122-tuple-v1/action_journal.jsonl",
+          "exists": true,
+          "bytes": 1746
+        },
+        {
+          "path": "results/network_policy/real-pod-veth-xdp-20260703-k3s-122-tuple-v1/xdp_rule_stats.txt",
+          "exists": true,
+          "bytes": 699
+        },
+        {
+          "path": "results/network_policy/real-pod-veth-xdp-20260703-k3s-122-tuple-v1/report.md",
+          "exists": true,
+          "bytes": 1260
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "category": "network",
+      "name": "real Pod host veth QoS 121",
+      "host": "121",
+      "path": "results/network_policy/real-pod-veth-qos-20260630-k3s-121-v2",
+      "kind": "result_dir",
+      "required": true,
+      "exists": true,
+      "status": "pass",
+      "notes": "TC/TBF apply and rollback on lab Pod host veth.",
+      "summary": {
+        "result": "pass",
+        "reason": "real-pod-veth-qos-applied-and-restored",
+        "host": "localhost.localdomain",
+        "date": "2026-06-30T15:56:40+08:00",
+        "kernel": "6.6.0-132.0.0.111.oe2403sp3.x86_64",
+        "pod_namespace": "eulerpilot-lab",
+        "pod_name": "eulerpilot-rc-pod",
+        "pod_ip": "10.42.0.4",
+        "target_ref": "lab_pod",
+        "host_veth": "veth998e0158",
+        "ifindex": "144",
+        "pid": "538236",
+        "pod_uid": "ec49c0af-8ae7-462b-8a6d-9fef2b0b62b3",
+        "container_id": "0c5f17f8cee29b12219652da904121b83fb3774e2fe6b5fcc8ac3ad0b6a672f4",
+        "netns_path": "/proc/538236/ns/net",
+        "cgroup_path": "/sys/fs/cgroup/kubepods/besteffort/podec49c0af-8ae7-462b-8a6d-9fef2b0b62b3/0c5f17f8cee29b12219652da904121b83fb3774e2fe6b5fcc8ac3ad0b6a672f4",
+        "qos_rate": "1mbit",
+        "qos_burst": "32kb",
+        "qos_latency": "50ms"
+      },
+      "evidence_files": [
+        {
+          "path": "results/network_policy/real-pod-veth-qos-20260630-k3s-121-v2/network_policy.jsonl",
+          "exists": true,
+          "bytes": 946
+        },
+        {
+          "path": "results/network_policy/real-pod-veth-qos-20260630-k3s-121-v2/action_journal.jsonl",
+          "exists": true,
+          "bytes": 937
+        },
+        {
+          "path": "results/network_policy/real-pod-veth-qos-20260630-k3s-121-v2/tc_qdisc_after.txt",
+          "exists": true,
+          "bytes": 100
+        },
+        {
+          "path": "results/network_policy/real-pod-veth-qos-20260630-k3s-121-v2/tc_qdisc_rollback.txt",
+          "exists": true,
+          "bytes": 32
+        },
+        {
+          "path": "results/network_policy/real-pod-veth-qos-20260630-k3s-121-v2/report.md",
+          "exists": true,
+          "bytes": 929
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "category": "network",
+      "name": "real Pod host veth QoS 122",
+      "host": "122",
+      "path": "results/network_policy/real-pod-veth-qos-20260630-k3s-122-v1",
+      "kind": "result_dir",
+      "required": true,
+      "exists": true,
+      "status": "pass",
+      "notes": "TC/TBF apply and rollback on lab Pod host veth.",
+      "summary": {
+        "result": "pass",
+        "reason": "real-pod-veth-qos-applied-and-restored",
+        "host": "localhost.localdomain",
+        "date": "2026-06-30T16:02:42+08:00",
+        "kernel": "6.6.0-olk66-scx",
+        "pod_namespace": "eulerpilot-lab",
+        "pod_name": "eulerpilot-rc-pod",
+        "pod_ip": "10.42.0.4",
+        "target_ref": "lab_pod",
+        "host_veth": "vethc59976b2",
+        "ifindex": "39",
+        "pid": "285464",
+        "pod_uid": "03a42fb7-0c29-4c32-9dde-bd5367b9cfcc",
+        "container_id": "f519641e3f273297aa06bf8af15ed795ec52ad1f6e62df6be023517061f8b157",
+        "netns_path": "/proc/285464/ns/net",
+        "cgroup_path": "/sys/fs/cgroup/kubepods/besteffort/pod03a42fb7-0c29-4c32-9dde-bd5367b9cfcc/f519641e3f273297aa06bf8af15ed795ec52ad1f6e62df6be023517061f8b157",
+        "qos_rate": "1mbit",
+        "qos_burst": "32kb",
+        "qos_latency": "50ms"
+      },
+      "evidence_files": [
+        {
+          "path": "results/network_policy/real-pod-veth-qos-20260630-k3s-122-v1/network_policy.jsonl",
+          "exists": true,
+          "bytes": 944
+        },
+        {
+          "path": "results/network_policy/real-pod-veth-qos-20260630-k3s-122-v1/action_journal.jsonl",
+          "exists": true,
+          "bytes": 937
+        },
+        {
+          "path": "results/network_policy/real-pod-veth-qos-20260630-k3s-122-v1/tc_qdisc_after.txt",
+          "exists": true,
+          "bytes": 100
+        },
+        {
+          "path": "results/network_policy/real-pod-veth-qos-20260630-k3s-122-v1/tc_qdisc_rollback.txt",
+          "exists": true,
+          "bytes": 32
+        },
+        {
+          "path": "results/network_policy/real-pod-veth-qos-20260630-k3s-122-v1/report.md",
+          "exists": true,
+          "bytes": 910
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "category": "security",
+      "name": "service anomaly rules 121",
+      "host": "121",
+      "path": "results/security_policy/anomaly-rules-20260703-121-v4",
+      "kind": "result_dir",
+      "required": true,
+      "exists": true,
+      "status": "pass",
+      "notes": "burst_connect, burst_openat_sensitive and capability_abuse evidence.",
+      "summary": {
+        "result": "pass",
+        "reason": "service-linkage-anomaly-rules-observed",
+        "host": "localhost.localdomain",
+        "date": "2026-07-03T09:14:48+08:00",
+        "kernel": "6.6.0-132.0.0.111.oe2403sp3.x86_64",
+        "rules": "burst_connect,burst_openat_sensitive,capability_abuse",
+        "cgroup_path": "/sys/fs/cgroup/eulerpilot/security-anomaly-capability",
+        "event_file": "security_policy_events.anomaly-rules.jsonl"
+      },
+      "evidence_files": [
+        {
+          "path": "results/security_policy/anomaly-rules-20260703-121-v4/security_policy_events.anomaly-rules.jsonl",
+          "exists": true,
+          "bytes": 20411
+        },
+        {
+          "path": "results/security_policy/anomaly-rules-20260703-121-v4/anomaly_event_summary.txt",
+          "exists": true,
+          "bytes": 3013
+        },
+        {
+          "path": "results/security_policy/anomaly-rules-20260703-121-v4/report.md",
+          "exists": true,
+          "bytes": 773
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "category": "security",
+      "name": "service anomaly rules 122",
+      "host": "122",
+      "path": "results/security_policy/anomaly-rules-20260703-122-v2",
+      "kind": "result_dir",
+      "required": true,
+      "exists": true,
+      "status": "pass",
+      "notes": "burst_connect, burst_openat_sensitive and capability_abuse evidence.",
+      "summary": {
+        "result": "pass",
+        "reason": "service-linkage-anomaly-rules-observed",
+        "host": "localhost.localdomain",
+        "date": "2026-07-03T09:14:48+08:00",
+        "kernel": "6.6.0-olk66-scx",
+        "rules": "burst_connect,burst_openat_sensitive,capability_abuse",
+        "cgroup_path": "/sys/fs/cgroup/eulerpilot/security-anomaly-capability",
+        "event_file": "security_policy_events.anomaly-rules.jsonl"
+      },
+      "evidence_files": [
+        {
+          "path": "results/security_policy/anomaly-rules-20260703-122-v2/security_policy_events.anomaly-rules.jsonl",
+          "exists": true,
+          "bytes": 21970
+        },
+        {
+          "path": "results/security_policy/anomaly-rules-20260703-122-v2/anomaly_event_summary.txt",
+          "exists": true,
+          "bytes": 3227
+        },
+        {
+          "path": "results/security_policy/anomaly-rules-20260703-122-v2/report.md",
+          "exists": true,
+          "bytes": 754
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "category": "security",
+      "name": "credential anomaly 121",
+      "host": "121",
+      "path": "results/security_policy/credential-anomaly-20260703-121-v4",
+      "kind": "result_dir",
+      "required": true,
+      "exists": true,
+      "status": "pass",
+      "notes": "credential_churn anomaly and credential lifecycle fields.",
+      "summary": {
+        "result": "pass",
+        "reason": "credential-churn-anomaly-observed",
+        "host": "localhost.localdomain",
+        "date": "2026-07-03T15:17:08+08:00",
+        "kernel": "6.6.0-132.0.0.111.oe2403sp3.x86_64",
+        "rule": "credential_churn",
+        "trigger_hooks": "lsm_cred_prepare,lsm_task_fix_setuid",
+        "cgroup_path": "/sys/fs/cgroup/eulerpilot/security-credential-churn",
+        "event_file": "security_policy_events.credential-anomaly.jsonl"
+      },
+      "evidence_files": [
+        {
+          "path": "results/security_policy/credential-anomaly-20260703-121-v4/security_policy_events.credential-anomaly.jsonl",
+          "exists": true,
+          "bytes": 4800
+        },
+        {
+          "path": "results/security_policy/credential-anomaly-20260703-121-v4/security_policy_events.credential-hits.jsonl",
+          "exists": true,
+          "bytes": 22028
+        },
+        {
+          "path": "results/security_policy/credential-anomaly-20260703-121-v4/report.md",
+          "exists": true,
+          "bytes": 875
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "category": "security",
+      "name": "credential anomaly 122",
+      "host": "122",
+      "path": "results/security_policy/credential-anomaly-20260703-122-v4",
+      "kind": "result_dir",
+      "required": true,
+      "exists": true,
+      "status": "pass",
+      "notes": "credential_churn anomaly and credential lifecycle fields.",
+      "summary": {
+        "result": "pass",
+        "reason": "credential-churn-anomaly-observed",
+        "host": "localhost.localdomain",
+        "date": "2026-07-03T15:17:09+08:00",
+        "kernel": "6.6.0-olk66-scx",
+        "rule": "credential_churn",
+        "trigger_hooks": "lsm_cred_prepare,lsm_task_fix_setuid",
+        "cgroup_path": "/sys/fs/cgroup/eulerpilot/security-credential-churn",
+        "event_file": "security_policy_events.credential-anomaly.jsonl"
+      },
+      "evidence_files": [
+        {
+          "path": "results/security_policy/credential-anomaly-20260703-122-v4/security_policy_events.credential-anomaly.jsonl",
+          "exists": true,
+          "bytes": 4800
+        },
+        {
+          "path": "results/security_policy/credential-anomaly-20260703-122-v4/security_policy_events.credential-hits.jsonl",
+          "exists": true,
+          "bytes": 22028
+        },
+        {
+          "path": "results/security_policy/credential-anomaly-20260703-122-v4/report.md",
+          "exists": true,
+          "bytes": 856
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "category": "security",
+      "name": "credential deep hook evaluation 121",
+      "host": "121",
+      "path": "results/security_policy/credential-deep-hooks-20260703-121-v2",
+      "kind": "result_dir",
+      "required": true,
+      "exists": true,
+      "status": "pass",
+      "notes": "cred_alloc_blank and cred_transfer scoped attach boundary evidence.",
+      "summary": {
+        "result": "pass",
+        "reason": "deep-credential-hooks-configured-attached-and-scoped",
+        "host": "localhost.localdomain",
+        "date": "2026-07-03T15:16:32+08:00",
+        "kernel": "6.6.0-132.0.0.111.oe2403sp3.x86_64",
+        "cgroup_path": "/sys/fs/cgroup/eulerpilot/security-credential-deep-hooks",
+        "rule_mapping": "hook_type-scoped",
+        "deep_hook_runtime_note": "no-userland-hit-observed",
+        "lsm_cred_alloc_blank_configured": "yes",
+        "lsm_cred_alloc_blank_attach": "agent-started",
+        "lsm_cred_alloc_blank_hits": "0",
+        "lsm_cred_transfer_configured": "yes",
+        "lsm_cred_transfer_attach": "agent-started",
+        "lsm_cred_transfer_hits": "0",
+        "lsm_cred_prepare_hits": "28",
+        "lsm_task_fix_setuid_hits": "8",
+        "event_file": "security_policy_events.credential-deep-hits.jsonl",
+        "deep_hook_status.txt:lsm_cred_alloc_blank_configured": "yes",
+        "deep_hook_status.txt:lsm_cred_alloc_blank_attach": "agent-started",
+        "deep_hook_status.txt:lsm_cred_alloc_blank_hits": "0",
+        "deep_hook_status.txt:lsm_cred_transfer_configured": "yes",
+        "deep_hook_status.txt:lsm_cred_transfer_attach": "agent-started",
+        "deep_hook_status.txt:lsm_cred_transfer_hits": "0",
+        "deep_hook_status.txt:lsm_cred_prepare_hits": "28",
+        "deep_hook_status.txt:lsm_task_fix_setuid_hits": "8",
+        "deep_hook_status.txt:mapping_mismatch_count": "0",
+        "deep_hook_status.txt:deep_hook_runtime_note": "no-userland-hit-observed"
+      },
+      "evidence_files": [
+        {
+          "path": "results/security_policy/credential-deep-hooks-20260703-121-v2/deep_hook_status.txt",
+          "exists": true,
+          "bytes": 328
+        },
+        {
+          "path": "results/security_policy/credential-deep-hooks-20260703-121-v2/security_policy_events.credential-deep-hits.jsonl",
+          "exists": true,
+          "bytes": 26210
+        },
+        {
+          "path": "results/security_policy/credential-deep-hooks-20260703-121-v2/security_policy_events.credential-deep-anomaly.jsonl",
+          "exists": true,
+          "bytes": 7504
+        },
+        {
+          "path": "results/security_policy/credential-deep-hooks-20260703-121-v2/report.md",
+          "exists": true,
+          "bytes": 1190
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "category": "security",
+      "name": "credential deep hook evaluation 122",
+      "host": "122",
+      "path": "results/security_policy/credential-deep-hooks-20260703-122-v2",
+      "kind": "result_dir",
+      "required": true,
+      "exists": true,
+      "status": "pass",
+      "notes": "cred_alloc_blank and cred_transfer scoped attach boundary evidence.",
+      "summary": {
+        "result": "pass",
+        "reason": "deep-credential-hooks-configured-attached-and-scoped",
+        "host": "localhost.localdomain",
+        "date": "2026-07-03T15:16:33+08:00",
+        "kernel": "6.6.0-olk66-scx",
+        "cgroup_path": "/sys/fs/cgroup/eulerpilot/security-credential-deep-hooks",
+        "rule_mapping": "hook_type-scoped",
+        "deep_hook_runtime_note": "no-userland-hit-observed",
+        "lsm_cred_alloc_blank_configured": "yes",
+        "lsm_cred_alloc_blank_attach": "agent-started",
+        "lsm_cred_alloc_blank_hits": "0",
+        "lsm_cred_transfer_configured": "yes",
+        "lsm_cred_transfer_attach": "agent-started",
+        "lsm_cred_transfer_hits": "0",
+        "lsm_cred_prepare_hits": "28",
+        "lsm_task_fix_setuid_hits": "8",
+        "event_file": "security_policy_events.credential-deep-hits.jsonl",
+        "deep_hook_status.txt:lsm_cred_alloc_blank_configured": "yes",
+        "deep_hook_status.txt:lsm_cred_alloc_blank_attach": "agent-started",
+        "deep_hook_status.txt:lsm_cred_alloc_blank_hits": "0",
+        "deep_hook_status.txt:lsm_cred_transfer_configured": "yes",
+        "deep_hook_status.txt:lsm_cred_transfer_attach": "agent-started",
+        "deep_hook_status.txt:lsm_cred_transfer_hits": "0",
+        "deep_hook_status.txt:lsm_cred_prepare_hits": "28",
+        "deep_hook_status.txt:lsm_task_fix_setuid_hits": "8",
+        "deep_hook_status.txt:mapping_mismatch_count": "0",
+        "deep_hook_status.txt:deep_hook_runtime_note": "no-userland-hit-observed"
+      },
+      "evidence_files": [
+        {
+          "path": "results/security_policy/credential-deep-hooks-20260703-122-v2/deep_hook_status.txt",
+          "exists": true,
+          "bytes": 328
+        },
+        {
+          "path": "results/security_policy/credential-deep-hooks-20260703-122-v2/security_policy_events.credential-deep-hits.jsonl",
+          "exists": true,
+          "bytes": 26210
+        },
+        {
+          "path": "results/security_policy/credential-deep-hooks-20260703-122-v2/security_policy_events.credential-deep-anomaly.jsonl",
+          "exists": true,
+          "bytes": 7504
+        },
+        {
+          "path": "results/security_policy/credential-deep-hooks-20260703-122-v2/report.md",
+          "exists": true,
+          "bytes": 1171
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "category": "resource_control",
+      "name": "IO controller 121",
+      "host": "121",
+      "path": "results/resource_control/io-20260624-160008",
+      "kind": "result_dir",
+      "required": true,
+      "exists": true,
+      "status": "pass",
+      "notes": "io.max/io.weight apply, effect and rollback evidence.",
+      "summary": {
+        "result": "pass",
+        "io_device": "253:0",
+        "hog_pid": "376411",
+        "io_max_pressure": "253:0 rbps=max wbps=1048576",
+        "io_weight_pressure": "default 50",
+        "baseline_time_s": "0.026",
+        "limited_time_s": "6.684",
+        "baseline_wbytes_before": "0",
+        "baseline_wbytes_after": "4194304",
+        "limited_wbytes_before": "4194304",
+        "limited_wbytes_after": "8388608",
+        "old_io_max": "",
+        "old_io_weight": "default 100"
+      },
+      "evidence_files": [
+        {
+          "path": "results/resource_control/io-20260624-160008/resource_control_events.jsonl",
+          "exists": true,
+          "bytes": 5968
+        },
+        {
+          "path": "results/resource_control/io-20260624-160008/agent.log",
+          "exists": true,
+          "bytes": 1270387
+        },
+        {
+          "path": "results/resource_control/io-20260624-160008/rollback.log",
+          "exists": true,
+          "bytes": 202
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "category": "resource_control",
+      "name": "IO controller 122",
+      "host": "122",
+      "path": "results/resource_control/io-20260624-160208",
+      "kind": "result_dir",
+      "required": true,
+      "exists": true,
+      "status": "pass",
+      "notes": "io.max/io.weight apply, effect and rollback evidence.",
+      "summary": {
+        "result": "pass",
+        "io_device": "253:0",
+        "hog_pid": "225891",
+        "io_max_pressure": "253:0 rbps=max wbps=1048576",
+        "io_weight_pressure": "default 50",
+        "baseline_time_s": "0.025",
+        "limited_time_s": "13.784",
+        "baseline_wbytes_before": "0",
+        "baseline_wbytes_after": "4194304",
+        "limited_wbytes_before": "4194304",
+        "limited_wbytes_after": "8388608",
+        "old_io_max": "",
+        "old_io_weight": "default 100"
+      },
+      "evidence_files": [
+        {
+          "path": "results/resource_control/io-20260624-160208/resource_control_events.jsonl",
+          "exists": true,
+          "bytes": 4998
+        },
+        {
+          "path": "results/resource_control/io-20260624-160208/agent.log",
+          "exists": true,
+          "bytes": 816824
+        },
+        {
+          "path": "results/resource_control/io-20260624-160208/rollback.log",
+          "exists": true,
+          "bytes": 202
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "category": "resource_control",
+      "name": "real Kubernetes Pod cgroup 121",
+      "host": "121",
+      "path": "results/resource_control/real-pod-target-20260630-k3s-121-v2",
+      "kind": "result_dir",
+      "required": true,
+      "exists": true,
+      "status": "pass",
+      "notes": "k8s_pod target resolves to real Pod cgroup and restores CPU/Memory.",
+      "summary": {
+        "result": "pass",
+        "reason": "real-pod-target-applied-and-restored",
+        "host": "localhost.localdomain",
+        "date": "2026-06-30T15:48:38+08:00",
+        "kernel": "6.6.0-132.0.0.111.oe2403sp3.x86_64",
+        "kubectl_bin": "kubectl",
+        "pod_namespace": "eulerpilot-lab",
+        "pod_name": "eulerpilot-rc-pod",
+        "pod_container_name": "",
+        "pod_uid": "ec49c0af-8ae7-462b-8a6d-9fef2b0b62b3",
+        "target_ref": "lab_pod",
+        "target_cgroup": "/sys/fs/cgroup/kubepods/besteffort/podec49c0af-8ae7-462b-8a6d-9fef2b0b62b3",
+        "cpu_max_pressure": "10000 100000",
+        "memory_high_pressure": "1048576",
+        "old_cpu_max": "max 100000",
+        "old_memory_high": "max"
+      },
+      "evidence_files": [
+        {
+          "path": "results/resource_control/real-pod-target-20260630-k3s-121-v2/resource_control.jsonl",
+          "exists": true,
+          "bytes": 4458
+        },
+        {
+          "path": "results/resource_control/real-pod-target-20260630-k3s-121-v2/agent.log",
+          "exists": true,
+          "bytes": 756148
+        },
+        {
+          "path": "results/resource_control/real-pod-target-20260630-k3s-121-v2/report.md",
+          "exists": true,
+          "bytes": 834
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "category": "resource_control",
+      "name": "real Kubernetes Pod cgroup 122",
+      "host": "122",
+      "path": "results/resource_control/real-pod-target-20260630-k3s-122-v1",
+      "kind": "result_dir",
+      "required": true,
+      "exists": true,
+      "status": "pass",
+      "notes": "k8s_pod target resolves to real Pod cgroup and restores CPU/Memory.",
+      "summary": {
+        "result": "pass",
+        "reason": "real-pod-target-applied-and-restored",
+        "host": "localhost.localdomain",
+        "date": "2026-06-30T16:02:30+08:00",
+        "kernel": "6.6.0-olk66-scx",
+        "kubectl_bin": "kubectl",
+        "pod_namespace": "eulerpilot-lab",
+        "pod_name": "eulerpilot-rc-pod",
+        "pod_container_name": "",
+        "pod_uid": "03a42fb7-0c29-4c32-9dde-bd5367b9cfcc",
+        "target_ref": "lab_pod",
+        "target_cgroup": "/sys/fs/cgroup/kubepods/besteffort/pod03a42fb7-0c29-4c32-9dde-bd5367b9cfcc",
+        "cpu_max_pressure": "10000 100000",
+        "memory_high_pressure": "1048576",
+        "old_cpu_max": "max 100000",
+        "old_memory_high": "max"
+      },
+      "evidence_files": [
+        {
+          "path": "results/resource_control/real-pod-target-20260630-k3s-122-v1/resource_control.jsonl",
+          "exists": true,
+          "bytes": 4458
+        },
+        {
+          "path": "results/resource_control/real-pod-target-20260630-k3s-122-v1/agent.log",
+          "exists": true,
+          "bytes": 681995
+        },
+        {
+          "path": "results/resource_control/real-pod-target-20260630-k3s-122-v1/report.md",
+          "exists": true,
+          "bytes": 815
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "category": "policy_engine",
+      "name": "security to network and resource 121",
+      "host": "121",
+      "path": "results/policy_engine/security-network-resource-20260629-214952",
+      "kind": "result_dir",
+      "required": true,
+      "exists": true,
+      "status": "pass",
+      "notes": "v3.1 second cross-skill link, including failure rollback test.",
+      "summary": {
+        "result": "pass",
+        "repeat": "1",
+        "success_cases": "1",
+        "failure_rollback": "pass",
+        "result_dir": "results/policy_engine/security-network-resource-20260629-214952"
+      },
+      "evidence_files": [
+        {
+          "path": "results/policy_engine/security-network-resource-20260629-214952/summary.txt",
+          "exists": true,
+          "bytes": 134
+        },
+        {
+          "path": "results/policy_engine/security-network-resource-20260629-214952/setup.log",
+          "exists": true,
+          "bytes": 421
+        },
+        {
+          "path": "results/policy_engine/security-network-resource-20260629-214952/report.md",
+          "exists": true,
+          "bytes": 453
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "category": "policy_engine",
+      "name": "security to network and resource 122",
+      "host": "122",
+      "path": "results/policy_engine/security-network-resource-20260629-215950",
+      "kind": "result_dir",
+      "required": true,
+      "exists": true,
+      "status": "pass",
+      "notes": "v3.1 second cross-skill link, including failure rollback test.",
+      "summary": {
+        "result": "pass",
+        "repeat": "1",
+        "success_cases": "1",
+        "failure_rollback": "pass",
+        "result_dir": "results/policy_engine/security-network-resource-20260629-215950"
+      },
+      "evidence_files": [
+        {
+          "path": "results/policy_engine/security-network-resource-20260629-215950/summary.txt",
+          "exists": true,
+          "bytes": 134
+        },
+        {
+          "path": "results/policy_engine/security-network-resource-20260629-215950/setup.log",
+          "exists": true,
+          "bytes": 421
+        },
+        {
+          "path": "results/policy_engine/security-network-resource-20260629-215950/report.md",
+          "exists": true,
+          "bytes": 453
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "category": "policy_engine",
+      "name": "real Pod security to network and resource 121",
+      "host": "121",
+      "path": "results/policy_engine/real-pod-security-network-resource-20260630-k3s-121-v1",
+      "kind": "result_dir",
+      "required": true,
+      "exists": true,
+      "status": "pass",
+      "notes": "v3.2 real Pod cgroup plus host veth cross-skill evidence.",
+      "summary": {
+        "result": "pass",
+        "reason": "real-pod-security-network-resource-applied-and-restored",
+        "host": "localhost.localdomain",
+        "date": "2026-06-30T16:54:07+08:00",
+        "kernel": "6.6.0-132.0.0.111.oe2403sp3.x86_64",
+        "transaction_id": "pe-v3-1-1-1782809635",
+        "policy_id": "security_network_resource_real_pod_response",
+        "source_rule": "burst_connect",
+        "pod_namespace": "eulerpilot-lab",
+        "pod_name": "eulerpilot-rc-pod",
+        "pod_uid": "ec49c0af-8ae7-462b-8a6d-9fef2b0b62b3",
+        "pod_ip": "10.42.0.4",
+        "target_ref": "lab_pod",
+        "target_type": "k8s_pod",
+        "target_cgroup": "/sys/fs/cgroup/kubepods/besteffort/podec49c0af-8ae7-462b-8a6d-9fef2b0b62b3",
+        "host_veth": "veth998e0158",
+        "cpu_max_value": "20000 100000",
+        "memory_action_enabled": "1",
+        "memory_high_value": "134217728",
+        "network_qos_rate": "2mbit",
+        "old_cpu_max": "max 100000",
+        "old_memory_high": "max"
+      },
+      "evidence_files": [
+        {
+          "path": "results/policy_engine/real-pod-security-network-resource-20260630-k3s-121-v1/policy_engine_events.jsonl",
+          "exists": true,
+          "bytes": 6582
+        },
+        {
+          "path": "results/policy_engine/real-pod-security-network-resource-20260630-k3s-121-v1/security_policy_events.jsonl",
+          "exists": true,
+          "bytes": 6860
+        },
+        {
+          "path": "results/policy_engine/real-pod-security-network-resource-20260630-k3s-121-v1/network_policy_events.jsonl",
+          "exists": true,
+          "bytes": 2374
+        },
+        {
+          "path": "results/policy_engine/real-pod-security-network-resource-20260630-k3s-121-v1/resource_control_events.jsonl",
+          "exists": true,
+          "bytes": 2848
+        },
+        {
+          "path": "results/policy_engine/real-pod-security-network-resource-20260630-k3s-121-v1/action_journal.jsonl",
+          "exists": true,
+          "bytes": 6475
+        },
+        {
+          "path": "results/policy_engine/real-pod-security-network-resource-20260630-k3s-121-v1/report.md",
+          "exists": true,
+          "bytes": 1017
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "category": "policy_engine",
+      "name": "real Pod security to network and resource 122",
+      "host": "122",
+      "path": "results/policy_engine/real-pod-security-network-resource-20260630-k3s-122-v1",
+      "kind": "result_dir",
+      "required": true,
+      "exists": true,
+      "status": "pass",
+      "notes": "v3.2 real Pod cgroup plus host veth cross-skill evidence.",
+      "summary": {
+        "result": "pass",
+        "reason": "real-pod-security-network-resource-applied-and-restored",
+        "host": "localhost.localdomain",
+        "date": "2026-06-30T16:57:02+08:00",
+        "kernel": "6.6.0-olk66-scx",
+        "transaction_id": "pe-v3-1-1-1782809810",
+        "policy_id": "security_network_resource_real_pod_response",
+        "source_rule": "burst_connect",
+        "pod_namespace": "eulerpilot-lab",
+        "pod_name": "eulerpilot-rc-pod",
+        "pod_uid": "03a42fb7-0c29-4c32-9dde-bd5367b9cfcc",
+        "pod_ip": "10.42.0.4",
+        "target_ref": "lab_pod",
+        "target_type": "k8s_pod",
+        "target_cgroup": "/sys/fs/cgroup/kubepods/besteffort/pod03a42fb7-0c29-4c32-9dde-bd5367b9cfcc",
+        "host_veth": "vethc59976b2",
+        "cpu_max_value": "20000 100000",
+        "memory_action_enabled": "1",
+        "memory_high_value": "134217728",
+        "network_qos_rate": "2mbit",
+        "old_cpu_max": "max 100000",
+        "old_memory_high": "max"
+      },
+      "evidence_files": [
+        {
+          "path": "results/policy_engine/real-pod-security-network-resource-20260630-k3s-122-v1/policy_engine_events.jsonl",
+          "exists": true,
+          "bytes": 6582
+        },
+        {
+          "path": "results/policy_engine/real-pod-security-network-resource-20260630-k3s-122-v1/security_policy_events.jsonl",
+          "exists": true,
+          "bytes": 6860
+        },
+        {
+          "path": "results/policy_engine/real-pod-security-network-resource-20260630-k3s-122-v1/network_policy_events.jsonl",
+          "exists": true,
+          "bytes": 2374
+        },
+        {
+          "path": "results/policy_engine/real-pod-security-network-resource-20260630-k3s-122-v1/resource_control_events.jsonl",
+          "exists": true,
+          "bytes": 2848
+        },
+        {
+          "path": "results/policy_engine/real-pod-security-network-resource-20260630-k3s-122-v1/action_journal.jsonl",
+          "exists": true,
+          "bytes": 6475
+        },
+        {
+          "path": "results/policy_engine/real-pod-security-network-resource-20260630-k3s-122-v1/report.md",
+          "exists": true,
+          "bytes": 998
+        }
+      ],
+      "warnings": []
+    }
+  ]
+}

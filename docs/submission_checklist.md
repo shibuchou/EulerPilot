@@ -166,11 +166,15 @@
 
 - `scripts/final_quality_gate.sh`：TAP 风格 21 项 P0 质量门禁脚本
 - `reports/final_quality_gate_20260703-creddeep-121.log`：121 最新门禁通过记录，21/21 P0 通过，100 轮 smoke 与 5 轮 doctor 通过
+- `configs/final_evidence_manifest.json`：最终证据压缩白名单清单
+- `scripts/collect_final_evidence.py`：最终证据压缩报告生成脚本
+- `reports/final_evidence_compact.md`：答辩入口压缩报告，当前覆盖 24 个核心证据条目
+- `reports/final_evidence_compact.json`：机器可读证据状态，当前 `--strict` 检查必需缺失 0、警告 0
 - `docs/final_security_audit.md`：最终安全与质量审计报告
 
 ## 当前结论
 
-项目仍处于争奖增强阶段，不应停留在“最终材料整理”。当前已完成 Security anomaly -> Policy Engine -> Resource Control 降级、Security anomaly -> Policy Engine -> Network+Resource 联动，以及真实 Pod 版 Network+Resource 联动。当前 121/122 的真实 Podman container target、k3s Pod target、Network QoS Pod host veth、Network XDP Pod host veth、真实 Pod Policy Engine 跨 Skill 联动、服务联动 Security anomaly 规则、credential 生命周期 anomaly、credential deep hook scoped attach 评估、isolated-veth XDP ICMP/TCP/UDP + UDP tuple 四规则和 real Pod host veth XDP ICMP/TCP/UDP + UDP tuple 四规则均已转为 pass；下一步重点是更多异常策略组合、进程过滤评估和最终证据压缩。
+项目仍处于争奖增强阶段，不应停留在“最终材料整理”。当前已完成 Security anomaly -> Policy Engine -> Resource Control 降级、Security anomaly -> Policy Engine -> Network+Resource 联动，以及真实 Pod 版 Network+Resource 联动。当前 121/122 的真实 Podman container target、k3s Pod target、Network QoS Pod host veth、Network XDP Pod host veth、真实 Pod Policy Engine 跨 Skill 联动、服务联动 Security anomaly 规则、credential 生命周期 anomaly、credential deep hook scoped attach 评估、isolated-veth XDP ICMP/TCP/UDP + UDP tuple 四规则、real Pod host veth XDP ICMP/TCP/UDP + UDP tuple 四规则和最终证据压缩入口均已转为 pass；下一步重点是更多异常策略组合、进程过滤评估和答辩材料冻结。
 
 ## v3.1 提交前新增检查
 
@@ -200,3 +204,4 @@
 - [x] Security 服务联动 anomaly 规则 121/122 通过。
 - [x] Network XDP isolated-veth tuple 字段演示 121/122 通过。
 - [x] Network XDP real Pod host veth tuple 字段演示 121/122 通过。
+- [x] `python3 scripts/collect_final_evidence.py --strict` 通过，最终证据压缩报告覆盖 24 个核心条目，必需缺失 0、警告 0。

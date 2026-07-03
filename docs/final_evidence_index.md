@@ -14,6 +14,21 @@
 - v3.1 开始状态：`docs/v3_1_start_status_20260629.md`
 - v3.1 开始仓库快照：`reports/v3_1_start_repo_status_20260629-1859.log`
 
+## 证据压缩入口
+
+- 证据白名单清单：`configs/final_evidence_manifest.json`
+- 生成脚本：`scripts/collect_final_evidence.py`
+- 压缩 Markdown 报告：`reports/final_evidence_compact.md`
+- 机器可读 JSON：`reports/final_evidence_compact.json`
+
+生成命令：
+
+```bash
+python3 scripts/collect_final_evidence.py --strict
+```
+
+当前压缩报告覆盖 24 个核心条目：质量门禁、仓库快照、Redis/Nginx sched_ext、Network QoS/XDP、Security anomaly/deep hook、Resource Control CPU/Memory/IO/Pod target、Policy Engine 双机联动与真实 Pod 联动。`--strict` 当前通过，必需证据缺失为 0、清单警告为 0。
+
 ## Skill 证据
 
 - CPU Scheduling / sched_ext：`docs/final_results_summary.md`、`docs/final_report_submission.md`
