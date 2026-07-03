@@ -658,6 +658,7 @@ struct SecurityAnomalyRule {
     std::string type = "rate";
     std::string syscall = "execve";
     std::string severity = "medium";
+    std::string target_ref;
     std::string path_prefix;
     std::string comm;
     std::string comm_prefix;
@@ -2994,6 +2995,15 @@ private:
         return true;
     }
 
+    bool has_security_target_ref(const std::string &target_ref) const {
+        for (const auto &rule : rules_) {
+            if (rule.target_ref == target_ref) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     static bool is_supported_security_hook(const std::string &hook) {
         return hook == "lsm_file_open" || hook == "lsm_bprm_check_security" ||
                hook == "lsm_socket_connect" || hook == "lsm_ptrace_traceme" ||
@@ -3060,6 +3070,9 @@ private:
             const std::string syscall = config_value_or(spec, prefix + "syscall", "");
             const std::string threshold_text = config_value_or(spec, prefix + "threshold", "");
             const std::string window_text = config_value_or(spec, prefix + "window_ms", "");
+            const std::string target_ref =
+                config_value_or(spec, prefix + "target_ref",
+                                config_value_or(spec, prefix + "scope_target_ref", ""));
             const std::string path_prefix =
                 config_value_or(spec, prefix + "path_prefix",
                                 config_value_or(spec, prefix + "sensitive_path_prefix", ""));
@@ -3074,8 +3087,8 @@ private:
                                 config_value_or(spec, prefix + "cap", ""));
             if (name.empty() && type.empty() && syscall.empty() &&
                 threshold_text.empty() && window_text.empty() &&
-                path_prefix.empty() && comm.empty() && comm_prefix.empty() &&
-                capability_text.empty()) {
+                target_ref.empty() && path_prefix.empty() && comm.empty() &&
+                comm_prefix.empty() && capability_text.empty()) {
                 continue;
             }
 
@@ -3084,6 +3097,7 @@ private:
             rule.type = type.empty() ? "rate" : type;
             rule.syscall = syscall.empty() ? "execve" : syscall;
             rule.severity = config_value_or(spec, prefix + "severity", "medium");
+            rule.target_ref = target_ref;
             rule.path_prefix = path_prefix;
             rule.comm = comm;
             rule.comm_prefix = comm_prefix;
@@ -3119,6 +3133,10 @@ private:
             }
             if (!rule.path_prefix.empty() && !valid_security_path(rule.path_prefix)) {
                 last_error_ = "security-policy-anomaly-path-prefix-invalid";
+                return false;
+            }
+            if (!rule.target_ref.empty() && !has_security_target_ref(rule.target_ref)) {
+                last_error_ = "security-policy-anomaly-target-ref-unknown";
                 return false;
             }
             if (!rule.comm.empty() && !valid_security_comm_filter(rule.comm)) {
@@ -3754,8 +3772,13 @@ private:
         const auto now = std::chrono::steady_clock::now();
         const std::string path = bounded_string(hit.path, sizeof(hit.path));
         const std::string comm = bounded_string(hit.comm, sizeof(hit.comm));
+        const SecurityPolicyRule *matched_rule = rule_for_target_index(hit.target_index);
         for (auto &rule : anomaly_rules_) {
             if (rule.type != "rate" || rule.syscall != observed_syscall) {
+                continue;
+            }
+            if (!rule.target_ref.empty() &&
+                (!matched_rule || matched_rule->target_ref != rule.target_ref)) {
                 continue;
             }
             if (!rule.path_prefix.empty() && path.rfind(rule.path_prefix, 0) != 0) {
@@ -3791,10 +3814,14 @@ private:
             event.rule_id = rule.rule_id;
             event.mode = mode_;
             event.target = {
-                {"target_ref", "syscall_trace"},
+                {"target_ref", matched_rule ? matched_rule->target_ref : "syscall_trace"},
                 {"syscall", rule.syscall},
                 {"path", path},
             };
+            if (matched_rule && matched_rule->cgroup_id != 0) {
+                event.target["cgroup_id"] = std::to_string(matched_rule->cgroup_id);
+                event.target["cgroup_path"] = matched_rule->cgroup_path;
+            }
             event.operation = "anomaly";
             event.evidence = {
                 {"event_hook", hook_name},
@@ -3805,7 +3832,13 @@ private:
                 {"pid", std::to_string(hit.pid)},
                 {"tgid", std::to_string(hit.tgid)},
                 {"comm", comm},
+                {"target_index", hit.target_index == kSecurityTargetUnknown
+                                     ? "unknown"
+                                     : std::to_string(hit.target_index)},
             };
+            if (!rule.target_ref.empty()) {
+                event.evidence["target_ref_filter"] = rule.target_ref;
+            }
             if (!rule.path_prefix.empty()) {
                 event.evidence["path_prefix"] = rule.path_prefix;
             }
