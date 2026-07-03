@@ -32,6 +32,7 @@
 - [x] `security_policy` `lsm_file_open` 支持 `file_access=write` 与 `path_prefix + file_access=write`，验证目标 cgroup 内读放行、写阻断
 - [x] `security_policy` `lsm_ptrace_traceme`、`lsm_capable`、`lsm_task_fix_setuid`、`lsm_task_fix_setgid`、`lsm_task_fix_setgroups` 与 `lsm_cred_prepare` 均要求 scoped cgroup target，分别验证 ptrace、CAP_SYS_ADMIN、setuid、setgid、setgroups credential 转换与 cred_prepare credential preparation 阻断
 - [x] `security_policy` 服务联动 anomaly 121/122 pass：`burst_connect`、`burst_openat_sensitive`、`capability_abuse` 均输出 `operation=anomaly/result=observed`，结果目录为 `results/security_policy/anomaly-rules-20260703-121-v4` 与 `results/security_policy/anomaly-rules-20260703-122-v2`
+- [x] `security_policy` credential 生命周期 anomaly 121/122 pass：`credential_churn` 输出 `credential_stage`、`uid` 和 cred hit 细节，结果目录为 `results/security_policy/credential-anomaly-20260703-121-v3` 与 `results/security_policy/credential-anomaly-20260703-122-v3`
 - [x] `resource_control` CPU+Memory+IO 自动闭环 121/122 验证：YAML v2 `controllers + profiles`、`cpu.max`、`memory.high/low/max`、`io.weight/io.max`、事务化写入、`AuditBus`、`ActionJournal` 和 Agent stop rollback
 - [x] `resource_control` `target_ref` cgroup 最小闭环 121/122 验证：`targets + profiles.<name>.target_ref`、目标 cgroup 限制、非目标 cgroup 不误改、审计和 Agent JSONL 携带 `target_ref`
 - [x] `resource_control` runtime target 解析闭环 121/122 验证：`type: container_id/container/k8s_pod` 均能解析到目标 cgroup，并复用 CPU/Memory 控制器写入、审计和 rollback
@@ -97,6 +98,8 @@
 - Security bprm exec_prefix LSM 122：`results/security_policy/integration-20260622-145716`
 - Security scoped credential/cred_prepare LSM 121：`results/security_policy/integration-20260624-114838`
 - Security scoped credential/cred_prepare LSM 122：`results/security_policy/integration-20260624-115440`
+- Security credential anomaly 121：`results/security_policy/credential-anomaly-20260703-121-v3`
+- Security credential anomaly 122：`results/security_policy/credential-anomaly-20260703-122-v3`
 - Resource Control CPU+Memory 121：`results/resource_control/integration-20260624-160317`
 - Resource Control CPU+Memory 122：`results/resource_control/integration-20260624-160349`
 - Resource Control IO 121：`results/resource_control/io-20260624-160008`
@@ -131,6 +134,8 @@
 - Policy Engine real Pod Security -> Network + Resource 联动 122：`results/policy_engine/real-pod-security-network-resource-20260630-k3s-122-v1`
 - Security 服务联动 anomaly 121：`results/security_policy/anomaly-rules-20260703-121-v4`
 - Security 服务联动 anomaly 122：`results/security_policy/anomaly-rules-20260703-122-v2`
+- Security credential anomaly 121：`results/security_policy/credential-anomaly-20260703-121-v3`
+- Security credential anomaly 122：`results/security_policy/credential-anomaly-20260703-122-v3`
 
 ## 当前核心文档
 
@@ -154,7 +159,7 @@
 
 ## 当前结论
 
-项目仍处于争奖增强阶段，不应停留在“最终材料整理”。当前已完成 Security anomaly -> Policy Engine -> Resource Control 降级、Security anomaly -> Policy Engine -> Network+Resource 联动，以及真实 Pod 版 Network+Resource 联动。当前 121/122 的真实 Podman container target、k3s Pod target、Network QoS Pod host veth、Network XDP Pod host veth、真实 Pod Policy Engine 跨 Skill 联动、服务联动 Security anomaly 规则、isolated-veth XDP ICMP/TCP/UDP 三规则和 real Pod host veth XDP ICMP/TCP/UDP 三规则均已转为 pass；下一步重点是 XDP 更多包字段、Security 更细 cred 生命周期规则和最终证据压缩。
+项目仍处于争奖增强阶段，不应停留在“最终材料整理”。当前已完成 Security anomaly -> Policy Engine -> Resource Control 降级、Security anomaly -> Policy Engine -> Network+Resource 联动，以及真实 Pod 版 Network+Resource 联动。当前 121/122 的真实 Podman container target、k3s Pod target、Network QoS Pod host veth、Network XDP Pod host veth、真实 Pod Policy Engine 跨 Skill 联动、服务联动 Security anomaly 规则、credential 生命周期 anomaly、isolated-veth XDP ICMP/TCP/UDP 三规则和 real Pod host veth XDP ICMP/TCP/UDP 三规则均已转为 pass；下一步重点是 XDP 更多包字段、cred_transfer/cred_alloc_blank 等更深 credential hook 评估和最终证据压缩。
 
 ## v3.1 提交前新增检查
 

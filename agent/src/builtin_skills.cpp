@@ -3400,6 +3400,22 @@ private:
         }
     }
 
+    static std::string credential_stage_from_hook(const std::string &hook_name) {
+        if (hook_name == "lsm_cred_prepare") {
+            return "prepare";
+        }
+        if (hook_name == "lsm_task_fix_setuid") {
+            return "setuid";
+        }
+        if (hook_name == "lsm_task_fix_setgid") {
+            return "setgid";
+        }
+        if (hook_name == "lsm_task_fix_setgroups") {
+            return "setgroups";
+        }
+        return "unknown";
+    }
+
     const SecurityPolicyRule *rule_for_target_index(std::uint32_t target_index) const {
         if (target_index == kSecurityTargetUnknown || target_index >= rules_.size()) {
             return nullptr;
@@ -3602,6 +3618,32 @@ private:
             }
             if (hit.capability >= 0) {
                 event.evidence["capability"] = security_capability_name(hit.capability);
+            }
+            if (observed_syscall == "credential") {
+                event.evidence["credential_stage"] =
+                    credential_stage_from_hook(hook_name);
+                if (hook_name == "lsm_cred_prepare" ||
+                    hook_name == "lsm_task_fix_setuid") {
+                    event.evidence["uid"] = std::to_string(hit.uid);
+                    event.evidence["euid"] = std::to_string(hit.euid);
+                    event.evidence["suid"] = std::to_string(hit.suid);
+                }
+                if (hook_name == "lsm_cred_prepare" ||
+                    hook_name == "lsm_task_fix_setgid") {
+                    event.evidence["gid"] = std::to_string(hit.gid);
+                    event.evidence["egid"] = std::to_string(hit.egid);
+                    event.evidence["sgid"] = std::to_string(hit.sgid);
+                }
+                if (hook_name == "lsm_cred_prepare" ||
+                    hook_name == "lsm_task_fix_setgroups") {
+                    event.evidence["group_count"] =
+                        std::to_string(hit.group_count);
+                    event.evidence["old_group_count"] =
+                        std::to_string(hit.old_group_count);
+                }
+                if (hook_name == "lsm_cred_prepare") {
+                    event.evidence["cred_gfp"] = std::to_string(hit.cred_gfp);
+                }
             }
             event.action = "alert";
             event.result = "observed";
