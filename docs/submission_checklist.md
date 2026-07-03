@@ -154,7 +154,7 @@
 
 ## 当前结论
 
-项目仍处于争奖增强阶段，不应停留在“最终材料整理”。当前已完成 Security anomaly -> Policy Engine -> Resource Control 降级、Security anomaly -> Policy Engine -> Network+Resource 联动，以及真实 Pod 版 Network+Resource 联动。当前 121/122 的真实 Podman container target、k3s Pod target、Network QoS Pod host veth、Network XDP Pod host veth、真实 Pod Policy Engine 跨 Skill 联动、服务联动 Security anomaly 规则和 isolated-veth XDP ICMP/TCP/UDP 三规则均已转为 pass；下一步重点是 real Pod host veth XDP UDP/更多包字段、Security 更细 cred 生命周期规则和最终证据压缩。
+项目仍处于争奖增强阶段，不应停留在“最终材料整理”。当前已完成 Security anomaly -> Policy Engine -> Resource Control 降级、Security anomaly -> Policy Engine -> Network+Resource 联动，以及真实 Pod 版 Network+Resource 联动。当前 121/122 的真实 Podman container target、k3s Pod target、Network QoS Pod host veth、Network XDP Pod host veth、真实 Pod Policy Engine 跨 Skill 联动、服务联动 Security anomaly 规则、isolated-veth XDP ICMP/TCP/UDP 三规则和 real Pod host veth XDP ICMP/TCP/UDP 三规则均已转为 pass；下一步重点是 XDP 更多包字段、Security 更细 cred 生命周期规则和最终证据压缩。
 
 ## v3.1 提交前新增检查
 

@@ -91,8 +91,8 @@ eBPF Observer
 - Resource Control real Pod target 122：`/root/EulerPilot/results/resource_control/real-pod-target-20260630-k3s-122-v1`
 - Network QoS real Pod host veth 121：`/root/EulerPilot/results/network_policy/real-pod-veth-qos-20260630-k3s-121-v2`
 - Network QoS real Pod host veth 122：`/root/EulerPilot/results/network_policy/real-pod-veth-qos-20260630-k3s-122-v1`
-- Network XDP real Pod host veth 121：`/root/EulerPilot/results/network_policy/real-pod-veth-xdp-20260630-k3s-121-v1`
-- Network XDP real Pod host veth 122：`/root/EulerPilot/results/network_policy/real-pod-veth-xdp-20260630-k3s-122-v1`
+- Network XDP real Pod host veth ICMP/TCP/UDP 121：`/root/EulerPilot/results/network_policy/real-pod-veth-xdp-20260703-k3s-121-udp-v4`
+- Network XDP real Pod host veth ICMP/TCP/UDP 122：`/root/EulerPilot/results/network_policy/real-pod-veth-xdp-20260703-k3s-122-udp-v4`
 - Network XDP ICMP/TCP/UDP isolated-veth 121：`/root/EulerPilot/results/network_policy/xdp-20260703-121-udp-v2`
 - Network XDP ICMP/TCP/UDP isolated-veth 122：`/root/EulerPilot/results/network_policy/xdp-20260703-122-udp-v2`
 - Resource Control CPU quota 121：`/root/EulerPilot/results/resource_control/cpu-quota-20260625-095030`

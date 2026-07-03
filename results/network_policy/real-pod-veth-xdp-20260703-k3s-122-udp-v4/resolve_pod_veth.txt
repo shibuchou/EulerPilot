@@ -1,0 +1,9 @@
+resolved=1
+reason=ok
+ifname=vethc59976b2
+ifindex=39
+pid=285464
+pod_uid=03a42fb7-0c29-4c32-9dde-bd5367b9cfcc
+container_id=f519641e3f273297aa06bf8af15ed795ec52ad1f6e62df6be023517061f8b157
+netns_path=/proc/285464/ns/net
+cgroup_path=/sys/fs/cgroup/kubepods/besteffort/pod03a42fb7-0c29-4c32-9dde-bd5367b9cfcc/f519641e3f273297aa06bf8af15ed795ec52ad1f6e62df6be023517061f8b157

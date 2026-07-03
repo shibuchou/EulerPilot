@@ -1,0 +1,76 @@
+schema_version: 2
+skills:
+- name: resource_control
+  kind: runtime
+  enabled: true
+  config:
+    mode: audit
+    controllers:
+      cpu:
+        max:
+          enabled: false
+      memory:
+        enabled: false
+        reclaim:
+          enabled: false
+      io:
+        enabled: false
+        weight:
+          enabled: false
+        max:
+          enabled: false
+    targets:
+      background_cgroup:
+        type: cgroup
+        cgroup_path: /sys/fs/cgroup/eulerpilot/background
+    profiles:
+      background:
+        target_ref: background_cgroup
+        normal:
+          cpu_max: max
+          memory_high: max
+        pressure:
+          target_ref: background_cgroup
+          cpu_max: max
+          memory_high: max
+- name: psi_gate
+  kind: runtime
+  enabled: false
+  config: {}
+- name: network_xdp
+  kind: runtime
+  enabled: true
+  config:
+    mode: audit
+    targets:
+      lab_pod:
+        type: k8s_pod
+        namespace: eulerpilot-lab
+        pod_name: eulerpilot-rc-pod
+
+        kubectl_path: /root/EulerPilot/results/network_policy/real-pod-veth-xdp-20260703-k3s-122-udp-v4/kubectl-wrapper
+        crictl_path: /root/EulerPilot/results/network_policy/real-pod-veth-xdp-20260703-k3s-122-udp-v4/crictl-wrapper
+        lab_namespace: eulerpilot-lab
+        require_runtime_socket: false
+    rules:
+      - name: drop_icmp_real_pod
+        hook: xdp
+        mode: audit
+        target_ref: lab_pod
+        protocol: icmp
+        dst_port: '0'
+        action: drop
+      - name: drop_tcp_real_pod
+        hook: xdp
+        mode: audit
+        target_ref: lab_pod
+        protocol: tcp
+        dst_port: '19092'
+        action: drop
+      - name: drop_udp_real_pod
+        hook: xdp
+        mode: audit
+        target_ref: lab_pod
+        protocol: udp
+        dst_port: '19093'
+        action: drop

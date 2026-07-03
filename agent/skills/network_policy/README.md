@@ -18,7 +18,7 @@
 - 已新增 `network_xdp` 子能力：在专用 isolated veth 上挂 generic XDP 程序，支持最多 8 条规则和 BPF 命中统计。
 - `tests/integration/test_network_xdp.sh` 已覆盖 YAML v2、lab netns/veth、audit 不挂 XDP、enforce 丢 ICMP、enforce 丢 TCP:19092、enforce 丢 UDP:19093、rollback per-rule 统计和连通性恢复。
 - `TargetResolver` 已支持 `type: container` 和 `type: k8s_pod` 到 host veth ifname/ifindex 的解析路径，`network_qos` 与 `network_xdp` 的 v2 target 可接受容器和 Pod target。
-- `tests/integration/test_network_xdp_real_pod_veth.sh` 已在 121/122 真实 k3s lab Pod 上通过，验证 Pod host veth generic XDP attach/drop/rollback。
+- `tests/integration/test_network_xdp_real_pod_veth.sh` 已在 121/122 真实 k3s lab Pod 上通过，验证 Pod host veth generic XDP attach、ICMP/TCP/UDP 三规则 drop、per-rule 统计和 rollback。
 
 ## 当前安全边界
 
@@ -31,7 +31,7 @@
 
 1. 将命中级事件从“启动/回滚统计”升级为按规则聚合输出。
 2. 将 TC QoS 从单 lab veth 扩展到多规则和速率误差 Benchmark。
-3. 将 isolated-veth XDP 从 ICMP/TCP 扩展到 UDP 已完成；下一步把 real Pod host veth XDP 也补到 UDP 和更多报文特征。
+3. isolated-veth 与 real Pod host veth XDP 的 ICMP/TCP/UDP 三规则已完成；下一步补更多包字段匹配和答辩证据压缩。
 4. 将 Network 证据整理为答辩现场短链路演示材料。
 
 ## v3.1 network_qos 联动
