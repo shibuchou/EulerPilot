@@ -1,23 +1,8 @@
 {
-  "generated_at": "2026-07-03T16:33:29+08:00",
+  "generated_at": "2026-07-03T16:34:00+08:00",
   "manifest_path": "configs/final_evidence_manifest.json",
   "manifest_title": "EulerPilot final evidence manifest",
-  "git_status_short": [
-    " M README.md",
-    " M agent/skills/security_policy/README.md",
-    " M configs/final_evidence_manifest.json",
-    " M docs/final_evidence_index.md",
-    " M docs/final_security_audit.md",
-    " M docs/next_phase_plan_v3_2.md",
-    " M docs/policy_engine_skill.md",
-    " M docs/progress_status.md",
-    " M docs/security_policy_skill.md",
-    " M docs/submission_checklist.md",
-    " M scripts/README.md",
-    " M tests/integration/README.md",
-    "?? results/security_policy/anomaly-combo-scope-20260703-121-v1/",
-    "?? results/security_policy/anomaly-combo-scope-20260703-122-v1/"
-  ],
+  "git_status_short": [],
   "entries": [
     {
       "category": "quality_gate",

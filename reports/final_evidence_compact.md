@@ -1,6 +1,6 @@
 # EulerPilot 最终证据压缩报告
 
-生成时间：`2026-07-03T16:33:29+08:00`
+生成时间：`2026-07-03T16:34:00+08:00`
 清单：`configs/final_evidence_manifest.json`
 
 本报告由 `scripts/collect_final_evidence.py` 根据白名单清单生成，用于把分散的双机结果压缩成答辩入口。它不会递归扫描全部 `results/`，缺失项会显式列出。
@@ -12,7 +12,7 @@
 | 清单条目 | 28 |
 | 必需缺失 | 0 |
 | 带警告条目 | 0 |
-| Git 工作区额外状态 | 14 |
+| Git 工作区额外状态 | 0 |
 
 ## quality_gate
 
@@ -76,23 +76,6 @@
 | pass | 122 | security to network and resource 122 | `results/policy_engine/security-network-resource-20260629-215950` | result=pass |
 | pass | 121 | real Pod security to network and resource 121 | `results/policy_engine/real-pod-security-network-resource-20260630-k3s-121-v1` | result=pass<br>reason=real-pod-security-network-resource-applied-and-restored<br>kernel=6.6.0-132.0.0.111.oe2403sp3.x86_64<br>transaction_id=pe-v3-1-1-1782809635<br>policy_id=security_network_resource_real_pod_response |
 | pass | 122 | real Pod security to network and resource 122 | `results/policy_engine/real-pod-security-network-resource-20260630-k3s-122-v1` | result=pass<br>reason=real-pod-security-network-resource-applied-and-restored<br>kernel=6.6.0-olk66-scx<br>transaction_id=pe-v3-1-1-1782809810<br>policy_id=security_network_resource_real_pod_response |
-
-## 生成时 Git 工作区状态
-
-- ` M README.md`
-- ` M agent/skills/security_policy/README.md`
-- ` M configs/final_evidence_manifest.json`
-- ` M docs/final_evidence_index.md`
-- ` M docs/final_security_audit.md`
-- ` M docs/next_phase_plan_v3_2.md`
-- ` M docs/policy_engine_skill.md`
-- ` M docs/progress_status.md`
-- ` M docs/security_policy_skill.md`
-- ` M docs/submission_checklist.md`
-- ` M scripts/README.md`
-- ` M tests/integration/README.md`
-- `?? results/security_policy/anomaly-combo-scope-20260703-121-v1/`
-- `?? results/security_policy/anomaly-combo-scope-20260703-122-v1/`
 
 ## 使用方式
 
