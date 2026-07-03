@@ -13,8 +13,9 @@
 - `network_qos` 安全边界已扩展：默认仍只允许 `ep-*`、`eulerpilot-*`、`lab-*`；仅当 target 为 `type: k8s_pod/pod` 且通过 `eulerpilot-lab` namespace resolver 时，允许 runtime 生成的非生产 host veth 名，并继续拒绝 `eth/ens/eno/wlan/bond/br/cni/flannel` 等生产或 CNI 主设备前缀。
 - 真实 Pod Policy Engine 联动已在 121/122 通过：121 `results/policy_engine/real-pod-security-network-resource-20260630-k3s-121-v1`，122 `results/policy_engine/real-pod-security-network-resource-20260630-k3s-122-v1`；验证同一个 `target_ref=lab_pod(type=k8s_pod)` 在 `policy_engine` 内解析为 Pod cgroup 与 Pod host veth，写入 `cpu.max=20000 100000`、`memory.high=134217728` 和 `tc/tbf 2mbit`，并用同一 `transaction_id` 串起 security、policy_engine、resource_control、network_qos 与 ActionJournal，Agent 退出后全部 rollback。
 - 服务联动 Security anomaly 已在 121/122 通过：121 `results/security_policy/anomaly-rules-20260703-121-v4`，122 `results/security_policy/anomaly-rules-20260703-122-v2`；验证 `burst_connect`、`burst_openat_sensitive` 与 scoped `capability_abuse` 都能输出 `operation=anomaly/result=observed`，其中结果 JSONL 只保留 anomaly 事件，便于答辩直接展示。
+- isolated-veth XDP 更多报文特征已在 121/122 通过：121 `results/network_policy/xdp-20260703-121-udp-v2`，122 `results/network_policy/xdp-20260703-122-udp-v2`；验证 `drop_icmp_lab`、`drop_tcp_probe_lab` 与 `drop_udp_probe_lab` 三条规则，并在 rollback 事件中输出 per-rule `drop_count/byte_count`。两端当前统计一致：ICMP 1、TCP 4、UDP 8，总 drop 13。
 - 121 最新质量门禁通过：`reports/final_quality_gate_20260630-v32-real-pod-policy-121.log`，21/21 P0、100 轮 Agent smoke、5 轮 doctor 均通过。
-- v3.2 剩余争奖增强重点转为：Network XDP 更多报文特征、Security 更细 cred 生命周期规则和最终答辩证据压缩。
+- v3.2 剩余争奖增强重点转为：real Pod host veth XDP UDP/更多包字段、Security 更细 cred 生命周期规则和最终答辩证据压缩。
 ## v3.1 最新进展（2026-06-29）
 
 - v3.1 主线已进入“跨 Skill 联动与争奖证据收口”：不切换 SP4 主平台，不把 K8s 真实验证作为本阶段完成条件，不继续堆大规模底层 hook。
@@ -121,7 +122,7 @@
 | B3 | connect4 audit/enforce | 已完成 | audit 模式不挂 BPF；enforce 模式使用 BPF map 动态配置端口，`stats_map` 记录 allow/deny，rollback 后无 attachment 残留 |
 | B4 | TC QoS | 已完成最小闭环 | `network_qos` 使用 TC egress BPF classifier 统计命中，TBF qdisc 执行限速；已验证 lab netns/veth、audit/enforce 和 rollback |
 | B5 | YAML v2 targets/rules | 已完成最小闭环 | `configs/skills.yaml` 已升级为 `schema_version: 2`；connect4 与 TC QoS 均通过 `target_ref` 解析目标 |
-| B6 | isolated-veth XDP | 已完成多规则闭环 | `network_xdp` 使用 generic XDP 在专用 lab veth 上执行 ICMP drop 与 TCP:19092 drop；已验证 audit/enforce、多规则 drop 统计和 rollback 后连通性恢复 |
+| B6 | isolated-veth XDP | 已完成三规则闭环 | `network_xdp` 使用 generic XDP 在专用 lab veth 上执行 ICMP drop、TCP:19092 drop 与 UDP:19093 drop；已验证 audit/enforce、per-rule drop 统计和 rollback 后连通性恢复 |
 | B7 | TC QoS 速率误差 Benchmark | 已完成 | `tests/benchmark/test_network_qos_rate.sh` 使用 Python TCP rate probe 验证 2 Mbit/s TBF 限速；121 误差 -1.22%，122 误差 -1.45% |
 | B8 | Pod veth target 解析预备 | 已完成真实解析预备 | `TargetResolver` 已支持 netdev ifname 校验、ifindex 解析、`kubectl` Pod UID/container ID 查询、runtime PID 查询、`/proc/<pid>/ns/net` 记录和 host veth/ifindex 反查；`tests/integration/test_target_resolver.sh` 使用临时 netns/veth + fake `kubectl/crictl` 验证成功路径，不依赖真实 Kubernetes |
 | B9 | Container veth target 解析预备 | 已完成真实解析预备 | `resolve_container_netdev_target` 已支持 container ID 或 runtime container name 解析 PID、netns path 和 host veth/ifindex；`network_qos/network_xdp` v2 target 已接受 `type: container` |
@@ -155,7 +156,7 @@
 - 审计事件已带上 v2 规则和目标：
   - connect4：`rule_id=deny_demo_port`，`target_ref=demo_cgroup`。
   - TC QoS：`rule_id=limit_lab_egress`，`target_ref=lab_veth`。
-  - XDP：`rule_id=drop_icmp_lab`，`target_ref=lab_xdp_veth`。
+  - XDP：`rule_id=drop_icmp_lab,drop_tcp_probe_lab,drop_udp_probe_lab`，`target_ref=lab_xdp_veth`。
   - 121 验证事件位于 `reports/events/network_policy.jsonl`。
 
 ### TC QoS 证据
@@ -195,7 +196,7 @@
 ### XDP 证据
 
 - 正式子能力 `network_xdp` 默认 disabled。
-- `bpf/network_xdp_demo.bpf.c` 已从单规则扩展为最多 8 条 XDP 规则，提供 generic XDP filter 和 `pass/drop/byte` 聚合统计。
+- `bpf/network_xdp_demo.bpf.c` 已从单规则扩展为最多 8 条 XDP 规则，提供 generic XDP filter、聚合统计和 per-rule `pass/drop/byte` 统计输出。
 - 新增构建目标 `make network-xdp-demo`。
 - 新增清理脚本 `scripts/cleanup_network_xdp_demo.sh`，负责删除 lab veth/netns 并尝试卸载 XDP。
 - 新增集成测试 `tests/integration/test_network_xdp.sh`，已验证：
@@ -203,11 +204,11 @@
   - 专用 lab netns/veth 基线连通。
   - audit 模式不挂 XDP。
   - enforce 模式在 `ep-veth-xdp0` 上挂 generic XDP 并 drop ICMP。
-  - enforce 模式同时验证 TCP:19092 规则命中。
-  - rollback 事件记录多规则 `drop_count >= 2`。
+  - enforce 模式同时验证 TCP:19092 与 UDP:19093 规则命中。
+  - rollback 事件记录三规则 `drop_count >= 3`，并校验 `drop_icmp_lab`、`drop_tcp_probe_lab`、`drop_udp_probe_lab` 的 per-rule drop 计数。
   - Agent 退出后无 XDP attachment 残留，连通性恢复。
-- 121 最新 XDP 多规则集成测试证据目录：`results/network_policy/xdp-20260620-183031/`。
-- 122 最新 XDP 多规则集成测试证据目录：`results/network_policy/xdp-20260620-184212/`。
+- 121 最新 XDP ICMP/TCP/UDP 集成测试证据目录：`results/network_policy/xdp-20260703-121-udp-v2/`。
+- 122 最新 XDP ICMP/TCP/UDP 集成测试证据目录：`results/network_policy/xdp-20260703-122-udp-v2/`。
 - 121 最新完整质量门禁已通过：`reports/final_quality_gate_20260629_policy_engine.log`，21/21 P0、100 轮 Agent smoke 和 5 轮 doctor 均通过。
 
 ### TargetResolver / container + Pod veth 预备证据

@@ -609,6 +609,8 @@ struct NetworkXdpCounters {
     std::uint64_t byte_count = 0;
 };
 
+using NetworkXdpRuleStats = std::vector<NetworkXdpStats>;
+
 struct SecurityPolicyConfig {
     std::uint32_t enforce = 0;
     std::uint32_t target_count = 0;
@@ -2100,6 +2102,7 @@ public:
         snapshot.evidence["pass_count"] = std::to_string(stats.pass_count);
         snapshot.evidence["drop_count"] = std::to_string(stats.drop_count);
         snapshot.evidence["byte_count"] = std::to_string(stats.byte_count);
+        append_rule_stats(snapshot.evidence);
         snapshot.evidence["reason"] = last_error_.empty() ? "ok" : last_error_;
         return snapshot;
     }
@@ -2241,6 +2244,46 @@ private:
         byte_count_ = stats.byte_count;
     }
 
+    NetworkXdpRuleStats read_xdp_rule_stats() const {
+        NetworkXdpRuleStats rule_stats(kNetworkXdpMaxRules);
+        if (!bpf_object_) {
+            return rule_stats;
+        }
+        const int stats_fd = bpf_object__find_map_fd_by_name(bpf_object_, "xdp_stats_map");
+        if (stats_fd < 0) {
+            return rule_stats;
+        }
+        for (std::uint32_t key = 0; key < kNetworkXdpMaxRules; ++key) {
+            NetworkXdpStats stats;
+            if (bpf_map_lookup_elem(stats_fd, &key, &stats) == 0) {
+                rule_stats[key] = stats;
+            }
+        }
+        return rule_stats;
+    }
+
+    void append_rule_stats(std::map<std::string, std::string> &evidence) const {
+        const auto rule_stats = read_xdp_rule_stats();
+        std::string summary;
+        for (std::size_t i = 0; i < rules_.size() && i < rule_stats.size(); ++i) {
+            const auto &rule = rules_[i];
+            const auto &stats = rule_stats[i];
+            const std::string prefix = "rule." + rule.rule_id + ".";
+            evidence[prefix + "protocol"] = rule.protocol;
+            evidence[prefix + "dst_port"] = rule.dst_port;
+            evidence[prefix + "pass_count"] = std::to_string(stats.pass_count);
+            evidence[prefix + "drop_count"] = std::to_string(stats.drop_count);
+            evidence[prefix + "byte_count"] = std::to_string(stats.byte_count);
+            if (!summary.empty()) {
+                summary += ";";
+            }
+            summary += rule.rule_id + ":pass=" + std::to_string(stats.pass_count) +
+                       ",drop=" + std::to_string(stats.drop_count) +
+                       ",bytes=" + std::to_string(stats.byte_count);
+        }
+        evidence["rule_stats"] = summary;
+    }
+
     void write_audit_event(const std::string &operation,
                            const std::string &action,
                            const std::string &result) const {
@@ -2268,6 +2311,7 @@ private:
             {"drop_count", std::to_string(drop_count_)},
             {"byte_count", std::to_string(byte_count_)},
         };
+        append_rule_stats(event.evidence);
         event.action = action;
         event.result = result;
         event.severity = "info";

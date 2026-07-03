@@ -126,6 +126,8 @@ v3.2 计划：`docs/next_phase_plan_v3_2.md`
 - 122 real Pod host veth QoS：`results/network_policy/real-pod-veth-qos-20260630-k3s-122-v1`
 - 121 real Pod host veth XDP：`results/network_policy/real-pod-veth-xdp-20260630-k3s-121-v1`
 - 122 real Pod host veth XDP：`results/network_policy/real-pod-veth-xdp-20260630-k3s-122-v1`
+- 121 isolated-veth XDP ICMP/TCP/UDP：`results/network_policy/xdp-20260703-121-udp-v2`
+- 122 isolated-veth XDP ICMP/TCP/UDP：`results/network_policy/xdp-20260703-122-udp-v2`
 - 121 real Pod Policy Engine 联动：`results/policy_engine/real-pod-security-network-resource-20260630-k3s-121-v1`
 - 122 real Pod Policy Engine 联动：`results/policy_engine/real-pod-security-network-resource-20260630-k3s-122-v1`
 - 121 v3.2 k3s 后质量门禁：`reports/final_quality_gate_20260630-v32-real-pod-policy-121.log`
@@ -149,4 +151,4 @@ SP4 环境探测：
 ## 后置事项
 
 - SP4 验证不作为 v3.1 完成条件，准备文档为 `docs/sp4_validation_plan.md`，检查脚本为 `scripts/check_sp4_env.sh`。
-- 真实 Kubernetes Pod target、Pod host veth QoS、Pod host veth XDP 与真实 Pod Policy Engine 跨 Skill 联动均已转 pass；下一优先级是更多异常规则、XDP 更多报文特征和最终证据压缩。
+- 真实 Kubernetes Pod target、Pod host veth QoS、Pod host veth XDP 与真实 Pod Policy Engine 跨 Skill 联动均已转 pass；isolated-veth XDP 已补齐 ICMP/TCP/UDP 三规则和 per-rule 证据。下一优先级是 real Pod host veth UDP/更多包字段、Security cred 生命周期规则和最终证据压缩。

@@ -1,0 +1,5 @@
+total_drop_count=13
+drop_icmp_lab=1
+drop_tcp_probe_lab=4
+drop_udp_probe_lab=8
+rule_stats=drop_icmp_lab:pass=0,drop=1,bytes=98;drop_tcp_probe_lab:pass=0,drop=4,bytes=296;drop_udp_probe_lab:pass=0,drop=8,bytes=1104

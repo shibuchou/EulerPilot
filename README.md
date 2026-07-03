@@ -31,7 +31,7 @@ eBPF Observer
   - `network_policy`：cgroup/connect4 audit/enforce/rollback
   - `network_qos`：TC egress classifier + TBF 限速闭环
   - `network_qos` Benchmark：2 Mbit/s 目标下 121/122 实测误差约 -1.22% / -1.45%
-  - `network_xdp`：isolated-veth generic XDP ICMP + TCP 多规则闭环；真实 k3s lab Pod host veth generic XDP attach/drop/rollback 已在 121/122 通过
+  - `network_xdp`：isolated-veth generic XDP ICMP + TCP + UDP 三规则闭环，rollback 事件输出 per-rule drop 统计；真实 k3s lab Pod host veth generic XDP attach/drop/rollback 已在 121/122 通过
   - `TargetResolver`：`container/k8s_pod -> runtime PID -> netns -> host veth/ifindex` 已接入 Network QoS/XDP 真实 Pod host veth 验证
 - Security Policy 阶段 C 最小闭环：
   - `security_policy`：YAML v2 `targets + rules + target_ref`
@@ -93,6 +93,8 @@ eBPF Observer
 - Network QoS real Pod host veth 122：`/root/EulerPilot/results/network_policy/real-pod-veth-qos-20260630-k3s-122-v1`
 - Network XDP real Pod host veth 121：`/root/EulerPilot/results/network_policy/real-pod-veth-xdp-20260630-k3s-121-v1`
 - Network XDP real Pod host veth 122：`/root/EulerPilot/results/network_policy/real-pod-veth-xdp-20260630-k3s-122-v1`
+- Network XDP ICMP/TCP/UDP isolated-veth 121：`/root/EulerPilot/results/network_policy/xdp-20260703-121-udp-v2`
+- Network XDP ICMP/TCP/UDP isolated-veth 122：`/root/EulerPilot/results/network_policy/xdp-20260703-122-udp-v2`
 - Resource Control CPU quota 121：`/root/EulerPilot/results/resource_control/cpu-quota-20260625-095030`
 - Resource Control CPU quota 122：`/root/EulerPilot/results/resource_control/cpu-quota-20260625-095114`
 - Resource Control Redis quota Compare Benchmark 121：`/root/EulerPilot/results/resource_control/redis-quota-compare-20260625-102426`

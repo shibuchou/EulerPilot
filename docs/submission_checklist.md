@@ -15,7 +15,7 @@
 - [x] `network_policy` cgroup/connect4 audit/enforce/rollback 最小闭环
 - [x] `network_qos` TC egress classifier + TBF 限速最小闭环
 - [x] `network_qos` TC QoS 速率误差 Benchmark 双机通过
-- [x] `network_xdp` isolated-veth generic XDP ICMP + TCP 多规则闭环
+- [x] `network_xdp` isolated-veth generic XDP ICMP + TCP + UDP 三规则闭环与 per-rule 统计
 - [x] `TargetResolver` netdev + `k8s_pod` host veth 真实解析预备自测通过
 - [x] `security_policy` 正式注册名 + YAML v2 path target
 - [x] `security_policy` audit 模式 attach BPF 不阻断并写 `lsm_file_open/lsm_bprm_check_security/sys_enter_execve/sys_enter_openat/sys_enter_connect/sys_enter_ptrace` ringbuf observed hit
@@ -154,7 +154,7 @@
 
 ## 当前结论
 
-项目仍处于争奖增强阶段，不应停留在“最终材料整理”。当前已完成 Security anomaly -> Policy Engine -> Resource Control 降级、Security anomaly -> Policy Engine -> Network+Resource 联动，以及真实 Pod 版 Network+Resource 联动。当前 121/122 的真实 Podman container target、k3s Pod target、Network QoS Pod host veth、Network XDP Pod host veth、真实 Pod Policy Engine 跨 Skill 联动和服务联动 Security anomaly 规则均已转为 pass；下一步重点是 Network XDP 更多报文特征、Security 更细 cred 生命周期规则和最终证据压缩。
+项目仍处于争奖增强阶段，不应停留在“最终材料整理”。当前已完成 Security anomaly -> Policy Engine -> Resource Control 降级、Security anomaly -> Policy Engine -> Network+Resource 联动，以及真实 Pod 版 Network+Resource 联动。当前 121/122 的真实 Podman container target、k3s Pod target、Network QoS Pod host veth、Network XDP Pod host veth、真实 Pod Policy Engine 跨 Skill 联动、服务联动 Security anomaly 规则和 isolated-veth XDP ICMP/TCP/UDP 三规则均已转为 pass；下一步重点是 real Pod host veth XDP UDP/更多包字段、Security 更细 cred 生命周期规则和最终证据压缩。
 
 ## v3.1 提交前新增检查
 

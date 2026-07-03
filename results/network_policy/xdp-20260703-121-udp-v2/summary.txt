@@ -1,0 +1,8 @@
+result=pass
+host=localhost.localdomain
+ifname=ep-veth-xdp0
+rules=drop_icmp_lab,drop_tcp_probe_lab,drop_udp_probe_lab
+tcp_port=19092
+udp_port=19093
+events=network_policy_events.jsonl
+journal=action_journal.network_xdp.jsonl

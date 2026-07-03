@@ -15,7 +15,8 @@ XDP_ADDR="10.89.0.1/24"
 XDP_PEER_ADDR="10.89.0.2/24"
 XDP_HOST_IP="10.89.0.1"
 XDP_TCP_PORT="19092"
-RESULT_DIR="results/network_policy/xdp-$(date +%Y%m%d-%H%M%S)"
+XDP_UDP_PORT="19093"
+RESULT_DIR="${RESULT_DIR:-results/network_policy/xdp-$(date +%Y%m%d-%H%M%S)}"
 AGENT_PID=""
 SERVER_PID=""
 EVENT_LINES_BEFORE=0
@@ -187,6 +188,26 @@ tcp_probe_should_drop() {
     fi
 }
 
+send_udp_from_netns() {
+    local label="$1"
+    timeout 4s ip netns exec "$XDP_NETNS" python3 - "$XDP_HOST_IP" "$XDP_UDP_PORT" \
+        > "$RESULT_DIR/$label-udp-client.log" 2>&1 <<'PY'
+import socket
+import sys
+import time
+
+host = sys.argv[1]
+port = int(sys.argv[2])
+payload = b"eulerpilot-xdp-udp-probe" * 4
+
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+for _ in range(8):
+    sock.sendto(payload, (host, port))
+    time.sleep(0.02)
+sock.close()
+PY
+}
+
 event_line_count() {
     if [ -f reports/events/network_policy.jsonl ]; then
         wc -l < reports/events/network_policy.jsonl
@@ -264,6 +285,9 @@ log "PASS: XDP drop blocks ICMP in isolated veth lab"
 tcp_probe_should_drop enforce-tcp-drop
 log "PASS: XDP drop blocks TCP:$XDP_TCP_PORT in isolated veth lab"
 
+send_udp_from_netns enforce-udp-drop
+log "PASS: XDP drop records UDP:$XDP_UDP_PORT in isolated veth lab"
+
 wait "$AGENT_PID"
 AGENT_PID=""
 log "PASS: enforce agent exits cleanly"
@@ -278,12 +302,26 @@ log "PASS: rollback leaves no XDP attachment"
 ping_host_from_netns > "$RESULT_DIR/rollback-ping.log" 2>&1
 log "PASS: connectivity recovers after rollback"
 
-NETWORK_XDP_EVENT_OFFSET="$EVENT_LINES_BEFORE" python3 - <<'PY'
+if [ -f reports/events/network_policy.jsonl ]; then
+    tail -n +"$((EVENT_LINES_BEFORE + 1))" reports/events/network_policy.jsonl \
+        > "$RESULT_DIR/network_policy_events.jsonl"
+else
+    : > "$RESULT_DIR/network_policy_events.jsonl"
+fi
+if [ -f run/eulerpilot/action_journal.jsonl ]; then
+    grep '"skill":"network_xdp"' run/eulerpilot/action_journal.jsonl \
+        > "$RESULT_DIR/action_journal.network_xdp.jsonl" || true
+fi
+
+NETWORK_XDP_EVENT_OFFSET="$EVENT_LINES_BEFORE" \
+NETWORK_XDP_RESULT_DIR="$RESULT_DIR" \
+python3 - <<'PY'
 import json
 import os
 from pathlib import Path
 
 offset = int(os.environ["NETWORK_XDP_EVENT_OFFSET"])
+result_dir = Path(os.environ["NETWORK_XDP_RESULT_DIR"])
 events = []
 path = Path("reports/events/network_policy.jsonl")
 if path.exists():
@@ -296,11 +334,36 @@ if path.exists():
             events.append(item)
 if not events:
     raise SystemExit("missing network_xdp enforce rollback event")
-drop_count = int(events[-1].get("evidence", {}).get("drop_count", "0"))
-if drop_count < 2:
-    raise SystemExit("network_xdp drop_count did not increase")
+evidence = events[-1].get("evidence", {})
+drop_count = int(evidence.get("drop_count", "0"))
+if drop_count < 3:
+    raise SystemExit("network_xdp drop_count did not increase for ICMP/TCP/UDP")
+for rule in ("drop_icmp_lab", "drop_tcp_probe_lab", "drop_udp_probe_lab"):
+    key = f"rule.{rule}.drop_count"
+    if int(evidence.get(key, "0")) < 1:
+        raise SystemExit(f"network_xdp per-rule drop counter missing for {rule}")
+result_dir.joinpath("xdp_rule_stats.txt").write_text(
+    "\n".join([
+        f"total_drop_count={drop_count}",
+        f"drop_icmp_lab={evidence.get('rule.drop_icmp_lab.drop_count', '0')}",
+        f"drop_tcp_probe_lab={evidence.get('rule.drop_tcp_probe_lab.drop_count', '0')}",
+        f"drop_udp_probe_lab={evidence.get('rule.drop_udp_probe_lab.drop_count', '0')}",
+        f"rule_stats={evidence.get('rule_stats', '')}",
+    ]) + "\n"
+)
 PY
-log "PASS: network_xdp rollback event records multi-rule drops"
+log "PASS: network_xdp rollback event records ICMP/TCP/UDP per-rule drops"
+
+cat > "$RESULT_DIR/summary.txt" <<EOF
+result=pass
+host=$(hostname)
+ifname=$XDP_IFACE
+rules=drop_icmp_lab,drop_tcp_probe_lab,drop_udp_probe_lab
+tcp_port=$XDP_TCP_PORT
+udp_port=$XDP_UDP_PORT
+events=network_policy_events.jsonl
+journal=action_journal.network_xdp.jsonl
+EOF
 
 cat > "$RESULT_DIR/README.md" <<EOF
 # NetworkXDP integration result
@@ -311,7 +374,7 @@ This test validates the \`network_xdp\` sub-skill on an isolated veth pair.
 
 - Baseline: netns peer can ping host-side veth.
 - Audit: Agent starts without attaching XDP.
-- Enforce: Agent attaches XDP generic mode on \`$XDP_IFACE\`, blocks ICMP connectivity, and records TCP:\`$XDP_TCP_PORT\` rule hits.
+- Enforce: Agent attaches XDP generic mode on \`$XDP_IFACE\`, blocks ICMP connectivity, and records TCP:\`$XDP_TCP_PORT\` plus UDP:\`$XDP_UDP_PORT\` rule hits.
 - Rollback: Agent detaches XDP and connectivity recovers.
 
 Reproduce:
