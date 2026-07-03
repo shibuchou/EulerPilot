@@ -51,6 +51,14 @@ SP4 环境探测：
 - fake runtime target 回归已刷新：121 `results/resource_control/runtime-target-20260630-113310`，122 `results/resource_control/runtime-target-20260630-113354`。
 - 121 最新质量门禁日志：`reports/final_quality_gate_20260630-v32-podman-121.log`，21/21 P0、100 轮 smoke、5 轮 doctor 通过。
 - Kubernetes lab Pod、Pod host veth QoS、Pod host veth XDP 与真实 Pod 跨 Skill 联动已完成双机 pass；下一步转向更多异常规则与答辩证据压缩。
+
+## 2026-07-03 执行更新
+
+- isolated-veth XDP 已从 ICMP/TCP/UDP 三规则扩展到协议、源/目的 IPv4、源/目的端口多字段匹配。
+- 121/122 均已通过 `tests/integration/test_network_xdp.sh`，新增 UDP tuple `10.89.0.2:39094 -> 10.89.0.1:19094` 命中验证。
+- 结果目录：121 `results/network_policy/xdp-20260703-121-fields-v1`，122 `results/network_policy/xdp-20260703-122-fields-v1`。
+- 两端统计一致：ICMP 1、TCP 4、UDP 8、UDP tuple 8，总 drop 21；rollback 事件携带每条规则的 `protocol/src_ip/dst_ip/src_port/dst_port/drop_count/byte_count`。
+- 下一步不再把 isolated-veth XDP 字段匹配列为 blocked debt，转为评估 real Pod host veth tuple 演示、credential 深层 hook 和最终证据压缩。
 ## Key Changes
 
 ### 1. openEuler runtime 兼容性

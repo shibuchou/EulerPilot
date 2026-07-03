@@ -192,7 +192,7 @@ EulerPilot 实现了一套轻量 Skills 插件化能力框架，通过 YAML 驱�
 |------|------|
 | connect4 策略 | `cgroup/connect4`，对目标 cgroup 的动态端口执行 deny |
 | TC QoS | `tc_egress` BPF classifier 统计命中，TBF qdisc 执行限速 |
-| XDP 策略 | isolated veth 上挂 generic XDP，执行 ICMP + TCP + UDP 三规则 drop/pass，并输出聚合与 per-rule 统计 |
+| XDP 策略 | isolated veth 上挂 generic XDP，执行 ICMP + TCP + UDP + UDP tuple 四规则 drop/pass，支持协议、源/目的 IP、源/目的端口匹配，并输出聚合与 per-rule 字段统计 |
 | Pod target 解析 | `k8s_pod -> kubectl Pod UID/container ID -> runtime PID -> netns -> host veth/ifindex`，`network_qos/network_xdp` 可解析 Pod target 到 host veth |
 | 生命周期 | YAML v2 驱动启用 -> attach -> 验证 -> rollback detach -> 恢复 |
 | 验证结果 | connect4 deny/recover、TC QoS rollback、XDP drop/recover 均通过 |
@@ -421,4 +421,4 @@ EulerPilot 的价值不在于证明某一组参数在所有场景下都优于默
 
 项目代码已同步推送至 GitHub 私密仓库 `shibuchou/EulerPilot`。
 
-当前项目已覆盖 resource control、network policy、security policy 三类 OS Agent 扩展方向：其中 resource control 进入 Redis/Nginx 主实验路径，network policy 已具备 connect4、TC QoS、XDP 三个可验证子能力，XDP 已支持 ICMP/TCP/UDP 三规则与 per-rule 统计，security policy 已从独立 demo 升级为正式 Skill，覆盖 file、exec、socket、ptrace 四类 eBPF/LSM hook 的 audit、deny、rollback、recover 可演示闭环。
+当前项目已覆盖 resource control、network policy、security policy 三类 OS Agent 扩展方向：其中 resource control 进入 Redis/Nginx 主实验路径，network policy 已具备 connect4、TC QoS、XDP 三个可验证子能力，XDP 已支持 ICMP/TCP/UDP 与 UDP tuple 多字段规则和 per-rule 字段统计，security policy 已从独立 demo 升级为正式 Skill，覆盖 file、exec、socket、ptrace 四类 eBPF/LSM hook 的 audit、deny、rollback、recover 可演示闭环。

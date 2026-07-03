@@ -16,6 +16,7 @@
 - [x] `network_qos` TC egress classifier + TBF 限速最小闭环
 - [x] `network_qos` TC QoS 速率误差 Benchmark 双机通过
 - [x] `network_xdp` isolated-veth generic XDP ICMP + TCP + UDP 三规则闭环与 per-rule 统计
+- [x] `network_xdp` isolated-veth 协议、源/目的 IP、源/目的端口多字段匹配双机通过：新增 UDP tuple `10.89.0.2:39094 -> 10.89.0.1:19094`，rollback 事件输出 `protocol/src_ip/dst_ip/src_port/dst_port/drop_count/byte_count`
 - [x] `TargetResolver` netdev + `k8s_pod` host veth 真实解析预备自测通过
 - [x] `security_policy` 正式注册名 + YAML v2 path target
 - [x] `security_policy` audit 模式 attach BPF 不阻断并写 `lsm_file_open/lsm_bprm_check_security/sys_enter_execve/sys_enter_openat/sys_enter_connect/sys_enter_ptrace` ringbuf observed hit
@@ -66,6 +67,8 @@
 - Network TC QoS Benchmark 122：`results/network_policy/qos-rate-20260620-181755`
 - Network XDP 多规则 121：`results/network_policy/xdp-20260620-183031`
 - Network XDP 多规则 122：`results/network_policy/xdp-20260620-184212`
+- Network XDP tuple 字段 121：`results/network_policy/xdp-20260703-121-fields-v1`
+- Network XDP tuple 字段 122：`results/network_policy/xdp-20260703-122-fields-v1`
 - Security BPF LSM demo 121：`results/security_policy/integration-20260621-095537`
 - Security BPF LSM demo 122：`results/security_policy/integration-20260621-100937`
 - Security 正式 audit/enforce 121：`results/security_policy/integration-20260621-101929`
@@ -159,7 +162,7 @@
 
 ## 当前结论
 
-项目仍处于争奖增强阶段，不应停留在“最终材料整理”。当前已完成 Security anomaly -> Policy Engine -> Resource Control 降级、Security anomaly -> Policy Engine -> Network+Resource 联动，以及真实 Pod 版 Network+Resource 联动。当前 121/122 的真实 Podman container target、k3s Pod target、Network QoS Pod host veth、Network XDP Pod host veth、真实 Pod Policy Engine 跨 Skill 联动、服务联动 Security anomaly 规则、credential 生命周期 anomaly、isolated-veth XDP ICMP/TCP/UDP 三规则和 real Pod host veth XDP ICMP/TCP/UDP 三规则均已转为 pass；下一步重点是 XDP 更多包字段、cred_transfer/cred_alloc_blank 等更深 credential hook 评估和最终证据压缩。
+项目仍处于争奖增强阶段，不应停留在“最终材料整理”。当前已完成 Security anomaly -> Policy Engine -> Resource Control 降级、Security anomaly -> Policy Engine -> Network+Resource 联动，以及真实 Pod 版 Network+Resource 联动。当前 121/122 的真实 Podman container target、k3s Pod target、Network QoS Pod host veth、Network XDP Pod host veth、真实 Pod Policy Engine 跨 Skill 联动、服务联动 Security anomaly 规则、credential 生命周期 anomaly、isolated-veth XDP ICMP/TCP/UDP + UDP tuple 四规则和 real Pod host veth XDP ICMP/TCP/UDP 三规则均已转为 pass；下一步重点是 real Pod host veth XDP tuple 可行性评估、cred_transfer/cred_alloc_blank 等更深 credential hook 评估和最终证据压缩。
 
 ## v3.1 提交前新增检查
 
@@ -187,3 +190,4 @@
 - [x] Network QoS 真实 Pod host veth 演示 121/122 通过。
 - [x] Network XDP 真实 Pod host veth 演示 121/122 通过。
 - [x] Security 服务联动 anomaly 规则 121/122 通过。
+- [x] Network XDP isolated-veth tuple 字段演示 121/122 通过。

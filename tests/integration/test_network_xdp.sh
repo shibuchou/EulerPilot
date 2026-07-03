@@ -16,6 +16,8 @@ XDP_PEER_ADDR="10.89.0.2/24"
 XDP_HOST_IP="10.89.0.1"
 XDP_TCP_PORT="19092"
 XDP_UDP_PORT="19093"
+XDP_UDP_TUPLE_PORT="19094"
+XDP_UDP_TUPLE_SRC_PORT="39094"
 RESULT_DIR="${RESULT_DIR:-results/network_policy/xdp-$(date +%Y%m%d-%H%M%S)}"
 AGENT_PID=""
 SERVER_PID=""
@@ -190,7 +192,9 @@ tcp_probe_should_drop() {
 
 send_udp_from_netns() {
     local label="$1"
-    timeout 4s ip netns exec "$XDP_NETNS" python3 - "$XDP_HOST_IP" "$XDP_UDP_PORT" \
+    local dst_port="${2:-$XDP_UDP_PORT}"
+    local src_port="${3:-0}"
+    timeout 4s ip netns exec "$XDP_NETNS" python3 - "$XDP_HOST_IP" "$dst_port" "$src_port" \
         > "$RESULT_DIR/$label-udp-client.log" 2>&1 <<'PY'
 import socket
 import sys
@@ -198,9 +202,12 @@ import time
 
 host = sys.argv[1]
 port = int(sys.argv[2])
+src_port = int(sys.argv[3])
 payload = b"eulerpilot-xdp-udp-probe" * 4
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+if src_port != 0:
+    sock.bind(("10.89.0.2", src_port))
 for _ in range(8):
     sock.sendto(payload, (host, port))
     time.sleep(0.02)
@@ -285,8 +292,11 @@ log "PASS: XDP drop blocks ICMP in isolated veth lab"
 tcp_probe_should_drop enforce-tcp-drop
 log "PASS: XDP drop blocks TCP:$XDP_TCP_PORT in isolated veth lab"
 
-send_udp_from_netns enforce-udp-drop
+send_udp_from_netns enforce-udp-drop "$XDP_UDP_PORT" 0
 log "PASS: XDP drop records UDP:$XDP_UDP_PORT in isolated veth lab"
+
+send_udp_from_netns enforce-udp-tuple-drop "$XDP_UDP_TUPLE_PORT" "$XDP_UDP_TUPLE_SRC_PORT"
+log "PASS: XDP drop records UDP tuple $XDP_PEER_ADDR -> $XDP_HOST_IP:$XDP_UDP_TUPLE_PORT in isolated veth lab"
 
 wait "$AGENT_PID"
 AGENT_PID=""
@@ -336,31 +346,48 @@ if not events:
     raise SystemExit("missing network_xdp enforce rollback event")
 evidence = events[-1].get("evidence", {})
 drop_count = int(evidence.get("drop_count", "0"))
-if drop_count < 3:
-    raise SystemExit("network_xdp drop_count did not increase for ICMP/TCP/UDP")
-for rule in ("drop_icmp_lab", "drop_tcp_probe_lab", "drop_udp_probe_lab"):
+if drop_count < 4:
+    raise SystemExit("network_xdp drop_count did not increase for ICMP/TCP/UDP/tuple")
+for rule in ("drop_icmp_lab", "drop_tcp_probe_lab", "drop_udp_probe_lab", "drop_udp_tuple_lab"):
     key = f"rule.{rule}.drop_count"
     if int(evidence.get(key, "0")) < 1:
         raise SystemExit(f"network_xdp per-rule drop counter missing for {rule}")
+if evidence.get("rule.drop_udp_tuple_lab.src_ip") != "10.89.0.2":
+    raise SystemExit("network_xdp tuple rule missing src_ip evidence")
+if evidence.get("rule.drop_udp_tuple_lab.dst_ip") != "10.89.0.1":
+    raise SystemExit("network_xdp tuple rule missing dst_ip evidence")
+if evidence.get("rule.drop_udp_tuple_lab.src_port") != "39094":
+    raise SystemExit("network_xdp tuple rule missing src_port evidence")
+if evidence.get("rule.drop_udp_tuple_lab.dst_port") != "19094":
+    raise SystemExit("network_xdp tuple rule missing dst_port evidence")
 result_dir.joinpath("xdp_rule_stats.txt").write_text(
     "\n".join([
         f"total_drop_count={drop_count}",
         f"drop_icmp_lab={evidence.get('rule.drop_icmp_lab.drop_count', '0')}",
         f"drop_tcp_probe_lab={evidence.get('rule.drop_tcp_probe_lab.drop_count', '0')}",
         f"drop_udp_probe_lab={evidence.get('rule.drop_udp_probe_lab.drop_count', '0')}",
+        f"drop_udp_tuple_lab={evidence.get('rule.drop_udp_tuple_lab.drop_count', '0')}",
+        f"drop_udp_tuple_lab.src_ip={evidence.get('rule.drop_udp_tuple_lab.src_ip', '')}",
+        f"drop_udp_tuple_lab.dst_ip={evidence.get('rule.drop_udp_tuple_lab.dst_ip', '')}",
+        f"drop_udp_tuple_lab.src_port={evidence.get('rule.drop_udp_tuple_lab.src_port', '')}",
+        f"drop_udp_tuple_lab.dst_port={evidence.get('rule.drop_udp_tuple_lab.dst_port', '')}",
         f"rule_stats={evidence.get('rule_stats', '')}",
     ]) + "\n"
 )
 PY
-log "PASS: network_xdp rollback event records ICMP/TCP/UDP per-rule drops"
+log "PASS: network_xdp rollback event records ICMP/TCP/UDP and tuple per-rule drops"
 
 cat > "$RESULT_DIR/summary.txt" <<EOF
 result=pass
 host=$(hostname)
 ifname=$XDP_IFACE
-rules=drop_icmp_lab,drop_tcp_probe_lab,drop_udp_probe_lab
+rules=drop_icmp_lab,drop_tcp_probe_lab,drop_udp_probe_lab,drop_udp_tuple_lab
 tcp_port=$XDP_TCP_PORT
 udp_port=$XDP_UDP_PORT
+udp_tuple_src_ip=10.89.0.2
+udp_tuple_dst_ip=$XDP_HOST_IP
+udp_tuple_src_port=$XDP_UDP_TUPLE_SRC_PORT
+udp_tuple_dst_port=$XDP_UDP_TUPLE_PORT
 events=network_policy_events.jsonl
 journal=action_journal.network_xdp.jsonl
 EOF
@@ -374,7 +401,7 @@ This test validates the \`network_xdp\` sub-skill on an isolated veth pair.
 
 - Baseline: netns peer can ping host-side veth.
 - Audit: Agent starts without attaching XDP.
-- Enforce: Agent attaches XDP generic mode on \`$XDP_IFACE\`, blocks ICMP connectivity, and records TCP:\`$XDP_TCP_PORT\` plus UDP:\`$XDP_UDP_PORT\` rule hits.
+- Enforce: Agent attaches XDP generic mode on \`$XDP_IFACE\`, blocks ICMP connectivity, and records TCP:\`$XDP_TCP_PORT\`, UDP:\`$XDP_UDP_PORT\`, plus UDP tuple \`10.89.0.2:$XDP_UDP_TUPLE_SRC_PORT -> $XDP_HOST_IP:$XDP_UDP_TUPLE_PORT\` rule hits.
 - Rollback: Agent detaches XDP and connectivity recovers.
 
 Reproduce:

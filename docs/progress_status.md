@@ -14,9 +14,9 @@
 - 真实 Pod Policy Engine 联动已在 121/122 通过：121 `results/policy_engine/real-pod-security-network-resource-20260630-k3s-121-v1`，122 `results/policy_engine/real-pod-security-network-resource-20260630-k3s-122-v1`；验证同一个 `target_ref=lab_pod(type=k8s_pod)` 在 `policy_engine` 内解析为 Pod cgroup 与 Pod host veth，写入 `cpu.max=20000 100000`、`memory.high=134217728` 和 `tc/tbf 2mbit`，并用同一 `transaction_id` 串起 security、policy_engine、resource_control、network_qos 与 ActionJournal，Agent 退出后全部 rollback。
 - 服务联动 Security anomaly 已在 121/122 通过：121 `results/security_policy/anomaly-rules-20260703-121-v4`，122 `results/security_policy/anomaly-rules-20260703-122-v2`；验证 `burst_connect`、`burst_openat_sensitive` 与 scoped `capability_abuse` 都能输出 `operation=anomaly/result=observed`，其中结果 JSONL 只保留 anomaly 事件，便于答辩直接展示。
 - Credential 生命周期 anomaly 已在 121/122 通过：121 `results/security_policy/credential-anomaly-20260703-121-v3`，122 `results/security_policy/credential-anomaly-20260703-122-v3`；验证 scoped `setuid(65534)` 触发 `lsm_cred_prepare/lsm_task_fix_setuid` 命中并聚合为 `credential_churn`，anomaly 事件携带 `credential_stage` 与 `uid`，hit 事件保留 `cred_gfp` 等细节。
-- isolated-veth XDP 更多报文特征已在 121/122 通过：121 `results/network_policy/xdp-20260703-121-udp-v2`，122 `results/network_policy/xdp-20260703-122-udp-v2`；验证 `drop_icmp_lab`、`drop_tcp_probe_lab` 与 `drop_udp_probe_lab` 三条规则，并在 rollback 事件中输出 per-rule `drop_count/byte_count`。两端当前统计一致：ICMP 1、TCP 4、UDP 8，总 drop 13。
+- isolated-veth XDP 更多报文特征已在 121/122 通过：121 `results/network_policy/xdp-20260703-121-fields-v1`，122 `results/network_policy/xdp-20260703-122-fields-v1`；验证 `drop_icmp_lab`、`drop_tcp_probe_lab`、`drop_udp_probe_lab` 与 `drop_udp_tuple_lab` 四条规则，并在 rollback 事件中输出 per-rule `protocol/src_ip/dst_ip/src_port/dst_port/drop_count/byte_count`。两端当前统计一致：ICMP 1、TCP 4、UDP 8、UDP tuple 8，总 drop 21。
 - 121 最新质量门禁通过：`reports/final_quality_gate_20260630-v32-real-pod-policy-121.log`，21/21 P0、100 轮 Agent smoke、5 轮 doctor 均通过。
-- v3.2 剩余争奖增强重点转为：XDP 更多包字段、cred_transfer/cred_alloc_blank 等更深 credential hook 评估和最终答辩证据压缩。
+- v3.2 剩余争奖增强重点转为：real Pod host veth XDP tuple 可行性评估、cred_transfer/cred_alloc_blank 等更深 credential hook 评估和最终答辩证据压缩。
 ## v3.1 最新进展（2026-06-29）
 
 - v3.1 主线已进入“跨 Skill 联动与争奖证据收口”：不切换 SP4 主平台，不把 K8s 真实验证作为本阶段完成条件，不继续堆大规模底层 hook。
@@ -49,7 +49,7 @@
 - 将 `network_policy_demo` 升级为正式 `network_policy` Skill。
 - 先完成 `cgroup/connect4` 的 `audit/enforce/status/rollback` 正式口径。
 - 再补 TC QoS 和 isolated-veth XDP，并继续扩展 Benchmark、多规则和 Pod veth。
-- `TargetResolver` 已从 netdev 与 `k8s_pod` 诊断入口推进到 container name/ID、Pod UID、runtime PID、netns 和 host veth/ifindex 真实解析；真实 k3s lab Pod 已接入 TC QoS、XDP ICMP/TCP/UDP 和 Policy Engine 跨 Skill 联动演示，后续重点是更多包字段与证据压缩。
+- `TargetResolver` 已从 netdev 与 `k8s_pod` 诊断入口推进到 container name/ID、Pod UID、runtime PID、netns 和 host veth/ifindex 真实解析；真实 k3s lab Pod 已接入 TC QoS、XDP ICMP/TCP/UDP 和 Policy Engine 跨 Skill 联动演示，isolated-veth XDP 已补齐 tuple 多字段匹配，后续重点是 real Pod tuple 可行性和证据压缩。
 - 所有 Network 事件接入 `AuditBus`，所有挂载/卸载动作接入 `ActionJournal`。
 - Resource Control 已从 CPU-only 扩展到 CPU + Memory + IO：pressure 模式下写 `cpu.max`、`memory.high`、`io.weight` 与 `io.max`，latency 组使用 `memory.low` 保护，IO 默认解析根文件系统块设备，并通过事务化写入、`AuditBus`、`ActionJournal` 和 stop rollback 闭环验证；`target_ref` 已接入 `TargetResolver`，可将 profile 绑定到 cgroup/PID/container/Pod 解析出的真实 cgroup；121/122 已完成 `container_id`、runtime container name 和 `k8s_pod` 名称解析的 runtime target 集成测试，并用 `cpu.stat usage_usec/nr_throttled/throttled_usec` 证明 CPU quota 实际生效；Redis/Nginx quota Sweep Benchmark 已拆分 `default_noisy`、`eulerpilot_no_quota` 和多档 `eulerpilot_quota` 阶段，当前结论限定为同样 Agent 放置下后台限额效果显著，业务 RPS 只作为边界证据；Redis 跨机保守默认演示 profile 为 `quota_10`，Nginx 跨机激进候选为 `quota_05`；Redis+Nginx 混合业务 sweep 显示 121 推荐 `quota_20`、122 推荐 `quota_50`，混合场景必须同时看 Redis GET/SET 与 Nginx RPS 保留率，不能直接套用单 workload 最优 profile；真实 runtime readiness 已在安装 Podman 与 k3s 后刷新：121/122 均为 `container_runtime_ready=1`、`kubernetes_ready=1`；真实 Podman container target 已在两端转为 pass，能对 runtime 创建的容器 cgroup 写入并恢复 `cpu.max/memory.high`；真实 k3s Pod target 已在 121/122 通过，Pod cgroup 写入和 Pod host veth QoS 均具备双机证据。
 - Policy Engine 已完成三条跨 Skill 链路：第一条为 `burst_execve -> resource_control cgroup 降级`；第二条 v3.1 为 `burst_connect -> resource_control demo_cgroup + network_qos lab_netdev 限速`；第三条 v3.2 为 `burst_connect -> target_ref=lab_pod(type=k8s_pod) -> Pod cgroup CPU/Memory 降级 + Pod host veth TC/TBF 限速`，并通过统一 `transaction_id`、`AuditBus`、`ActionJournal` 和 stop rollback 串起完整证据链。
@@ -59,7 +59,7 @@
 | 阶段 | 状态 | 当前结论 | 主要证据 |
 |------|------|----------|----------|
 | A. 公共基础设施 | 已完成 | 远端 Git、文档规则、README 覆盖、公共控制面最小代码和现有质量门禁已完成；后续随正式 Skill 深度接入 | `AGENTS.md`、本文件、各目录 README、`docs/public_control_plane_design.md`、`reports/final_quality_gate_20260618_control_plane.log` |
-| B. Network Policy | 真实 Pod host veth QoS/XDP 双机 pass | 正式 `network_policy` 注册名已落地；connect4 audit/enforce 已完成；TC QoS 最小闭环与速率误差 Benchmark 已完成；isolated-veth XDP 与 real Pod host veth XDP ICMP/TCP/UDP 三规则闭环已完成；schema v2 `targets + rules + target_ref` 已落地；`TargetResolver` 已支持 netdev、container name/ID、Pod UID、runtime container ID/PID、netns path 和 host veth/ifindex 解析；`network_qos` 与 `network_xdp` 已可接受 `type: container` / `type: k8s_pod` target 并解析成 host veth ifname；TC 与 XDP 已在真实 k3s lab Pod host veth 上双机通过 | `docs/network_policy_skill.md`、`docs/network_pod_veth_target.md`、`tests/integration/test_network_policy.sh`、`tests/integration/test_network_qos_tc.sh`、`tests/integration/test_network_xdp.sh`、`tests/integration/test_network_xdp_real_pod_veth.sh`、`tests/integration/test_target_resolver.sh`、`tests/benchmark/test_network_qos_rate.sh` |
+| B. Network Policy | 真实 Pod host veth QoS/XDP 双机 pass，isolated-veth XDP tuple 字段双机 pass | 正式 `network_policy` 注册名已落地；connect4 audit/enforce 已完成；TC QoS 最小闭环与速率误差 Benchmark 已完成；isolated-veth XDP 已从 ICMP/TCP/UDP 三规则扩展到协议 + 源/目的 IP + 源/目的端口 tuple 字段闭环；real Pod host veth XDP ICMP/TCP/UDP 三规则闭环已完成；schema v2 `targets + rules + target_ref` 已落地；`TargetResolver` 已支持 netdev、container name/ID、Pod UID、runtime container ID/PID、netns path 和 host veth/ifindex 解析；`network_qos` 与 `network_xdp` 已可接受 `type: container` / `type: k8s_pod` target 并解析成 host veth ifname；TC 与 XDP 已在真实 k3s lab Pod host veth 上双机通过 | `docs/network_policy_skill.md`、`docs/network_pod_veth_target.md`、`tests/integration/test_network_policy.sh`、`tests/integration/test_network_qos_tc.sh`、`tests/integration/test_network_xdp.sh`、`tests/integration/test_network_xdp_real_pod_veth.sh`、`tests/integration/test_target_resolver.sh`、`tests/benchmark/test_network_qos_rate.sh` |
 | C. Security Agent | 九类 LSM + 四类 syscall tracing + runtime anomaly + 多目标 target_map + 规则级事件标识 + cgroup/pid/container/runtime/pod scope 最小闭环已完成 | 正式 `security_policy` 注册名已落地；YAML v2 target/rule、最多 8 项 BPF `target_map`、audit BPF attach 不阻断、enforce BPF LSM blocked hit、`lsm_socket_connect`、`lsm_bprm_check_security` exec_prefix、`lsm_file_open` file_access/path_prefix、`lsm_ptrace_traceme`、`lsm_capable`、`lsm_task_fix_setuid`、`lsm_task_fix_setgid`、`lsm_task_fix_setgroups`、`lsm_cred_prepare`、`burst_execve`、`burst_connect`、`burst_openat_sensitive`、`capability_abuse`、`credential_churn` 用户态异常规则、规则级事件、显式 cgroup/PID/container_id/runtime container/k8s_pod scope 和 rollback 无残留已在 121/122 通过；下一步转向 cred_transfer/cred_alloc_blank 等更多 credential hook、异常策略组合和联动处置 | `docs/security_policy_skill.md`、`agent/skills/security_policy/README.md`、`tests/integration/test_security_policy.sh`、`tests/integration/test_security_policy_anomaly_rules.sh`、`tests/integration/test_security_policy_credential_anomaly.sh`、`demo/security_policy_demo/README.md` |
 | D. Resource Control | CPU + Memory + IO 自动闭环、target_ref/runtime target 闭环、Redis/Nginx 单项与混合 quota sweep、多资源组合 profile 证据已完成；真实 Podman container 与 k3s Pod target 双机 pass | 正式 `resource_control` 已读取 YAML v2 `controllers + targets + profiles`；cgroup v2 后端已支持 `cpu.weight/cpu.max/cpuset`、`memory.high/memory.low/memory.max` 与 `io.weight/io.max`；写入流程包含旧值读取、值校验、写入、复读验证、`AuditBus` 事件、`ActionJournal` 记录和 Agent stop rollback；121/122 已验证 CPU+Memory+IO、显式 cgroup target、fake runtime target、CPU quota、Redis/Nginx/mixed quota sweep 和 multi-resource profile；v3.2 已在两端使用 Podman 与本地 `localhost/eulerpilot-busybox:latest` 镜像完成真实 container cgroup 写入与 rollback，结果目录为 `results/resource_control/real-runtime-target-20260630-podman-121-final2` 与 `results/resource_control/real-runtime-target-20260630-podman-122-final2`；真实 k3s Pod target 已补齐，121/122 均通过 Pod cgroup 写入与 rollback | `docs/resource_control_skill.md`、`tests/integration/test_resource_control_real_runtime_target.sh`、`results/resource_control/runtime-readiness-20260630-podman-121`、`results/resource_control/runtime-readiness-20260630-podman-122`、`results/resource_control/runtime-target-20260630-113310`、`results/resource_control/runtime-target-20260630-113354`、`results/resource_control/real-runtime-target-20260630-podman-121-final2`、`results/resource_control/real-runtime-target-20260630-podman-122-final2` |
 | E. SP4/sched_ext 复核 | 未开始 | 等待 SP4/123 环境 | `docs/next_phase_plan_v2_1.md` |
@@ -123,7 +123,7 @@
 | B3 | connect4 audit/enforce | 已完成 | audit 模式不挂 BPF；enforce 模式使用 BPF map 动态配置端口，`stats_map` 记录 allow/deny，rollback 后无 attachment 残留 |
 | B4 | TC QoS | 已完成最小闭环 | `network_qos` 使用 TC egress BPF classifier 统计命中，TBF qdisc 执行限速；已验证 lab netns/veth、audit/enforce 和 rollback |
 | B5 | YAML v2 targets/rules | 已完成最小闭环 | `configs/skills.yaml` 已升级为 `schema_version: 2`；connect4 与 TC QoS 均通过 `target_ref` 解析目标 |
-| B6 | isolated-veth XDP | 已完成三规则闭环 | `network_xdp` 使用 generic XDP 在专用 lab veth 上执行 ICMP drop、TCP:19092 drop 与 UDP:19093 drop；已验证 audit/enforce、per-rule drop 统计和 rollback 后连通性恢复 |
+| B6 | isolated-veth XDP | 已完成四规则 tuple 字段闭环 | `network_xdp` 使用 generic XDP 在专用 lab veth 上执行 ICMP drop、TCP:19092 drop、UDP:19093 drop 与 UDP tuple `10.89.0.2:39094 -> 10.89.0.1:19094` drop；已验证 audit/enforce、per-rule 字段统计和 rollback 后连通性恢复 |
 | B7 | TC QoS 速率误差 Benchmark | 已完成 | `tests/benchmark/test_network_qos_rate.sh` 使用 Python TCP rate probe 验证 2 Mbit/s TBF 限速；121 误差 -1.22%，122 误差 -1.45% |
 | B8 | Pod veth target 解析预备 | 已完成真实解析预备 | `TargetResolver` 已支持 netdev ifname 校验、ifindex 解析、`kubectl` Pod UID/container ID 查询、runtime PID 查询、`/proc/<pid>/ns/net` 记录和 host veth/ifindex 反查；`tests/integration/test_target_resolver.sh` 使用临时 netns/veth + fake `kubectl/crictl` 验证成功路径，不依赖真实 Kubernetes |
 | B9 | Container veth target 解析预备 | 已完成真实解析预备 | `resolve_container_netdev_target` 已支持 container ID 或 runtime container name 解析 PID、netns path 和 host veth/ifindex；`network_qos/network_xdp` v2 target 已接受 `type: container` |
@@ -157,7 +157,7 @@
 - 审计事件已带上 v2 规则和目标：
   - connect4：`rule_id=deny_demo_port`，`target_ref=demo_cgroup`。
   - TC QoS：`rule_id=limit_lab_egress`，`target_ref=lab_veth`。
-  - XDP：`rule_id=drop_icmp_lab,drop_tcp_probe_lab,drop_udp_probe_lab`，`target_ref=lab_xdp_veth`。
+  - XDP：`rule_id=drop_icmp_lab,drop_tcp_probe_lab,drop_udp_probe_lab,drop_udp_tuple_lab`，`target_ref=lab_xdp_veth`。
   - 121 验证事件位于 `reports/events/network_policy.jsonl`。
 
 ### TC QoS 证据
@@ -206,10 +206,10 @@
   - audit 模式不挂 XDP。
   - enforce 模式在 `ep-veth-xdp0` 上挂 generic XDP 并 drop ICMP。
   - enforce 模式同时验证 TCP:19092 与 UDP:19093 规则命中。
-  - rollback 事件记录三规则 `drop_count >= 3`，并校验 `drop_icmp_lab`、`drop_tcp_probe_lab`、`drop_udp_probe_lab` 的 per-rule drop 计数。
+  - rollback 事件记录四规则 `drop_count >= 4`，并校验 `drop_icmp_lab`、`drop_tcp_probe_lab`、`drop_udp_probe_lab`、`drop_udp_tuple_lab` 的 per-rule drop 计数和 tuple 字段。
   - Agent 退出后无 XDP attachment 残留，连通性恢复。
-- 121 最新 XDP ICMP/TCP/UDP 集成测试证据目录：`results/network_policy/xdp-20260703-121-udp-v2/`。
-- 122 最新 XDP ICMP/TCP/UDP 集成测试证据目录：`results/network_policy/xdp-20260703-122-udp-v2/`。
+- 121 最新 XDP ICMP/TCP/UDP + UDP tuple 集成测试证据目录：`results/network_policy/xdp-20260703-121-fields-v1/`。
+- 122 最新 XDP ICMP/TCP/UDP + UDP tuple 集成测试证据目录：`results/network_policy/xdp-20260703-122-fields-v1/`。
 - 121 最新完整质量门禁已通过：`reports/final_quality_gate_20260629_policy_engine.log`，21/21 P0、100 轮 Agent smoke 和 5 轮 doctor 均通过。
 
 ### TargetResolver / container + Pod veth 预备证据

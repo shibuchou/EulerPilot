@@ -156,6 +156,15 @@ skills:
         protocol: udp
         dst_port: '19093'
         action: drop
+      - name: drop_udp_tuple_lab
+        hook: xdp
+        target_ref: lab_xdp_veth
+        protocol: udp
+        src_ip: 10.89.0.2
+        dst_ip: 10.89.0.1
+        src_port: '39094'
+        dst_port: '19094'
+        action: drop
 - name: security_policy
   kind: runtime
   enabled: false

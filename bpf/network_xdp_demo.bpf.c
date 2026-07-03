@@ -14,11 +14,14 @@
 char LICENSE[] SEC("license") = "GPL";
 
 struct network_xdp_config {
+    __u32 src_addr;
+    __u32 dst_addr;
+    __u16 src_port;
     __u16 dst_port;
     __u8 protocol;
     __u8 action;
     __u8 enabled;
-    __u8 reserved[3];
+    __u8 reserved;
 };
 
 struct network_xdp_stats {
@@ -42,11 +45,11 @@ struct {
 } xdp_stats_map SEC(".maps");
 
 static __always_inline bool match_l4_port(void *data_end, struct iphdr *iph,
-                                          __u16 dst_port)
+                                          __u16 src_port, __u16 dst_port)
 {
     void *l4 = (void *)iph + (iph->ihl * 4);
 
-    if (dst_port == 0) {
+    if (src_port == 0 && dst_port == 0) {
         return true;
     }
     if (iph->protocol == IPPROTO_TCP) {
@@ -55,7 +58,13 @@ static __always_inline bool match_l4_port(void *data_end, struct iphdr *iph,
         if ((void *)(tcp + 1) > data_end) {
             return false;
         }
-        return bpf_ntohs(tcp->dest) == dst_port;
+        if (src_port != 0 && bpf_ntohs(tcp->source) != src_port) {
+            return false;
+        }
+        if (dst_port != 0 && bpf_ntohs(tcp->dest) != dst_port) {
+            return false;
+        }
+        return true;
     }
     if (iph->protocol == IPPROTO_UDP) {
         struct udphdr *udp = l4;
@@ -63,7 +72,13 @@ static __always_inline bool match_l4_port(void *data_end, struct iphdr *iph,
         if ((void *)(udp + 1) > data_end) {
             return false;
         }
-        return bpf_ntohs(udp->dest) == dst_port;
+        if (src_port != 0 && bpf_ntohs(udp->source) != src_port) {
+            return false;
+        }
+        if (dst_port != 0 && bpf_ntohs(udp->dest) != dst_port) {
+            return false;
+        }
+        return true;
     }
     return false;
 }
@@ -77,13 +92,22 @@ static __always_inline bool match_rule(void *data_end, struct iphdr *iph,
     if (config->protocol != 0 && config->protocol != iph->protocol) {
         return false;
     }
+    if (config->src_addr != 0 && config->src_addr != iph->saddr) {
+        return false;
+    }
+    if (config->dst_addr != 0 && config->dst_addr != iph->daddr) {
+        return false;
+    }
     if (iph->protocol == IPPROTO_TCP || iph->protocol == IPPROTO_UDP) {
-        return match_l4_port(data_end, iph, config->dst_port);
+        return match_l4_port(data_end, iph, config->src_port,
+                             config->dst_port);
     }
     if (config->protocol == IPPROTO_ICMP) {
-        return iph->protocol == IPPROTO_ICMP;
+        return iph->protocol == IPPROTO_ICMP &&
+               config->src_port == 0 && config->dst_port == 0;
     }
-    return config->protocol == 0;
+    return config->protocol == 0 &&
+           config->src_port == 0 && config->dst_port == 0;
 }
 
 static __always_inline int process_rule(__u32 rule_key, void *data_end,

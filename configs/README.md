@@ -16,7 +16,7 @@
 - `resource_control` 默认启用，已配置 CPU + Memory + IO 控制器与 `latency/batch/background` profile；写入只作用于 `/sys/fs/cgroup/eulerpilot/*` 实验 cgroup。
 - `skills.yaml` 中 `network_policy`、`network_qos`、`network_xdp`、`security_policy`、`network_policy_demo` 和 `security_policy_demo` 默认均为 disabled。
 - `network_qos` 默认目标为 lab veth `ep-veth-qos0`，不能作为真实业务网卡默认配置使用。
-- `network_xdp` 默认目标为 lab veth `ep-veth-xdp0`，包含 ICMP drop 与 TCP:19092 drop 两条 lab 规则，只能用于 isolated veth/netns 或后续 lab Pod veth。
+- `network_xdp` 默认目标为 lab veth `ep-veth-xdp0`，包含 ICMP drop、TCP:19092 drop、UDP:19093 drop 与 UDP tuple `10.89.0.2:39094 -> 10.89.0.1:19094` 四条 lab 规则，只能用于 isolated veth/netns 或后续 lab Pod veth。
 - `security_policy` 默认目标为 demo secret 文件路径，只允许在 `/root/EulerPilot/demo/security_policy_demo/secret.txt` 上验证 audit/enforce 最小闭环；正式业务路径需要后续动态 target map 和 allowlist。
 - 当前 `schema_version: 2` 已覆盖：
   - `targets`

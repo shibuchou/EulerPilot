@@ -590,11 +590,14 @@ static_assert(sizeof(NetworkQosTcStats) == 16,
               "network qos stats map layout must match BPF");
 
 struct NetworkXdpConfig {
+    std::uint32_t src_addr = 0;
+    std::uint32_t dst_addr = 0;
+    std::uint16_t src_port = 0;
     std::uint16_t dst_port = 0;
     std::uint8_t protocol = 0;
     std::uint8_t action = 1;
     std::uint8_t enabled = 0;
-    std::uint8_t reserved[3] = {};
+    std::uint8_t reserved = 0;
 };
 
 struct NetworkXdpStats {
@@ -692,9 +695,15 @@ struct SecurityPolicyEvent {
 struct NetworkXdpRule {
     std::string rule_id;
     std::string protocol;
+    std::string src_ip;
+    std::string dst_ip;
+    std::string src_port = "0";
     std::string dst_port;
     std::string action;
     std::string target_ref;
+    std::uint32_t src_addr_value = 0;
+    std::uint32_t dst_addr_value = 0;
+    std::uint16_t src_port_value = 0;
     std::uint16_t dst_port_value = 0;
     std::uint8_t protocol_value = 0;
     std::uint8_t action_value = 1;
@@ -704,7 +713,7 @@ constexpr std::size_t kNetworkXdpMaxRules = 8;
 constexpr std::size_t kSecurityPolicyMaxTargets = 8;
 constexpr std::uint32_t kSecurityTargetUnknown = 0xffffffffu;
 
-static_assert(sizeof(NetworkXdpConfig) == 8,
+static_assert(sizeof(NetworkXdpConfig) == 16,
               "network xdp config map layout must match BPF");
 static_assert(sizeof(NetworkXdpStats) == 24,
               "network xdp stats map layout must match BPF");
@@ -1905,6 +1914,9 @@ public:
             rule.rule_id = config_value_or(spec, rule_prefix + "name",
                                            "xdp-rule-" + std::to_string(rules_.size()));
             rule.protocol = config_value_or(spec, rule_prefix + "protocol", "icmp");
+            rule.src_ip = config_value_or(spec, rule_prefix + "src_ip", "");
+            rule.dst_ip = config_value_or(spec, rule_prefix + "dst_ip", "");
+            rule.src_port = config_value_or(spec, rule_prefix + "src_port", "0");
             rule.dst_port = config_value_or(spec, rule_prefix + "dst_port", "0");
             rule.action = config_value_or(spec, rule_prefix + "action", "drop");
             rule.target_ref = config_value_or(spec, rule_prefix + "target_ref", "");
@@ -1957,6 +1969,9 @@ public:
             rule.protocol = protocol->second;
             rule.dst_port = port->second;
             rule.action = action->second;
+            rule.src_ip = config_value_or(spec, "src_ip", "");
+            rule.dst_ip = config_value_or(spec, "dst_ip", "");
+            rule.src_port = config_value_or(spec, "src_port", "0");
             target_ref_ = config_value_or(spec, "target_ref", "legacy_netdev");
             rule.target_ref = target_ref_;
             rule.rule_id = "xdp-" + rule.action + "-" + rule.protocol + "-" + ifname_;
@@ -2152,10 +2167,31 @@ private:
             last_error_ = "unsupported-action";
             return false;
         }
+        if (!rule.src_ip.empty() &&
+            !parse_ipv4_address(rule.src_ip, rule.src_addr_value)) {
+            last_error_ = "invalid-src-ip";
+            return false;
+        }
+        if (!rule.dst_ip.empty() &&
+            !parse_ipv4_address(rule.dst_ip, rule.dst_addr_value)) {
+            last_error_ = "invalid-dst-ip";
+            return false;
+        }
+        if (rule.src_port == "0") {
+            rule.src_port_value = 0;
+        } else if (!parse_tcp_port(rule.src_port, rule.src_port_value)) {
+            last_error_ = "invalid-src-port";
+            return false;
+        }
         if (rule.dst_port == "0") {
             rule.dst_port_value = 0;
         } else if (!parse_tcp_port(rule.dst_port, rule.dst_port_value)) {
             last_error_ = "invalid-dst-port";
+            return false;
+        }
+        if ((rule.src_port_value != 0 || rule.dst_port_value != 0) &&
+            rule.protocol != "tcp" && rule.protocol != "udp") {
+            last_error_ = "network-xdp-port-requires-tcp-or-udp";
             return false;
         }
         rule.protocol_value = protocol_id(rule.protocol);
@@ -2190,6 +2226,9 @@ private:
             NetworkXdpConfig config;
             if (key < rules_.size()) {
                 const auto &rule = rules_[key];
+                config.src_addr = rule.src_addr_value;
+                config.dst_addr = rule.dst_addr_value;
+                config.src_port = rule.src_port_value;
                 config.dst_port = rule.dst_port_value;
                 config.protocol = rule.protocol_value;
                 config.action = rule.action_value;
@@ -2270,6 +2309,9 @@ private:
             const auto &stats = rule_stats[i];
             const std::string prefix = "rule." + rule.rule_id + ".";
             evidence[prefix + "protocol"] = rule.protocol;
+            evidence[prefix + "src_ip"] = rule.src_ip.empty() ? "any" : rule.src_ip;
+            evidence[prefix + "dst_ip"] = rule.dst_ip.empty() ? "any" : rule.dst_ip;
+            evidence[prefix + "src_port"] = rule.src_port;
             evidence[prefix + "dst_port"] = rule.dst_port;
             evidence[prefix + "pass_count"] = std::to_string(stats.pass_count);
             evidence[prefix + "drop_count"] = std::to_string(stats.drop_count);
@@ -2277,7 +2319,12 @@ private:
             if (!summary.empty()) {
                 summary += ";";
             }
-            summary += rule.rule_id + ":pass=" + std::to_string(stats.pass_count) +
+            summary += rule.rule_id + ":proto=" + rule.protocol +
+                       ",src_ip=" + (rule.src_ip.empty() ? "any" : rule.src_ip) +
+                       ",dst_ip=" + (rule.dst_ip.empty() ? "any" : rule.dst_ip) +
+                       ",src_port=" + rule.src_port +
+                       ",dst_port=" + rule.dst_port +
+                       ",pass=" + std::to_string(stats.pass_count) +
                        ",drop=" + std::to_string(stats.drop_count) +
                        ",bytes=" + std::to_string(stats.byte_count);
         }
