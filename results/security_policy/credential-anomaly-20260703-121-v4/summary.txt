@@ -1,0 +1,9 @@
+result=pass
+reason=credential-churn-anomaly-observed
+host=localhost.localdomain
+date=2026-07-03T15:17:08+08:00
+kernel=6.6.0-132.0.0.111.oe2403sp3.x86_64
+rule=credential_churn
+trigger_hooks=lsm_cred_prepare,lsm_task_fix_setuid
+cgroup_path=/sys/fs/cgroup/eulerpilot/security-credential-churn
+event_file=security_policy_events.credential-anomaly.jsonl

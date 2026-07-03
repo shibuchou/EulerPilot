@@ -630,6 +630,7 @@ struct SecurityPolicyTarget {
     std::uint16_t connect_protocol = 0;
     std::uint32_t file_access = 0;
     std::int32_t capability = -1;
+    std::uint32_t hook_type = 0;
 };
 
 struct SecurityPolicyRule {
@@ -719,7 +720,7 @@ static_assert(sizeof(NetworkXdpStats) == 24,
               "network xdp stats map layout must match BPF");
 static_assert(sizeof(SecurityPolicyConfig) == 8,
               "security policy config map layout must match BPF");
-static_assert(sizeof(SecurityPolicyTarget) == 1048,
+static_assert(sizeof(SecurityPolicyTarget) == 1056,
               "security policy target map layout must match BPF");
 static_assert(sizeof(SecurityPolicyEvent) == 360,
               "security policy ringbuf event layout must match BPF");
@@ -2535,6 +2536,12 @@ public:
                 } else if (hook == "lsm_cred_prepare") {
                     // Credential allocation hooks are very hot and broad, so
                     // enforcement must always be scoped to an explicit workload.
+                } else if (hook == "lsm_cred_alloc_blank") {
+                    // Blank credential allocation is broad and must be scoped.
+                    // It is primarily useful as audit/anomaly evidence.
+                } else if (hook == "lsm_cred_transfer") {
+                    // cred_transfer is a void LSM hook. It can provide
+                    // lifecycle evidence but cannot enforce a denial.
                 } else if (hook == "lsm_capable") {
                     // Capability enforcement must be scoped. A global capable
                     // deny would break host administration paths.
@@ -2759,6 +2766,14 @@ public:
                 last_error_ = "security-policy-cred-prepare-rule-scope-missing";
                 return false;
             }
+            if (rule.hook == "lsm_cred_alloc_blank" && rule.cgroup_id == 0) {
+                last_error_ = "security-policy-cred-alloc-blank-rule-scope-missing";
+                return false;
+            }
+            if (rule.hook == "lsm_cred_transfer" && rule.cgroup_id == 0) {
+                last_error_ = "security-policy-cred-transfer-rule-scope-missing";
+                return false;
+            }
             if (rule.hook == "lsm_capable") {
                 if (rule.cgroup_id == 0) {
                     last_error_ = "security-policy-capable-rule-scope-missing";
@@ -2835,8 +2850,8 @@ public:
             return false;
         }
         std::vector<bpf_link *> probe_links;
-        if (!attach_security_programs(obj, probe_links, false, false, false, false, false,
-                                      last_error_)) {
+        if (!attach_security_programs(obj, probe_links, false, false, false,
+                                      false, false, false, false, last_error_)) {
             for (auto *probe_link : probe_links) {
                 bpf_link__destroy(probe_link);
             }
@@ -2882,6 +2897,8 @@ public:
                                       has_rule_hook("lsm_task_fix_setgid"),
                                       has_rule_hook("lsm_task_fix_setgroups"),
                                       has_rule_hook("lsm_cred_prepare"),
+                                      has_rule_hook("lsm_cred_alloc_blank"),
+                                      has_rule_hook("lsm_cred_transfer"),
                                       last_error_)) {
             rollback();
             return false;
@@ -2968,7 +2985,46 @@ private:
                hook == "lsm_capable" || hook == "lsm_task_fix_setuid" ||
                hook == "lsm_task_fix_setgid" ||
                hook == "lsm_task_fix_setgroups" ||
-               hook == "lsm_cred_prepare";
+               hook == "lsm_cred_prepare" ||
+               hook == "lsm_cred_alloc_blank" ||
+               hook == "lsm_cred_transfer";
+    }
+
+    static std::uint32_t security_hook_event_type(const std::string &hook) {
+        if (hook == "lsm_file_open") {
+            return 1;
+        }
+        if (hook == "lsm_bprm_check_security") {
+            return 6;
+        }
+        if (hook == "lsm_socket_connect") {
+            return 7;
+        }
+        if (hook == "lsm_ptrace_traceme") {
+            return 8;
+        }
+        if (hook == "lsm_capable") {
+            return 9;
+        }
+        if (hook == "lsm_task_fix_setuid") {
+            return 10;
+        }
+        if (hook == "lsm_task_fix_setgid") {
+            return 11;
+        }
+        if (hook == "lsm_task_fix_setgroups") {
+            return 12;
+        }
+        if (hook == "lsm_cred_prepare") {
+            return 13;
+        }
+        if (hook == "lsm_cred_alloc_blank") {
+            return 14;
+        }
+        if (hook == "lsm_cred_transfer") {
+            return 15;
+        }
+        return 0;
     }
 
     bool has_rule_hook(const std::string &hook) const {
@@ -3024,6 +3080,8 @@ private:
                 rule.syscall = "capability";
             } else if (rule.syscall == "cred" || rule.syscall == "credential" ||
                        rule.syscall == "lsm_cred_prepare" ||
+                       rule.syscall == "lsm_cred_alloc_blank" ||
+                       rule.syscall == "lsm_cred_transfer" ||
                        rule.syscall == "lsm_task_fix_setuid" ||
                        rule.syscall == "lsm_task_fix_setgid" ||
                        rule.syscall == "lsm_task_fix_setgroups") {
@@ -3105,6 +3163,8 @@ private:
                                          bool attach_task_fix_setgid,
                                          bool attach_task_fix_setgroups,
                                          bool attach_cred_prepare,
+                                         bool attach_cred_alloc_blank,
+                                         bool attach_cred_transfer,
                                          std::string &error) {
         bpf_program *lsm_prog = bpf_object__find_program_by_name(obj, "security_policy_demo");
         if (!lsm_prog) {
@@ -3231,6 +3291,38 @@ private:
             links.push_back(cred_prepare_link);
         }
 
+        if (attach_cred_alloc_blank) {
+            bpf_program *cred_alloc_blank_prog =
+                bpf_object__find_program_by_name(obj, "security_policy_cred_alloc_blank");
+            if (!cred_alloc_blank_prog) {
+                error = "security-policy-cred-alloc-blank-program-missing";
+                return false;
+            }
+            bpf_link *cred_alloc_blank_link =
+                bpf_program__attach_lsm(cred_alloc_blank_prog);
+            if (!cred_alloc_blank_link) {
+                error = "security-policy-cred-alloc-blank-attach-failed";
+                return false;
+            }
+            links.push_back(cred_alloc_blank_link);
+        }
+
+        if (attach_cred_transfer) {
+            bpf_program *cred_transfer_prog =
+                bpf_object__find_program_by_name(obj, "security_policy_cred_transfer");
+            if (!cred_transfer_prog) {
+                error = "security-policy-cred-transfer-program-missing";
+                return false;
+            }
+            bpf_link *cred_transfer_link =
+                bpf_program__attach_lsm(cred_transfer_prog);
+            if (!cred_transfer_link) {
+                error = "security-policy-cred-transfer-attach-failed";
+                return false;
+            }
+            links.push_back(cred_transfer_link);
+        }
+
         bpf_program *execve_prog = bpf_object__find_program_by_name(obj, "trace_execve");
         if (!execve_prog) {
             error = "security-policy-execve-program-missing";
@@ -3342,6 +3434,7 @@ private:
                 target.capability = rules_[i].hook == "lsm_capable"
                                         ? rules_[i].capability
                                         : -1;
+                target.hook_type = security_hook_event_type(rules_[i].hook);
             }
             std::uint32_t target_key = static_cast<std::uint32_t>(i);
             if (bpf_map_update_elem(target_fd, &target_key, &target, BPF_ANY) != 0) {
@@ -3443,6 +3536,8 @@ private:
         case 11: return "lsm_task_fix_setgid";
         case 12: return "lsm_task_fix_setgroups";
         case 13: return "lsm_cred_prepare";
+        case 14: return "lsm_cred_alloc_blank";
+        case 15: return "lsm_cred_transfer";
         default: return "unknown";
         }
     }
@@ -3450,6 +3545,12 @@ private:
     static std::string credential_stage_from_hook(const std::string &hook_name) {
         if (hook_name == "lsm_cred_prepare") {
             return "prepare";
+        }
+        if (hook_name == "lsm_cred_alloc_blank") {
+            return "alloc_blank";
+        }
+        if (hook_name == "lsm_cred_transfer") {
+            return "transfer";
         }
         if (hook_name == "lsm_task_fix_setuid") {
             return "setuid";
@@ -3571,6 +3672,17 @@ private:
             event.evidence["old_group_count"] = std::to_string(hit.old_group_count);
             event.evidence["cred_gfp"] = std::to_string(hit.cred_gfp);
         }
+        if (hit.event_type == 14 || hit.event_type == 15) {
+            event.evidence["uid"] = std::to_string(hit.uid);
+            event.evidence["euid"] = std::to_string(hit.euid);
+            event.evidence["suid"] = std::to_string(hit.suid);
+            event.evidence["gid"] = std::to_string(hit.gid);
+            event.evidence["egid"] = std::to_string(hit.egid);
+            event.evidence["sgid"] = std::to_string(hit.sgid);
+        }
+        if (hit.event_type == 14) {
+            event.evidence["cred_gfp"] = std::to_string(hit.cred_gfp);
+        }
         event.action = hit.decision < 0 ? "deny" : "audit-hit";
         event.result = hit.decision < 0 ? "blocked" : "observed";
         event.severity = hit.decision < 0 ? "warning" : "info";
@@ -3596,6 +3708,8 @@ private:
         } else if (hook_name == "lsm_capable") {
             observed_syscall = "capability";
         } else if (hook_name == "lsm_cred_prepare" ||
+                   hook_name == "lsm_cred_alloc_blank" ||
+                   hook_name == "lsm_cred_transfer" ||
                    hook_name == "lsm_task_fix_setuid" ||
                    hook_name == "lsm_task_fix_setgid" ||
                    hook_name == "lsm_task_fix_setgroups") {
@@ -3670,12 +3784,16 @@ private:
                 event.evidence["credential_stage"] =
                     credential_stage_from_hook(hook_name);
                 if (hook_name == "lsm_cred_prepare" ||
+                    hook_name == "lsm_cred_alloc_blank" ||
+                    hook_name == "lsm_cred_transfer" ||
                     hook_name == "lsm_task_fix_setuid") {
                     event.evidence["uid"] = std::to_string(hit.uid);
                     event.evidence["euid"] = std::to_string(hit.euid);
                     event.evidence["suid"] = std::to_string(hit.suid);
                 }
                 if (hook_name == "lsm_cred_prepare" ||
+                    hook_name == "lsm_cred_alloc_blank" ||
+                    hook_name == "lsm_cred_transfer" ||
                     hook_name == "lsm_task_fix_setgid") {
                     event.evidence["gid"] = std::to_string(hit.gid);
                     event.evidence["egid"] = std::to_string(hit.egid);
@@ -3689,6 +3807,9 @@ private:
                         std::to_string(hit.old_group_count);
                 }
                 if (hook_name == "lsm_cred_prepare") {
+                    event.evidence["cred_gfp"] = std::to_string(hit.cred_gfp);
+                }
+                if (hook_name == "lsm_cred_alloc_blank") {
                     event.evidence["cred_gfp"] = std::to_string(hit.cred_gfp);
                 }
             }

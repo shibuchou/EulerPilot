@@ -23,6 +23,8 @@ char LICENSE[] SEC("license") = "GPL";
 #define EVENT_LSM_TASK_FIX_SETGID 11
 #define EVENT_LSM_TASK_FIX_SETGROUPS 12
 #define EVENT_LSM_CRED_PREPARE 13
+#define EVENT_LSM_CRED_ALLOC_BLANK 14
+#define EVENT_LSM_CRED_TRANSFER 15
 #define MAX_SECURITY_PATH 256
 #define MAX_SECURITY_TARGETS 8
 #define SECURITY_TARGET_UNKNOWN 0xffffffff
@@ -61,6 +63,7 @@ struct security_policy_target {
     __u16 connect_protocol;
     __u32 file_access;
     __s32 capability;
+    __u32 hook_type;
 };
 
 struct security_policy_event {
@@ -264,7 +267,8 @@ static __always_inline int connect_match_index(__u32 daddr,
 }
 
 static __always_inline int scoped_cgroup_match_index(__u32 target_count,
-                                                     __u64 current_cgroup_id)
+                                                     __u64 current_cgroup_id,
+                                                     __u32 hook_type)
 {
     for (int i = 0; i < MAX_SECURITY_TARGETS; i++) {
         if ((__u32)i >= target_count)
@@ -280,6 +284,7 @@ static __always_inline int scoped_cgroup_match_index(__u32 target_count,
             target->connect_daddr == 0 &&
             target->connect_dport == 0 &&
             target->capability < 0 &&
+            (target->hook_type == 0 || target->hook_type == hook_type) &&
             target->cgroup_id == current_cgroup_id)
             return i;
     }
@@ -467,7 +472,8 @@ int BPF_PROG(security_policy_ptrace_traceme, struct task_struct *parent, int ret
     struct security_policy_config *config = bpf_map_lookup_elem(&policy_map, &key);
     __u32 target_count = clamp_target_count(config);
     __u64 current_cgroup_id = bpf_get_current_cgroup_id();
-    int target_index = scoped_cgroup_match_index(target_count, current_cgroup_id);
+    int target_index = scoped_cgroup_match_index(target_count, current_cgroup_id,
+                                                 EVENT_LSM_PTRACE_TRACEME);
     if (target_index < 0)
         return 0;
 
@@ -530,7 +536,8 @@ int BPF_PROG(security_policy_task_fix_setuid, struct cred *new,
     struct security_policy_config *config = bpf_map_lookup_elem(&policy_map, &key);
     __u32 target_count = clamp_target_count(config);
     __u64 current_cgroup_id = bpf_get_current_cgroup_id();
-    int target_index = scoped_cgroup_match_index(target_count, current_cgroup_id);
+    int target_index = scoped_cgroup_match_index(target_count, current_cgroup_id,
+                                                 EVENT_LSM_TASK_FIX_SETUID);
     if (target_index < 0)
         return 0;
 
@@ -562,7 +569,8 @@ int BPF_PROG(security_policy_task_fix_setgid, struct cred *new,
     struct security_policy_config *config = bpf_map_lookup_elem(&policy_map, &key);
     __u32 target_count = clamp_target_count(config);
     __u64 current_cgroup_id = bpf_get_current_cgroup_id();
-    int target_index = scoped_cgroup_match_index(target_count, current_cgroup_id);
+    int target_index = scoped_cgroup_match_index(target_count, current_cgroup_id,
+                                                 EVENT_LSM_TASK_FIX_SETGID);
     if (target_index < 0)
         return 0;
 
@@ -593,7 +601,8 @@ int BPF_PROG(security_policy_task_fix_setgroups, struct cred *new,
     struct security_policy_config *config = bpf_map_lookup_elem(&policy_map, &key);
     __u32 target_count = clamp_target_count(config);
     __u64 current_cgroup_id = bpf_get_current_cgroup_id();
-    int target_index = scoped_cgroup_match_index(target_count, current_cgroup_id);
+    int target_index = scoped_cgroup_match_index(target_count, current_cgroup_id,
+                                                 EVENT_LSM_TASK_FIX_SETGROUPS);
     if (target_index < 0)
         return 0;
 
@@ -622,7 +631,8 @@ int BPF_PROG(security_policy_cred_prepare, struct cred *new,
     struct security_policy_config *config = bpf_map_lookup_elem(&policy_map, &key);
     __u32 target_count = clamp_target_count(config);
     __u64 current_cgroup_id = bpf_get_current_cgroup_id();
-    int target_index = scoped_cgroup_match_index(target_count, current_cgroup_id);
+    int target_index = scoped_cgroup_match_index(target_count, current_cgroup_id,
+                                                 EVENT_LSM_CRED_PREPARE);
     if (target_index < 0)
         return 0;
 
@@ -648,6 +658,77 @@ int BPF_PROG(security_policy_cred_prepare, struct cred *new,
     }
 
     return decision;
+}
+
+SEC("lsm/cred_alloc_blank")
+int BPF_PROG(security_policy_cred_alloc_blank, struct cred *cred, gfp_t gfp)
+{
+    __u32 key = 0;
+    struct security_policy_config *config = bpf_map_lookup_elem(&policy_map, &key);
+    __u32 target_count = clamp_target_count(config);
+    __u64 current_cgroup_id = bpf_get_current_cgroup_id();
+    int target_index = scoped_cgroup_match_index(target_count, current_cgroup_id,
+                                                 EVENT_LSM_CRED_ALLOC_BLANK);
+    if (target_index < 0)
+        return 0;
+
+    __u32 enforce = config ? config->enforce : 1;
+    __s32 decision = enforce ? -EPERM : 0;
+
+    struct security_policy_event *event =
+        bpf_ringbuf_reserve(&events, sizeof(*event), 0);
+    if (event) {
+        fill_common_event(event, EVENT_LSM_CRED_ALLOC_BLANK, enforce, decision,
+                          (__u32)target_index);
+        __builtin_memcpy(event->path, "cred_alloc_blank",
+                         sizeof("cred_alloc_blank"));
+        event->uid = BPF_CORE_READ(cred, uid.val);
+        event->euid = BPF_CORE_READ(cred, euid.val);
+        event->suid = BPF_CORE_READ(cred, suid.val);
+        event->gid = BPF_CORE_READ(cred, gid.val);
+        event->egid = BPF_CORE_READ(cred, egid.val);
+        event->sgid = BPF_CORE_READ(cred, sgid.val);
+        event->cred_gfp = (__u32)gfp;
+        bpf_ringbuf_submit(event, 0);
+    }
+
+    return decision;
+}
+
+SEC("lsm/cred_transfer")
+int BPF_PROG(security_policy_cred_transfer, struct cred *new,
+             const struct cred *old)
+{
+    (void)old;
+
+    __u32 key = 0;
+    struct security_policy_config *config = bpf_map_lookup_elem(&policy_map, &key);
+    __u32 target_count = clamp_target_count(config);
+    __u64 current_cgroup_id = bpf_get_current_cgroup_id();
+    int target_index = scoped_cgroup_match_index(target_count, current_cgroup_id,
+                                                 EVENT_LSM_CRED_TRANSFER);
+    if (target_index < 0)
+        return 0;
+
+    __u32 enforce = config ? config->enforce : 1;
+
+    struct security_policy_event *event =
+        bpf_ringbuf_reserve(&events, sizeof(*event), 0);
+    if (event) {
+        fill_common_event(event, EVENT_LSM_CRED_TRANSFER, enforce, 0,
+                          (__u32)target_index);
+        __builtin_memcpy(event->path, "cred_transfer",
+                         sizeof("cred_transfer"));
+        event->uid = BPF_CORE_READ(new, uid.val);
+        event->euid = BPF_CORE_READ(new, euid.val);
+        event->suid = BPF_CORE_READ(new, suid.val);
+        event->gid = BPF_CORE_READ(new, gid.val);
+        event->egid = BPF_CORE_READ(new, egid.val);
+        event->sgid = BPF_CORE_READ(new, sgid.val);
+        bpf_ringbuf_submit(event, 0);
+    }
+
+    return 0;
 }
 
 SEC("tracepoint/syscalls/sys_enter_execve")

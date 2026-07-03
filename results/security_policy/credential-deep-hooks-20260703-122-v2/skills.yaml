@@ -1,0 +1,43 @@
+schema_version: 2
+skills:
+- name: resource_control
+  kind: runtime
+  enabled: true
+  config: {}
+- name: psi_gate
+  kind: runtime
+  enabled: true
+  config: {}
+- name: security_policy
+  kind: runtime
+  enabled: true
+  config:
+    mode: audit
+    targets:
+      credential_scope:
+        type: cgroup
+        cgroup_path: /sys/fs/cgroup/eulerpilot/security-credential-deep-hooks
+    rules:
+      - name: observe_cred_alloc_blank
+        hook: lsm_cred_alloc_blank
+        target_ref: credential_scope
+        action: deny
+      - name: observe_cred_transfer
+        hook: lsm_cred_transfer
+        target_ref: credential_scope
+        action: deny
+      - name: observe_cred_prepare
+        hook: lsm_cred_prepare
+        target_ref: credential_scope
+        action: deny
+      - name: observe_setuid_transition
+        hook: lsm_task_fix_setuid
+        target_ref: credential_scope
+        action: deny
+    anomaly_rules:
+      - name: credential_churn
+        type: rate
+        syscall: credential
+        threshold: 3
+        window_ms: 2000
+        severity: high

@@ -48,13 +48,21 @@ security_policy burst_connect anomaly
 
 Credential 生命周期 anomaly 证据：
 
-- 121：`results/security_policy/credential-anomaly-20260703-121-v3`
-- 122：`results/security_policy/credential-anomaly-20260703-122-v3`
+- 121：`results/security_policy/credential-anomaly-20260703-121-v4`
+- 122：`results/security_policy/credential-anomaly-20260703-122-v4`
 - 关键文件：`security_policy_events.credential-anomaly.jsonl`、`security_policy_events.credential-hits.jsonl`、`anomaly_event_summary.txt`、`summary.txt`、`report.md`
+
+Credential deep hook 评估证据：
+
+- 121：`results/security_policy/credential-deep-hooks-20260703-121-v2`
+- 122：`results/security_policy/credential-deep-hooks-20260703-122-v2`
+- 关键文件：`deep_hook_status.txt`、`security_policy_events.credential-deep-hits.jsonl`、`security_policy_events.credential-deep-anomaly.jsonl`、`summary.txt`、`report.md`
+- 证据口径：`lsm_cred_alloc_blank/lsm_cred_transfer` 已 scoped 配置并随 Agent attach；普通用户态 workload 未稳定触发 runtime hit，结果明确记录 `deep_hook_runtime_note=no-userland-hit-observed`。
 
 验证入口：
 
 ```bash
+sudo tests/integration/test_security_policy_credential_deep_hooks.sh
 sudo tests/integration/test_policy_engine_security_network_resource.sh
 sudo tests/integration/test_policy_engine_security_network_resource.sh --repeat 10
 ```
@@ -134,11 +142,13 @@ v3.2 计划：`docs/next_phase_plan_v3_2.md`
 - 122 real Pod host veth XDP ICMP/TCP/UDP + UDP tuple：`results/network_policy/real-pod-veth-xdp-20260703-k3s-122-tuple-v1`
 - 121 isolated-veth XDP ICMP/TCP/UDP + UDP tuple：`results/network_policy/xdp-20260703-121-fields-v1`
 - 122 isolated-veth XDP ICMP/TCP/UDP + UDP tuple：`results/network_policy/xdp-20260703-122-fields-v1`
-- 121 Security credential anomaly：`results/security_policy/credential-anomaly-20260703-121-v3`
-- 122 Security credential anomaly：`results/security_policy/credential-anomaly-20260703-122-v3`
+- 121 Security credential anomaly：`results/security_policy/credential-anomaly-20260703-121-v4`
+- 122 Security credential anomaly：`results/security_policy/credential-anomaly-20260703-122-v4`
+- 121 Security credential deep hooks：`results/security_policy/credential-deep-hooks-20260703-121-v2`
+- 122 Security credential deep hooks：`results/security_policy/credential-deep-hooks-20260703-122-v2`
 - 121 real Pod Policy Engine 联动：`results/policy_engine/real-pod-security-network-resource-20260630-k3s-121-v1`
 - 122 real Pod Policy Engine 联动：`results/policy_engine/real-pod-security-network-resource-20260630-k3s-122-v1`
-- 121 v3.2 k3s 后质量门禁：`reports/final_quality_gate_20260630-v32-real-pod-policy-121.log`
+- 121 v3.2 credential deep hook 后质量门禁：`reports/final_quality_gate_20260703-creddeep-121.log`
 
 当前结论：Docker/Podman/k3s/kubectl 包已安装；Docker 18.09 daemon 在当前 cgroup v2 环境下因 `Devices cgroup isn't mounted` 不作为主验证 runtime，Podman 4.9.4 与 k3s v1.24.2 可用。两台机器均已使用本地 `localhost/eulerpilot-busybox:latest` 镜像完成真实 container cgroup、真实 Kubernetes Pod cgroup、真实 Pod host veth QoS 写入/限速/rollback 验证，并已把 `policy_engine` 第二条跨 Skill 联动扩展到真实 Pod cgroup + host veth。为避免 Docker Hub 依赖，k3s 使用本地构造的 `docker.io/rancher/mirrored-pause:3.6` pause 镜像。
 
@@ -159,4 +169,4 @@ SP4 环境探测：
 ## 后置事项
 
 - SP4 验证不作为 v3.1 完成条件，准备文档为 `docs/sp4_validation_plan.md`，检查脚本为 `scripts/check_sp4_env.sh`。
-- 真实 Kubernetes Pod target、Pod host veth QoS、Pod host veth XDP 与真实 Pod Policy Engine 跨 Skill 联动均已转 pass；isolated-veth 与 real Pod host veth XDP 均已补齐 ICMP/TCP/UDP + UDP tuple 四规则和 per-rule 字段证据；Security 已补齐 `credential_churn` 生命周期 anomaly 双机证据。下一优先级是 cred_transfer/cred_alloc_blank 等更深 credential hook 评估和最终证据压缩。
+- 真实 Kubernetes Pod target、Pod host veth QoS、Pod host veth XDP 与真实 Pod Policy Engine 跨 Skill 联动均已转 pass；isolated-veth 与 real Pod host veth XDP 均已补齐 ICMP/TCP/UDP + UDP tuple 四规则和 per-rule 字段证据；Security 已补齐 `credential_churn` 生命周期 anomaly 与 `cred_alloc_blank/cred_transfer` scoped attach 评估双机证据。下一优先级是更多异常策略组合、进程过滤评估和最终证据压缩。

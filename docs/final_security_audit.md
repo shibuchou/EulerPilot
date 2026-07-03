@@ -1,6 +1,6 @@
 # EulerPilot 最终安全与质量审计报告
 
-更新时间：`2026-06-24`
+更新时间：`2026-07-03`
 
 ## 审计范围
 
@@ -28,7 +28,7 @@
 | sched_ext state | `disabled` | `disabled` | PASS |
 | sched_ext nr_rejected | `0` | `0` | PASS |
 
-正式 `security_policy` 默认 disabled，audit 模式 attach BPF LSM + `execve/openat/connect/ptrace` tracepoint，但通过 `policy_map.enforce=0` 保持允许，命中后写 ringbuf observed hit；enforce 模式复用 `security_policy_demo` 的 BPF LSM，由用户态从 YAML target 写入最多 8 项 `target_map`，拒绝文件路径/前缀、执行路径/前缀、scoped IPv4 endpoint、scope-only ptrace、capability、setuid、setgid、setgroups 和 cred_prepare target。LSM blocked hit 携带 BPF `target_index` 并映射回单条 YAML `rule_id/target_ref`；scoped target 事件会写 `cgroup_id/cgroup_path`；socket、exec_prefix、file_access、ptrace、capability 和 credential 事件分别输出对应证据。`tests/integration/test_security_policy.sh` 已在 121/122 验证九类 LSM enforce、四类 syscall tracing、双动态 `/tmp` target_map、scoped writable-dir exec_prefix、file_access、path_prefix、ptrace_traceme、CAP_SYS_ADMIN、setuid/setgid/setgroups credential 转换、cred_prepare credential preparation、显式 cgroup/PID/container/runtime/Pod target 和 rollback 恢复，最新结果目录分别为 `results/security_policy/integration-20260624-114838` 和 `results/security_policy/integration-20260624-115440`。`test_security_policy_credential_anomaly.sh` 已在 121/122 验证 `credential_churn` 生命周期 anomaly，结果目录为 `results/security_policy/credential-anomaly-20260703-121-v3` 和 `results/security_policy/credential-anomaly-20260703-122-v3`。security_policy_demo 在 rollback 时不 pin link，退出后无残留。
+正式 `security_policy` 默认 disabled，audit 模式 attach BPF LSM + `execve/openat/connect/ptrace` tracepoint，但通过 `policy_map.enforce=0` 保持允许，命中后写 ringbuf observed hit；enforce 模式复用 `security_policy_demo` 的 BPF LSM，由用户态从 YAML target 写入最多 8 项 `target_map`，拒绝文件路径/前缀、执行路径/前缀、scoped IPv4 endpoint、scope-only ptrace、capability、setuid、setgid、setgroups 和 cred_prepare target。scope-only LSM target 会写入 `hook_type`，避免同一 cgroup 内多个 credential 规则误映射。LSM blocked/hit 携带 BPF `target_index` 并映射回单条 YAML `rule_id/target_ref`；scoped target 事件会写 `cgroup_id/cgroup_path`；socket、exec_prefix、file_access、ptrace、capability 和 credential 事件分别输出对应证据。`tests/integration/test_security_policy.sh` 已在 121/122 回归九类 LSM enforce、四类 syscall tracing、双动态 `/tmp` target_map、scoped writable-dir exec_prefix、file_access、path_prefix、ptrace_traceme、CAP_SYS_ADMIN、setuid/setgid/setgroups credential 转换、cred_prepare credential preparation、显式 cgroup/PID/container/runtime/Pod target 和 rollback 恢复，最新结果目录两端均为 `results/security_policy/integration-20260703-151721`。`test_security_policy_credential_anomaly.sh` 已在 121/122 回归 `credential_churn` 生命周期 anomaly，结果目录为 `results/security_policy/credential-anomaly-20260703-121-v4` 和 `results/security_policy/credential-anomaly-20260703-122-v4`。`test_security_policy_credential_deep_hooks.sh` 已在 121/122 验证 `lsm_cred_alloc_blank/lsm_cred_transfer` scoped 配置和 Agent attach，结果目录为 `results/security_policy/credential-deep-hooks-20260703-121-v2` 和 `results/security_policy/credential-deep-hooks-20260703-122-v2`；普通用户态 workload 未稳定触发这两个 hook，报告只记录 hit 计数，不声称稳定业务命中。security_policy_demo 在 rollback 时不 pin link，退出后无残留。
 
 ## 3. 内存泄漏审计
 
@@ -69,9 +69,9 @@
 | 122 | --list-skills 输出正式 Network 子能力 | PASS |
 | 122 | --doctor-skills 返回 0 | PASS |
 
-## 6. TAP 质量门禁结果（17/17）
+## 6. TAP 质量门禁结果（21/21）
 
-最新日志：`reports/final_quality_gate_20260624_security_cred_prepare.log`
+最新日志：`reports/final_quality_gate_20260703-creddeep-121.log`
 
 ```
 ok 1 - make agent
@@ -90,7 +90,15 @@ ok 13 - security_policy_demo default disabled
 ok 14 - metrics default disabled on 127.0.0.1
 ok 15 - dashboard index.html exists and non-empty
 ok 16 - frozen result dirs exist (Redis=7, Nginx=3)
-ok 17 - no BPF/LSM/TC/XDP residue
+ok 17 - resource_control CPU+Memory+IO evidence
+ok 18 - resource_control target_ref evidence
+ok 19 - resource_control runtime target evidence
+ok 20 - resource_control CPU quota effect evidence
+ok 21 - no BPF/LSM/TC/XDP residue
+
+# optional checks
+ok - agent 100-round stress smoke
+ok - doctor 5-round stable
 ```
 
 ## 7. 最终判定
@@ -102,6 +110,6 @@ ok 17 - no BPF/LSM/TC/XDP residue
 | 内存泄漏 | WARN (Valgrind 工具限制，100 轮 smoke 替代) |
 | 死锁/卡死 | PASS |
 | 构建/回归 | PASS |
-| 质量门禁 | PASS (17/17) |
+| 质量门禁 | PASS (21/21) |
 
-**当前结论：EulerPilot 通过最新安全与质量审计，可作为当前争奖增强阶段的稳定基线。Security 已具备正式 `security_policy` 最小 audit/enforce 闭环、file_open/bprm/socket_connect/ptrace_traceme/capable/task_fix_setuid/task_fix_setgid/task_fix_setgroups/cred_prepare 九类 LSM enforce、四类 syscall tracing、最多 8 项 target_map、规则级 LSM blocked 事件标识、显式 cgroup scope、PID target、container_id target、runtime container name target、k8s pod name target、scoped IPv4 endpoint、scoped writable-dir exec_prefix、scoped file_access、scoped path_prefix、scoped ptrace_traceme、scoped CAP_SYS_ADMIN、scoped setuid/setgid/setgroups credential 转换、scoped cred_prepare credential preparation 阻断和 `credential_churn` 生命周期 anomaly；仍需继续评估 cred_transfer/cred_alloc_blank 等更深 credential hook 和更完整进程过滤。**
+**当前结论：EulerPilot 通过最新安全与质量审计，可作为当前争奖增强阶段的稳定基线。Security 已具备正式 `security_policy` 最小 audit/enforce 闭环、file_open/bprm/socket_connect/ptrace_traceme/capable/task_fix_setuid/task_fix_setgid/task_fix_setgroups/cred_prepare 九类 LSM enforce、cred_alloc_blank/cred_transfer scoped attach 评估、四类 syscall tracing、最多 8 项 target_map、规则级 LSM blocked/hit 事件标识、显式 cgroup scope、PID target、container_id target、runtime container name target、k8s pod name target、scoped IPv4 endpoint、scoped writable-dir exec_prefix、scoped file_access、scoped path_prefix、scoped ptrace_traceme、scoped CAP_SYS_ADMIN、scoped setuid/setgid/setgroups credential 转换、scoped cred_prepare credential preparation 阻断和 `credential_churn` 生命周期 anomaly；仍需继续推进更多异常策略组合、进程过滤和最终证据压缩。**

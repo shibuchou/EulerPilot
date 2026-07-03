@@ -1,0 +1,10 @@
+lsm_cred_alloc_blank_configured=yes
+lsm_cred_alloc_blank_attach=agent-started
+lsm_cred_alloc_blank_hits=0
+lsm_cred_transfer_configured=yes
+lsm_cred_transfer_attach=agent-started
+lsm_cred_transfer_hits=0
+lsm_cred_prepare_hits=28
+lsm_task_fix_setuid_hits=8
+mapping_mismatch_count=0
+deep_hook_runtime_note=no-userland-hit-observed

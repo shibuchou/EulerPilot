@@ -1,0 +1,2 @@
+=== SecurityPolicy credential deep hooks integration test ===
+PASS: security_policy credential deep hooks configured, attached, and scoped

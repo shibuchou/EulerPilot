@@ -290,7 +290,7 @@ eBPF TC classifier
 
 Security 使用统一目标引用和 observe/audit/enforce 模式。
 
-当前已落地的最小 schema 使用 `targets + rules + target_ref` 描述 path/path_prefix/file_access/exec/exec_prefix/socket/ptrace/capability/setuid/setgid/setgroups target，默认 `audit` 且默认 disabled。v2 正式入口对 `lsm_file_open` 规则要求 `targets.<target_ref>.path` 或 `targets.<target_ref>.path_prefix` 至少存在一个，`file_access` 可选为 `any/read/write`，默认 `any` 兼容旧路径阻断；`path_prefix + file_access=write` 用于表达只读目录保护，并可选配置 `cgroup_path` 作为作用域；对 `lsm_bprm_check_security` 规则要求 `exec_path` 或 `exec_prefix` 至少存在一个，并可复用 cgroup/PID/container/Pod 作用域；对 `lsm_socket_connect` 规则要求 `dst_ip` 和 `dst_port` 显式存在，并可复用 `cgroup_path`、PID、container 或 Pod 解析出的 cgroup 作用域；对 `lsm_ptrace_traceme` 规则要求 target 必须解析出 cgroup scope，且不携带 path/exec/socket 字段，避免全局 ptrace deny；对 `lsm_capable` 规则要求 target 必须解析出 cgroup scope，并配置 `capability` / `cap`，避免全局 capability deny；对 `lsm_task_fix_setuid`、`lsm_task_fix_setgid`、`lsm_task_fix_setgroups` 和 `lsm_cred_prepare` 规则要求 target 必须解析出 cgroup scope，避免全局 credential deny。如果 target 使用 `type: pid`，则用户态通过 `TargetResolver` 从 PID 自动解析 cgroup scope；如果 target 使用 `type: container_id`，则用户态在限定 `cgroup_root` 下扫描包含 container ID 的 cgroup 目录并解析 cgroup scope；如果 target 使用 `type: container`，则可通过 `container_name` 和 runtime CLI 解析 container ID；如果 target 使用 `type: k8s_pod`，则可通过 `namespace/pod_name` 和 `kubectl` 查询 Pod UID 后解析 cgroup scope。用户态会扫描最多 8 条 `rules.*.target_ref` 并把对应 path/path_prefix/file_access/exec/exec_prefix/socket/ptrace/capability/setuid/setgid/setgroups/cgroup id 写入 BPF `target_map`：
+当前已落地的最小 schema 使用 `targets + rules + target_ref` 描述 path/path_prefix/file_access/exec/exec_prefix/socket/ptrace/capability/setuid/setgid/setgroups/cred lifecycle target，默认 `audit` 且默认 disabled。v2 正式入口对 `lsm_file_open` 规则要求 `targets.<target_ref>.path` 或 `targets.<target_ref>.path_prefix` 至少存在一个，`file_access` 可选为 `any/read/write`，默认 `any` 兼容旧路径阻断；`path_prefix + file_access=write` 用于表达只读目录保护，并可选配置 `cgroup_path` 作为作用域；对 `lsm_bprm_check_security` 规则要求 `exec_path` 或 `exec_prefix` 至少存在一个，并可复用 cgroup/PID/container/Pod 作用域；对 `lsm_socket_connect` 规则要求 `dst_ip` 和 `dst_port` 显式存在，并可复用 `cgroup_path`、PID、container 或 Pod 解析出的 cgroup 作用域；对 `lsm_ptrace_traceme` 规则要求 target 必须解析出 cgroup scope，且不携带 path/exec/socket 字段，避免全局 ptrace deny；对 `lsm_capable` 规则要求 target 必须解析出 cgroup scope，并配置 `capability` / `cap`，避免全局 capability deny；对 `lsm_task_fix_setuid`、`lsm_task_fix_setgid`、`lsm_task_fix_setgroups`、`lsm_cred_prepare`、`lsm_cred_alloc_blank` 和 `lsm_cred_transfer` 规则要求 target 必须解析出 cgroup scope，避免全局 credential deny；其中 `lsm_cred_transfer` 为 observe-only void hook。如果 target 使用 `type: pid`，则用户态通过 `TargetResolver` 从 PID 自动解析 cgroup scope；如果 target 使用 `type: container_id`，则用户态在限定 `cgroup_root` 下扫描包含 container ID 的 cgroup 目录并解析 cgroup scope；如果 target 使用 `type: container`，则可通过 `container_name` 和 runtime CLI 解析 container ID；如果 target 使用 `type: k8s_pod`，则可通过 `namespace/pod_name` 和 `kubectl` 查询 Pod UID 后解析 cgroup scope。用户态会扫描最多 8 条 `rules.*.target_ref` 并把对应 path/path_prefix/file_access/exec/exec_prefix/socket/ptrace/capability/setuid/setgid/setgroups/cred lifecycle/cgroup id 和 scope-only `hook_type` 写入 BPF `target_map`：
 
 ```yaml
 - name: security_policy
@@ -365,6 +365,9 @@ Security 使用统一目标引用和 observe/audit/enforce 模式。
       setgroups_scope:
         type: cgroup
         cgroup_path: /sys/fs/cgroup/eulerpilot/security-demo
+      credential_deep_scope:
+        type: cgroup
+        cgroup_path: /sys/fs/cgroup/eulerpilot/security-demo
     rules:
       - name: deny_demo_secret_open
         hook: lsm_file_open
@@ -422,13 +425,21 @@ Security 使用统一目标引用和 observe/audit/enforce 模式。
         hook: lsm_task_fix_setgroups
         target_ref: setgroups_scope
         action: deny
+      - name: observe_cred_alloc_blank
+        hook: lsm_cred_alloc_blank
+        target_ref: credential_deep_scope
+        action: deny
+      - name: observe_cred_transfer
+        hook: lsm_cred_transfer
+        target_ref: credential_deep_scope
+        action: deny
 ```
 
 当前语义：
 
 - `audit` 模式 attach BPF LSM + `execve/openat/connect/ptrace` tracepoint，但通过 `policy_map.enforce=0` 允许目标文件访问和 demo 执行脚本运行，并通过 ringbuf 输出 `result=observed` 命中事件。
 - `audit` 事件当前覆盖 `event_hook=lsm_file_open`、`event_hook=lsm_bprm_check_security`、`event_hook=sys_enter_execve`、`event_hook=sys_enter_openat`、`event_hook=sys_enter_connect`、`event_hook=sys_enter_ptrace`；`anomaly_rules` 第一版已支持 `burst_execve`，用户态基于 `sys_enter_execve` 事件按 `threshold/window_ms` 聚合并输出 `operation=anomaly/result=observed`。
-- `enforce` 模式复用 `bpf/security_policy_demo.bpf.c`，在 `lsm/file_open` 上按 `target_map.file_path/file_prefix + file_access` 拒绝文件打开，在 `lsm/bprm_check_security` 上拒绝任一 `target_map.exec_path` 或 `target_map.exec_prefix`，在 `lsm/socket_connect` 上拒绝任一 `target_map.connect_daddr/connect_dport`，在 `lsm/ptrace_traceme` 上拒绝 scope-only cgroup target 内的 `PTRACE_TRACEME`，在 `lsm/capable` 上拒绝 scoped cgroup target 内的指定 capability，在 `lsm/task_fix_setuid`、`lsm/task_fix_setgid`、`lsm/task_fix_setgroups` 与 `lsm/cred_prepare` 上拒绝 scoped cgroup target 内的 credential 相关动作，并通过 ringbuf 输出 `result=blocked` 命中事件；LSM blocked 事件携带 BPF `target_index`，用户态映射回单条 YAML `rule_id/target_ref`；当 target 配置 `cgroup_path`、`type: pid`、`type: container_id`、`type: container` 或 `type: k8s_pod` 时，BPF 还要求当前进程 cgroup id 命中；四类 syscall 当前只做观测，不阻断。
+- `enforce` 模式复用 `bpf/security_policy_demo.bpf.c`，在 `lsm/file_open` 上按 `target_map.file_path/file_prefix + file_access` 拒绝文件打开，在 `lsm/bprm_check_security` 上拒绝任一 `target_map.exec_path` 或 `target_map.exec_prefix`，在 `lsm/socket_connect` 上拒绝任一 `target_map.connect_daddr/connect_dport`，在 `lsm/ptrace_traceme` 上拒绝 scope-only cgroup target 内的 `PTRACE_TRACEME`，在 `lsm/capable` 上拒绝 scoped cgroup target 内的指定 capability，在 `lsm/task_fix_setuid`、`lsm/task_fix_setgid`、`lsm/task_fix_setgroups` 与 `lsm/cred_prepare` 上拒绝 scoped cgroup target 内的 credential 相关动作，并通过 ringbuf 输出 `result=blocked` 命中事件；`lsm/cred_alloc_blank` 已支持 scoped attach 和 hit 输出，`lsm/cred_transfer` 已支持 scoped attach 和 observe-only hit 输出；LSM blocked/hit 事件携带 BPF `target_index`，用户态映射回单条 YAML `rule_id/target_ref`；当 target 配置 `cgroup_path`、`type: pid`、`type: container_id`、`type: container` 或 `type: k8s_pod` 时，BPF 还要求当前进程 cgroup id 命中；scope-only 规则额外校验 `hook_type`，避免同 cgroup 多 credential hook 串错；四类 syscall 当前只做观测，不阻断。
 - `tests/integration/test_security_policy.sh` 已额外创建 `/tmp/eulerpilot-security-policy.*` 下两组动态目标，证明 YAML `path/exec_path` 能驱动多目标 BPF `target_map`，blocked 事件能定位到对应规则，且不会误阻断默认 demo 目标；同时创建临时 cgroup 验证带 `cgroup_path` 的目标只在目标 cgroup 内阻断，验证 `type: pid`、`type: container_id`、`type: container` 和 `type: k8s_pod` target 均可解析到 cgroup scope；并启动本地 TCP server 验证 `lsm_socket_connect` 能阻断目标 cgroup 内的 IPv4 endpoint，事件携带 `dst_ip/dst_port/protocol/cgroup_id`；另用 `exec_prefix` 验证可写目录前缀执行只在目标 cgroup 内被 `lsm_bprm_check_security` 阻断，事件携带 `exec_prefix/cgroup_id`；再用 `file_access: write` 验证目标 cgroup 内读打开成功、写打开失败，事件携带 `file_access/file_flags/cgroup_id`；用 `path_prefix + file_access: write` 验证只读目录保护，目标 cgroup 内目录前缀写打开失败、读打开成功，事件携带 `path_prefix/file_access/file_flags/cgroup_id`；用 scope-only cgroup target 验证 `lsm_ptrace_traceme` 只阻断目标 cgroup 内 `PTRACE_TRACEME`，事件携带 `path=ptrace_traceme/cgroup_id`；用 `lsm_capable` 验证目标 cgroup 内 `CAP_SYS_ADMIN` 被拒绝且 scope 外允许，事件携带 `capability/cgroup_id`；再用 `lsm_task_fix_setuid`、`lsm_task_fix_setgid`、`lsm_task_fix_setgroups` 和 `lsm_cred_prepare` 验证目标 cgroup 内 credential 动作被拒绝且 scope 外允许，事件分别携带 `uid/euid/suid/setuid_flags/cgroup_id`、`gid/egid/sgid/setgid_flags/cgroup_id`、`group_count/old_group_count/cgroup_id` 与 `uid/euid/suid/gid/egid/sgid/group_count/old_group_count/cred_gfp/cgroup_id`；并用 `burst_execve` 验证可配置异常规则能够生成 `security_policy_events.anomaly-execve.jsonl`。
 - `security_policy_demo` 保留为兼容回归入口，最终答辩口径应优先使用正式 `security_policy`。
 
