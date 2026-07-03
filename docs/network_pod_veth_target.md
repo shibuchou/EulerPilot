@@ -151,17 +151,17 @@ k3s eulerpilot-lab/eulerpilot-rc-pod
 
 ## 7. 真实 k3s Pod veth XDP 证据
 
-2026-07-03 已在 121/122 完成真实 Kubernetes lab Pod host veth XDP ICMP/TCP/UDP 三规则验证：
+2026-07-03 已在 121/122 完成真实 Kubernetes lab Pod host veth XDP ICMP/TCP/UDP + UDP tuple 四规则验证：
 
-- 121：`results/network_policy/real-pod-veth-xdp-20260703-k3s-121-udp-v4`
-- 122：`results/network_policy/real-pod-veth-xdp-20260703-k3s-122-udp-v4`
+- 121：`results/network_policy/real-pod-veth-xdp-20260703-k3s-121-tuple-v1`
+- 122：`results/network_policy/real-pod-veth-xdp-20260703-k3s-122-tuple-v1`
 
 验证链路：
 
 ```text
 k3s eulerpilot-lab/eulerpilot-rc-pod
   -> TargetResolver 解析 Pod runtime PID / netns / host veth
-  -> 脚本用 nsenter 进入 Pod netns 发起 Pod-to-bridge ICMP / TCP:19092 / UDP:19093 流量
+  -> 脚本用 nsenter 进入 Pod netns 发起 Pod-to-bridge ICMP / TCP:19092 / UDP:19093 / UDP tuple 流量
   -> network_xdp 在 host veth 挂 generic XDP
   -> XDP_DROP 命中，per-rule drop_count 增长
   -> Agent stop rollback detach XDP
@@ -171,7 +171,7 @@ k3s eulerpilot-lab/eulerpilot-rc-pod
 说明：
 
 - 测试不依赖容器镜像内置 `ping/ip/cat`，而是使用宿主机 `nsenter -t <pod-pid> -n` 进入 Pod netns 发包。
-- 121 目标为 `traffic_target_ip=10.42.0.1`、`host_bridge=cni0`、`host_veth=veth998e0158`，`xdp_drop_count=13`，其中 ICMP/TCP/UDP 为 `1/4/8`。
-- 122 目标为 `traffic_target_ip=10.42.0.1`、`host_bridge=cni0`、`host_veth=vethc59976b2`，`xdp_drop_count=13`，其中 ICMP/TCP/UDP 为 `1/4/8`。
-- `network_policy.jsonl` 中包含 `skill=network_xdp`、`target_ref=lab_pod`、真实 `ifname/ifindex` 和 rollback `drop_icmp_real_pod/drop_tcp_real_pod/drop_udp_real_pod` per-rule 统计。
+- 121 目标为 `pod_ip=10.42.0.4`、`traffic_target_ip=10.42.0.1`、`host_bridge=cni0`、`host_veth=veth998e0158`，`xdp_drop_count=21`，其中 ICMP/TCP/UDP/UDP tuple 为 `1/4/8/8`。
+- 122 目标为 `pod_ip=10.42.0.4`、`traffic_target_ip=10.42.0.1`、`host_bridge=cni0`、`host_veth=vethc59976b2`，`xdp_drop_count=21`，其中 ICMP/TCP/UDP/UDP tuple 为 `1/4/8/8`。
+- `network_policy.jsonl` 中包含 `skill=network_xdp`、`target_ref=lab_pod`、真实 `ifname/ifindex` 和 rollback `drop_icmp_real_pod/drop_tcp_real_pod/drop_udp_real_pod/drop_udp_tuple_real_pod` per-rule 统计，tuple 字段为 `pod_ip:39094 -> 10.42.0.1:19094`。
 - rollback 后 `xdp_link_rollback.txt` 无 XDP attachment，`rollback_ping.txt` 证明连通性恢复。

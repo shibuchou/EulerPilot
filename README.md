@@ -31,7 +31,7 @@ eBPF Observer
   - `network_policy`：cgroup/connect4 audit/enforce/rollback
   - `network_qos`：TC egress classifier + TBF 限速闭环
   - `network_qos` Benchmark：2 Mbit/s 目标下 121/122 实测误差约 -1.22% / -1.45%
-  - `network_xdp`：isolated-veth generic XDP 已支持协议、源/目的 IP、源/目的端口匹配，覆盖 ICMP、TCP、UDP 和 UDP tuple 四规则闭环，rollback 事件输出 per-rule drop/byte 统计；真实 k3s lab Pod host veth generic XDP attach/drop/rollback 已在 121/122 通过
+  - `network_xdp`：isolated-veth 与真实 k3s lab Pod host veth generic XDP 均已支持协议、源/目的 IP、源/目的端口匹配，覆盖 ICMP、TCP、UDP 和 UDP tuple 四规则闭环，rollback 事件输出 per-rule 字段统计
   - `TargetResolver`：`container/k8s_pod -> runtime PID -> netns -> host veth/ifindex` 已接入 Network QoS/XDP 真实 Pod host veth 验证
 - Security Policy 阶段 C 最小闭环：
   - `security_policy`：YAML v2 `targets + rules + target_ref`
@@ -93,8 +93,8 @@ eBPF Observer
 - Resource Control real Pod target 122：`/root/EulerPilot/results/resource_control/real-pod-target-20260630-k3s-122-v1`
 - Network QoS real Pod host veth 121：`/root/EulerPilot/results/network_policy/real-pod-veth-qos-20260630-k3s-121-v2`
 - Network QoS real Pod host veth 122：`/root/EulerPilot/results/network_policy/real-pod-veth-qos-20260630-k3s-122-v1`
-- Network XDP real Pod host veth ICMP/TCP/UDP 121：`/root/EulerPilot/results/network_policy/real-pod-veth-xdp-20260703-k3s-121-udp-v4`
-- Network XDP real Pod host veth ICMP/TCP/UDP 122：`/root/EulerPilot/results/network_policy/real-pod-veth-xdp-20260703-k3s-122-udp-v4`
+- Network XDP real Pod host veth ICMP/TCP/UDP + UDP tuple 121：`/root/EulerPilot/results/network_policy/real-pod-veth-xdp-20260703-k3s-121-tuple-v1`
+- Network XDP real Pod host veth ICMP/TCP/UDP + UDP tuple 122：`/root/EulerPilot/results/network_policy/real-pod-veth-xdp-20260703-k3s-122-tuple-v1`
 - Network XDP ICMP/TCP/UDP + UDP tuple isolated-veth 121：`/root/EulerPilot/results/network_policy/xdp-20260703-121-fields-v1`
 - Network XDP ICMP/TCP/UDP + UDP tuple isolated-veth 122：`/root/EulerPilot/results/network_policy/xdp-20260703-122-fields-v1`
 - Resource Control CPU quota 121：`/root/EulerPilot/results/resource_control/cpu-quota-20260625-095030`

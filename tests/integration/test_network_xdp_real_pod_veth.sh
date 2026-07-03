@@ -19,6 +19,8 @@ AGENT_ENFORCE_DURATION_S="${EULERPILOT_REAL_POD_XDP_ENFORCE_DURATION_S:-8}"
 AGENT_TIMEOUT_S="${EULERPILOT_REAL_POD_XDP_AGENT_TIMEOUT_S:-25}"
 XDP_TCP_PORT="${EULERPILOT_REAL_POD_XDP_TCP_PORT:-19092}"
 XDP_UDP_PORT="${EULERPILOT_REAL_POD_XDP_UDP_PORT:-19093}"
+XDP_UDP_TUPLE_PORT="${EULERPILOT_REAL_POD_XDP_UDP_TUPLE_PORT:-19094}"
+XDP_UDP_TUPLE_SRC_PORT="${EULERPILOT_REAL_POD_XDP_UDP_TUPLE_SRC_PORT:-39094}"
 
 AGENT_PID=""
 POD_CREATED=0
@@ -27,6 +29,7 @@ HOST_VETH=""
 HOST_IP=""
 HOST_BRIDGE=""
 POD_PID=""
+POD_IP=""
 TRAFFIC_TARGET_IP=""
 
 mkdir -p "$RESULT_DIR" reports/events run/eulerpilot
@@ -67,12 +70,13 @@ write_blocked() {
 }
 
 write_report() {
-    local result reason xdp_drop_count xdp_tcp_drop_count xdp_udp_drop_count
+    local result reason xdp_drop_count xdp_tcp_drop_count xdp_udp_drop_count xdp_udp_tuple_drop_count
     result="$(awk -F= '$1=="result"{print $2}' "$RESULT_DIR/summary.txt" 2>/dev/null || true)"
     reason="$(awk -F= '$1=="reason"{print $2}' "$RESULT_DIR/summary.txt" 2>/dev/null || true)"
     xdp_drop_count="$(awk -F= '$1=="xdp_drop_count"{print $2}' "$RESULT_DIR/summary.txt" 2>/dev/null || true)"
     xdp_tcp_drop_count="$(awk -F= '$1=="xdp_tcp_drop_count"{print $2}' "$RESULT_DIR/summary.txt" 2>/dev/null || true)"
     xdp_udp_drop_count="$(awk -F= '$1=="xdp_udp_drop_count"{print $2}' "$RESULT_DIR/summary.txt" 2>/dev/null || true)"
+    xdp_udp_tuple_drop_count="$(awk -F= '$1=="xdp_udp_tuple_drop_count"{print $2}' "$RESULT_DIR/summary.txt" 2>/dev/null || true)"
     cat > "$RESULT_DIR/report.md" <<EOF_REPORT
 # Network XDP Real Pod veth Target
 
@@ -86,6 +90,7 @@ write_report() {
 - xdp drop count: \`${xdp_drop_count:-unknown}\`
 - xdp TCP drop count: \`${xdp_tcp_drop_count:-unknown}\`
 - xdp UDP drop count: \`${xdp_udp_drop_count:-unknown}\`
+- xdp UDP tuple drop count: \`${xdp_udp_tuple_drop_count:-unknown}\`
 
 ## Purpose
 
@@ -106,7 +111,7 @@ namespace or Pod only when \`EULERPILOT_ALLOW_K8S_CREATE=1\` is set.
 - \`resolve_pod_veth.txt\`
 - \`xdp_link_before.txt\`, \`xdp_link_audit.txt\`, \`xdp_link_enforce.txt\`, \`xdp_link_rollback.txt\`
 - \`baseline_ping.txt\`, \`enforce_ping_drop.txt\`, \`rollback_ping.txt\`
-- \`enforce_tcp_drop.txt\`, \`enforce_udp_drop.txt\`, \`xdp_rule_stats.txt\`
+- \`enforce_tcp_drop.txt\`, \`enforce_udp_drop.txt\`, \`enforce_udp_tuple_drop.txt\`, \`xdp_rule_stats.txt\`
 - \`network_policy.jsonl\`
 - \`action_journal.jsonl\`
 EOF_REPORT
@@ -196,6 +201,12 @@ ensure_lab_pod() {
         -o 'jsonpath={.status.hostIP}' | tr -d '[:space:]')"
     if [ -z "$HOST_IP" ]; then
         write_blocked "host-ip-query-failed" "check-kubectl-access-to-demo-pod"
+        return 1
+    fi
+    POD_IP="$($RESULT_ABS_DIR/kubectl-wrapper -n "$POD_NAMESPACE" get pod "$POD_NAME" \
+        -o 'jsonpath={.status.podIP}' | tr -d '[:space:]')"
+    if [ -z "$POD_IP" ]; then
+        write_blocked "pod-ip-query-failed" "check-kubectl-access-to-demo-pod"
         return 1
     fi
 }
@@ -373,6 +384,16 @@ $container_name_yaml
         protocol: udp
         dst_port: '$XDP_UDP_PORT'
         action: drop
+      - name: drop_udp_tuple_real_pod
+        hook: xdp
+        mode: $mode
+        target_ref: lab_pod
+        protocol: udp
+        src_ip: $POD_IP
+        dst_ip: $TRAFFIC_TARGET_IP
+        src_port: '$XDP_UDP_TUPLE_SRC_PORT'
+        dst_port: '$XDP_UDP_TUPLE_PORT'
+        action: drop
 YAML
 }
 
@@ -443,18 +464,25 @@ PY
 }
 
 udp_probe_from_pod() {
+    local dst_port="${1:-$XDP_UDP_PORT}"
+    local src_port="${2:-0}"
     if [ -n "$POD_PID" ] && command -v nsenter >/dev/null 2>&1 &&
         command -v python3 >/dev/null 2>&1; then
-        nsenter -t "$POD_PID" -n python3 - "$TRAFFIC_TARGET_IP" "$XDP_UDP_PORT" <<'PY'
+        nsenter -t "$POD_PID" -n python3 - \
+            "$TRAFFIC_TARGET_IP" "$dst_port" "$src_port" "$POD_IP" <<'PY'
 import socket
 import sys
 import time
 
 host = sys.argv[1]
 port = int(sys.argv[2])
+src_port = int(sys.argv[3])
+pod_ip = sys.argv[4]
 payload = b"eulerpilot-real-pod-xdp-udp" * 4
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+if src_port != 0:
+    sock.bind((pod_ip, src_port))
 for _ in range(8):
     sock.sendto(payload, (host, port))
     time.sleep(0.02)
@@ -463,7 +491,11 @@ PY
         return
     fi
 
-    pod_netns_exec sh -c "command -v nc >/dev/null 2>&1 || exit 42; i=0; while [ \"\$i\" -lt 8 ]; do printf eulerpilot-real-pod-xdp-udp | nc -u -w 1 $TRAFFIC_TARGET_IP $XDP_UDP_PORT >/dev/null 2>&1 || true; i=\$((i + 1)); done"
+    if [ "$src_port" != "0" ]; then
+        return 42
+    fi
+
+    pod_netns_exec sh -c "command -v nc >/dev/null 2>&1 || exit 42; i=0; while [ \"\$i\" -lt 8 ]; do printf eulerpilot-real-pod-xdp-udp | nc -u -w 1 $TRAFFIC_TARGET_IP $dst_port >/dev/null 2>&1 || true; i=\$((i + 1)); done"
 }
 
 extract_xdp_counts() {
@@ -493,6 +525,11 @@ rows = [
     ("drop_icmp_real_pod", as_int("rule.drop_icmp_real_pod.drop_count")),
     ("drop_tcp_real_pod", as_int("rule.drop_tcp_real_pod.drop_count")),
     ("drop_udp_real_pod", as_int("rule.drop_udp_real_pod.drop_count")),
+    ("drop_udp_tuple_real_pod", as_int("rule.drop_udp_tuple_real_pod.drop_count")),
+    ("drop_udp_tuple_real_pod.src_ip", evidence.get("rule.drop_udp_tuple_real_pod.src_ip", "")),
+    ("drop_udp_tuple_real_pod.dst_ip", evidence.get("rule.drop_udp_tuple_real_pod.dst_ip", "")),
+    ("drop_udp_tuple_real_pod.src_port", evidence.get("rule.drop_udp_tuple_real_pod.src_port", "")),
+    ("drop_udp_tuple_real_pod.dst_port", evidence.get("rule.drop_udp_tuple_real_pod.dst_port", "")),
     ("rule_stats", evidence.get("rule_stats", "")),
 ]
 with open(stats_path, "w", encoding="utf-8") as out:
@@ -596,10 +633,17 @@ else
     printf 'tcp_probe_result=blocked-or-nc-unavailable\n' >> "$RESULT_DIR/enforce_tcp_drop.txt"
 fi
 
-if udp_probe_from_pod > "$RESULT_DIR/enforce_udp_drop.txt" 2>&1; then
+if udp_probe_from_pod "$XDP_UDP_PORT" 0 > "$RESULT_DIR/enforce_udp_drop.txt" 2>&1; then
     printf 'udp_probe_result=sent\n' >> "$RESULT_DIR/enforce_udp_drop.txt"
 else
     printf 'udp_probe_result=sent-fallback-unavailable\n' >> "$RESULT_DIR/enforce_udp_drop.txt"
+fi
+
+if udp_probe_from_pod "$XDP_UDP_TUPLE_PORT" "$XDP_UDP_TUPLE_SRC_PORT" \
+    > "$RESULT_DIR/enforce_udp_tuple_drop.txt" 2>&1; then
+    printf 'udp_tuple_probe_result=sent\n' >> "$RESULT_DIR/enforce_udp_tuple_drop.txt"
+else
+    printf 'udp_tuple_probe_result=sent-fallback-unavailable\n' >> "$RESULT_DIR/enforce_udp_tuple_drop.txt"
 fi
 
 wait "$AGENT_PID"
@@ -636,6 +680,26 @@ XDP_UDP_DROP_COUNT="$(awk -F= '$1=="drop_udp_real_pod"{print $2}' "$RESULT_DIR/x
 if [ "${XDP_UDP_DROP_COUNT:-0}" -le 0 ]; then
     fail "network_xdp UDP rule did not record drops for real Pod host-veth traffic"
 fi
+XDP_UDP_TUPLE_DROP_COUNT="$(awk -F= '$1=="drop_udp_tuple_real_pod"{print $2}' "$RESULT_DIR/xdp_rule_stats.txt" 2>/dev/null || true)"
+if [ "${XDP_UDP_TUPLE_DROP_COUNT:-0}" -le 0 ]; then
+    fail "network_xdp UDP tuple rule did not record drops for real Pod host-veth traffic"
+fi
+XDP_UDP_TUPLE_SRC_IP="$(awk -F= '$1=="drop_udp_tuple_real_pod.src_ip"{print $2}' "$RESULT_DIR/xdp_rule_stats.txt" 2>/dev/null || true)"
+if [ "$XDP_UDP_TUPLE_SRC_IP" != "$POD_IP" ]; then
+    fail "network_xdp UDP tuple source IP evidence mismatch"
+fi
+XDP_UDP_TUPLE_DST_IP="$(awk -F= '$1=="drop_udp_tuple_real_pod.dst_ip"{print $2}' "$RESULT_DIR/xdp_rule_stats.txt" 2>/dev/null || true)"
+if [ "$XDP_UDP_TUPLE_DST_IP" != "$TRAFFIC_TARGET_IP" ]; then
+    fail "network_xdp UDP tuple destination IP evidence mismatch"
+fi
+XDP_UDP_TUPLE_SRC_PORT_EVIDENCE="$(awk -F= '$1=="drop_udp_tuple_real_pod.src_port"{print $2}' "$RESULT_DIR/xdp_rule_stats.txt" 2>/dev/null || true)"
+if [ "$XDP_UDP_TUPLE_SRC_PORT_EVIDENCE" != "$XDP_UDP_TUPLE_SRC_PORT" ]; then
+    fail "network_xdp UDP tuple source port evidence mismatch"
+fi
+XDP_UDP_TUPLE_DST_PORT_EVIDENCE="$(awk -F= '$1=="drop_udp_tuple_real_pod.dst_port"{print $2}' "$RESULT_DIR/xdp_rule_stats.txt" 2>/dev/null || true)"
+if [ "$XDP_UDP_TUPLE_DST_PORT_EVIDENCE" != "$XDP_UDP_TUPLE_PORT" ]; then
+    fail "network_xdp UDP tuple destination port evidence mismatch"
+fi
 
 {
     printf 'result=pass\n'
@@ -645,6 +709,7 @@ fi
     printf 'kernel=%s\n' "$(uname -r)"
     printf 'pod_namespace=%s\n' "$POD_NAMESPACE"
     printf 'pod_name=%s\n' "$POD_NAME"
+    printf 'pod_ip=%s\n' "$POD_IP"
     printf 'host_ip=%s\n' "$HOST_IP"
     printf 'traffic_target_ip=%s\n' "$TRAFFIC_TARGET_IP"
     printf 'host_bridge=%s\n' "$HOST_BRIDGE"
@@ -657,6 +722,11 @@ fi
     printf 'xdp_tcp_drop_count=%s\n' "$XDP_TCP_DROP_COUNT"
     printf 'xdp_udp_port=%s\n' "$XDP_UDP_PORT"
     printf 'xdp_udp_drop_count=%s\n' "$XDP_UDP_DROP_COUNT"
+    printf 'xdp_udp_tuple_src_ip=%s\n' "$POD_IP"
+    printf 'xdp_udp_tuple_dst_ip=%s\n' "$TRAFFIC_TARGET_IP"
+    printf 'xdp_udp_tuple_src_port=%s\n' "$XDP_UDP_TUPLE_SRC_PORT"
+    printf 'xdp_udp_tuple_dst_port=%s\n' "$XDP_UDP_TUPLE_PORT"
+    printf 'xdp_udp_tuple_drop_count=%s\n' "$XDP_UDP_TUPLE_DROP_COUNT"
     cat "$RESULT_DIR/xdp_rule_stats.txt"
 } > "$RESULT_DIR/summary.txt"
 

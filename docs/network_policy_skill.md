@@ -235,8 +235,8 @@ results/network_policy/
 - `bpf/network_xdp_demo.bpf.c` 已实现 XDP generic filter，负责按协议、源/目的 IPv4 和源/目的端口配置执行 pass/drop 并累计 pass/drop/byte 统计；当前最多支持 8 条规则，未配置的字段按 wildcard 处理。
 - `network_xdp` enforce 模式通过 libbpf `bpf_xdp_attach` 以 generic mode 挂载程序，rollback 通过 `bpf_xdp_detach` 卸载。
 - `tests/integration/test_network_xdp.sh` 已基于 YAML v2 验证 lab netns/veth、audit 不挂 XDP、enforce drop ICMP、enforce drop TCP:19092、enforce drop UDP:19093、enforce drop UDP tuple `10.89.0.2:39094 -> 10.89.0.1:19094`、rollback per-rule 统计和连通性恢复。
-- `tests/integration/test_network_xdp_real_pod_veth.sh` 已在真实 k3s lab Pod 上验证 `type: k8s_pod` 解析 host veth、generic XDP attach/drop、Pod netns 到 cni bridge 的 ICMP/TCP/UDP 三规则命中和 rollback detach。
-- XDP 审计事件已包含 `rule_ids=drop_icmp_lab,drop_tcp_probe_lab,drop_udp_probe_lab,drop_udp_tuple_lab`、`rule_count=4` 与 `target_ref=lab_xdp_veth`；rollback 事件包含每条规则的 per-rule `protocol/src_ip/dst_ip/src_port/dst_port/drop_count/byte_count` 统计；真实 Pod XDP 事件包含 `target_ref=lab_pod`、真实 `ifname/ifindex`、`drop_icmp_real_pod/drop_tcp_real_pod/drop_udp_real_pod` 和 `drop_count`。
+- `tests/integration/test_network_xdp_real_pod_veth.sh` 已在真实 k3s lab Pod 上验证 `type: k8s_pod` 解析 host veth、generic XDP attach/drop、Pod netns 到 cni bridge 的 ICMP/TCP/UDP 与 UDP tuple 四规则命中和 rollback detach。
+- XDP 审计事件已包含 `rule_ids=drop_icmp_lab,drop_tcp_probe_lab,drop_udp_probe_lab,drop_udp_tuple_lab`、`rule_count=4` 与 `target_ref=lab_xdp_veth`；rollback 事件包含每条规则的 per-rule `protocol/src_ip/dst_ip/src_port/dst_port/drop_count/byte_count` 统计；真实 Pod XDP 事件包含 `target_ref=lab_pod`、真实 `ifname/ifindex`、`drop_icmp_real_pod/drop_tcp_real_pod/drop_udp_real_pod/drop_udp_tuple_real_pod` 和 tuple 字段证据。
 - `tests/integration/test_target_resolver.sh` 已验证 `container -> runtime ID/PID -> netns -> host veth ifname/ifindex` 与 `k8s_pod -> kubectl Pod UID/container ID -> runtime PID -> netns -> host veth ifname/ifindex` 的成功路径；`network_qos/network_xdp` 已可接受 `type: container` 和 `type: k8s_pod` target 并解析为 host veth。
 - 完整质量门禁已通过，日志为 `reports/final_quality_gate_20260619_xdp.log`。
 - 121 最新集成测试目录：`results/network_policy/integration-20260619-142347/`。
@@ -247,15 +247,14 @@ results/network_policy/
 - 122 最新 TC QoS Benchmark 目录：`results/network_policy/qos-rate-20260620-181755/`。
 - 121 最新 XDP ICMP/TCP/UDP + UDP tuple 集成测试目录：`results/network_policy/xdp-20260703-121-fields-v1/`。
 - 122 最新 XDP ICMP/TCP/UDP + UDP tuple 集成测试目录：`results/network_policy/xdp-20260703-122-fields-v1/`。
-- 121 最新真实 Pod host veth XDP ICMP/TCP/UDP 目录：`results/network_policy/real-pod-veth-xdp-20260703-k3s-121-udp-v4/`。
-- 122 最新真实 Pod host veth XDP ICMP/TCP/UDP 目录：`results/network_policy/real-pod-veth-xdp-20260703-k3s-122-udp-v4/`。
+- 121 最新真实 Pod host veth XDP ICMP/TCP/UDP + UDP tuple 目录：`results/network_policy/real-pod-veth-xdp-20260703-k3s-121-tuple-v1/`。
+- 122 最新真实 Pod host veth XDP ICMP/TCP/UDP + UDP tuple 目录：`results/network_policy/real-pod-veth-xdp-20260703-k3s-122-tuple-v1/`。
 - 121 最新完整质量门禁：`reports/final_quality_gate_20260620_xdp_multirule.log`。
 
 下一步：
 
 1. 为 TC QoS 增加多规则验证。
-2. 评估是否把 real Pod host veth XDP 也扩展到同样的 tuple 字段演示。
-3. 整理 Network 证据为答辩现场的短链路演示材料。
+2. 整理 Network 证据为答辩现场的短链路演示材料。
 
 ## v3.1 Policy Engine 联动边界
 

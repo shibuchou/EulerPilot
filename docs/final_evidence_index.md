@@ -130,8 +130,8 @@ v3.2 计划：`docs/next_phase_plan_v3_2.md`
 - 122 real Pod cgroup target：`results/resource_control/real-pod-target-20260630-k3s-122-v1`
 - 121 real Pod host veth QoS：`results/network_policy/real-pod-veth-qos-20260630-k3s-121-v2`
 - 122 real Pod host veth QoS：`results/network_policy/real-pod-veth-qos-20260630-k3s-122-v1`
-- 121 real Pod host veth XDP ICMP/TCP/UDP：`results/network_policy/real-pod-veth-xdp-20260703-k3s-121-udp-v4`
-- 122 real Pod host veth XDP ICMP/TCP/UDP：`results/network_policy/real-pod-veth-xdp-20260703-k3s-122-udp-v4`
+- 121 real Pod host veth XDP ICMP/TCP/UDP + UDP tuple：`results/network_policy/real-pod-veth-xdp-20260703-k3s-121-tuple-v1`
+- 122 real Pod host veth XDP ICMP/TCP/UDP + UDP tuple：`results/network_policy/real-pod-veth-xdp-20260703-k3s-122-tuple-v1`
 - 121 isolated-veth XDP ICMP/TCP/UDP + UDP tuple：`results/network_policy/xdp-20260703-121-fields-v1`
 - 122 isolated-veth XDP ICMP/TCP/UDP + UDP tuple：`results/network_policy/xdp-20260703-122-fields-v1`
 - 121 Security credential anomaly：`results/security_policy/credential-anomaly-20260703-121-v3`
@@ -159,4 +159,4 @@ SP4 环境探测：
 ## 后置事项
 
 - SP4 验证不作为 v3.1 完成条件，准备文档为 `docs/sp4_validation_plan.md`，检查脚本为 `scripts/check_sp4_env.sh`。
-- 真实 Kubernetes Pod target、Pod host veth QoS、Pod host veth XDP 与真实 Pod Policy Engine 跨 Skill 联动均已转 pass；isolated-veth XDP 已补齐 ICMP/TCP/UDP + UDP tuple 四规则和 per-rule 字段证据，real Pod host veth XDP 已补齐 ICMP/TCP/UDP 三规则和 per-rule 证据；Security 已补齐 `credential_churn` 生命周期 anomaly 双机证据。下一优先级是 real Pod host veth XDP tuple 可行性评估、cred_transfer/cred_alloc_blank 等更深 credential hook 评估和最终证据压缩。
+- 真实 Kubernetes Pod target、Pod host veth QoS、Pod host veth XDP 与真实 Pod Policy Engine 跨 Skill 联动均已转 pass；isolated-veth 与 real Pod host veth XDP 均已补齐 ICMP/TCP/UDP + UDP tuple 四规则和 per-rule 字段证据；Security 已补齐 `credential_churn` 生命周期 anomaly 双机证据。下一优先级是 cred_transfer/cred_alloc_blank 等更深 credential hook 评估和最终证据压缩。

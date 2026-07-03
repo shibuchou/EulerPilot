@@ -284,7 +284,7 @@ eBPF TC classifier
 - `network_qos` 会选择 `rules.*.hook=tc_egress` 的第一条规则，并解析其 `target_ref` 指向的 `type: netdev`、`type: container` 或 `type: k8s_pod` target；container/Pod target 会先解析到 host veth ifname。
 - `network_xdp` 会读取最多 8 条 `rules.*.hook=xdp` 规则，并要求这些规则解析到同一个 `type: netdev`、`type: container` 或 `type: k8s_pod` target；container/Pod target 会先解析到 host veth ifname。XDP 规则已支持 `protocol/src_ip/dst_ip/src_port/dst_port`，未配置字段按 wildcard 处理，端口字段仅允许在 TCP/UDP 规则上使用。
 - 审计事件已输出 `rule_id` 与 `target_ref`。
-- container 和 k8s_pod 到 host veth 解析已经完成 fake runtime/netns 自测和真实 Kubernetes lab Pod 演示；isolated-veth XDP 已扩展到 UDP tuple 多字段匹配，real Pod host veth XDP 已扩展到 ICMP/TCP/UDP 与 per-rule 统计，后续重点转为 real Pod tuple 可行性评估和证据压缩。
+- container 和 k8s_pod 到 host veth 解析已经完成 fake runtime/netns 自测和真实 Kubernetes lab Pod 演示；isolated-veth 与 real Pod host veth XDP 均已扩展到 UDP tuple 多字段匹配，后续重点转为 credential 深层 hook 评估和证据压缩。
 
 ## 7. SecurityPolicySkill YAML
 

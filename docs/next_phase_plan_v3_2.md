@@ -58,7 +58,15 @@ SP4 环境探测：
 - 121/122 均已通过 `tests/integration/test_network_xdp.sh`，新增 UDP tuple `10.89.0.2:39094 -> 10.89.0.1:19094` 命中验证。
 - 结果目录：121 `results/network_policy/xdp-20260703-121-fields-v1`，122 `results/network_policy/xdp-20260703-122-fields-v1`。
 - 两端统计一致：ICMP 1、TCP 4、UDP 8、UDP tuple 8，总 drop 21；rollback 事件携带每条规则的 `protocol/src_ip/dst_ip/src_port/dst_port/drop_count/byte_count`。
-- 下一步不再把 isolated-veth XDP 字段匹配列为 blocked debt，转为评估 real Pod host veth tuple 演示、credential 深层 hook 和最终证据压缩。
+- 下一步不再把 isolated-veth XDP 字段匹配列为 blocked debt；real Pod host veth tuple 演示已在后续更新中完成，剩余重点转向 credential 深层 hook 和最终证据压缩。
+
+## 2026-07-03 real Pod XDP tuple 更新
+
+- real Pod host veth XDP 已从 ICMP/TCP/UDP 三规则扩展到协议、源/目的 IPv4、源/目的端口多字段匹配。
+- 121/122 均已通过 `tests/integration/test_network_xdp_real_pod_veth.sh`，新增 UDP tuple `pod_ip:39094 -> 10.42.0.1:19094` 命中验证。
+- 结果目录：121 `results/network_policy/real-pod-veth-xdp-20260703-k3s-121-tuple-v1`，122 `results/network_policy/real-pod-veth-xdp-20260703-k3s-122-tuple-v1`。
+- 两端统计一致：ICMP 1、TCP 4、UDP 8、UDP tuple 8，总 drop 21；rollback 事件携带真实 Pod `src_ip/dst_ip/src_port/dst_port` 字段证据。
+- 下一步不再把 real Pod host veth XDP tuple 列为待评估项，转为 credential 深层 hook 和最终证据压缩。
 ## Key Changes
 
 ### 1. openEuler runtime 兼容性
