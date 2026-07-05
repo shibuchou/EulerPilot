@@ -1,0 +1,5 @@
+result=pass
+repeat=10
+success_cases=10
+failure_rollback=pass
+result_dir=results/policy_engine/security-network-resource-20260705-211407

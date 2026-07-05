@@ -2,41 +2,65 @@
 
 更新时间：`2026-07-05`
 
-SP4 已接入为 EulerPilot 后续完整能力验证平台。本文件记录 SP4 初始验证结果、当前限制和下一步 sched_ext/scx 内核验证计划；121/122 的 SP3 双机结果仍作为既有稳定证据保留。
+SP4 已接入为 EulerPilot 后续完整能力验证平台。本文件记录 SP4 初始验证结果、sched_ext/scx 自编译内核验证结果和后续复核入口；121/122 的 SP3 双机结果仍作为既有稳定证据保留。
 
 ## 当前结果
 
 - SP4 主机：`openEuler-2403-LTS-SP4` / `192.168.1.123`
 - 仓库路径：`/root/EulerPilot`
-- 验证提交：`d5c3fb3`
+- 验证基线：`cd0add4`
 - 系统版本：`openEuler 24.03 LTS SP4`
-- 内核版本：`6.6.0-159.4.3.154.oe2403sp4.x86_64`
+- 初始发行内核：`6.6.0-159.4.3.154.oe2403sp4.x86_64`
+- sched_ext 验证内核：`6.6.0-159.4.3.154.oe2403sp4.x86_64-eulerpilot-scx`
 - 已启用启动参数：`systemd.unified_cgroup_hierarchy=1 cgroup_no_v1=all psi=1`
 - cgroup v2：已挂载，controllers 包含 `cpu io memory`
 - PSI：`cpu/memory/io` 已可用
-- BTF / BPF LSM / TC / XDP：能力探测可用
+- BTF / BPF LSM / TC / XDP / sched_ext：能力探测可用
 - Web Console：已通过 `npm ci/test/lint/build/audit`，Evidence 显示 28 条、必需缺失 0、警告 0
-- 质量门禁：`scripts/final_quality_gate.sh` 已在 SP4 通过 21/21 P0、100 轮 smoke、5 轮 doctor
+- 质量门禁：`scripts/final_quality_gate.sh` 已在 SP4 sched_ext 内核通过 21/21 P0、100 轮 smoke、5 轮 doctor
+- v3.1 主链路：`tests/integration/test_policy_engine_security_network_resource.sh --repeat 10` 已在 SP4 sched_ext 内核通过
 
-已保存的 SP4 初始验证证据：
+已保存的 SP4 初始验证与 sched_ext 复核证据：
 
 ```text
 reports/sp4/sp4_initial_validation_20260705-160156.md
 reports/sp4/final_quality_gate_20260705-160156.log
 reports/sp4/cmdline.before-cgroupv2-20260705-155311.txt
 reports/sp4/grub.default.before-cgroupv2-20260705-155311.bak
+reports/sp4/sp4_sched_ext_validation_20260705-211407.md
+reports/sp4/final_quality_gate_scx_20260705-205406.log
+reports/sp4/policy_engine_security_network_resource_scx_20260705-211329.log
+reports/sp4/policy_engine_security_network_resource_repeat10_scx_20260705-211407.log
+results/policy_engine/security-network-resource-20260705-211329
+results/policy_engine/security-network-resource-20260705-211407
 ```
 
-## 当前限制
+## sched_ext/scx 复核结论
 
-SP4 当前发行内核未启用 sched_ext：
+SP4 发行内核默认未启用 sched_ext：
 
 ```text
 CONFIG_SCHED_CLASS_EXT is not set
 /sys/kernel/sched_ext missing
 ```
 
-因此当前 SP4 已验证主路径为 `cgroup v2 + PSI + eBPF + Policy Engine + Web Console`。下一步将基于 SP4 内核源码重新编译启用 `CONFIG_SCHED_CLASS_EXT` 的内核，并在新内核上复核 scx/sched_ext 路径。
+已基于 SP4 内核源码重新编译并安装 EulerPilot 验证内核：
+
+```text
+CONFIG_SCHED_CLASS_EXT=y
+CONFIG_EXT_GROUP_SCHED=y
+/sys/kernel/sched_ext present
+```
+
+当前 SP4 已验证主路径为 `cgroup v2 + PSI + eBPF + Policy Engine + Web Console`，增强路径为 `sched_ext/scx available`。Web Console 在 SP4 页面中应显示为路径分工，而不是把发行内核默认限制表述为项目失败。
+
+## 已修复的 SP4 环境兼容问题
+
+SP4 虚拟机 CPU 数量少于早期固定 cpuset 假设时，`scripts/setup_cgroup_v2.sh` 旧逻辑会固定写入 `0-1`、`2-3`、`4-7`，在单核/少核环境触发 `Numerical result out of range`。当前脚本已改为：
+
+- 优先尝试旧的多核默认分组。
+- 若写入失败，自动回退到父 cgroup 的有效 `cpuset.cpus` / `cpuset.mems`。
+- 保留 `LATENCY_CPUSET`、`BATCH_CPUSET`、`BACKGROUND_CPUSET` 环境变量，方便多核实验手动指定。
 
 ## 目标
 
@@ -47,6 +71,7 @@ CONFIG_SCHED_CLASS_EXT is not set
 - BTF、BPF LSM、XDP、TC、sched_ext/scx 能力探测。
 - Security、Network、Resource Control、Policy Engine 的核心集成测试。
 - 自编译启用 `CONFIG_SCHED_CLASS_EXT` 的 SP4 内核，验证 `/sys/kernel/sched_ext` 与 scx 相关能力。
+- 在 sched_ext 内核下复核 v3.1 主联动、质量门禁和 Web Console Evidence。
 
 ## 不阻塞事项
 
@@ -67,6 +92,7 @@ make agent
 ./build/eulerpilot-agent --list-skills
 ./build/eulerpilot-agent --doctor-skills --config configs/agent.yaml
 sudo tests/integration/test_policy_engine_security_network_resource.sh
+sudo tests/integration/test_policy_engine_security_network_resource.sh --repeat 10
 sudo scripts/final_quality_gate.sh
 ```
 

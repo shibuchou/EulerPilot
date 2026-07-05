@@ -1,0 +1,15 @@
+make: Nothing to be done for 'agent'.
+make: Nothing to be done for 'security-policy-demo'.
+make: Nothing to be done for 'network-qos-tc'.
+[INFO] policy_engine security-network-resource success iteration 1/10
+[INFO] policy_engine security-network-resource success iteration 2/10
+[INFO] policy_engine security-network-resource success iteration 3/10
+[INFO] policy_engine security-network-resource success iteration 4/10
+[INFO] policy_engine security-network-resource success iteration 5/10
+[INFO] policy_engine security-network-resource success iteration 6/10
+[INFO] policy_engine security-network-resource success iteration 7/10
+[INFO] policy_engine security-network-resource success iteration 8/10
+[INFO] policy_engine security-network-resource success iteration 9/10
+[INFO] policy_engine security-network-resource success iteration 10/10
+[INFO] policy_engine failure rollback case
+[INFO] policy_engine security-network-resource result saved to results/policy_engine/security-network-resource-20260705-211407

@@ -14,12 +14,38 @@ detect_root_io_device() {
     findmnt -no MAJ:MIN -T / 2>/dev/null | awk 'NF { print $1; exit }'
 }
 
+detect_effective_value() {
+    local name="$1"
+    local fallback="$2"
+    local value=""
+    for path in "$ROOT/${name}.effective" "/sys/fs/cgroup/${name}.effective"; do
+        if [ -r "$path" ]; then
+            value="$(cat "$path" 2>/dev/null || true)"
+            if [ -n "$value" ]; then
+                printf '%s\n' "$value"
+                return 0
+            fi
+        fi
+    done
+    printf '%s\n' "$fallback"
+}
+
 enable_controller() {
     local subtree="$1"
     local controller="$2"
     [ -w "$subtree" ] || return 0
     if ! grep -qw "$controller" "$subtree" 2>/dev/null; then
         echo "+$controller" > "$subtree" 2>/dev/null || true
+    fi
+}
+
+write_cgroup_value_or_fallback() {
+    local file="$1"
+    local value="$2"
+    local fallback="$3"
+    [ -w "$file" ] || return 0
+    if ! echo "$value" > "$file" 2>/dev/null; then
+        echo "$fallback" > "$file"
     fi
 }
 
@@ -42,15 +68,21 @@ for controller in cpu cpuset memory io; do
 done
 
 IO_DEVICE="${IO_DEVICE:-$(detect_root_io_device)}"
+CPUSET_CPUS="${CPUSET_CPUS:-$(detect_effective_value cpuset.cpus "$(nproc --all 2>/dev/null | awk '{ if ($1 > 1) print "0-" $1 - 1; else print "0" }')")}"
+CPUSET_MEMS="${CPUSET_MEMS:-$(detect_effective_value cpuset.mems 0)}"
+LATENCY_CPUSET="${LATENCY_CPUSET:-0-1}"
+BATCH_CPUSET="${BATCH_CPUSET:-2-3}"
+BACKGROUND_CPUSET="${BACKGROUND_CPUSET:-4-7}"
 
-echo 0 > "$ROOT/cpuset.mems"
-echo 0 > "$ROOT/latency/cpuset.mems"
-echo 0 > "$ROOT/batch/cpuset.mems"
-echo 0 > "$ROOT/background/cpuset.mems"
+write_cgroup_value_or_fallback "$ROOT/cpuset.mems" "$CPUSET_MEMS" 0
+write_cgroup_value_or_fallback "$ROOT/cpuset.cpus" "$CPUSET_CPUS" "$CPUSET_CPUS"
+write_cgroup_value_or_fallback "$ROOT/latency/cpuset.mems" "$CPUSET_MEMS" 0
+write_cgroup_value_or_fallback "$ROOT/batch/cpuset.mems" "$CPUSET_MEMS" 0
+write_cgroup_value_or_fallback "$ROOT/background/cpuset.mems" "$CPUSET_MEMS" 0
 
-echo 0-1 > "$ROOT/latency/cpuset.cpus"
-echo 2-3 > "$ROOT/batch/cpuset.cpus"
-echo 4-7 > "$ROOT/background/cpuset.cpus"
+write_cgroup_value_or_fallback "$ROOT/latency/cpuset.cpus" "$LATENCY_CPUSET" "$CPUSET_CPUS"
+write_cgroup_value_or_fallback "$ROOT/batch/cpuset.cpus" "$BATCH_CPUSET" "$CPUSET_CPUS"
+write_cgroup_value_or_fallback "$ROOT/background/cpuset.cpus" "$BACKGROUND_CPUSET" "$CPUSET_CPUS"
 
 echo "$LATENCY_WEIGHT" > "$ROOT/latency/cpu.weight"
 echo "$BATCH_WEIGHT" > "$ROOT/batch/cpu.weight"
@@ -74,6 +106,6 @@ info "  batch/cpu.weight=$BATCH_WEIGHT"
 info "  background/cpu.weight=$BACKGROUND_WEIGHT"
 info '  memory controller requested for latency/batch/background'
 info "  io controller requested for latency/batch/background, io.device=${IO_DEVICE:-unknown}"
-info '  latency/cpuset.cpus=0-1'
-info '  batch/cpuset.cpus=2-3'
-info '  background/cpuset.cpus=4-7'
+info "  latency/cpuset.cpus=$(cat "$ROOT/latency/cpuset.cpus" 2>/dev/null || true)"
+info "  batch/cpuset.cpus=$(cat "$ROOT/batch/cpuset.cpus" 2>/dev/null || true)"
+info "  background/cpuset.cpus=$(cat "$ROOT/background/cpuset.cpus" 2>/dev/null || true)"

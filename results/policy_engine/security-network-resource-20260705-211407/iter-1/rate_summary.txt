@@ -1,0 +1,2 @@
+before_mbit=9960.074
+after_mbit=2.76
