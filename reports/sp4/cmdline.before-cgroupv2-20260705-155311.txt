@@ -1,0 +1,1 @@
+BOOT_IMAGE=/vmlinuz-6.6.0-159.4.3.154.oe2403sp4.x86_64 root=/dev/mapper/openeuler-root ro resume=/dev/mapper/openeuler-swap rd.lvm.lv=openeuler/root rd.lvm.lv=openeuler/swap cgroup_disable=files apparmor=0 crashkernel=512M
