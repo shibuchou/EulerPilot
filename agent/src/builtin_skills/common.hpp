@@ -43,6 +43,9 @@
 #include <vector>
 
 #if defined(__GNUC__)
+// This private helper header is included by several Skill implementation
+// units. Some helpers are intentionally used by only one Skill, so suppress the
+// compiler warning locally instead of exporting unrelated declarations.
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
 #endif

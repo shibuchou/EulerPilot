@@ -5,6 +5,10 @@
 
 char LICENSE[] SEC("license") = "GPL";
 
+/* Minimal cgroup/connect4 program for the formal network_policy Skill.
+ * User space owns target resolution, audit, and rollback; the BPF path only
+ * enforces the configured destination port and maintains hit counters.
+ */
 struct network_policy_config {
     __u16 deny_port;
     __u8 enforce;
@@ -31,7 +35,7 @@ struct {
 } stats_map SEC(".maps");
 
 SEC("cgroup/connect4")
-int network_policy_demo(struct bpf_sock_addr *ctx)
+int network_policy_connect4(struct bpf_sock_addr *ctx)
 {
     __u32 key = 0;
     struct network_policy_config *config;

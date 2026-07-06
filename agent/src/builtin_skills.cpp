@@ -5,6 +5,8 @@
 namespace eulerpilot {
 
 void register_builtin_skills(SkillRegistry &registry) {
+    // Built-in Skills are implemented in separate translation units; this
+    // registry file remains the single place that defines the default bundle.
     register_resource_control_skill(registry);
     register_psi_gate_skill(registry);
     register_network_policy_skill(registry);

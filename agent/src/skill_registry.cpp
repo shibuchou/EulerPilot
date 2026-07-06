@@ -29,6 +29,8 @@ std::vector<std::string> SkillRegistry::list() const {
     for (const auto &entry : factories_) {
         names.push_back(entry.first);
     }
+    // Keep CLI output and tests deterministic regardless of map iteration
+    // order, especially after built-in Skills were split into separate files.
     std::sort(names.begin(), names.end());
     return names;
 }

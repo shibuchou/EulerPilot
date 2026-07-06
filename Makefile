@@ -37,6 +37,8 @@ unit-tests: $(UNIT_SKILL_REGISTRY_BIN)
 
 network-policy: $(NETWORK_POLICY_BPF) $(NETWORK_POLICY_SKEL)
 
+# Compatibility aliases kept for older scripts; canonical targets above use
+# the formal Skill names without the historical "-demo" suffix.
 network-policy-demo: network-policy
 
 network-qos-tc: $(NETWORK_QOS_TC_BPF)

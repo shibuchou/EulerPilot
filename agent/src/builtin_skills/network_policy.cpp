@@ -153,7 +153,7 @@ public:
             return false;
         }
         if (!ensure_cgroup(cgroup_path_)) {
-            last_error_ = "demo-cgroup-create-failed";
+            last_error_ = "network-policy-cgroup-create-failed";
             return false;
         }
         auto target = resolve_cgroup_target(skill_name_, cgroup_path_);
@@ -177,18 +177,18 @@ public:
         cgroup_fd_ = open(cgroup_path_.c_str(), O_RDONLY | O_DIRECTORY);
         if (cgroup_fd_ < 0) {
             cleanup_cgroup(cgroup_path_);
-            last_error_ = "demo-cgroup-open-failed";
+            last_error_ = "network-policy-cgroup-open-failed";
             return false;
         }
         bpf_object_ = bpf_object__open_file("/root/EulerPilot/build/network_policy.bpf.o", nullptr);
         if (!bpf_object_) {
             rollback();
-            last_error_ = "demo-bpf-open-failed";
+            last_error_ = "network-policy-bpf-open-failed";
             return false;
         }
         if (bpf_object__load(bpf_object_) != 0) {
             rollback();
-            last_error_ = "demo-bpf-load-failed";
+            last_error_ = "network-policy-bpf-load-failed";
             return false;
         }
         if (!install_policy_config()) {
@@ -199,14 +199,14 @@ public:
         link_ = bpf_program__attach_cgroup(prog, cgroup_fd_);
         if (!link_) {
             rollback();
-            last_error_ = "demo-bpf-attach-failed";
+            last_error_ = "network-policy-bpf-attach-failed";
             return false;
         }
         std::error_code ec;
         fs::remove(link_pin_path(), ec);
         if (bpf_link__pin(link_, link_pin_path().c_str()) != 0) {
             rollback();
-            last_error_ = "demo-bpf-pin-failed";
+            last_error_ = "network-policy-bpf-pin-failed";
             return false;
         }
         running_ = true;

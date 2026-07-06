@@ -33,6 +33,8 @@ int main() {
     registry.register_factory("z_dummy", [] { return std::make_unique<DummySkill>(); });
     registry.register_factory("a_dummy", [] { return std::make_unique<DummySkill>(); });
 
+    // The registry is the contract used by --list-skills and by SkillManager
+    // construction, so it must be deterministic and reject ambiguous entries.
     const auto names = registry.list();
     assert(names.size() == 2);
     assert(names[0] == "a_dummy");
@@ -47,6 +49,8 @@ int main() {
     }
     assert(duplicate_rejected);
 
+    // Unknown Skill names should fail at construction time instead of silently
+    // dropping a configured capability.
     bool unknown_rejected = false;
     try {
         (void)registry.create("missing");

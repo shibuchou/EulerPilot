@@ -28,6 +28,8 @@ namespace eulerpilot {
 
 namespace {
 
+// Signal handlers update only this flag. Runtime cleanup still happens on the
+// normal control path, so Skill rollback and metrics shutdown remain ordered.
 volatile std::sig_atomic_t g_shutdown_requested = 0;
 
 bool file_exists(const char *path) {

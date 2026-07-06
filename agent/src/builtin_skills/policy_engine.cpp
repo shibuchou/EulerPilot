@@ -3,6 +3,9 @@
 
 namespace eulerpilot {
 namespace {
+// One PolicyEngineAction is a single whitelisted side effect. The engine keeps
+// the previous value beside the resolved target so a multi-action transaction
+// can roll back already-applied changes if a later action fails.
 struct PolicyEngineAction {
     std::string name;
     std::string target_ref;
@@ -604,6 +607,9 @@ private:
         if (applied_once_.exchange(true)) {
             return;
         }
+        // The transaction id is written to Policy Engine, child Skill audit
+        // events, and ActionJournal entries. This gives the Web Console and
+        // final evidence scripts one stable key for cross-Skill reconstruction.
         const std::string trigger_event_id = extract_json_string(source_line, "event_id");
         const std::string transaction_id = "pe-v3-1-" +
             std::to_string(trigger_count_.load()) + "-" + now_event_timestamp();
@@ -634,6 +640,9 @@ private:
 
     void restore_actions(const std::string &transaction_id,
                          const std::string &trigger_event_id) {
+        // Restore in reverse order so dependent actions unwind like a stack:
+        // network qdisc changes are removed before the cgroup controls that
+        // may have narrowed the same workload.
         for (std::size_t i = actions_.size(); i > 0; --i) {
             auto &action = actions_[i - 1];
             if (!action.applied) {
