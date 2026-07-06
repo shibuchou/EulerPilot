@@ -42,6 +42,11 @@
 #include <utility>
 #include <vector>
 
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function"
+#endif
+
 namespace eulerpilot {
 
 namespace {
@@ -833,3 +838,7 @@ void cleanup_cgroup(const fs::path &path) {
 
 } // namespace
 } // namespace eulerpilot
+
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif

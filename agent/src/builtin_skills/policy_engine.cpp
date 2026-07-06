@@ -877,8 +877,6 @@ private:
     std::string last_transaction_id_;
     std::string last_trigger_event_id_;
 };
-} // namespace
-
 
 } // namespace
 
