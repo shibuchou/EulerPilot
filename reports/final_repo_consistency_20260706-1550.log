@@ -1,0 +1,39 @@
+EulerPilot final repository consistency check after engineering quality closeout
+Timestamp: 2026-07-06 15:50 CST
+
+Commit:
+  4c342fbd Refresh final evidence compact after quality closeout
+
+Repositories:
+  local D:\code\Ubuntu\EulerPilot: 4c342fbd
+  GitHub shibuchou/EulerPilot main: 4c342fbdb8c6b262b8acc86f507b809079cc1d62
+  121 /root/EulerPilot: 4c342fbd, git status short count 0
+  122 /root/EulerPilot: 4c342fbd, git status short count 0
+  123 /root/EulerPilot: 4c342fbd, git status short count 0
+
+Engineering closeout:
+  builtin_skills.cpp split into per-Skill implementation files
+  canonical BPF source names: network_policy.bpf.c, network_xdp.bpf.c, security_policy.bpf.c
+  C++ unit test target: make unit-tests
+  GitHub Actions build workflow added
+  SIGINT/SIGTERM graceful shutdown path added
+
+Verification:
+  121 final quality gate: reports/final_quality_gate_20260706-quality-121.log
+  P0 result: 22/22 pass
+  optional result: 100-round smoke pass, 5-round doctor pass
+  122: make unit-tests + make agent + validate-config pass
+  123: make unit-tests + make agent + validate-config pass
+
+Evidence:
+  configs/final_evidence_manifest.json: 32 entries
+  reports/final_evidence_compact.json: 32 entries
+  required missing: 0
+  warning entries: 0
+
+121 Web Console:
+  GET /api/health: ok=true
+  GET /api/evidence/summary: total=32, required_missing=0, warnings=0
+
+Notes:
+  Historical 20260630 final_repo_consistency logs remain local untracked files and were not added.
