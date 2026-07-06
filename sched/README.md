@@ -15,6 +15,17 @@
 - 第一阶段主执行路径为 `cgroup v2`
 - 本目录保留 ScxExecutor 的接口和实现位置
 
+截至 `2026-07-06`，openEuler 24.03 LTS SP4 验证机已完成启用
+`CONFIG_SCHED_CLASS_EXT=y` 的自编译内核验证，`scx_eulerpilot` 可通过：
+
+```bash
+scripts/build_scx_eulerpilot.sh
+```
+
+构建并安装到 `/usr/local/bin/scx_eulerpilot`。脚本默认使用
+`/root/kernel-build/src-scx/tools/sched_ext`，可通过 `KERNEL_SRC`、
+`SCHED_EXT_DIR`、`SCX_BUILD_DIR` 和 `INSTALL_BIN` 覆盖。
+
 截至 `2026-06-11`，独立 `OLK-6.6` 验证线已经推进到第一版类映射原型：
 
 - 用户态 Agent 已支持 `--backend sched_ext`
@@ -61,4 +72,14 @@
   - `2`：batch
   - `3`：background
 
-Agent 在 `sched_ext` 后端启用后，会优先尝试打开 pinned `class_map`，并把识别结果同步进去。
+`scx_eulerpilot` 会保留 libbpf 默认 pinned map，并额外 pin 到 EulerPilot
+命名空间，供 Agent 与 `psi_gate` 稳定发现：
+
+```text
+/sys/fs/bpf/eulerpilot/scx_eulerpilot/v1/class_map
+/sys/fs/bpf/eulerpilot/scx_eulerpilot/v1/gate_state_map
+/sys/fs/bpf/eulerpilot/scx_eulerpilot/v1/stats
+```
+
+Agent 在 `sched_ext` 后端启用后，会优先尝试打开命名空间 pinned
+`class_map`，并把识别结果同步进去。

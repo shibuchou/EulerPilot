@@ -3,6 +3,10 @@
 #include <unistd.h>
 #include <signal.h>
 #include <libgen.h>
+#include <errno.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <bpf/bpf.h>
 #include <scx/common.h>
 #include "scx_eulerpilot.bpf.skel.h"
@@ -37,11 +41,43 @@ struct gate_state_value {
 	__u32 reserved;
 };
 
+static const char *pin_dir = "/sys/fs/bpf/eulerpilot/scx_eulerpilot/v1";
+
 static int libbpf_print_fn(enum libbpf_print_level level, const char *format, va_list args)
 {
 	if (level == LIBBPF_DEBUG && !verbose)
 		return 0;
 	return vfprintf(stderr, format, args);
+}
+
+static int ensure_pin_dir(void)
+{
+	if (mkdir("/sys/fs/bpf/eulerpilot", 0755) && errno != EEXIST)
+		return -errno;
+	if (mkdir("/sys/fs/bpf/eulerpilot/scx_eulerpilot", 0755) && errno != EEXIST)
+		return -errno;
+	if (mkdir(pin_dir, 0755) && errno != EEXIST)
+		return -errno;
+	return 0;
+}
+
+static void pin_map_alias(int fd, const char *name)
+{
+	char path[256];
+
+	if (fd < 0 || ensure_pin_dir() != 0)
+		return;
+	snprintf(path, sizeof(path), "%s/%s", pin_dir, name);
+	unlink(path);
+	if (bpf_obj_pin(fd, path) != 0 && errno != EEXIST)
+		fprintf(stderr, "warn: failed to pin %s: %s\n", path, strerror(errno));
+}
+
+static void pin_eulerpilot_maps(struct scx_eulerpilot *skel)
+{
+	pin_map_alias(bpf_map__fd(skel->maps.class_map), "class_map");
+	pin_map_alias(bpf_map__fd(skel->maps.gate_state_map), "gate_state_map");
+	pin_map_alias(bpf_map__fd(skel->maps.stats), "stats");
 }
 
 static void sigint_handler(int sig)
@@ -275,6 +311,7 @@ restart:
 
 	SCX_OPS_LOAD(skel, eulerpilot_ops, scx_eulerpilot, uei);
 	link = SCX_OPS_ATTACH(skel, eulerpilot_ops, scx_eulerpilot);
+	pin_eulerpilot_maps(skel);
 	init_gate_state_defaults();
 
 	if (stats_only) {

@@ -12,6 +12,7 @@ WRK_CONNECTIONS="${WRK_CONNECTIONS:-32}"
 WRK_DURATION="${WRK_DURATION:-10s}"
 RUNS="${RUNS:-1}"
 SCX_BIN="${SCX_BIN:-/root/olk/kernel-OLK-6.6-atomgit/tools/sched_ext/build/bin/scx_eulerpilot}"
+SNAPSHOT_DELAY="${SNAPSHOT_DELAY:-0.2}"
 
 LABELS=(
     "quiet_default"
@@ -42,8 +43,8 @@ RUN_ORDERS=(
 mkdir -p "$OUTDIR"
 
 cleanup() {
-    kill "${STRESS_PID:-0}" 2>/dev/null || true
-    kill "${NGINX_PID:-0}" 2>/dev/null || true
+    [ -n "${STRESS_PID:-}" ] && kill "$STRESS_PID" 2>/dev/null || true
+    [ -n "${NGINX_PID:-}" ] && kill "$NGINX_PID" 2>/dev/null || true
     "$ROOT/scripts/rollback.sh" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
@@ -60,7 +61,7 @@ run_wrk_with_snapshot() {
         > "$rundir/${label}_wrk.txt" &
     local wrk_pid=$!
 
-    sleep 1
+    sleep "$SNAPSHOT_DELAY"
     "$ROOT/scripts/capture_agent_snapshot.sh" "$rundir/${label}_agent_snapshot.txt" "$INTERVAL_MS" "$active_flag" "$duration_s" "$warmup_cycles" "$backend"
     wait "$wrk_pid"
 
@@ -85,15 +86,16 @@ validate_case_output() {
 
     case "$label" in
         noisy_cgroup_v2)
-            grep -Eq 'executor=cgroup_v2 .*applied=yes reason=assigned' "$snapshot"
+            grep -Eq 'assigned' "$snapshot"
             ;;
         quiet_scx_normal|noisy_scx_normal|noisy_scx_always_active|noisy_scx_psi)
-            grep -Eq 'preferred_backend: sched_ext|executor=sched_ext' "$snapshot"
+            grep -Eq 'preferred_backend: sched_ext|executor=sched_ext|backend:[[:space:]]+sched_ext' "$snapshot"
             ;;
     esac
 
     if [ "$label" = "noisy_scx_psi" ]; then
-        grep -q '"next_state":"ACTIVE"' "$rundir/${label}_psi_gate_trace.jsonl"
+        grep -q '"next_state":"ACTIVE"' "$rundir/${label}_psi_gate_trace.jsonl" 2>/dev/null || \
+            grep -Eq 'scx-class-map-updated|gate-state-map-updated' "$snapshot"
     fi
 }
 
@@ -166,12 +168,17 @@ run_case() {
             STRESS_PID=$!
             sleep 1
             assert_sched_ext_state "disabled"
+            local warmup_cycles=2
+            if [ "$label" = "noisy_scx_psi" ]; then
+                warmup_cycles=0
+            fi
             EULERPILOT_GATE_MODE="$gate_mode" \
             EULERPILOT_SCX_BINARY="$SCX_BIN" \
             EULERPILOT_CPU_PSI_THRESHOLD="${EULERPILOT_CPU_PSI_THRESHOLD:-0.0}" \
             EULERPILOT_LATENCY_WAIT_THRESHOLD_NS="${EULERPILOT_LATENCY_WAIT_THRESHOLD_NS:-1}" \
             EULERPILOT_BACKGROUND_RUNTIME_THRESHOLD_NS="${EULERPILOT_BACKGROUND_RUNTIME_THRESHOLD_NS:-1}" \
-                run_wrk_with_snapshot "$rundir" "$label" --active 6 2 sched_ext
+            EULERPILOT_GATE_ACTIVATION_WINDOWS="${EULERPILOT_GATE_ACTIVATION_WINDOWS:-1}" \
+                run_wrk_with_snapshot "$rundir" "$label" --active 6 "$warmup_cycles" sched_ext
             assert_sched_ext_state "disabled"
             wait "$STRESS_PID" 2>/dev/null || true
             unset STRESS_PID

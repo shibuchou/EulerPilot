@@ -14,13 +14,13 @@ IO_DEVICE="${IO_DEVICE:-$(detect_root_io_device)}"
 
 printf '[Rollback] restore cgroup parameters and stop active sched_ext scheduler if configured.\n'
 
-pkill -f "$SCX_BIN" 2>/dev/null || true
-pkill -f "$SCX_NAME" 2>/dev/null || true
+pkill -x "$SCX_NAME" 2>/dev/null || true
 
 # legacy path fallback
-pkill -f '/root/olk/kernel-OLK-6.6-atomgit/tools/sched_ext/build/bin/scx_' 2>/dev/null || true
+pkill -f '^/root/olk/kernel-OLK-6.6-atomgit/tools/sched_ext/build/bin/scx_' 2>/dev/null || true
 
 rm -f /sys/fs/bpf/eulerpilot/scx_eulerpilot/v1/class_map 2>/dev/null || true
+rm -f /sys/fs/bpf/eulerpilot/scx_eulerpilot/v1/gate_state_map 2>/dev/null || true
 rm -f /sys/fs/bpf/eulerpilot/scx_eulerpilot/v1/stats 2>/dev/null || true
 rmdir /sys/fs/bpf/eulerpilot/scx_eulerpilot/v1 2>/dev/null || true
 rmdir /sys/fs/bpf/eulerpilot/scx_eulerpilot 2>/dev/null || true

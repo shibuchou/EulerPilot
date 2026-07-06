@@ -1,0 +1,29 @@
+﻿
+  * EulerPilot Agent
+  --------------------------------------------------
+  config:     /root/EulerPilot/configs/agent.yaml
+  interval:   1000ms  duration:   4s  warmup: 0
+  mode:       active  backend:    sched_ext
+  gate:       always-active
+  env:         psi:ok  cg:ok  scx:ok
+  --------------------------------------------------
+
+  --- legend ---
+  mark: . UNKNOWN  L LATENCY_SENSITIVE  B BACKGROUND_NOISY  T THROUGHPUT_BATCH
+  act:  + applied  ~ managed  - none
+  --- observing ---
+  mark name             pid  class        act profile    w:weight reason
+  B stress-ng-cpu      17556 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  L redis-server       17525 LATENCY_SENSITIVE |~ normal_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      17555 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      17556 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  L redis-server       17525 LATENCY_SENSITIVE |+ latency_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      17555 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      17556 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  L redis-server       17525 LATENCY_SENSITIVE |+ latency_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      17555 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      17556 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  L redis-server       17525 LATENCY_SENSITIVE |+ latency_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      17555 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  --------------------------------------------------
+  DONE  total=55  applied=9  L=4  T=0  B=8  U=43

@@ -25,10 +25,16 @@
 - `bench/redis/run_redis_main_experiment.sh`
 - `bench/redis/run_redis_final_experiment.sh`
 - `bench/redis/run_redis_sched_ext_compare.sh`
+- `bench/redis/run_redis_sched_ext_psi_probe.sh`
 
 当前最强候选结果目录：
 
 - `/root/EulerPilot/results/final/redis-scx-compare-20260612-191543`
+- SP4 sched_ext 内核第一轮：`/root/EulerPilot/results/final/redis-scx-compare-20260706-101505`
+- SP4 PSI ACTIVE probe：`/root/EulerPilot/results/final/redis-scx-psi-probe-20260706-100857`
+
+`run_redis_sched_ext_psi_probe.sh` 专门用于验证 PSI gate 的
+`NORMAL -> ARMED -> ACTIVE` 状态迁移，避免短性能对照窗口与门控触发证据互相干扰。
 
 ### Nginx
 
@@ -38,6 +44,7 @@
 当前最强候选结果目录：
 
 - `/root/EulerPilot/results/final/nginx-scx-compare-20260612-194018`
+- SP4 sched_ext 内核第一轮：`/root/EulerPilot/results/final/nginx-scx-compare-20260706-101928`
 
 ### 图表与结果材料
 

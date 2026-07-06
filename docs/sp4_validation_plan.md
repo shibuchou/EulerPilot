@@ -1,6 +1,6 @@
 # openEuler 24.03 LTS SP4 验证计划
 
-更新时间：`2026-07-05`
+更新时间：`2026-07-06`
 
 SP4 已接入为 EulerPilot 后续完整能力验证平台。本文件记录 SP4 初始验证结果、sched_ext/scx 自编译内核验证结果和后续复核入口；121/122 的 SP3 双机结果仍作为既有稳定证据保留。
 
@@ -8,7 +8,7 @@ SP4 已接入为 EulerPilot 后续完整能力验证平台。本文件记录 SP4
 
 - SP4 主机：`openEuler-2403-LTS-SP4` / `192.168.1.123`
 - 仓库路径：`/root/EulerPilot`
-- 验证基线：`cd0add4`
+- 验证基线：`d5ba000` 起，已追加 SP4 `scx_eulerpilot` 构建与 workload 对照修复
 - 系统版本：`openEuler 24.03 LTS SP4`
 - 初始发行内核：`6.6.0-159.4.3.154.oe2403sp4.x86_64`
 - sched_ext 验证内核：`6.6.0-159.4.3.154.oe2403sp4.x86_64-eulerpilot-scx`
@@ -19,6 +19,7 @@ SP4 已接入为 EulerPilot 后续完整能力验证平台。本文件记录 SP4
 - Web Console：已通过 `npm ci/test/lint/build/audit`，Evidence 显示 28 条、必需缺失 0、警告 0
 - 质量门禁：`scripts/final_quality_gate.sh` 已在 SP4 sched_ext 内核通过 21/21 P0、100 轮 smoke、5 轮 doctor
 - v3.1 主链路：`tests/integration/test_policy_engine_security_network_resource.sh --repeat 10` 已在 SP4 sched_ext 内核通过
+- sched_ext workload：Redis smoke、Redis sched_ext compare、Nginx sched_ext compare 和 Redis PSI ACTIVE probe 已通过
 
 已保存的 SP4 初始验证与 sched_ext 复核证据：
 
@@ -33,6 +34,10 @@ reports/sp4/policy_engine_security_network_resource_scx_20260705-211329.log
 reports/sp4/policy_engine_security_network_resource_repeat10_scx_20260705-211407.log
 results/policy_engine/security-network-resource-20260705-211329
 results/policy_engine/security-network-resource-20260705-211407
+results/reports/redis-scx-smoke-20260706-092724
+results/final/redis-scx-psi-probe-20260706-100857
+results/final/redis-scx-compare-20260706-101505
+results/final/nginx-scx-compare-20260706-101928
 ```
 
 ## sched_ext/scx 复核结论
@@ -53,6 +58,16 @@ CONFIG_EXT_GROUP_SCHED=y
 ```
 
 当前 SP4 已验证主路径为 `cgroup v2 + PSI + eBPF + Policy Engine + Web Console`，增强路径为 `sched_ext/scx available`。Web Console 在 SP4 页面中应显示为路径分工，而不是把发行内核默认限制表述为项目失败。
+
+截至 `2026-07-06`，`scx_eulerpilot` 已通过项目脚本构建并安装到 `/usr/local/bin/scx_eulerpilot`，启动后会额外 pin 到 EulerPilot 命名空间：
+
+```text
+/sys/fs/bpf/eulerpilot/scx_eulerpilot/v1/class_map
+/sys/fs/bpf/eulerpilot/scx_eulerpilot/v1/gate_state_map
+/sys/fs/bpf/eulerpilot/scx_eulerpilot/v1/stats
+```
+
+Agent 的 `--backend sched_ext --active` 已可直接读取这些 pinned map。Redis/Nginx 对照脚本已适配当前 CLI 表格输出格式，Redis PSI ACTIVE 触发证据由独立 probe 固化，避免短性能对照窗口与 gate 状态验证互相影响。
 
 ## 已修复的 SP4 环境兼容问题
 
@@ -94,6 +109,9 @@ make agent
 sudo tests/integration/test_policy_engine_security_network_resource.sh
 sudo tests/integration/test_policy_engine_security_network_resource.sh --repeat 10
 sudo scripts/final_quality_gate.sh
+SCX_BIN=/usr/local/bin/scx_eulerpilot sudo bench/redis/run_redis_sched_ext_psi_probe.sh
+SCX_BIN=/usr/local/bin/scx_eulerpilot RUNS=1 sudo bench/redis/run_redis_sched_ext_compare.sh
+SCX_BIN=/usr/local/bin/scx_eulerpilot RUNS=1 sudo bench/nginx/run_nginx_sched_ext_compare.sh
 ```
 
 ## 结果记录

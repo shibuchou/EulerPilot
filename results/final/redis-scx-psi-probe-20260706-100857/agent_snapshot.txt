@@ -1,0 +1,102 @@
+﻿
+  * EulerPilot Agent
+  --------------------------------------------------
+  config:     /root/EulerPilot/configs/agent.yaml
+  interval:   500ms  duration:   6s  warmup: 0
+  mode:       active  backend:    sched_ext
+  gate:       psi
+  env:         psi:ok  cg:ok  scx:ok
+  --------------------------------------------------
+
+  --- legend ---
+  mark: . UNKNOWN  L LATENCY_SENSITIVE  B BACKGROUND_NOISY  T THROUGHPUT_BATCH
+  act:  + applied  ~ managed  - none
+  --- observing ---
+  mark name             pid  class        act profile    w:weight reason
+  B stress-ng-cpu      21514 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  T redis-benchmark    21510 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  L redis-server       21501 LATENCY_SENSITIVE |~ normal_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      21512 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      21511 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      21513 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      21514 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  T redis-benchmark    21510 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  L redis-server       21501 LATENCY_SENSITIVE |~ normal_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      21512 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      21511 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      21513 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      21514 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  T redis-benchmark    21510 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  L redis-server       21501 LATENCY_SENSITIVE |+ latency_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      21512 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      21511 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  B stress-ng          21507 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      21513 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      21514 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  T redis-benchmark    21510 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  L redis-server       21501 LATENCY_SENSITIVE |+ latency_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      21512 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      21511 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  B stress-ng          21507 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      21513 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      21514 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  T redis-benchmark    21510 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  L redis-server       21501 LATENCY_SENSITIVE |+ latency_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      21512 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      21511 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  B stress-ng          21507 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      21513 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      21514 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  T redis-benchmark    21510 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  L redis-server       21501 LATENCY_SENSITIVE |+ latency_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      21512 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      21511 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  B stress-ng          21507 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      21513 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      21514 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  T redis-benchmark    21510 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  L redis-server       21501 LATENCY_SENSITIVE |+ latency_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      21512 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      21511 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  B stress-ng          21507 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      21513 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      21514 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  T redis-benchmark    21510 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  L redis-server       21501 LATENCY_SENSITIVE |+ latency_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      21512 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      21511 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  B stress-ng          21507 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      21513 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      21514 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  T redis-benchmark    21510 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  L redis-server       21501 LATENCY_SENSITIVE |+ latency_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      21512 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      21511 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  B stress-ng          21507 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      21513 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      21514 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  T redis-benchmark    21510 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  L redis-server       21501 LATENCY_SENSITIVE |+ latency_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      21512 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      21511 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  T redis-benchmark    21519 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  B stress-ng          21507 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      21513 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      21514 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  T redis-benchmark    21510 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  L redis-server       21501 LATENCY_SENSITIVE |+ latency_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      21512 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      21511 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  T redis-benchmark    21519 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  B stress-ng          21507 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      21513 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      21514 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  T redis-benchmark    21510 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  L redis-server       21501 LATENCY_SENSITIVE |+ latency_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      21512 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      21511 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  T redis-benchmark    21519 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  B stress-ng          21507 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      21513 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  --------------------------------------------------
+  DONE  total=327  applied=60  L=12  T=15  B=58  U=242
