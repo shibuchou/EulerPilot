@@ -1,6 +1,6 @@
 # EulerPilot 最终答辩文档
 
-更新时间：`2026-06-14`
+更新时间：`2026-07-06`
 
 ---
 
@@ -22,7 +22,7 @@ eBPF 观测 -> Workload 分类 -> 策略决策 -> Skills 编排 -> 双后端执�
 Observer (eBPF + PSI)
   -> Analyzer (workload 识别)
   -> Policy Engine (三层分层证据)
-  -> Skill Manager (4 runtime skills + YAML 驱动)
+  -> Skill Manager (Resource / Network / Security / Policy Engine + YAML 驱动)
   -> Executor (CgroupExecutor / ScxExecutor)
   -> Benchmark / Report (Redis + Nginx 双业务线)
 ```
@@ -34,9 +34,9 @@ Observer (eBPF + PSI)
 | Observer | eBPF 采集 sched_wakeup/switch/migrate + PSI | ✅ |
 | Analyzer | 识别 redis-server / nginx / stress-ng / make / sysbench | ✅ |
 | Policy Engine | 三层分层证据：场景前提 -> 压力证据 -> 控制分级 | ✅ |
-| Skill Manager | 4 runtime skills + YAML 驱动 + 拓扑排序 + 倒序回滚 | ✅ |
+| Skill Manager | Resource / Network / Security / Policy Engine + YAML 驱动 + 拓扑排序 + 倒序回滚 | ✅ |
 | CgroupExecutor | cpu.weight + cgroup.procs（SP3 主线） | ✅ |
-| ScxExecutor | class_map -> DSQ 分流（OLK-6.6 增强线） | ✅ |
+| ScxExecutor | class_map -> DSQ 分流（OLK-6.6 / SP4 增强线） | ✅ |
 | PsiGate v1 | NORMAL -> ARMED -> ACTIVE -> COOLDOWN 状态机 | ✅ |
 | Benchmark | 多后端矩阵 + 多轮运行 + 平衡轮换 + 中文报告 | ✅ |
 
@@ -46,9 +46,10 @@ Observer (eBPF + PSI)
 
 | 方向 | 实现方式 | 等级 |
 |------|----------|------|
-| **resource control agent** | CgroupExecutor + ScxExecutor，进入 Redis/Nginx 主实验 | 主线 |
-| **network policy agent** | `network_policy_demo`：cgroup/connect4，单端口 deny，attach->deny->recover 闭环 | 可演示 |
-| **security policy agent** | `security_policy_demo`：BPF LSM file_open，路径精确匹配，attach->deny->recover 闭环 | 可演示 |
+| **resource control agent** | CPU/Memory/IO 自动闭环，cgroup/scx 双后端，真实 container / k3s Pod target | 主线 |
+| **network policy agent** | connect4、TC QoS、XDP、协议/IP/端口 tuple、真实 Pod host veth | 已完成 |
+| **security policy agent** | BPF LSM、syscall tracing、服务联动 anomaly、credential anomaly/deep hook 评估 | 已完成 |
+| **policy engine agent** | Security anomaly -> Resource / Network+Resource / real Pod 联动，事务化回滚 | 已完成 |
 
 ---
 
@@ -83,6 +84,7 @@ Observer (eBPF + PSI)
 | 项目 | 内容 |
 |------|------|
 | 候选目录 | `results/final/redis-scx-compare-20260612-191543` |
+| SP4 复核目录 | `results/final/redis-scx-compare-20260706-115029` |
 | 轮数 | RUNS=5 |
 | 矩阵 | quiet_default / quiet_scx_normal / noisy_default / noisy_cgroup_v2 / noisy_scx_normal / noisy_scx_always_active / noisy_scx_psi |
 | 观察 | noisy_cgroup_v2 在 GET 上吞吐明显提升；noisy_scx_normal 在 GET/INCR/SET 上 RPS 改善 |
@@ -93,6 +95,7 @@ Observer (eBPF + PSI)
 | 项目 | 内容 |
 |------|------|
 | 候选目录 | `results/final/nginx-scx-compare-20260612-194018` |
+| SP4 复核目录 | `results/final/nginx-scx-compare-20260706-120547` |
 | 轮数 | RUNS=5 |
 | 矩阵 | 与 Redis 保持一致 |
 | 观察 | cgroup_v2 在 Nginx 场景下更稳；部分 sched_ext 模式存在明显 P99 代价 |
@@ -117,7 +120,7 @@ latency + background 场景前提
 ### 查看所有 Skills
 ```bash
 ./build/eulerpilot-agent --list-skills
-# 输出：resource_control, psi_gate, network_policy_demo, security_policy_demo
+# 输出包含：resource_control, psi_gate, network_policy/network_qos/network_xdp, security_policy, policy_engine 等能力
 ```
 
 ### 探测 Skills 状态
@@ -126,7 +129,17 @@ latency + background 场景前提
 # 全部 available=yes，默认 network/security demo 为 disabled
 ```
 
-### network_policy_demo 演示
+### Policy Engine 主演示链路
+```bash
+bash tests/integration/test_policy_engine_security_network_resource.sh
+# security_policy burst_connect
+# -> policy_engine decision
+# -> resource_control cpu.max / memory.high
+# -> network_qos tc/tbf 2mbit
+# -> rollback
+```
+
+### network_policy_demo 兼容回归入口
 ```bash
 python3 -m http.server 18080 --bind 127.0.0.1 &
 # 临时启用 network_policy_demo，启动 Agent
@@ -134,7 +147,7 @@ python3 -m http.server 18080 --bind 127.0.0.1 &
 # Agent 退出 -> 恢复
 ```
 
-### security_policy_demo 演示
+### security_policy_demo 兼容回归入口
 ```bash
 cat demo/security_policy_demo/secret.txt  # -> "TOP SECRET"
 # 临时启用 security_policy_demo，启动 Agent
@@ -150,6 +163,7 @@ cat demo/security_policy_demo/secret.txt  # -> Operation not permitted
 |------|-----|------|------|
 | 主交付机 | 192.168.1.121 | openEuler 24.03 LTS SP3 | 代码 + 文档 + 主闭环 |
 | OLK 验证机 | 192.168.1.122 | openEuler 24.03 LTS SP3 (6.6.0-olk66-scx) | sched_ext 正式对照 |
+| SP4 复核机 | 192.168.1.123 | openEuler 24.03 LTS SP4，自编译 sched_ext 内核 | SP4 sched_ext / Web Console / 质量门禁复核 |
 | GitHub | `shibuchou/EulerPilot` | — | 代码仓库（私密） |
 
 ---
@@ -167,9 +181,10 @@ cat demo/security_policy_demo/secret.txt  # -> Operation not permitted
 | 演示说明 | `docs/demo_runbook.md` |
 | 交接手册 | `docs/handover_manual.md`（502 行） |
 | 提交清单 | `docs/submission_checklist.md` |
-| 可视化 | `reports/dashboard/index.html` 静态 Dashboard + Agent `/metrics` 端点 |
+| 可视化 | `reports/dashboard/index.html` 静态 Dashboard + Agent `/metrics` 端点 + `web_console/` |
 | 图表 | `reports/final_figures/`（7 张 SVG） |
-| 实验结果 | `results/final/`（9 个目录） |
+| 实验结果 | `results/final/`、`results/network_policy/`、`results/security_policy/`、`results/resource_control/`、`results/policy_engine/` |
+| 证据压缩入口 | `configs/final_evidence_manifest.json`、`reports/final_evidence_compact.md/json`，32 条核心证据、必需缺失 0、警告 0 |
 | 代码仓库 | `https://github.com/shibuchou/EulerPilot` |
 
 ---
@@ -178,8 +193,8 @@ cat demo/security_policy_demo/secret.txt  # -> Operation not permitted
 
 **可以说的：**
 - 系统实现完成，双后端均可真实运行
-- Redis/Nginx 双业务线均有 RUNS=5 正式候选结果
-- Skills 框架可扩展，network/security demo 证明 eBPF hook 集成能力
+- Redis/Nginx 双业务线均有 RUNS=5 正式候选结果，SP4 上有 RUNS=3 复核结果
+- Skills 框架可扩展，Network/Security/Resource/Policy Engine 证明 eBPF hook 与系统控制器可统一编排
 - 正式 compare 框架具备可复现性
 
 **不能说的：**
@@ -191,6 +206,6 @@ cat demo/security_policy_demo/secret.txt  # -> Operation not permitted
 
 ## 十、最终结论
 
-> EulerPilot 已完成为一个面向 openEuler 的、可运行、可实验、可解释、可复现、可扩展的系统资源管控 Agent 工程闭环。项目同时覆盖了 resource control、network policy、security policy 三个 OS Agent 扩展方向，并通过 Skills 插件化框架证明了新增 eBPF hook 不侵入核心 Runtime 的架构能力。
+> EulerPilot 已完成为一个面向 openEuler 的、可运行、可实验、可解释、可复现、可扩展的系统资源管控 Agent 工程闭环。项目同时覆盖了 resource control、network policy、security policy 三个 OS Agent 扩展方向，并通过 Policy Engine 跨 Skill 联动、SP4 sched_ext 复核、Web Console 和 32 条 final evidence compact 证明了新增 eBPF hook 与系统控制器可以在统一 Agent 框架下安全编排和回滚。
 
 **当前状态：代码冻结，已进入提交准备阶段。**

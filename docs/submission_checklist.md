@@ -1,6 +1,6 @@
 # EulerPilot 提交清单
 
-更新时间：`2026-07-03`
+更新时间：`2026-07-06`
 
 ## 已完成
 
@@ -57,6 +57,7 @@
 - [x] `security_policy_demo` BPF LSM attach/deny/rollback 集成测试 121/122 均通过
 - [x] Runtime 生命周期收拢与 ActionJournal/AuditBus 最小接入
 - [x] 121 SP3 编译、集成测试和 21 项质量门禁通过，最新 v3.2 credential deep hook 后质量门禁 `reports/final_quality_gate_20260703-creddeep-121.log` 通过，100 轮 smoke 与 5 轮 doctor 通过
+- [x] SP4 sched_ext 自编译内核复核通过：Redis/Nginx `RUNS=3` 多轮对照、Redis PSI ACTIVE probe、最终质量门禁 `reports/sp4/final_quality_gate_scx_workload_20260706-1214.log`
 - [x] 静态 Dashboard：`reports/dashboard/index.html`
 - [x] Prometheus `/metrics` 端点：默认关闭，监听 `127.0.0.1:9108`
 - [x] 中文最终报告主稿与答辩材料
@@ -180,7 +181,7 @@
 
 ## 当前结论
 
-项目仍处于争奖增强阶段，不应停留在“最终材料整理”。当前已完成 Security anomaly -> Policy Engine -> Resource Control 降级、Security anomaly -> Policy Engine -> Network+Resource 联动，以及真实 Pod 版 Network+Resource 联动。当前 121/122 的真实 Podman container target、k3s Pod target、Network QoS Pod host veth、Network XDP Pod host veth、真实 Pod Policy Engine 跨 Skill 联动、服务联动 Security anomaly 规则、anomaly 进程过滤、anomaly 组合 scope 过滤、credential 生命周期 anomaly、credential deep hook scoped attach 评估、isolated-veth XDP ICMP/TCP/UDP + UDP tuple 四规则、real Pod host veth XDP ICMP/TCP/UDP + UDP tuple 四规则和最终证据压缩入口均已转为 pass；下一步重点是答辩材料冻结、现场演示压测和 SP4 发布后平台复核。
+项目已进入争奖证据收口阶段。当前已完成 Security anomaly -> Policy Engine -> Resource Control 降级、Security anomaly -> Policy Engine -> Network+Resource 联动，以及真实 Pod 版 Network+Resource 联动。121/122 的真实 Podman container target、k3s Pod target、Network QoS Pod host veth、Network XDP Pod host veth、真实 Pod Policy Engine 跨 Skill 联动、服务联动 Security anomaly 规则、anomaly 进程过滤、anomaly 组合 scope 过滤、credential 生命周期 anomaly、credential deep hook scoped attach 评估、isolated-veth XDP ICMP/TCP/UDP + UDP tuple 四规则、real Pod host veth XDP ICMP/TCP/UDP + UDP tuple 四规则均已转为 pass；SP4/123 的 sched_ext 自编译内核、Redis/Nginx RUNS=3 workload 对照和最终质量门禁也已转为 pass。下一步重点是答辩材料冻结、现场演示压测和最终演示脚本彩排。
 
 ## v3.1 提交前新增检查
 
@@ -194,7 +195,7 @@
 - [x] 结果目录包含 `summary.txt`、`report.md`、四类事件 JSONL、ActionJournal、qdisc/rate 证据。
 - [x] `transaction_id` 可串起 security、policy_engine、resource_control、network_qos 和 ActionJournal。
 - [x] `demo/demo_all_final.sh --mode live|offline|cleanup` 已完成脚本语法检查；live 依赖 root 环境。
-- [x] `scripts/check_sp4_env.sh` 已完成脚本语法检查，且不把 SP4 作为 v3.1 阻塞条件。
+- [x] `scripts/check_sp4_env.sh` 已完成脚本语法检查；SP4/123 已完成 sched_ext 自编译内核增强复核。
 - [x] 121/122/本地/GitHub 同步后生成最终一致性日志。
 
 ## v3.2 iSulad/isula 与真实 target 检查
@@ -213,3 +214,4 @@
 - [x] Network XDP isolated-veth tuple 字段演示 121/122 通过。
 - [x] Network XDP real Pod host veth tuple 字段演示 121/122 通过。
 - [x] `python3 scripts/collect_final_evidence.py --strict` 通过，最终证据压缩报告覆盖 32 个核心条目，必需缺失 0、警告 0。
+- [x] SP4 Redis/Nginx `RUNS=3` sched_ext workload 复核通过，结果纳入 `configs/final_evidence_manifest.json` 和 `reports/final_evidence_compact.*`。

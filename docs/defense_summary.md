@@ -1,6 +1,6 @@
 # EulerPilot 答辩展示摘要
 
-更新时间：`2026-06-14`
+更新时间：`2026-07-06`
 
 ## 1. 一句话介绍
 
@@ -10,13 +10,17 @@ EulerPilot 是一个面向 openEuler 的自适应资源管控 Agent，通过 `eB
 
 - `SP3 + cgroup v2` 主闭环
 - `OLK-6.6 + sched_ext` 正式对照线
+- `SP4 + 自编译 sched_ext 内核` 增强复核线
 - `PsiGate v1` 门控状态机
-- Skills 插件化框架（4 个 runtime skill + YAML 驱动）
-- `network_policy_demo`（cgroup/connect4 deny demo）
-- `security_policy_demo`（BPF LSM file_open deny demo）
+- Skills 插件化框架（Resource / Network / Security / Policy Engine 等正式 Skill + YAML 驱动）
+- Network Policy：connect4、TC QoS、XDP、多字段 tuple、真实 Pod host veth
+- Security Policy：LSM enforce、syscall tracing、服务联动 anomaly、credential anomaly/deep hook 评估
+- Resource Control：CPU + Memory + IO 自动闭环，真实 container / k3s Pod target
+- Policy Engine：Security anomaly 驱动 Resource、Network+Resource、真实 Pod 联动
 - Redis `RUNS=5` 正式候选结果
 - Nginx `RUNS=5` 正式候选结果
-- 7 张 SVG 图表 + 中文报告主稿
+- SP4 Redis/Nginx `RUNS=3` sched_ext 多轮复核
+- Web Console v1 + 32 条 final evidence compact + 中文报告主稿
 
 ## 3. 核心架构
 
@@ -28,9 +32,10 @@ Observer -> Analyzer -> Policy Engine -> Skill Manager -> Executor -> Benchmark/
 
 | 方向 | 实现 | 状态 |
 |------|------|------|
-| resource control | CgroupExecutor + ScxExecutor | 主线实验 |
-| network policy | network_policy_demo | 独立 demo |
-| security policy | security_policy_demo | 独立 demo |
+| resource control | CgroupExecutor + ScxExecutor + CPU/Memory/IO + runtime/Pod target | 主线 |
+| network policy | connect4 + TC QoS + XDP + Pod host veth | 已完成 |
+| security policy | BPF LSM + syscall tracing + anomaly + credential hooks | 已完成 |
+| policy engine | Security anomaly -> Resource / Network+Resource / real Pod 联动 | 已完成 |
 
 ## 4. 核心创新点
 
@@ -51,10 +56,12 @@ Observer -> Analyzer -> Policy Engine -> Skill Manager -> Executor -> Benchmark/
 ### Redis（`redis-scx-compare-20260612-191543`）
 - `noisy_cgroup_v2` 与 `noisy_scx_normal` 在部分操作呈现正向趋势
 - `sched_ext` 不应表述为"全面优于默认调度器"
+- SP4 追加复核：`results/final/redis-scx-compare-20260706-115029`，`RUNS=3`
 
 ### Nginx（`nginx-scx-compare-20260612-194018`）
 - `cgroup_v2` 在 Nginx 场景下更稳
 - `sched_ext` 效果依赖具体模式，部分模式存在显著尾延迟代价
+- SP4 追加复核：`results/final/nginx-scx-compare-20260706-120547`，`RUNS=3`
 
 ## 6. 图表材料（7 张 SVG）
 
@@ -62,6 +69,6 @@ Observer -> Analyzer -> Policy Engine -> Skill Manager -> Executor -> Benchmark/
 
 ## 7. 可答辩口径
 
-> EulerPilot 已经完成从 SP3 + cgroup v2 主闭环到 OLK-6.6 + sched_ext 正式 compare 的完整工程收口，并实现了 Skills 框架和三方向 OS Agent 扩展（resource/network/security）。项目已形成 Redis/Nginx 双业务线多轮候选结果，具备真实可复现的系统调控能力。
+> EulerPilot 已经完成从 SP3 + cgroup v2 主闭环到 OLK-6.6 / SP4 sched_ext 正式复核的完整工程收口，并实现了 Skills 框架、三方向 OS Agent 扩展和跨 Skill 联动。项目已形成 Redis/Nginx 双业务线多轮候选结果、32 条 final evidence compact、质量门禁和 Web Console 演示入口，具备真实可复现的系统调控能力。
 
 项目代码：`https://github.com/shibuchou/EulerPilot`（私密仓库）

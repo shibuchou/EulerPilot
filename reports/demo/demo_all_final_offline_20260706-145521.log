@@ -1,6 +1,8 @@
+
+== evidence index ==
 # EulerPilot 最终证据索引
 
-更新时间：`2026-07-06`
+更新时间：`2026-07-03`
 
 本文作为答辩和最终提交前的证据入口，集中索引 EulerPilot 当前已经具备的设计文档、测试脚本、结果目录和演示材料。日期快照文档不反复覆盖；滚动进度以 `docs/progress_status.md` 为准。
 
@@ -178,29 +180,27 @@ v3.2 计划：`docs/next_phase_plan_v3_2.md`
 - 122 Security credential deep hooks：`results/security_policy/credential-deep-hooks-20260703-122-v2`
 - 121 real Pod Policy Engine 联动：`results/policy_engine/real-pod-security-network-resource-20260630-k3s-121-v1`
 - 122 real Pod Policy Engine 联动：`results/policy_engine/real-pod-security-network-resource-20260630-k3s-122-v1`
-- 121 v3.2 credential deep hook 后质量门禁：`reports/final_quality_gate_20260703-creddeep-121.log`
 
-当前结论：Docker/Podman/k3s/kubectl 包已安装；Docker 18.09 daemon 在当前 cgroup v2 环境下因 `Devices cgroup isn't mounted` 不作为主验证 runtime，Podman 4.9.4 与 k3s v1.24.2 可用。两台机器均已使用本地 `localhost/eulerpilot-busybox:latest` 镜像完成真实 container cgroup、真实 Kubernetes Pod cgroup、真实 Pod host veth QoS 写入/限速/rollback 验证，并已把 `policy_engine` 第二条跨 Skill 联动扩展到真实 Pod cgroup + host veth。为避免 Docker Hub 依赖，k3s 使用本地构造的 `docker.io/rancher/mirrored-pause:3.6` pause 镜像。
+== latest policy engine v3.1 results ==
+/root/EulerPilot/results/policy_engine/security-network-resource-20260629-214952
+/root/EulerPilot/results/policy_engine/security-network-resource-20260629-215950
+/root/EulerPilot/results/policy_engine/security-network-resource-20260630-102629
+/root/EulerPilot/results/policy_engine/security-network-resource-20260705-211329
+/root/EulerPilot/results/policy_engine/security-network-resource-20260705-211407
 
-SP4 sched_ext 增强复核：
+== summary ==
+result=pass
+repeat=10
+success_cases=10
+failure_rollback=pass
+result_dir=results/policy_engine/security-network-resource-20260705-211407
 
-- SP4 check 121：`results/resource_control/sp4-env-20260630-101422-121.log`
-- SP4 check 122：`results/resource_control/sp4-env-20260630-101422-122.log`
-- SP4 Redis PSI ACTIVE probe：`results/final/redis-scx-psi-probe-20260706-100857`
-- SP4 Redis RUNS=3 compare：`results/final/redis-scx-compare-20260706-115029`
-- SP4 Nginx RUNS=3 compare：`results/final/nginx-scx-compare-20260706-120547`
-- SP4 final quality gate：`reports/sp4/final_quality_gate_scx_workload_20260706-1214.log`
+== report ==
+# EulerPilot v3.1 Policy Engine Security -> Network + Resource Report
 
-历史 blocked / iSulad 准备证据保留：
+- result: `pass`
+- repeat: `10`
+- success chain: `security_policy burst_connect -> policy_engine -> resource_control + network_qos -> rollback`
+- failure chain: resource action applied, network action failed, resource rollback verified
 
-- 121 isula readiness：`results/resource_control/runtime-readiness-20260630-isula-check-121`
-- 122 isula readiness：`results/resource_control/runtime-readiness-20260630-isula-check-122`
-- 121 isula real runtime blocked：`results/resource_control/real-runtime-target-20260630-isula-check-121`
-- 122 isula real runtime blocked：`results/resource_control/real-runtime-target-20260630-isula-check-122`
-- 121 v3.1 回归：`results/policy_engine/security-network-resource-20260630-102629`
-
-121 在 k3s/Pod veth 代码接入后再次通过 `scripts/final_quality_gate.sh`：21/21 P0、100 轮 smoke、5 轮 doctor 均通过。
-## 后置事项
-
-- SP4 sched_ext 自编译内核复核已完成，准备文档为 `docs/sp4_validation_plan.md`，检查脚本为 `scripts/check_sp4_env.sh`。
-- 真实 Kubernetes Pod target、Pod host veth QoS、Pod host veth XDP 与真实 Pod Policy Engine 跨 Skill 联动均已转 pass；isolated-veth 与 real Pod host veth XDP 均已补齐 ICMP/TCP/UDP + UDP tuple 四规则和 per-rule 字段证据；Security 已补齐 `credential_churn` 生命周期 anomaly、`cred_alloc_blank/cred_transfer` scoped attach 评估、anomaly 进程过滤和组合 scope 过滤双机证据。下一优先级是答辩材料冻结、现场演示压测和最终演示脚本彩排。
+Each iteration stores security, policy_engine, network_qos, resource_control and ActionJournal JSONL evidence plus TC qdisc and rate probe files.
