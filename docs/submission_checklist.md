@@ -174,7 +174,7 @@
 - `reports/final_quality_gate_20260703-creddeep-121.log`：121 最新门禁通过记录，21/21 P0 通过，100 轮 smoke 与 5 轮 doctor 通过
 - `configs/final_evidence_manifest.json`：最终证据压缩白名单清单
 - `scripts/collect_final_evidence.py`：最终证据压缩报告生成脚本
-- `reports/final_evidence_compact.md`：答辩入口压缩报告，当前覆盖 28 个核心证据条目
+- `reports/final_evidence_compact.md`：答辩入口压缩报告，当前覆盖 32 个核心证据条目
 - `reports/final_evidence_compact.json`：机器可读证据状态，当前 `--strict` 检查必需缺失 0、警告 0
 - `docs/final_security_audit.md`：最终安全与质量审计报告
 
@@ -212,4 +212,4 @@
 - [x] Security anomaly 组合 scope 过滤 121/122 通过。
 - [x] Network XDP isolated-veth tuple 字段演示 121/122 通过。
 - [x] Network XDP real Pod host veth tuple 字段演示 121/122 通过。
-- [x] `python3 scripts/collect_final_evidence.py --strict` 通过，最终证据压缩报告覆盖 28 个核心条目，必需缺失 0、警告 0。
+- [x] `python3 scripts/collect_final_evidence.py --strict` 通过，最终证据压缩报告覆盖 32 个核心条目，必需缺失 0、警告 0。

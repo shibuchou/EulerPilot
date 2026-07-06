@@ -1,0 +1,31 @@
+1..21
+ok 1 - make agent
+ok 2 - make network-policy-demo
+ok 3 - make network-qos-tc
+ok 4 - make network-xdp-demo
+ok 5 - make security-policy-demo
+ok 6 - --list-skills outputs formal network and security policy skills
+ok 7 - --doctor-skills exit 0
+  metrics config:   prometheus:
+    enabled: false
+    listen:  127.0.0.1:9108
+ok 8 - agent 15s smoke
+ok 9 - network_policy default disabled
+ok 10 - network_qos default disabled
+ok 11 - network_xdp default disabled
+ok 12 - security_policy default disabled
+ok 13 - security_policy_demo default disabled
+ok 14 - metrics default disabled on 127.0.0.1
+ok 15 - dashboard index.html exists and non-empty
+ok 16 - frozen result dirs exist (Redis=10, Nginx=5)
+ok 17 - resource_control CPU+Memory+IO evidence
+ok 18 - resource_control target_ref evidence
+ok 19 - resource_control runtime target evidence
+ok 20 - resource_control CPU quota effect evidence
+ok 21 - no BPF/LSM/TC/XDP residue
+
+# optional checks
+ok - agent 100-round stress smoke
+ok - doctor 5-round stable
+
+quality gate complete

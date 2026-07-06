@@ -16,10 +16,10 @@ SP4 已接入为 EulerPilot 后续完整能力验证平台。本文件记录 SP4
 - cgroup v2：已挂载，controllers 包含 `cpu io memory`
 - PSI：`cpu/memory/io` 已可用
 - BTF / BPF LSM / TC / XDP / sched_ext：能力探测可用
-- Web Console：已通过 `npm ci/test/lint/build/audit`，Evidence 显示 28 条、必需缺失 0、警告 0
-- 质量门禁：`scripts/final_quality_gate.sh` 已在 SP4 sched_ext 内核通过 21/21 P0、100 轮 smoke、5 轮 doctor
+- Web Console：已通过 `npm ci/test/lint/build/audit`，Evidence 显示 32 条、必需缺失 0、警告 0
+- 质量门禁：`scripts/final_quality_gate.sh` 已在 SP4 sched_ext 内核通过 21/21 P0、100 轮 smoke、5 轮 doctor；最新日志为 `reports/sp4/final_quality_gate_scx_workload_20260706-1214.log`
 - v3.1 主链路：`tests/integration/test_policy_engine_security_network_resource.sh --repeat 10` 已在 SP4 sched_ext 内核通过
-- sched_ext workload：Redis smoke、Redis sched_ext compare、Nginx sched_ext compare 和 Redis PSI ACTIVE probe 已通过
+- sched_ext workload：Redis smoke、Redis PSI ACTIVE probe、Redis RUNS=3 sched_ext compare 和 Nginx RUNS=3 sched_ext compare 已通过
 
 已保存的 SP4 初始验证与 sched_ext 复核证据：
 
@@ -30,6 +30,7 @@ reports/sp4/cmdline.before-cgroupv2-20260705-155311.txt
 reports/sp4/grub.default.before-cgroupv2-20260705-155311.bak
 reports/sp4/sp4_sched_ext_validation_20260705-211407.md
 reports/sp4/final_quality_gate_scx_20260705-205406.log
+reports/sp4/final_quality_gate_scx_workload_20260706-1214.log
 reports/sp4/policy_engine_security_network_resource_scx_20260705-211329.log
 reports/sp4/policy_engine_security_network_resource_repeat10_scx_20260705-211407.log
 results/policy_engine/security-network-resource-20260705-211329
@@ -38,6 +39,8 @@ results/reports/redis-scx-smoke-20260706-092724
 results/final/redis-scx-psi-probe-20260706-100857
 results/final/redis-scx-compare-20260706-101505
 results/final/nginx-scx-compare-20260706-101928
+results/final/redis-scx-compare-20260706-115029
+results/final/nginx-scx-compare-20260706-120547
 ```
 
 ## sched_ext/scx 复核结论
@@ -110,8 +113,8 @@ sudo tests/integration/test_policy_engine_security_network_resource.sh
 sudo tests/integration/test_policy_engine_security_network_resource.sh --repeat 10
 sudo scripts/final_quality_gate.sh
 SCX_BIN=/usr/local/bin/scx_eulerpilot sudo bench/redis/run_redis_sched_ext_psi_probe.sh
-SCX_BIN=/usr/local/bin/scx_eulerpilot RUNS=1 sudo bench/redis/run_redis_sched_ext_compare.sh
-SCX_BIN=/usr/local/bin/scx_eulerpilot RUNS=1 sudo bench/nginx/run_nginx_sched_ext_compare.sh
+SCX_BIN=/usr/local/bin/scx_eulerpilot RUNS=3 sudo bench/redis/run_redis_sched_ext_compare.sh
+SCX_BIN=/usr/local/bin/scx_eulerpilot RUNS=3 sudo bench/nginx/run_nginx_sched_ext_compare.sh
 ```
 
 ## 结果记录

@@ -1,0 +1,29 @@
+
+  * EulerPilot Agent
+  --------------------------------------------------
+  config:     /root/EulerPilot/configs/agent.yaml
+  interval:   1000ms  duration:   6s  warmup: 0
+  mode:       active  backend:    sched_ext
+  gate:       psi
+  env:         psi:ok  cg:ok  scx:ok
+  --------------------------------------------------
+
+  --- legend ---
+  mark: . UNKNOWN  L LATENCY_SENSITIVE  B BACKGROUND_NOISY  T THROUGHPUT_BATCH
+  act:  + applied  ~ managed  - none
+  --- observing ---
+  mark name             pid  class        act profile    w:weight reason
+  B stress-ng-cpu      26655 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      26654 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      26655 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      26654 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      26655 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      26654 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      26655 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      26654 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      26655 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      26654 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      26655 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      26654 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  --------------------------------------------------
+  DONE  total=111  applied=0  L=0  T=0  B=12  U=99

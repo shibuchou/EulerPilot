@@ -27,7 +27,7 @@
 python3 scripts/collect_final_evidence.py --strict
 ```
 
-当前压缩报告覆盖 28 个核心条目：质量门禁、仓库快照、Redis/Nginx sched_ext、Network QoS/XDP、Security anomaly/process filter/combo scope/deep hook、Resource Control CPU/Memory/IO/Pod target、Policy Engine 双机联动与真实 Pod 联动。`--strict` 当前通过，必需证据缺失为 0、清单警告为 0。
+当前压缩报告覆盖 32 个核心条目：质量门禁、仓库快照、Redis/Nginx sched_ext、SP4 RUNS=3 workload、Network QoS/XDP、Security anomaly/process filter/combo scope/deep hook、Resource Control CPU/Memory/IO/Pod target、Policy Engine 双机联动与真实 Pod 联动。`--strict` 当前通过，必需证据缺失为 0、清单警告为 0。
 
 ## Skill 证据
 

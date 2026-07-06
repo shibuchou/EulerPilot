@@ -13,6 +13,15 @@
       "notes": "21/21 P0, 100-round smoke and 5-round doctor evidence."
     },
     {
+      "category": "quality_gate",
+      "name": "SP4 final quality gate after sched_ext workload validation",
+      "host": "123",
+      "path": "reports/sp4/final_quality_gate_scx_workload_20260706-1214.log",
+      "kind": "quality_gate",
+      "required": true,
+      "notes": "SP4 sched_ext kernel final gate: 21/21 P0, 100-round smoke and 5-round doctor evidence."
+    },
+    {
       "category": "repo_status",
       "name": "v3.1 start repository snapshot",
       "host": "local",
@@ -42,6 +51,39 @@
       "files": ["compare_summary_avg.csv", "run_manifest.json", "report.md"],
       "required": true,
       "notes": "RUNS=5 Nginx candidate result."
+    },
+    {
+      "category": "cpu_sched_ext",
+      "name": "SP4 Redis sched_ext comparison RUNS=3",
+      "host": "123",
+      "path": "results/final/redis-scx-compare-20260706-115029",
+      "kind": "result_dir",
+      "summary": "summary.md",
+      "files": ["compare_summary_avg.csv", "run_manifest.json", "report.md"],
+      "required": true,
+      "notes": "SP4 sched_ext kernel Redis RUNS=3 workload comparison."
+    },
+    {
+      "category": "cpu_sched_ext",
+      "name": "SP4 Nginx sched_ext comparison RUNS=3",
+      "host": "123",
+      "path": "results/final/nginx-scx-compare-20260706-120547",
+      "kind": "result_dir",
+      "summary": "summary.md",
+      "files": ["compare_summary_avg.csv", "run_manifest.json", "report.md"],
+      "required": true,
+      "notes": "SP4 sched_ext kernel Nginx RUNS=3 workload comparison."
+    },
+    {
+      "category": "cpu_sched_ext",
+      "name": "SP4 Redis PSI gate ACTIVE probe",
+      "host": "123",
+      "path": "results/final/redis-scx-psi-probe-20260706-100857",
+      "kind": "result_dir",
+      "summary": "summary.md",
+      "files": ["psi_gate_trace.jsonl", "agent_snapshot.txt", "gate_status.txt", "scx_stats.json"],
+      "required": true,
+      "notes": "SP4 sched_ext kernel PSI gate NORMAL to ARMED to ACTIVE transition evidence."
     },
     {
       "category": "network",

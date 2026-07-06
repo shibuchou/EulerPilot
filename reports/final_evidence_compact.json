@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-03T16:34:00+08:00",
+  "generated_at": "2026-07-06T12:30:18+08:00",
   "manifest_path": "configs/final_evidence_manifest.json",
   "manifest_title": "EulerPilot final evidence manifest",
   "git_status_short": [],
@@ -14,6 +14,27 @@
       "exists": true,
       "status": "pass",
       "notes": "21/21 P0, 100-round smoke and 5-round doctor evidence.",
+      "summary": {
+        "result": "pass",
+        "planned": 21,
+        "ok_count": 21,
+        "not_ok_count": 0,
+        "optional_ok_count": 2,
+        "quality_gate_complete": true
+      },
+      "evidence_files": [],
+      "warnings": []
+    },
+    {
+      "category": "quality_gate",
+      "name": "SP4 final quality gate after sched_ext workload validation",
+      "host": "123",
+      "path": "reports/sp4/final_quality_gate_scx_workload_20260706-1214.log",
+      "kind": "quality_gate",
+      "required": true,
+      "exists": true,
+      "status": "pass",
+      "notes": "SP4 sched_ext kernel final gate: 21/21 P0, 100-round smoke and 5-round doctor evidence.",
       "summary": {
         "result": "pass",
         "planned": 21,
@@ -122,6 +143,120 @@
           "path": "results/final/nginx-scx-compare-20260612-194018/report.md",
           "exists": true,
           "bytes": 1584
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "category": "cpu_sched_ext",
+      "name": "SP4 Redis sched_ext comparison RUNS=3",
+      "host": "123",
+      "path": "results/final/redis-scx-compare-20260706-115029",
+      "kind": "result_dir",
+      "required": true,
+      "exists": true,
+      "status": "present",
+      "notes": "SP4 sched_ext kernel Redis RUNS=3 workload comparison.",
+      "summary": {
+        "summary_excerpt": "# Redis sched_ext 正式对照 / - timestamp: 2026-07-06T12:02:53+08:00 / - runs: 3",
+        "csv_rows": 4,
+        "test": "GET",
+        "quiet_default_rps_avg": "35285.903",
+        "quiet_scx_normal_rps_avg": "35800.853",
+        "noisy_default_rps_avg": "16532.470",
+        "noisy_cgroup_v2_rps_avg": "31942.873",
+        "noisy_scx_psi_rps_avg": "9864.123"
+      },
+      "evidence_files": [
+        {
+          "path": "results/final/redis-scx-compare-20260706-115029/compare_summary_avg.csv",
+          "exists": true,
+          "bytes": 1611
+        },
+        {
+          "path": "results/final/redis-scx-compare-20260706-115029/run_manifest.json",
+          "exists": true,
+          "bytes": 4147
+        },
+        {
+          "path": "results/final/redis-scx-compare-20260706-115029/report.md",
+          "exists": true,
+          "bytes": 3669
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "category": "cpu_sched_ext",
+      "name": "SP4 Nginx sched_ext comparison RUNS=3",
+      "host": "123",
+      "path": "results/final/nginx-scx-compare-20260706-120547",
+      "kind": "result_dir",
+      "required": true,
+      "exists": true,
+      "status": "present",
+      "notes": "SP4 sched_ext kernel Nginx RUNS=3 workload comparison.",
+      "summary": {
+        "summary_excerpt": "# Nginx sched_ext 正式对照 / - timestamp: 2026-07-06T12:12:59+08:00 / - runs: 3",
+        "csv_rows": 1,
+        "quiet_default_rps_avg": "22138.920",
+        "quiet_scx_normal_rps_avg": "13182.823",
+        "noisy_default_rps_avg": "15203.393",
+        "noisy_cgroup_v2_rps_avg": "16060.380",
+        "noisy_scx_psi_rps_avg": "6750.803"
+      },
+      "evidence_files": [
+        {
+          "path": "results/final/nginx-scx-compare-20260706-120547/compare_summary_avg.csv",
+          "exists": true,
+          "bytes": 948
+        },
+        {
+          "path": "results/final/nginx-scx-compare-20260706-120547/run_manifest.json",
+          "exists": true,
+          "bytes": 4133
+        },
+        {
+          "path": "results/final/nginx-scx-compare-20260706-120547/report.md",
+          "exists": true,
+          "bytes": 1670
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "category": "cpu_sched_ext",
+      "name": "SP4 Redis PSI gate ACTIVE probe",
+      "host": "123",
+      "path": "results/final/redis-scx-psi-probe-20260706-100857",
+      "kind": "result_dir",
+      "required": true,
+      "exists": true,
+      "status": "present",
+      "notes": "SP4 sched_ext kernel PSI gate NORMAL to ARMED to ACTIVE transition evidence.",
+      "summary": {
+        "summary_excerpt": "﻿# Redis sched_ext PSI ACTIVE Probe / - timestamp: 2026-07-06T10:09:21+08:00 / - redis port: 6390"
+      },
+      "evidence_files": [
+        {
+          "path": "results/final/redis-scx-psi-probe-20260706-100857/psi_gate_trace.jsonl",
+          "exists": true,
+          "bytes": 3296
+        },
+        {
+          "path": "results/final/redis-scx-psi-probe-20260706-100857/agent_snapshot.txt",
+          "exists": true,
+          "bytes": 8398
+        },
+        {
+          "path": "results/final/redis-scx-psi-probe-20260706-100857/gate_status.txt",
+          "exists": true,
+          "bytes": 76
+        },
+        {
+          "path": "results/final/redis-scx-psi-probe-20260706-100857/scx_stats.json",
+          "exists": true,
+          "bytes": 644
         }
       ],
       "warnings": []
