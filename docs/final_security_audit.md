@@ -54,13 +54,13 @@
 | 环境 | 检查项 | 结果 |
 |------|--------|------|
 | 121 | make agent | PASS |
-| 121 | make network-policy-demo | PASS |
+| 121 | make network-policy | PASS |
 | 121 | make network-qos-tc | PASS |
-| 121 | make network-xdp-demo | PASS |
-| 121 | make security-policy-demo | PASS |
+| 121 | make network-xdp | PASS |
+| 121 | make security-policy | PASS |
 | 121 | tests/integration/test_target_resolver.sh | PASS |
 | 121 | tests/integration/test_security_policy.sh（正式 `security_policy` audit/enforce） | PASS |
-| 122 | make agent + make security-policy-demo | PASS |
+| 122 | make agent + make security-policy | PASS |
 | 122 | tests/integration/test_target_resolver.sh | PASS |
 | 122 | tests/integration/test_security_policy.sh（正式 `security_policy` audit/enforce） | PASS |
 | 121 | --list-skills 输出正式 network_policy/network_qos/network_xdp/security_policy | PASS |
@@ -75,10 +75,10 @@
 
 ```
 ok 1 - make agent
-ok 2 - make network-policy-demo
+ok 2 - make network-policy
 ok 3 - make network-qos-tc
-ok 4 - make network-xdp-demo
-ok 5 - make security-policy-demo
+ok 4 - make network-xdp
+ok 5 - make security-policy
 ok 6 - --list-skills outputs formal network and security policy skills
 ok 7 - --doctor-skills exit 0
 ok 8 - agent 15s smoke

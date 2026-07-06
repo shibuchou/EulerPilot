@@ -299,7 +299,7 @@ hostname：cernet2.net
 #### BPF / sched_ext
 
 - `bpf/workload_observer.bpf.c`
-- `bpf/network_policy_demo.bpf.c`
+- `bpf/network_policy.bpf.c`
 - `sched/scx_eulerpilot.bpf.c`
 - `sched/scx_eulerpilot.c`
 
@@ -354,7 +354,7 @@ hostname：cernet2.net
 - `--list-skills` 已可用
 - `--doctor-skills` 已可用
 - `make agent` 已通过
-- `make network-policy-demo` 已通过
+- `make network-policy` 已通过
 
 当前实测：
 

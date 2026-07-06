@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <csignal>
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
@@ -27,9 +28,21 @@ namespace eulerpilot {
 
 namespace {
 
+volatile std::sig_atomic_t g_shutdown_requested = 0;
+
 bool file_exists(const char *path) {
     std::ifstream file(path);
     return file.good();
+}
+
+void sleep_interruptible(std::chrono::milliseconds duration) {
+    constexpr auto step = std::chrono::milliseconds(50);
+    auto remaining = duration;
+    while (remaining.count() > 0 && !shutdown_requested()) {
+        const auto chunk = remaining < step ? remaining : step;
+        std::this_thread::sleep_for(chunk);
+        remaining -= chunk;
+    }
 }
 
 bool looks_latency_service(const WorkloadSample &sample) {
@@ -492,13 +505,16 @@ std::vector<WorkloadDecision> run_cycles(const RuntimeConfig &config) {
         throw std::runtime_error("failed to attach workload observer skeleton");
     }
 
-    for (std::uint32_t cycle = 0; cycle < cycle_count; ++cycle) {
+    for (std::uint32_t cycle = 0; cycle < cycle_count && !shutdown_requested(); ++cycle) {
         RuntimeConfig cycle_config = config;
         if (cycle < config.warmup_cycles) {
             cycle_config.dry_run = true;
         }
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(config.interval_ms));
+        sleep_interruptible(std::chrono::milliseconds(config.interval_ms));
+        if (shutdown_requested()) {
+            break;
+        }
         auto cycle_decisions = collect_cycle_decisions(skel, self_pid);
         const PsiSnapshot psi = read_psi_snapshot();
         const double cpu_psi_threshold = get_env_double("EULERPILOT_CPU_PSI_THRESHOLD", 0.10);
@@ -557,6 +573,14 @@ std::vector<WorkloadDecision> run_cycles(const RuntimeConfig &config) {
 
     workload_observer_bpf__destroy(skel);
     return merged;
+}
+
+void request_shutdown() {
+    g_shutdown_requested = 1;
+}
+
+bool shutdown_requested() {
+    return g_shutdown_requested != 0;
 }
 
 } // namespace eulerpilot

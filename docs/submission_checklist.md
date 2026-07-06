@@ -55,8 +55,8 @@
 - [x] `policy_engine` Security anomaly -> Resource Control 降级联动 121/122 验证：消费 `security_policy burst_execve` anomaly，对显式 background cgroup 写 `cpu.max=10000 100000` 与 `memory.high=1048576`，并验证审计、ActionJournal 和 rollback
 - [x] `security_policy_demo` BPF LSM file_open 最小闭环
 - [x] `security_policy_demo` BPF LSM attach/deny/rollback 集成测试 121/122 均通过
-- [x] Runtime 生命周期收拢与 ActionJournal/AuditBus 最小接入
-- [x] 121 SP3 编译、集成测试和 21 项质量门禁通过，最新 v3.2 credential deep hook 后质量门禁 `reports/final_quality_gate_20260703-creddeep-121.log` 通过，100 轮 smoke 与 5 轮 doctor 通过
+- [x] Runtime 生命周期收拢与 ActionJournal/AuditBus 最小接入；SIGINT/SIGTERM 通过 graceful shutdown 标志触发主循环提前退出，仍走 `stop_all()` 清理路径
+- [x] 121 SP3 编译、集成测试和 22 项质量门禁通过，工程质量收口门禁新增 C++ unit tests，100 轮 smoke 与 5 轮 doctor 继续保留
 - [x] SP4 sched_ext 自编译内核复核通过：Redis/Nginx `RUNS=3` 多轮对照、Redis PSI ACTIVE probe、最终质量门禁 `reports/sp4/final_quality_gate_scx_workload_20260706-1214.log`
 - [x] 静态 Dashboard：`reports/dashboard/index.html`
 - [x] Prometheus `/metrics` 端点：默认关闭，监听 `127.0.0.1:9108`
@@ -171,8 +171,8 @@
 
 ## 质量与安全审计
 
-- `scripts/final_quality_gate.sh`：TAP 风格 21 项 P0 质量门禁脚本
-- `reports/final_quality_gate_20260703-creddeep-121.log`：121 最新门禁通过记录，21/21 P0 通过，100 轮 smoke 与 5 轮 doctor 通过
+- `scripts/final_quality_gate.sh`：TAP 风格 22 项 P0 质量门禁脚本，新增 `make unit-tests`
+- `reports/final_quality_gate_20260703-creddeep-121.log`：121 已归档门禁通过记录，21/21 P0 通过，100 轮 smoke 与 5 轮 doctor 通过
 - `configs/final_evidence_manifest.json`：最终证据压缩白名单清单
 - `scripts/collect_final_evidence.py`：最终证据压缩报告生成脚本
 - `reports/final_evidence_compact.md`：答辩入口压缩报告，当前覆盖 32 个核心证据条目
@@ -215,3 +215,4 @@
 - [x] Network XDP real Pod host veth tuple 字段演示 121/122 通过。
 - [x] `python3 scripts/collect_final_evidence.py --strict` 通过，最终证据压缩报告覆盖 32 个核心条目，必需缺失 0、警告 0。
 - [x] SP4 Redis/Nginx `RUNS=3` sched_ext workload 复核通过，结果纳入 `configs/final_evidence_manifest.json` 和 `reports/final_evidence_compact.*`。
+- [x] Stage G Benchmark 与冻结材料已完成：主 Benchmark 结论冻结，现场演示日志仅作为追加彩排记录。

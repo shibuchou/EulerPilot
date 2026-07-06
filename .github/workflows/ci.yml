@@ -1,0 +1,37 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  agent-build:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            clang \
+            llvm \
+            bpftool \
+            pkg-config \
+            libbpf-dev \
+            libelf-dev \
+            zlib1g-dev \
+            libyaml-cpp-dev
+
+      - name: Build unit tests
+        run: make unit-tests
+
+      - name: Build agent
+        run: make agent
+
+      - name: Validate default config
+        run: ./build/eulerpilot-agent --validate-config configs/agent.yaml

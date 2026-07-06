@@ -308,9 +308,9 @@ if ! python3 "$RESULT_DIR/credential_transition.py" 65534 \
     skip "baseline setuid failed; see $RESULT_DIR/credential-baseline.err"
 fi
 
-make agent security-policy-demo >> "$RESULT_DIR/build.log" 2>&1
+make agent security-policy >> "$RESULT_DIR/build.log" 2>&1
 [ -x "$AGENT_BIN" ] || fail "missing $AGENT_BIN"
-[ -f "$ROOT/build/security_policy_demo.bpf.o" ] || fail "missing security_policy_demo.bpf.o"
+[ -f "$ROOT/build/security_policy.bpf.o" ] || fail "missing security_policy.bpf.o"
 
 init_scoped_cgroup
 write_config

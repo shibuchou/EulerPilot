@@ -22,7 +22,7 @@
 | 当前名称 | 阶段 B 目标 |
 |----------|-------------|
 | `network_policy_demo` | `network_policy` |
-| `bpf/network_policy_demo.bpf.c` | 第一阶段可保留，作为 connect4 子能力实现 |
+| `bpf/network_policy.bpf.c` | 第一阶段可保留，作为 connect4 子能力实现 |
 | `scripts/cleanup_network_policy_demo.sh` | 迁移为正式 rollback/cleanup 入口 |
 | `bench/psi/run_network_policy_smoke.sh` | 迁移或补充为 `tests/integration/test_network_policy.sh` |
 
@@ -144,7 +144,7 @@ eBPF TC classifier
 当前最小实现：
 
 - 新增 `network_xdp` 独立注册名，默认 disabled。
-- 新增 `bpf/network_xdp_demo.bpf.c`，使用 XDP generic mode 在 isolated veth 上匹配协议、源/目的 IPv4 和源/目的端口。
+- 新增 `bpf/network_xdp.bpf.c`，使用 XDP generic mode 在 isolated veth 上匹配协议、源/目的 IPv4 和源/目的端口。
 - 当前集成测试验证 ICMP drop、TCP:19092 drop、UDP:19093 drop 与 UDP tuple `10.89.0.2:39094 -> 10.89.0.1:19094` drop；`TargetResolver` 已能把 `container` 和 `k8s_pod` 解析到 host veth。
 - `AuditBus` rollback 事件记录聚合 `pass_count/drop_count/byte_count`，并输出每条 XDP 规则的 `protocol/src_ip/dst_ip/src_port/dst_port/drop_count/byte_count`。
 - `ActionJournal` 记录 ifname、XDP mode、rule id 和 target_ref。
@@ -232,7 +232,7 @@ results/network_policy/
 - TC QoS 审计事件已包含 `rule_id=limit_lab_egress` 与 `target_ref=lab_veth`。
 - `tests/benchmark/test_network_qos_rate.sh` 已验证 TC QoS 速率误差：121 上 2 Mbit/s 目标实测 1.976 Mbit/s，误差 -1.22%；122 上实测 1.971 Mbit/s，误差 -1.45%。
 - `network_xdp` 子能力已注册，默认 disabled。
-- `bpf/network_xdp_demo.bpf.c` 已实现 XDP generic filter，负责按协议、源/目的 IPv4 和源/目的端口配置执行 pass/drop 并累计 pass/drop/byte 统计；当前最多支持 8 条规则，未配置的字段按 wildcard 处理。
+- `bpf/network_xdp.bpf.c` 已实现 XDP generic filter，负责按协议、源/目的 IPv4 和源/目的端口配置执行 pass/drop 并累计 pass/drop/byte 统计；当前最多支持 8 条规则，未配置的字段按 wildcard 处理。
 - `network_xdp` enforce 模式通过 libbpf `bpf_xdp_attach` 以 generic mode 挂载程序，rollback 通过 `bpf_xdp_detach` 卸载。
 - `tests/integration/test_network_xdp.sh` 已基于 YAML v2 验证 lab netns/veth、audit 不挂 XDP、enforce drop ICMP、enforce drop TCP:19092、enforce drop UDP:19093、enforce drop UDP tuple `10.89.0.2:39094 -> 10.89.0.1:19094`、rollback per-rule 统计和连通性恢复。
 - `tests/integration/test_network_xdp_real_pod_veth.sh` 已在真实 k3s lab Pod 上验证 `type: k8s_pod` 解析 host veth、generic XDP attach/drop、Pod netns 到 cni bridge 的 ICMP/TCP/UDP 与 UDP tuple 四规则命中和 rollback detach。

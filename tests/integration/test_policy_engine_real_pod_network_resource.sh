@@ -542,8 +542,8 @@ elif ! memory_high_is_allowed; then
     printf 'memory_high_skip_reason=memory.max-below-target\n' >> "$RESULT_DIR/summary.txt"
 fi
 
-if [ ! -x ./build/eulerpilot-agent ] || [ ! -f ./build/security_policy_demo.bpf.o ]; then
-    log_cmd make agent security-policy-demo network-qos-tc
+if [ ! -x ./build/eulerpilot-agent ] || [ ! -f ./build/security_policy.bpf.o ]; then
+    log_cmd make agent security-policy network-qos-tc
 fi
 if [ ! -x ./build/eulerpilot-agent ]; then
     write_blocked "agent-build-missing" "run-make-agent"

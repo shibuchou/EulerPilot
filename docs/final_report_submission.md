@@ -414,7 +414,7 @@ EulerPilot 的价值不在于证明某一组参数在所有场景下都优于默
 1. EulerPilot 已在 `SP3` 上完成 cgroup v2 主闭环，具备正式交付能力。
 2. EulerPilot 已在 `OLK-6.6` 上完成 Redis 与 Nginx 的 `sched_ext` 正式 compare，并在 `SP4` 自编译 sched_ext 内核上完成 Redis/Nginx `RUNS=3` 复核。
 3. EulerPilot 已实现 Skills 插件化框架与 YAML v2 驱动，并通过 `network_policy`、`network_qos`、`network_xdp` 和正式 `security_policy` 证明了 Agent 能力可扩展。
-4. 项目已通过最新质量门禁（21/21 P0、100 轮 smoke、5 轮 doctor）和安全审计，并形成 32 条 final evidence compact。
+4. 项目已通过最新质量门禁（22/22 P0、100 轮 smoke、5 轮 doctor）和安全审计，并形成 32 条 final evidence compact。
 
 补充说明：
 

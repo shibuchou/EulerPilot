@@ -66,7 +66,7 @@ TRUE_BIN="$(command -v true || true)"
 [ -n "$TRUE_BIN" ] || fail 'missing true binary for execve anomaly trigger'
 
 mkdir -p "$RESULT_DIR" reports/events run/eulerpilot
-make agent security-policy-demo
+make agent security-policy
 scripts/setup_cgroup_v2.sh > "$RESULT_DIR/setup.log" 2>&1
 : > reports/events/security_policy.jsonl
 : > reports/events/policy_engine.jsonl

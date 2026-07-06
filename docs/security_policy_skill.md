@@ -20,7 +20,7 @@ BPF LSM 的边界需要写清楚：它运行在内核 LSM hook 链中，只能�
 - 容器过滤：优先通过 host PID 解析 mount namespace、cgroup path、容器 ID，再把规则落到 mount namespace 或 cgroup 维度。
 - Kubernetes 过滤：正式能力可以由 Pod/container target 解析到 host PID、cgroup、namespace；最小 integration 测试不依赖 Kubernetes。
 
-当前 `bpf/security_policy_demo.bpf.c` 的强制控制已经从 BPF 硬编码路径切到用户态填充的 `target_map`。当前 BPF map 最多支持 8 组文件路径、文件访问权限、精确执行路径、执行路径前缀、IPv4 socket endpoint、scope-only ptrace/setuid/setgid/setgroups cgroup target 和 capability target；默认 demo 配置仍指向：
+当前 `bpf/security_policy.bpf.c` 的强制控制已经从 BPF 硬编码路径切到用户态填充的 `target_map`。当前 BPF map 最多支持 8 组文件路径、文件访问权限、精确执行路径、执行路径前缀、IPv4 socket endpoint、scope-only ptrace/setuid/setgid/setgroups cgroup target 和 capability target；默认 demo 配置仍指向：
 
 ```text
 /root/EulerPilot/demo/security_policy_demo/secret.txt
@@ -83,7 +83,7 @@ sudo tests/integration/test_security_policy_credential_deep_hooks.sh
 
 1. 检查默认 demo 目标位于 `/root/EulerPilot`，因为当前集成脚本仍以该路径作为 demo 配置和结果目录基准。
 2. 检查 root、BPF LSM、bpffs、`bpftool`、`make`、`timeout` 等基础命令。
-3. 执行 `make agent security-policy-demo`。
+3. 执行 `make agent security-policy`。
 4. 使用临时 audit 配置启用正式 `security_policy`，确认目标文件和 demo 可执行文件仍可访问，且写入 BPF ringbuf 命中事件，并覆盖 `lsm_file_open`、`lsm_bprm_check_security`、`sys_enter_execve`、`sys_enter_openat`、`sys_enter_connect`、`sys_enter_ptrace`。
 5. 使用临时 anomaly 配置启用 `anomaly_rules: burst_execve`，连续执行系统 `true` 二进制，确认 `security_policy_events.anomaly-execve.jsonl` 包含 `operation=anomaly`、`rule_id=burst_execve`、`event_hook=sys_enter_execve`、`threshold/window_ms`。
 5.1. 使用 `test_security_policy_anomaly_rules.sh` 启用服务联动 anomaly 配置，触发本地 connect burst、`/etc` openat burst 和 scoped `CAP_SYS_ADMIN` capable burst，确认 `security_policy_events.anomaly-rules.jsonl` 包含 `burst_connect`、`burst_openat_sensitive`、`capability_abuse` 三类 anomaly。

@@ -572,11 +572,11 @@ if ! resolve_host_veth; then
     exit 0
 fi
 
-if [ ! -x ./build/eulerpilot-agent ] || [ ! -f ./build/network_xdp_demo.bpf.o ]; then
-    log_cmd make agent network-xdp-demo
+if [ ! -x ./build/eulerpilot-agent ] || [ ! -f ./build/network_xdp.bpf.o ]; then
+    log_cmd make agent network-xdp
 fi
-if [ ! -x ./build/eulerpilot-agent ] || [ ! -f ./build/network_xdp_demo.bpf.o ]; then
-    write_blocked "network-xdp-build-missing" "run-make-agent-network-xdp-demo"
+if [ ! -x ./build/eulerpilot-agent ] || [ ! -f ./build/network_xdp.bpf.o ]; then
+    write_blocked "network-xdp-build-missing" "run-make-agent-network-xdp"
     write_report
     info "result directory: $RESULT_DIR"
     exit 0

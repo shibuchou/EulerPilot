@@ -83,7 +83,7 @@ live_mode() {
     ./scripts/check_env.sh || true
 
     section "build agent and demos"
-    make agent security-policy-demo network-qos-tc
+    make agent security-policy network-qos-tc
 
     section "list-skills"
     ./build/eulerpilot-agent --list-skills

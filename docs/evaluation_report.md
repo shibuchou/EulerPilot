@@ -235,7 +235,7 @@
 
 3. **可维护性**（+2）
    - 构建系统 Makefile 清晰
-   - 独立构建目标（agent/network-policy-demo/security-policy-demo 解耦）
+   - 独立构建目标（agent/network-policy/security-policy 解耦）
 
 **扣分点**（-2）：
 - C++ 核心路径注释偏少

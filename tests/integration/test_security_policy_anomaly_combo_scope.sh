@@ -297,11 +297,11 @@ require_cmd timeout
 require_cmd grep
 require_cmd python3
 
-if [ ! -x "$AGENT_BIN" ] || [ ! -f "$ROOT/build/security_policy_demo.bpf.o" ]; then
-    make agent security-policy-demo >> "$RESULT_DIR/build.log" 2>&1
+if [ ! -x "$AGENT_BIN" ] || [ ! -f "$ROOT/build/security_policy.bpf.o" ]; then
+    make agent security-policy >> "$RESULT_DIR/build.log" 2>&1
 fi
 [ -x "$AGENT_BIN" ] || fail "missing $AGENT_BIN"
-[ -f "$ROOT/build/security_policy_demo.bpf.o" ] || fail "missing security_policy_demo.bpf.o"
+[ -f "$ROOT/build/security_policy.bpf.o" ] || fail "missing security_policy.bpf.o"
 
 init_scoped_cgroup
 write_config

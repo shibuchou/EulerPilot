@@ -63,4 +63,4 @@
 - `configs/agent.yaml`
 - `configs/skills.yaml`
 - `docs/skills_yaml_plan.md`
-- `make network-policy-demo`
+- `make network-policy`

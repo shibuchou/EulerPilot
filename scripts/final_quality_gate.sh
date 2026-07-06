@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 # EulerPilot Final Quality Gate — TAP-style
-# P0: 21 blocking checks. P1: optional checks (not in TAP count).
+# P0: 22 blocking checks. P1: optional checks (not in TAP count).
 # Run on 121. For 122: minimal regression only.
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -12,7 +12,7 @@ AGENT_YAML="configs/agent.yaml"
 AGENT_BIN="build/eulerpilot-agent"
 TMPLOG="/tmp/eulerpilot-quality-gate.tmp"
 
-TOTAL=21
+TOTAL=22
 N=1
 
 echo "1..$TOTAL"
@@ -60,7 +60,7 @@ exit(1)
 }
 
 # ============================================================
-# P0: 12 blocking checks
+# P0 blocking checks
 # ============================================================
 
 # 1. make agent
@@ -70,11 +70,11 @@ else
     not_ok "make agent"
 fi
 
-# 2. make network-policy-demo
-if run_silent make network-policy-demo; then
-    ok "make network-policy-demo"
+# 2. make network-policy
+if run_silent make network-policy; then
+    ok "make network-policy"
 else
-    not_ok "make network-policy-demo"
+    not_ok "make network-policy"
 fi
 
 # 3. make network-qos-tc
@@ -84,21 +84,29 @@ else
     not_ok "make network-qos-tc"
 fi
 
-# 4. make network-xdp-demo
-if run_silent make network-xdp-demo; then
-    ok "make network-xdp-demo"
+# 4. make network-xdp
+if run_silent make network-xdp; then
+    ok "make network-xdp"
 else
-    not_ok "make network-xdp-demo"
+    not_ok "make network-xdp"
 fi
 
-# 5. make security-policy-demo
-if run_silent make security-policy-demo; then
-    ok "make security-policy-demo"
+# 5. make security-policy
+if run_silent make security-policy; then
+    ok "make security-policy"
 else
-    not_ok "make security-policy-demo"
+    not_ok "make security-policy"
 fi
 
-# 6. list skills
+# 6. C++ unit tests
+if run_silent make unit-tests; then
+    ok "make unit-tests"
+else
+    cat "$TMPLOG" >&2
+    not_ok "make unit-tests"
+fi
+
+# 7. list skills
 SKILLS_OUT=$("$AGENT_BIN" --list-skills 2>/dev/null)
 SKILL_COUNT=$(echo "$SKILLS_OUT" | wc -l)
 if [ "$SKILL_COUNT" -ge 8 ] &&
@@ -111,7 +119,7 @@ else
     not_ok "--list-skills missing formal network/security policy skill (count=$SKILL_COUNT)"
 fi
 
-# 7. doctor skills
+# 8. doctor skills
 if timeout 15s "$AGENT_BIN" --doctor-skills --config "$AGENT_YAML" > "$TMPLOG" 2>&1; then
     ok "--doctor-skills exit 0"
 else
@@ -119,7 +127,7 @@ else
     not_ok "--doctor-skills failed"
 fi
 
-# 8. agent 15s smoke (metrics default closed)
+# 9. agent 15s smoke (metrics default closed)
 echo "  metrics config:" "$(grep -A4 'prometheus:' "$AGENT_YAML" | head -4)"
 if timeout 25s "$AGENT_BIN" --config "$AGENT_YAML" --duration-s 10 --interval-ms 2000 > "$TMPLOG" 2>&1; then
     ok "agent 15s smoke"
@@ -128,42 +136,42 @@ else
     not_ok "agent 15s smoke agent failed"
 fi
 
-# 9. network_policy disabled
+# 10. network_policy disabled
 if ensure_skill_disabled "network_policy"; then
     ok "network_policy default disabled"
 else
     not_ok "network_policy not disabled"
 fi
 
-# 10. network_qos disabled
+# 11. network_qos disabled
 if ensure_skill_disabled "network_qos"; then
     ok "network_qos default disabled"
 else
     not_ok "network_qos not disabled"
 fi
 
-# 11. network_xdp disabled
+# 12. network_xdp disabled
 if ensure_skill_disabled "network_xdp"; then
     ok "network_xdp default disabled"
 else
     not_ok "network_xdp not disabled"
 fi
 
-# 12. security_policy disabled
+# 13. security_policy disabled
 if ensure_skill_disabled "security_policy"; then
     ok "security_policy default disabled"
 else
     not_ok "security_policy not disabled"
 fi
 
-# 13. security_policy_demo disabled
+# 14. security_policy_demo disabled
 if ensure_skill_disabled "security_policy_demo"; then
     ok "security_policy_demo default disabled"
 else
     not_ok "security_policy_demo not disabled"
 fi
 
-# 14. metrics default off + 127.0.0.1
+# 15. metrics default off + 127.0.0.1
 if grep -A4 'prometheus:' "$AGENT_YAML" | grep -q 'enabled: false'; then
     if grep -A4 'prometheus:' "$AGENT_YAML" | grep -q '127.0.0.1'; then
         ok "metrics default disabled on 127.0.0.1"
@@ -174,14 +182,14 @@ else
     not_ok "metrics not default disabled"
 fi
 
-# 15. dashboard exists
+# 16. dashboard exists
 if [ -s "reports/dashboard/index.html" ]; then
     ok "dashboard index.html exists and non-empty"
 else
     not_ok "dashboard index.html missing or empty"
 fi
 
-# 16. frozen result dirs
+# 17. frozen result dirs
 REDIS_DIRS=$(find results/final/ -maxdepth 1 -type d -name 'redis-*' 2>/dev/null | wc -l)
 NGINX_DIRS=$(find results/final/ -maxdepth 1 -type d -name 'nginx-*' 2>/dev/null | wc -l)
 if [ "$REDIS_DIRS" -ge 1 ] && [ "$NGINX_DIRS" -ge 1 ]; then
@@ -190,7 +198,7 @@ else
     not_ok "frozen result dirs missing (Redis=$REDIS_DIRS, Nginx=$NGINX_DIRS)"
 fi
 
-# 17. resource_control CPU+Memory+IO evidence
+# 18. resource_control CPU+Memory+IO evidence
 RESOURCE_CONTROL_OK=true
 for summary in \
     results/resource_control/integration-20260624-160317/summary.txt \

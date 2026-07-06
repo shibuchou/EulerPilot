@@ -104,7 +104,7 @@ restore() {
     set -e
 }
 
-log "=== SecurityPolicyDemoSkill integration test ==="
+log "=== SecurityPolicySkill integration test ==="
 
 if [ "$ROOT" != "$EXPECTED_ROOT" ]; then
     skip "current root is $ROOT; Agent BPF object path and demo result layout currently expect $EXPECTED_ROOT"
@@ -277,8 +277,8 @@ fi
 run_cleanup_script
 rm -f "$ROOT/reports/events/security_policy.jsonl"
 
-log "INFO: building agent and security-policy-demo BPF object"
-if ! make agent security-policy-demo > "$RESULT_DIR/build.log" 2>&1; then
+log "INFO: building agent and security-policy BPF object"
+if ! make agent security-policy > "$RESULT_DIR/build.log" 2>&1; then
     fail "build failed; see $RESULT_DIR/build.log"
 fi
 log "PASS: build succeeds"
@@ -286,8 +286,8 @@ log "PASS: build succeeds"
 if [ ! -x "$AGENT_BIN" ]; then
     fail "agent binary missing after build: $AGENT_BIN"
 fi
-if [ ! -f "$ROOT/build/security_policy_demo.bpf.o" ]; then
-    fail "BPF object missing after build: $ROOT/build/security_policy_demo.bpf.o"
+if [ ! -f "$ROOT/build/security_policy.bpf.o" ]; then
+    fail "BPF object missing after build: $ROOT/build/security_policy.bpf.o"
 fi
 
 SKILLS_OUT="$("$AGENT_BIN" --list-skills | sed 's/\x1b\[[0-9;]*m//g')"
@@ -2824,4 +2824,4 @@ if [ -e /sys/fs/bpf/security_policy_demo ] || [ -e /sys/fs/bpf/security_policy_d
 fi
 log "PASS: cleanup leaves no known security_policy_demo BPF residue"
 
-log "=== SecurityPolicyDemoSkill integration test complete ==="
+log "=== SecurityPolicySkill integration test complete ==="

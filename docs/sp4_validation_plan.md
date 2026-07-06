@@ -17,7 +17,7 @@ SP4 已接入为 EulerPilot 后续完整能力验证平台。本文件记录 SP4
 - PSI：`cpu/memory/io` 已可用
 - BTF / BPF LSM / TC / XDP / sched_ext：能力探测可用
 - Web Console：已通过 `npm ci/test/lint/build/audit`，Evidence 显示 32 条、必需缺失 0、警告 0
-- 质量门禁：`scripts/final_quality_gate.sh` 已在 SP4 sched_ext 内核通过 21/21 P0、100 轮 smoke、5 轮 doctor；最新日志为 `reports/sp4/final_quality_gate_scx_workload_20260706-1214.log`
+- 质量门禁：`scripts/final_quality_gate.sh` 已在 SP4 sched_ext 内核通过 21/21 P0、100 轮 smoke、5 轮 doctor；工程质量收口后统一刷新为 22 项；最新日志为 `reports/sp4/final_quality_gate_scx_workload_20260706-1214.log`
 - v3.1 主链路：`tests/integration/test_policy_engine_security_network_resource.sh --repeat 10` 已在 SP4 sched_ext 内核通过
 - sched_ext workload：Redis smoke、Redis PSI ACTIVE probe、Redis RUNS=3 sched_ext compare 和 Nginx RUNS=3 sched_ext compare 已通过
 

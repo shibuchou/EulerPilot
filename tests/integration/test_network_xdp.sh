@@ -407,7 +407,7 @@ This test validates the \`network_xdp\` sub-skill on an isolated veth pair.
 Reproduce:
 
 \`\`\`bash
-make agent network-xdp-demo
+make agent network-xdp
 bash tests/integration/test_network_xdp.sh
 \`\`\`
 EOF

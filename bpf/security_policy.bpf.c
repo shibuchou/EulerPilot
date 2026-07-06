@@ -324,7 +324,7 @@ static __always_inline int is_self_agent(void)
 }
 
 SEC("lsm/file_open")
-int BPF_PROG(security_policy_demo, struct file *file, int ret)
+int BPF_PROG(security_policy_file_open, struct file *file, int ret)
 {
     if (ret != 0)
         return ret;

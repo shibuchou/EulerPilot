@@ -10,12 +10,23 @@
 #include <yaml-cpp/yaml.h>
 
 #include <exception>
+#include <csignal>
 #include <iomanip>
 #include <iostream>
 
 namespace clr = eulerpilot::color;
 
 namespace {
+
+void handle_shutdown_signal(int) {
+    // Signal handlers only set a flag; the main flow still owns Skill cleanup.
+    eulerpilot::request_shutdown();
+}
+
+void install_shutdown_signal_handlers() {
+    std::signal(SIGINT, handle_shutdown_signal);
+    std::signal(SIGTERM, handle_shutdown_signal);
+}
 
 struct MetricsExporterGuard {
     bool started = false;
@@ -226,6 +237,7 @@ void print_summary(const std::vector<eulerpilot::WorkloadDecision> &decisions) {
 } // anonymous namespace
 
 int main(int argc, char **argv) {
+    install_shutdown_signal_handlers();
     eulerpilot::SkillManager manager;
     try {
         auto config = eulerpilot::parse_args(argc, argv);

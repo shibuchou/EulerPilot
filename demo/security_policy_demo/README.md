@@ -1,6 +1,6 @@
 # security_policy_demo
 
-本目录是 SecurityPolicySkill 的最小 BPF 演示场景。当前 demo 验证九件事：Agent attach `bpf/security_policy_demo.bpf.c` 后，用户态从 YAML target path、exec path、exec_prefix、dst_ip、dst_port、可选 cgroup_path、`type: pid`、`type: container_id`、`type: container` 和 `type: k8s_pod` 解析结果填充最多 8 项 BPF `target_map`，`lsm/file_open` 可以在 enforce 模式拒绝读取目标文件；`lsm/bprm_check_security` 可以在 enforce 模式拒绝执行 demo 脚本和目标 cgroup 内的可写目录前缀脚本；`lsm/socket_connect` 可以在 enforce 模式拒绝目标 cgroup 内的 IPv4 endpoint；带 cgroup_path 的 target 只在目标 cgroup 内阻断；PID target 可自动解析到 cgroup scope；container_id target 可在限定 cgroup tree 下解析到 cgroup scope；container runtime name 与 Kubernetes Pod 名称可解析到 cgroup scope；audit 模式同时通过 ringbuf 输出 `lsm_file_open`、`lsm_bprm_check_security`、`sys_enter_execve`、`sys_enter_openat`、`sys_enter_connect`、`sys_enter_ptrace` 命中事件。
+本目录是 SecurityPolicySkill 的最小 BPF 演示场景。当前 demo 验证九件事：Agent attach `bpf/security_policy.bpf.c` 后，用户态从 YAML target path、exec path、exec_prefix、dst_ip、dst_port、可选 cgroup_path、`type: pid`、`type: container_id`、`type: container` 和 `type: k8s_pod` 解析结果填充最多 8 项 BPF `target_map`，`lsm/file_open` 可以在 enforce 模式拒绝读取目标文件；`lsm/bprm_check_security` 可以在 enforce 模式拒绝执行 demo 脚本和目标 cgroup 内的可写目录前缀脚本；`lsm/socket_connect` 可以在 enforce 模式拒绝目标 cgroup 内的 IPv4 endpoint；带 cgroup_path 的 target 只在目标 cgroup 内阻断；PID target 可自动解析到 cgroup scope；container_id target 可在限定 cgroup tree 下解析到 cgroup scope；container runtime name 与 Kubernetes Pod 名称可解析到 cgroup scope；audit 模式同时通过 ringbuf 输出 `lsm_file_open`、`lsm_bprm_check_security`、`sys_enter_execve`、`sys_enter_openat`、`sys_enter_connect`、`sys_enter_ptrace` 命中事件。
 
 ```text
 /root/EulerPilot/demo/security_policy_demo/secret.txt
@@ -21,7 +21,7 @@
 当前集成脚本仍以 `/root/EulerPilot` 作为 demo 目标路径基准，请在 openEuler 目标机或等价 Linux 环境的 `/root/EulerPilot` 下运行：
 
 ```bash
-make agent security-policy-demo
+make agent security-policy
 sudo tests/integration/test_security_policy.sh
 ```
 

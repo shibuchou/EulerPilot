@@ -50,7 +50,7 @@ SP4 增强验证链路已经完成，现场默认作为证据展示，不作为�
 SP4 / 123 sched_ext kernel
   -> Redis RUNS=3 sched_ext compare
   -> Nginx RUNS=3 sched_ext compare
-  -> final_quality_gate.sh 21/21 P0 + 100 smoke + 5 doctor
+  -> final_quality_gate.sh 22/22 P0 + 100 smoke + 5 doctor
   -> final evidence compact 32 entries / missing 0 / warnings 0
 ```
 
@@ -79,3 +79,18 @@ SP4 / 123 sched_ext kernel
 - 如果现场环境缺少 `iperf3`，测试脚本会使用 Python TCP rate probe 兜底。
 - 现场主演示仍建议优先跑 lab 版 Policy Engine 跨 Skill 联动；SP4 sched_ext 多轮结果、真实 Kubernetes Pod target、Pod host veth QoS/XDP 和真实 Pod Policy Engine 联动以证据展示为主，环境确认后再选择性 live 重跑。
 - Web Console 建议通过 SSH 隧道访问 `127.0.0.1:18080`，先展示 Overview / Evidence / Policy Engine Timeline，再进入白名单 Demo。
+
+## Metrics Exporter 现场启用
+
+Prometheus `/metrics` 默认关闭，避免普通启动时额外暴露端口。现场如需展示 metrics，只使用专用配置：
+
+```bash
+./build/eulerpilot-agent --config configs/agent-metrics.yaml --duration-s 30 --interval-ms 1000 &
+curl http://127.0.0.1:9108/metrics
+```
+
+边界要求：
+
+- 只监听 `127.0.0.1:9108`，不绑定公网或生产网卡。
+- 演示结束后停止 Agent，metrics exporter 会随进程退出。
+- 默认 `configs/agent.yaml` 保持 `exporter.prometheus.enabled: false`。

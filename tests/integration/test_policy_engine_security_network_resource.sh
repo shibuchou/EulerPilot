@@ -621,7 +621,7 @@ command -v tc >/dev/null 2>&1 || fail 'missing tc command'
 command -v python3 >/dev/null 2>&1 || fail 'missing python3 command'
 
 mkdir -p "$RESULT_BASE"
-make agent security-policy-demo network-qos-tc
+make agent security-policy network-qos-tc
 scripts/setup_cgroup_v2.sh > "$RESULT_BASE/setup.log" 2>&1
 
 for iter in $(seq 1 "$REPEAT"); do

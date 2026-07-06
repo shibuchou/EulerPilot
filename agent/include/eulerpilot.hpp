@@ -178,5 +178,7 @@ ExecutionAction apply_scx_assignment(const RuntimeConfig &config, const Workload
 TriggerContext build_trigger_context(std::vector<WorkloadDecision> &decisions, bool cpu_psi_high, bool cpu_psi_triggered);
 std::vector<WorkloadDecision> run_once(const RuntimeConfig &config);
 std::vector<WorkloadDecision> run_cycles(const RuntimeConfig &config);
+void request_shutdown();
+bool shutdown_requested();
 
 } // namespace eulerpilot
