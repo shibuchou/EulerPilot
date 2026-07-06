@@ -5,12 +5,12 @@
   "entries": [
     {
       "category": "quality_gate",
-      "name": "121 final quality gate after credential deep hooks",
+      "name": "121 final quality gate after engineering quality closeout",
       "host": "121",
-      "path": "reports/final_quality_gate_20260703-creddeep-121.log",
+      "path": "reports/final_quality_gate_20260706-quality-121.log",
       "kind": "quality_gate",
       "required": true,
-      "notes": "21/21 P0, 100-round smoke and 5-round doctor evidence."
+      "notes": "22/22 P0 with C++ unit tests, 100-round smoke and 5-round doctor evidence."
     },
     {
       "category": "quality_gate",

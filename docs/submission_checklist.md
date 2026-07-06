@@ -172,7 +172,7 @@
 ## 质量与安全审计
 
 - `scripts/final_quality_gate.sh`：TAP 风格 22 项 P0 质量门禁脚本，新增 `make unit-tests`
-- `reports/final_quality_gate_20260703-creddeep-121.log`：121 已归档门禁通过记录，21/21 P0 通过，100 轮 smoke 与 5 轮 doctor 通过
+- `reports/final_quality_gate_20260706-quality-121.log`：121 最新门禁通过记录，22/22 P0 通过，100 轮 smoke 与 5 轮 doctor 通过
 - `configs/final_evidence_manifest.json`：最终证据压缩白名单清单
 - `scripts/collect_final_evidence.py`：最终证据压缩报告生成脚本
 - `reports/final_evidence_compact.md`：答辩入口压缩报告，当前覆盖 32 个核心证据条目
@@ -204,7 +204,7 @@
 - [x] `tests/integration/test_resource_control_runtime_readiness.sh` 输出 `isula_command/isulad_service/isulad_socket/isula_ps_rc`。
 - [x] 真实 runtime target 在 Podman 可用时从 blocked 转 pass，121/122 双机通过。
 - [x] Podman/systemd cgroup v2 真实容器 cgroup 解析修正为 PID cgroup fallback，定位 `.../libpod-*.scope/container`。
-- [x] 121 最新 `scripts/final_quality_gate.sh` 通过 21/21 P0、100 轮 smoke、5 轮 doctor。
+- [x] 121 最新 `scripts/final_quality_gate.sh` 通过 22/22 P0、100 轮 smoke、5 轮 doctor。
 - [x] 真实 Kubernetes Pod target 在 `kubectl + eulerpilot-lab` 可用时从 blocked 转 pass，121/122 已通过。
 - [x] Network QoS 真实 Pod host veth 演示 121/122 通过。
 - [x] Network XDP 真实 Pod host veth 演示 121/122 通过。

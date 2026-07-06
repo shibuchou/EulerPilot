@@ -178,7 +178,7 @@ v3.2 计划：`docs/next_phase_plan_v3_2.md`
 - 122 Security credential deep hooks：`results/security_policy/credential-deep-hooks-20260703-122-v2`
 - 121 real Pod Policy Engine 联动：`results/policy_engine/real-pod-security-network-resource-20260630-k3s-121-v1`
 - 122 real Pod Policy Engine 联动：`results/policy_engine/real-pod-security-network-resource-20260630-k3s-122-v1`
-- 121 v3.2 credential deep hook 后质量门禁：`reports/final_quality_gate_20260703-creddeep-121.log`
+- 121 工程质量收口后质量门禁：`reports/final_quality_gate_20260706-quality-121.log`
 
 当前结论：Docker/Podman/k3s/kubectl 包已安装；Docker 18.09 daemon 在当前 cgroup v2 环境下因 `Devices cgroup isn't mounted` 不作为主验证 runtime，Podman 4.9.4 与 k3s v1.24.2 可用。两台机器均已使用本地 `localhost/eulerpilot-busybox:latest` 镜像完成真实 container cgroup、真实 Kubernetes Pod cgroup、真实 Pod host veth QoS 写入/限速/rollback 验证，并已把 `policy_engine` 第二条跨 Skill 联动扩展到真实 Pod cgroup + host veth。为避免 Docker Hub 依赖，k3s 使用本地构造的 `docker.io/rancher/mirrored-pause:3.6` pause 镜像。
 
@@ -199,7 +199,7 @@ SP4 sched_ext 增强复核：
 - 122 isula real runtime blocked：`results/resource_control/real-runtime-target-20260630-isula-check-122`
 - 121 v3.1 回归：`results/policy_engine/security-network-resource-20260630-102629`
 
-121 在 k3s/Pod veth 代码接入后再次通过 `scripts/final_quality_gate.sh`：21/21 P0、100 轮 smoke、5 轮 doctor 均通过。
+121 在工程质量收口后再次通过 `scripts/final_quality_gate.sh`：22/22 P0、100 轮 smoke、5 轮 doctor 均通过。
 ## 后置事项
 
 - SP4 sched_ext 自编译内核复核已完成，准备文档为 `docs/sp4_validation_plan.md`，检查脚本为 `scripts/check_sp4_env.sh`。

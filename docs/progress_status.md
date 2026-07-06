@@ -18,7 +18,7 @@
 - Credential 生命周期 anomaly 已在 121/122 通过并完成回归：121 `results/security_policy/credential-anomaly-20260703-121-v4`，122 `results/security_policy/credential-anomaly-20260703-122-v4`；验证 scoped `setuid(65534)` 触发 `lsm_cred_prepare/lsm_task_fix_setuid` 命中并聚合为 `credential_churn`，anomaly 事件携带 `credential_stage` 与 `uid`，hit 事件保留 `cred_gfp` 等细节。
 - Credential deep hook 评估已在 121/122 通过：121 `results/security_policy/credential-deep-hooks-20260703-121-v2`，122 `results/security_policy/credential-deep-hooks-20260703-122-v2`；验证 `lsm_cred_alloc_blank` 与 `lsm_cred_transfer` 可被 scoped 配置并随 Agent attach，`hook_type` 映射避免同 cgroup 多个 scope-only credential 规则串错。普通用户态 workload 未稳定触发这两个 hook，结果明确记录 `deep_hook_runtime_note=no-userland-hit-observed`，不把 hit=0 写成业务命中。
 - isolated-veth XDP 更多报文特征已在 121/122 通过：121 `results/network_policy/xdp-20260703-121-fields-v1`，122 `results/network_policy/xdp-20260703-122-fields-v1`；验证 `drop_icmp_lab`、`drop_tcp_probe_lab`、`drop_udp_probe_lab` 与 `drop_udp_tuple_lab` 四条规则，并在 rollback 事件中输出 per-rule `protocol/src_ip/dst_ip/src_port/dst_port/drop_count/byte_count`。两端当前统计一致：ICMP 1、TCP 4、UDP 8、UDP tuple 8，总 drop 21。
-- 121 最新已归档质量门禁：`reports/final_quality_gate_20260703-creddeep-121.log`，21/21 P0、100 轮 Agent smoke、5 轮 doctor 均通过；工程质量收口后门禁提升为 22 项，新增 C++ unit tests。
+- 121 最新质量门禁：`reports/final_quality_gate_20260706-quality-121.log`，22/22 P0、100 轮 Agent smoke、5 轮 doctor 均通过；新增 C++ unit tests。
 - 最终答辩证据压缩入口已完成：`configs/final_evidence_manifest.json`、`scripts/collect_final_evidence.py`、`reports/final_evidence_compact.md`、`reports/final_evidence_compact.json`。当前 `python3 scripts/collect_final_evidence.py --strict` 通过，覆盖 32 个核心证据条目，必需证据缺失为 0、清单警告为 0。
 - Web Console v1 已作为旁路展示控制台落地：`web_console/` 独立存在，不修改 `agent/`、`bpf/`、`sched/` 主干；支持 Evidence-first 展示、白名单 Demo、SSE 日志、`demo/lab/cleanup` 单任务锁和 121 loopback 部署。设计文档：`docs/web_console_design.md`，安全说明：`web_console/docs/security.md`。
 - SP4 平台完整复核已完成：123 已启动 `6.6.0-159.4.3.154.oe2403sp4.x86_64-eulerpilot-scx`，`CONFIG_SCHED_CLASS_EXT=y`、`/sys/kernel/sched_ext` 可用；`scripts/check_sp4_env.sh`、`make agent`、`--validate-config`、`--doctor-skills`、`scripts/final_quality_gate.sh`、Redis/Nginx `RUNS=3` 对照均通过。
@@ -43,7 +43,7 @@
 - 121 已通过 `tests/integration/test_policy_engine_security_network_resource.sh --repeat 10`，并在文档/脚本收口后再次通过单次集成测试，最新结果目录：`results/policy_engine/security-network-resource-20260629-214952`。122 已通过同一核心集成测试，结果目录：`results/policy_engine/security-network-resource-20260629-215950`。
 - 第二条联动已具备统一 `transaction_id`、`trigger_event_id`、`policy_id`，可串起 security、policy_engine、resource_control、network_qos 和 ActionJournal。
 - `network_qos` 已加入 lab netdev 白名单边界，只允许 `ep-*`、`eulerpilot-*`、`lab-*`，默认拒绝生产网卡前缀。
-- 新增最终演示与证据入口：`demo/demo_all_final.sh`、`docs/demo_final_runbook.md`、`docs/final_evidence_index.md`；121 最新 `scripts/final_quality_gate.sh` 将在工程质量收口后刷新为 22/22 P0；已归档 21/21 P0、100 轮 smoke、5 轮 doctor 通过。
+- 新增最终演示与证据入口：`demo/demo_all_final.sh`、`docs/demo_final_runbook.md`、`docs/final_evidence_index.md`；121 最新 `scripts/final_quality_gate.sh` 已通过 22/22 P0、100 轮 smoke、5 轮 doctor。
 - SP4 平台复核已完成：123 机器 `/root/EulerPilot` 已启动自编译 `eulerpilot-scx` 内核，`CONFIG_SCHED_CLASS_EXT=y`、`/sys/kernel/sched_ext` 可用；Web Console、质量门禁和 Redis/Nginx `RUNS=3` 对照均通过。
 - Kubernetes/真实 runtime/真实 Pod veth 不作为 v3.1 完成条件，但保留为 v3.2 第一优先级。
 

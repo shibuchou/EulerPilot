@@ -78,5 +78,5 @@ make agent
 
 ## 最新记录
 
-- 121 最新完整门禁将在工程质量收口后刷新为 22/22 P0。
-- 已归档门禁：`reports/final_quality_gate_20260703-creddeep-121.log`，21/21 P0 通过，P1 `agent 100-round stress smoke` 和 `doctor 5-round stable` 通过。
+- 121 最新完整门禁：`reports/final_quality_gate_20260706-quality-121.log`
+- 结果：22/22 P0 通过，P1 `agent 100-round stress smoke` 和 `doctor 5-round stable` 通过。
