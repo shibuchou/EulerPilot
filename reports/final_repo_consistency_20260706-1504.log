@@ -1,0 +1,27 @@
+EulerPilot final repository consistency check
+Timestamp: 2026-07-06 15:04 CST
+
+Commit:
+  6558f236 Update final defense materials and demo pressure record
+
+Repositories:
+  local D:\code\Ubuntu\EulerPilot: 6558f236
+  GitHub shibuchou/EulerPilot main: 6558f236247f8ef672fce599e9c5dbcc86e0cc19
+  121 /root/EulerPilot: 6558f236, git status short count 0
+  122 /root/EulerPilot: 6558f236, git status short count 0
+  123 /root/EulerPilot: 6558f236, git status short count 0
+
+Evidence:
+  configs/final_evidence_manifest.json: 32 entries
+  reports/final_evidence_compact.json: 32 entries
+  required missing: 0
+  warning entries: 0
+
+121 Web Console:
+  GET /api/health: ok=true
+  GET /api/evidence/summary: total=32, required_missing=0, warnings=0
+
+Notes:
+  The demo pressure record was committed under reports/demo and
+  results/policy_engine/security-network-resource-20260706-145547.
+  The final evidence compact scope remains the frozen 32-entry set.
