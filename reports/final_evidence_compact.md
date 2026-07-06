@@ -1,6 +1,6 @@
 # EulerPilot 最终证据压缩报告
 
-生成时间：`2026-07-06T12:30:18+08:00`
+生成时间：`2026-07-06T15:45:59+08:00`
 清单：`configs/final_evidence_manifest.json`
 
 本报告由 `scripts/collect_final_evidence.py` 根据白名单清单生成，用于把分散的双机结果压缩成答辩入口。它不会递归扫描全部 `results/`，缺失项会显式列出。
@@ -18,7 +18,7 @@
 
 | 状态 | 主机 | 名称 | 路径 | 摘要 |
 | --- | --- | --- | --- | --- |
-| pass | 121 | 121 final quality gate after credential deep hooks | `reports/final_quality_gate_20260703-creddeep-121.log` | result=pass |
+| pass | 121 | 121 final quality gate after engineering quality closeout | `reports/final_quality_gate_20260706-quality-121.log` | result=pass |
 | pass | 123 | SP4 final quality gate after sched_ext workload validation | `reports/sp4/final_quality_gate_scx_workload_20260706-1214.log` | result=pass |
 
 ## repo_status

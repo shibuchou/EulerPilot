@@ -1,23 +1,23 @@
 {
-  "generated_at": "2026-07-06T12:30:18+08:00",
+  "generated_at": "2026-07-06T15:45:59+08:00",
   "manifest_path": "configs/final_evidence_manifest.json",
   "manifest_title": "EulerPilot final evidence manifest",
   "git_status_short": [],
   "entries": [
     {
       "category": "quality_gate",
-      "name": "121 final quality gate after credential deep hooks",
+      "name": "121 final quality gate after engineering quality closeout",
       "host": "121",
-      "path": "reports/final_quality_gate_20260703-creddeep-121.log",
+      "path": "reports/final_quality_gate_20260706-quality-121.log",
       "kind": "quality_gate",
       "required": true,
       "exists": true,
       "status": "pass",
-      "notes": "21/21 P0, 100-round smoke and 5-round doctor evidence.",
+      "notes": "22/22 P0 with C++ unit tests, 100-round smoke and 5-round doctor evidence.",
       "summary": {
         "result": "pass",
-        "planned": 21,
-        "ok_count": 21,
+        "planned": 22,
+        "ok_count": 22,
         "not_ok_count": 0,
         "optional_ok_count": 2,
         "quality_gate_complete": true
