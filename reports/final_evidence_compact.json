@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-06T15:45:59+08:00",
+  "generated_at": "2026-07-06T16:48:35+08:00",
   "manifest_path": "configs/final_evidence_manifest.json",
   "manifest_title": "EulerPilot final evidence manifest",
   "git_status_short": [],
@@ -65,7 +65,7 @@
         "log": "73e8ff8 Add real runtime and pod target harness",
         "remote": "origin\thttps://github.com/shibuchou/EulerPilot.git (push)",
         "status": "clean",
-        "bytes": 1461
+        "bytes": 1425
       },
       "evidence_files": [],
       "warnings": []
@@ -94,7 +94,7 @@
         {
           "path": "results/final/redis-scx-compare-20260612-191543/compare_summary_avg.csv",
           "exists": true,
-          "bytes": 1629
+          "bytes": 1634
         },
         {
           "path": "results/final/redis-scx-compare-20260612-191543/run_manifest.json",
@@ -132,7 +132,7 @@
         {
           "path": "results/final/nginx-scx-compare-20260612-194018/compare_summary_avg.csv",
           "exists": true,
-          "bytes": 948
+          "bytes": 950
         },
         {
           "path": "results/final/nginx-scx-compare-20260612-194018/run_manifest.json",
@@ -171,7 +171,7 @@
         {
           "path": "results/final/redis-scx-compare-20260706-115029/compare_summary_avg.csv",
           "exists": true,
-          "bytes": 1611
+          "bytes": 1606
         },
         {
           "path": "results/final/redis-scx-compare-20260706-115029/run_manifest.json",
@@ -181,7 +181,7 @@
         {
           "path": "results/final/redis-scx-compare-20260706-115029/report.md",
           "exists": true,
-          "bytes": 3669
+          "bytes": 3595
         }
       ],
       "warnings": []
@@ -209,7 +209,7 @@
         {
           "path": "results/final/nginx-scx-compare-20260706-120547/compare_summary_avg.csv",
           "exists": true,
-          "bytes": 948
+          "bytes": 946
         },
         {
           "path": "results/final/nginx-scx-compare-20260706-120547/run_manifest.json",
@@ -219,7 +219,7 @@
         {
           "path": "results/final/nginx-scx-compare-20260706-120547/report.md",
           "exists": true,
-          "bytes": 1670
+          "bytes": 1622
         }
       ],
       "warnings": []
@@ -246,12 +246,12 @@
         {
           "path": "results/final/redis-scx-psi-probe-20260706-100857/agent_snapshot.txt",
           "exists": true,
-          "bytes": 8398
+          "bytes": 8296
         },
         {
           "path": "results/final/redis-scx-psi-probe-20260706-100857/gate_status.txt",
           "exists": true,
-          "bytes": 76
+          "bytes": 75
         },
         {
           "path": "results/final/redis-scx-psi-probe-20260706-100857/scx_stats.json",
@@ -554,12 +554,12 @@
         {
           "path": "results/network_policy/real-pod-veth-qos-20260630-k3s-121-v2/tc_qdisc_after.txt",
           "exists": true,
-          "bytes": 100
+          "bytes": 98
         },
         {
           "path": "results/network_policy/real-pod-veth-qos-20260630-k3s-121-v2/tc_qdisc_rollback.txt",
           "exists": true,
-          "bytes": 32
+          "bytes": 31
         },
         {
           "path": "results/network_policy/real-pod-veth-qos-20260630-k3s-121-v2/report.md",
@@ -614,12 +614,12 @@
         {
           "path": "results/network_policy/real-pod-veth-qos-20260630-k3s-122-v1/tc_qdisc_after.txt",
           "exists": true,
-          "bytes": 100
+          "bytes": 98
         },
         {
           "path": "results/network_policy/real-pod-veth-qos-20260630-k3s-122-v1/tc_qdisc_rollback.txt",
           "exists": true,
-          "bytes": 32
+          "bytes": 31
         },
         {
           "path": "results/network_policy/real-pod-veth-qos-20260630-k3s-122-v1/report.md",
@@ -1374,7 +1374,7 @@
         {
           "path": "results/policy_engine/real-pod-security-network-resource-20260630-k3s-121-v1/security_policy_events.jsonl",
           "exists": true,
-          "bytes": 6860
+          "bytes": 6847
         },
         {
           "path": "results/policy_engine/real-pod-security-network-resource-20260630-k3s-121-v1/network_policy_events.jsonl",
@@ -1442,7 +1442,7 @@
         {
           "path": "results/policy_engine/real-pod-security-network-resource-20260630-k3s-122-v1/security_policy_events.jsonl",
           "exists": true,
-          "bytes": 6860
+          "bytes": 6847
         },
         {
           "path": "results/policy_engine/real-pod-security-network-resource-20260630-k3s-122-v1/network_policy_events.jsonl",
