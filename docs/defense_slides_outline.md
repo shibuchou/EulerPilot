@@ -70,4 +70,4 @@ SP4 复核：`results/final/nginx-scx-compare-20260706-120547`
 1. SP3 上完成主闭环，可正式交付
 2. OLK-6.6 与 SP4 上完成 Redis/Nginx sched_ext compare / RUNS=3 复核
 3. Skills 框架 + Network/Security/Resource/Policy Engine 证明 Agent 可扩展、可联动、可回滚
-4. 32 条 final evidence compact + Web Console + 最终质量门禁完成争奖证据收口
+4. 35 条 final evidence compact + Web Console + 最终质量门禁完成争奖证据收口

@@ -1,0 +1,17 @@
+Name:              eulerpilot-k8s-smoke
+Namespace:         eulerpilot-sp4-validation
+Labels:            app.kubernetes.io/name=eulerpilot-k8s-smoke
+                   app.kubernetes.io/part-of=eulerpilot-validation
+                   eulerpilot.io/owner=web-console
+Annotations:       <none>
+Selector:          app.kubernetes.io/name=eulerpilot-k8s-smoke
+Type:              ClusterIP
+IP Family Policy:  SingleStack
+IP Families:       IPv4
+IP:                10.97.219.104
+IPs:               10.97.219.104
+Port:              http  8080/TCP
+TargetPort:        8080/TCP
+Endpoints:         10.244.1.104:8080
+Session Affinity:  None
+Events:            <none>

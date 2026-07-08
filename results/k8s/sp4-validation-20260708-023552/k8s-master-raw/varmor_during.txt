@@ -1,0 +1,10 @@
+NAME                              READY   STATUS    RESTARTS        AGE     IP             NODE          NOMINATED NODE   READINESS GATES
+varmor-agent-5znp4                1/1     Running   0               3d14h   10.244.2.233   k8s-worker2   <none>           <none>
+varmor-agent-f5v4k                1/1     Running   0               2d17h   10.244.0.47    k8s-master    <none>           <none>
+varmor-agent-gwlrn                1/1     Running   0               3d14h   10.244.1.88    k8s-worker1   <none>           <none>
+varmor-bin-loader-5lqp4           1/1     Running   8 (6h27m ago)   3d14h   10.244.2.234   k8s-worker2   <none>           <none>
+varmor-bin-loader-8hgcn           1/1     Running   6 (5h18m ago)   2d17h   10.244.0.49    k8s-master    <none>           <none>
+varmor-bin-loader-8kqtt           1/1     Running   8 (6h26m ago)   3d14h   10.244.1.91    k8s-worker1   <none>           <none>
+varmor-manager-746556c4b5-grcv6   1/1     Running   5 (2d ago)      9d      10.244.1.69    k8s-worker1   <none>           <none>
+varmor-manager-746556c4b5-jl6kt   1/1     Running   6 (2d ago)      9d      10.244.2.218   k8s-worker2   <none>           <none>
+varmor-manager-746556c4b5-wl2wk   1/1     Running   3 (3d21h ago)   9d      10.244.1.72    k8s-worker1   <none>           <none>

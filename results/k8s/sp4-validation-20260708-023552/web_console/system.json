@@ -1,0 +1,30 @@
+{
+  "host": "cernet2.net",
+  "root": "/root/EulerPilot",
+  "git": {
+    "head": "1b4201c5",
+    "dirty": true,
+    "status_short": [
+      "?? results/k8s/"
+    ]
+  },
+  "os": {
+    "pretty_name": "openEuler 24.03 (LTS-SP4)",
+    "kernel": "6.6.0-159.4.3.154.oe2403sp4.x86_64-eulerpilot-scx"
+  },
+  "capabilities": {
+    "cgroup_v2": true,
+    "psi": true,
+    "sched_ext": true,
+    "btf": true
+  },
+  "path_roles": {
+    "sp3": "SP3 主交付路径：cgroup v2 已启用",
+    "scx": "sched_ext/scx 增强路径：当前内核已可用"
+  },
+  "files": {
+    "evidence_manifest": true,
+    "evidence_compact": true,
+    "dashboard": true
+  }
+}

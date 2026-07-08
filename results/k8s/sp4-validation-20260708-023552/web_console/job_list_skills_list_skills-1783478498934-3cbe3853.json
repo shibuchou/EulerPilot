@@ -1,0 +1,20 @@
+{
+  "job": {
+    "job_id": "list_skills-1783478498934-3cbe3853",
+    "action_id": "list_skills",
+    "kind": "readonly",
+    "status": "succeeded",
+    "started_at": "2026-07-08T02:41:38.934Z",
+    "ended_at": "2026-07-08T02:41:38.987Z",
+    "exit_code": 0,
+    "signal": "",
+    "log_tail": "[stdout] network_policy\n[stdout] network_policy_demo\n[stdout] network_qos\n[stdout] network_xdp\n[stdout] policy_engine\n[stdout] psi_gate\n[stdout] resource_control\n[stdout] security_policy\n[stdout] security_policy_demo\n",
+    "log_file": "web_console/runtime/jobs/list_skills-1783478498934-3cbe3853.log",
+    "command": [
+      "build/eulerpilot-agent",
+      "--list-skills"
+    ],
+    "pid": 37715,
+    "error": ""
+  }
+}

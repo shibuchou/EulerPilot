@@ -131,8 +131,8 @@ eBPF Observer
 
 说明：
 
-- 上述最终结果目录与图表目录已经回收到主交付仓库 `192.168.1.121:/root/EulerPilot`。
-- `192.168.1.122` 当前作为第二台 openEuler 24.03 LTS SP3 验证环境，保留 `OLK-6.6 / sched_ext` 验证能力，并同步 Network/Security 关键结果。
+- 上述最终结果目录与图表目录已经回收到 SP4 主验证仓库 `192.168.1.123:/root/EulerPilot`；`192.168.1.121:/root/EulerPilot` 保留为 SP3 历史验证和回归对照仓库。
+- `192.168.1.122` 当前作为第二台 openEuler 24.03 LTS SP3/OLK 对照验证环境，保留 `OLK-6.6 / sched_ext` 验证能力，并同步 Network/Security 关键结果。
 - 本地当前保存代码镜像、关键结果目录、脚本、中文文档入口和最终证据压缩报告；其中 `python3 scripts/collect_final_evidence.py --strict` 可用于提交前检查证据完整性。
 
 ---

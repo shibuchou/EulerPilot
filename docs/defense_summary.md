@@ -20,7 +20,7 @@ EulerPilot 是一个面向 openEuler 的自适应资源管控 Agent，通过 `eB
 - Redis `RUNS=5` 正式候选结果
 - Nginx `RUNS=5` 正式候选结果
 - SP4 Redis/Nginx `RUNS=3` sched_ext 多轮复核
-- Web Console v1 + 32 条 final evidence compact + 中文报告主稿
+- Web Console v1 + 35 条 final evidence compact + 中文报告主稿
 
 ## 3. 核心架构
 
@@ -69,6 +69,6 @@ Observer -> Analyzer -> Policy Engine -> Skill Manager -> Executor -> Benchmark/
 
 ## 7. 可答辩口径
 
-> EulerPilot 已经完成从 SP3 + cgroup v2 主闭环到 OLK-6.6 / SP4 sched_ext 正式复核的完整工程收口，并实现了 Skills 框架、三方向 OS Agent 扩展和跨 Skill 联动。项目已形成 Redis/Nginx 双业务线多轮候选结果、32 条 final evidence compact、质量门禁和 Web Console 演示入口，具备真实可复现的系统调控能力。
+> EulerPilot 已经完成从 SP3 + cgroup v2 主闭环到 OLK-6.6 / SP4 sched_ext 与 Kubernetes 旁路验证的完整工程收口，并实现了 Skills 框架、三方向 OS Agent 扩展和跨 Skill 联动。项目已形成 Redis/Nginx 双业务线多轮候选结果、35 条 final evidence compact、质量门禁和 Web Console 演示入口，具备真实可复现的系统调控能力。
 
 项目代码：`https://github.com/shibuchou/EulerPilot`（私密仓库）

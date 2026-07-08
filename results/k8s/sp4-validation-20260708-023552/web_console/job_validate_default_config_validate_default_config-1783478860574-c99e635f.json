@@ -1,0 +1,21 @@
+{
+  "job": {
+    "job_id": "validate_default_config-1783478860574-c99e635f",
+    "action_id": "validate_default_config",
+    "kind": "verify",
+    "status": "succeeded",
+    "started_at": "2026-07-08T02:47:40.575Z",
+    "ended_at": "2026-07-08T02:47:40.596Z",
+    "exit_code": 0,
+    "signal": "",
+    "log_tail": "[stdout] EulerPilot config valid: configs/agent.yaml\n",
+    "log_file": "web_console/runtime/jobs/validate_default_config-1783478860574-c99e635f.log",
+    "command": [
+      "build/eulerpilot-agent",
+      "--validate-config",
+      "configs/agent.yaml"
+    ],
+    "pid": 38330,
+    "error": ""
+  }
+}

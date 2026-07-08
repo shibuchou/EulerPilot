@@ -22,6 +22,15 @@
       "notes": "SP4 sched_ext kernel final gate: 21/21 P0, 100-round smoke and 5-round doctor evidence."
     },
     {
+      "category": "quality_gate",
+      "name": "SP4 final quality gate after Kubernetes/Web Console validation",
+      "host": "123",
+      "path": "results/k8s/sp4-validation-20260708-023552/final_quality_gate.log",
+      "kind": "quality_gate",
+      "required": true,
+      "notes": "SP4 core validation repository final gate: 22/22 P0, 100-round smoke and 5-round doctor evidence."
+    },
+    {
       "category": "repo_status",
       "name": "v3.1 start repository snapshot",
       "host": "local",
@@ -348,6 +357,28 @@
       "files": ["policy_engine_events.jsonl", "security_policy_events.jsonl", "network_policy_events.jsonl", "resource_control_events.jsonl", "action_journal.jsonl", "report.md"],
       "required": true,
       "notes": "v3.2 real Pod cgroup plus host veth cross-skill evidence."
+    },
+    {
+      "category": "kubernetes_validation",
+      "name": "SP4 Kubernetes isolated namespace smoke",
+      "host": "123+k8s-master",
+      "path": "results/k8s/sp4-validation-20260708-023552",
+      "kind": "result_dir",
+      "summary": "report.md",
+      "files": ["k8s-master-raw/summary.env", "k8s-master-raw/pod_local_health.txt", "k8s-master-raw/service_health.txt", "k8s-master-raw/validation_label_after_cleanup.txt", "k8s-master-raw/webconsole_label_after_cleanup.txt"],
+      "required": true,
+      "notes": "Isolated namespace K8s smoke validation with cleanup proof; no production namespace or existing workload modified."
+    },
+    {
+      "category": "web_console",
+      "name": "SP4 Web Console whitelist actions",
+      "host": "123",
+      "path": "results/k8s/sp4-validation-20260708-023552/web_console",
+      "kind": "result_dir",
+      "summary": "web_console_action_summary_v2.json",
+      "files": ["health.json", "system.json", "evidence_summary_after_manifest.json", "web_console_action_summary_v2.json", "jobs_after.json"],
+      "required": true,
+      "notes": "SP4 Web Console API and whitelist action validation: read-only, verify, offline demo and cleanup actions succeeded."
     }
   ]
 }

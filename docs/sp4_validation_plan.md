@@ -1,6 +1,6 @@
 # openEuler 24.03 LTS SP4 验证计划
 
-更新时间：`2026-07-06`
+更新时间：`2026-07-08`
 
 SP4 已接入为 EulerPilot 后续完整能力验证平台。本文件记录 SP4 初始验证结果、sched_ext/scx 自编译内核验证结果和后续复核入口；121/122 的 SP3 双机结果仍作为既有稳定证据保留。
 
@@ -16,10 +16,11 @@ SP4 已接入为 EulerPilot 后续完整能力验证平台。本文件记录 SP4
 - cgroup v2：已挂载，controllers 包含 `cpu io memory`
 - PSI：`cpu/memory/io` 已可用
 - BTF / BPF LSM / TC / XDP / sched_ext：能力探测可用
-- Web Console：已通过 `npm ci/test/lint/build/audit`，Evidence 显示 32 条、必需缺失 0、警告 0
-- 质量门禁：`scripts/final_quality_gate.sh` 已在 SP4 sched_ext 内核通过 21/21 P0、100 轮 smoke、5 轮 doctor；工程质量收口后统一刷新为 22 项；最新日志为 `reports/sp4/final_quality_gate_scx_workload_20260706-1214.log`
+- Web Console：已通过 `npm ci/test/lint/build/audit`，Evidence 显示 35 条、必需缺失 0、警告 0
+- 质量门禁：`scripts/final_quality_gate.sh` 已在 SP4 sched_ext 内核通过 22/22 P0、100 轮 smoke、5 轮 doctor；最新日志为 `results/k8s/sp4-validation-20260708-023552/final_quality_gate.log`
 - v3.1 主链路：`tests/integration/test_policy_engine_security_network_resource.sh --repeat 10` 已在 SP4 sched_ext 内核通过
 - sched_ext workload：Redis smoke、Redis PSI ACTIVE probe、Redis RUNS=3 sched_ext compare 和 Nginx RUNS=3 sched_ext compare 已通过
+- Kubernetes 旁路验证：已通过 `k8s-master` 只读盘点、独立 namespace 最小写入、Web Console 白名单动作、cleanup 复查；结果目录为 `results/k8s/sp4-validation-20260708-023552`
 
 已保存的 SP4 初始验证与 sched_ext 复核证据：
 
@@ -41,6 +42,7 @@ results/final/redis-scx-compare-20260706-101505
 results/final/nginx-scx-compare-20260706-101928
 results/final/redis-scx-compare-20260706-115029
 results/final/nginx-scx-compare-20260706-120547
+results/k8s/sp4-validation-20260708-023552
 ```
 
 ## sched_ext/scx 复核结论
@@ -91,10 +93,34 @@ SP4 虚拟机 CPU 数量少于早期固定 cpuset 假设时，`scripts/setup_cgr
 - 自编译启用 `CONFIG_SCHED_CLASS_EXT` 的 SP4 内核，验证 `/sys/kernel/sched_ext` 与 scx 相关能力。
 - 在 sched_ext 内核下复核 v3.1 主联动、质量门禁和 Web Console Evidence。
 
+## Kubernetes 旁路验证结果
+
+Kubernetes 验证不直接在生产 namespace 中执行。当前 `k8s-master` 集群只读盘点显示：
+
+- context：`kubernetes-admin@kubernetes`
+- Kubernetes：`v1.29.15`
+- 节点：`k8s-master`、`k8s-worker1`、`k8s-worker2` 均为 `Ready`
+- RuntimeClass：存在 `kata`
+- 已有工具链包括 `varmor`、Kata/KataLSM、Kafka、Elasticsearch/Kibana、ebpf nodeport/service、kube-flannel、chaos-mesh 等
+- 验证前已有 `ebpf-service-system/ebpf-clusterip-agent-h8lw2` 与 `ebpf-service-test/clusterip-client-cnf74` 为 `ImagePullBackOff`，属于既有状态
+
+本次只创建并清理 `eulerpilot-sp4-validation` namespace，所有资源均带：
+
+```text
+app.kubernetes.io/part-of=eulerpilot-validation
+eulerpilot.io/owner=web-console
+```
+
+Deployment/Service 最小写入验证通过，Pod 本地健康检查和 Service 健康检查均返回 `ok`。Cleanup 后两个 label selector 均返回 `No resources found`。
+
+详细方案：`docs/sp4_k8s_validation_plan.md`
+
+结果目录：`results/k8s/sp4-validation-20260708-023552`
+
 ## 不阻塞事项
 
 - sched_ext/scx 不阻塞既有 SP3 证据；但 SP4 将作为后续完整能力验证平台继续推进。
-- Kubernetes/真实 runtime/真实 Pod veth 仍作为 v3.2 第一优先级，不放入 v3.1 完成条件。
+- 121/122 SP3 Kubernetes/真实 runtime/真实 Pod veth 证据继续保留为历史双机对照；后续新增最终验证优先在 SP4 主验证线和独立 K8s lab 中完成。
 
 ## 检查入口
 

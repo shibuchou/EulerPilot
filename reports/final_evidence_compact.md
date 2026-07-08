@@ -1,6 +1,6 @@
 # EulerPilot 最终证据压缩报告
 
-生成时间：`2026-07-06T16:48:35+08:00`
+生成时间：`2026-07-08T11:18:56+08:00`
 清单：`configs/final_evidence_manifest.json`
 
 本报告由 `scripts/collect_final_evidence.py` 根据白名单清单生成，用于把分散的双机结果压缩成答辩入口。它不会递归扫描全部 `results/`，缺失项会显式列出。
@@ -9,10 +9,10 @@
 
 | 指标 | 值 |
 | --- | --- |
-| 清单条目 | 32 |
+| 清单条目 | 35 |
 | 必需缺失 | 0 |
 | 带警告条目 | 0 |
-| Git 工作区额外状态 | 0 |
+| Git 工作区额外状态 | 22 |
 
 ## quality_gate
 
@@ -20,6 +20,7 @@
 | --- | --- | --- | --- | --- |
 | pass | 121 | 121 final quality gate after engineering quality closeout | `reports/final_quality_gate_20260706-quality-121.log` | result=pass |
 | pass | 123 | SP4 final quality gate after sched_ext workload validation | `reports/sp4/final_quality_gate_scx_workload_20260706-1214.log` | result=pass |
+| pass | 123 | SP4 final quality gate after Kubernetes/Web Console validation | `results/k8s/sp4-validation-20260708-023552/final_quality_gate.log` | result=pass |
 
 ## repo_status
 
@@ -80,6 +81,43 @@
 | pass | 122 | security to network and resource 122 | `results/policy_engine/security-network-resource-20260629-215950` | result=pass |
 | pass | 121 | real Pod security to network and resource 121 | `results/policy_engine/real-pod-security-network-resource-20260630-k3s-121-v1` | result=pass<br>reason=real-pod-security-network-resource-applied-and-restored<br>kernel=6.6.0-132.0.0.111.oe2403sp3.x86_64<br>transaction_id=pe-v3-1-1-1782809635<br>policy_id=security_network_resource_real_pod_response |
 | pass | 122 | real Pod security to network and resource 122 | `results/policy_engine/real-pod-security-network-resource-20260630-k3s-122-v1` | result=pass<br>reason=real-pod-security-network-resource-applied-and-restored<br>kernel=6.6.0-olk66-scx<br>transaction_id=pe-v3-1-1-1782809810<br>policy_id=security_network_resource_real_pod_response |
+
+## kubernetes_validation
+
+| 状态 | 主机 | 名称 | 路径 | 摘要 |
+| --- | --- | --- | --- | --- |
+| present | 123+k8s-master | SP4 Kubernetes isolated namespace smoke | `results/k8s/sp4-validation-20260708-023552` | # SP4 / Kubernetes 旁路验证报告 / 时间：`2026-07-08 10:35 CST` / ## 结论 |
+
+## web_console
+
+| 状态 | 主机 | 名称 | 路径 | 摘要 |
+| --- | --- | --- | --- | --- |
+| present | 123 | SP4 Web Console whitelist actions | `results/k8s/sp4-validation-20260708-023552/web_console` | [ / { / "action": "status_json", |
+
+## 生成时 Git 工作区状态
+
+- ` M AGENTS.md`
+- ` M README.md`
+- ` M configs/final_evidence_manifest.json`
+- ` M docs/defense_final.md`
+- ` M docs/defense_qa.md`
+- ` M docs/defense_slides_outline.md`
+- ` M docs/defense_summary.md`
+- ` M docs/final_delivery_status.md`
+- ` M docs/final_report_submission.md`
+- ` M docs/final_submission_guide.md`
+- ` M docs/final_submission_packet.md`
+- ` M docs/final_submission_readme.md`
+- ` M docs/final_talk_script.md`
+- ` M docs/one_page_summary.md`
+- ` M docs/progress_status.md`
+- ` M docs/sp4_validation_plan.md`
+- ` M docs/stage_g_benchmark_freeze.md`
+- ` M docs/web_console_design.md`
+- `?? docs/sp4_k8s_validation_plan.md`
+- `?? reports/sp4_sync_hash_local_20260708.txt`
+- `?? reports/sp4_sync_hash_remote_20260708.txt`
+- `?? results/k8s/`
 
 ## 使用方式
 

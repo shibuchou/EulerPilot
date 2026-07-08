@@ -1,0 +1,7 @@
+NAMESPACE             NAME                                       READY   STATUS             RESTARTS   AGE     IP              NODE          NOMINATED NODE   READINESS GATES
+default               backend-image-importer                     0/1     Completed          0          42h     10.244.0.70     k8s-master    <none>           <none>
+default               frontend-image-importer                    0/1     Completed          0          43h     10.244.0.66     k8s-master    <none>           <none>
+default               katalsm-web-frontend-import                0/1     Completed          0          46h     10.244.0.64     k8s-master    <none>           <none>
+default               katalsm-web-web-console-migrations-c6pdl   0/1     Completed          0          47h     10.244.1.94     k8s-worker1   <none>           <none>
+ebpf-service-system   ebpf-clusterip-agent-h8lw2                 0/1     ImagePullBackOff   0          2d17h   192.168.1.201   k8s-master    <none>           <none>
+ebpf-service-test     clusterip-client-cnf74                     0/1     ImagePullBackOff   0          2d17h   10.244.0.48     k8s-master    <none>           <none>

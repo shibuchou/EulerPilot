@@ -1,0 +1,44 @@
+{
+  "action": "demo_cleanup",
+  "start": {
+    "job": {
+      "job_id": "demo_cleanup-1783478772072-ee69ec1b",
+      "action_id": "demo_cleanup",
+      "kind": "cleanup",
+      "status": "running",
+      "started_at": "2026-07-08T02:46:12.072Z",
+      "ended_at": "",
+      "exit_code": null,
+      "signal": "",
+      "log_tail": "",
+      "log_file": "web_console/runtime/jobs/demo_cleanup-1783478772072-ee69ec1b.log",
+      "command": [
+        "bash",
+        "demo/demo_all_final.sh",
+        "--cleanup"
+      ],
+      "pid": 38149,
+      "error": ""
+    }
+  },
+  "job_id": "demo_cleanup-1783478772072-ee69ec1b",
+  "final": {
+    "job_id": "demo_cleanup-1783478772072-ee69ec1b",
+    "action_id": "demo_cleanup",
+    "kind": "cleanup",
+    "status": "succeeded",
+    "started_at": "2026-07-08T02:46:12.072Z",
+    "ended_at": "2026-07-08T02:46:12.235Z",
+    "exit_code": 0,
+    "signal": "",
+    "log_tail": "[stdout] \n[stdout] == cleanup lab network ==\n[stdout] \n[stdout] == cleanup lab cgroup ==\n[stdout] \n[stdout] == cleanup helper scripts ==\n[stderr] [rollback] scx binary: /root/olk/kernel-OLK-6.6-atomgit/tools/sched_ext/build/bin/scx_eulerpilot\n[stdout] [Rollback] restore cgroup parameters and stop active sched_ext scheduler if configured.\n[stdout] [Rollback] done.\n[stdout] cleanup=done\n",
+    "log_file": "web_console/runtime/jobs/demo_cleanup-1783478772072-ee69ec1b.log",
+    "command": [
+      "bash",
+      "demo/demo_all_final.sh",
+      "--cleanup"
+    ],
+    "pid": 38149,
+    "error": ""
+  }
+}

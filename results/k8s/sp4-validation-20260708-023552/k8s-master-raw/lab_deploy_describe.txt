@@ -1,0 +1,45 @@
+Name:                   eulerpilot-k8s-smoke
+Namespace:              eulerpilot-sp4-validation
+CreationTimestamp:      Wed, 08 Jul 2026 02:35:54 +0000
+Labels:                 app.kubernetes.io/name=eulerpilot-k8s-smoke
+                        app.kubernetes.io/part-of=eulerpilot-validation
+                        eulerpilot.io/owner=web-console
+Annotations:            deployment.kubernetes.io/revision: 1
+Selector:               app.kubernetes.io/name=eulerpilot-k8s-smoke
+Replicas:               1 desired | 1 updated | 1 total | 1 available | 0 unavailable
+StrategyType:           RollingUpdate
+MinReadySeconds:        0
+RollingUpdateStrategy:  25% max unavailable, 25% max surge
+Pod Template:
+  Labels:  app.kubernetes.io/name=eulerpilot-k8s-smoke
+           app.kubernetes.io/part-of=eulerpilot-validation
+           eulerpilot.io/owner=web-console
+  Containers:
+   smoke:
+    Image:      busybox:1.36
+    Port:       8080/TCP
+    Host Port:  0/TCP
+    Command:
+      sh
+      -c
+      mkdir -p /www && echo ok > /www/health && httpd -f -p 8080 -h /www
+    Limits:
+      cpu:     50m
+      memory:  64Mi
+    Requests:
+      cpu:        10m
+      memory:     16Mi
+    Environment:  <none>
+    Mounts:       <none>
+  Volumes:        <none>
+Conditions:
+  Type           Status  Reason
+  ----           ------  ------
+  Available      True    MinimumReplicasAvailable
+  Progressing    True    NewReplicaSetAvailable
+OldReplicaSets:  <none>
+NewReplicaSet:   eulerpilot-k8s-smoke-c448f7795 (1/1 replicas created)
+Events:
+  Type    Reason             Age   From                   Message
+  ----    ------             ----  ----                   -------
+  Normal  ScalingReplicaSet  10s   deployment-controller  Scaled up replica set eulerpilot-k8s-smoke-c448f7795 to 1

@@ -3,8 +3,9 @@
 ## 交流与工作目录
 
 - 始终使用简体中文与用户交流，除非用户明确要求使用其他语言。
-- 本项目主要工作位置为 openEuler 服务器 `EulerPilot-openEuler`，主机 `192.168.1.121`，用户 `root`，系统为 openEuler 24.03 LTS SP3。
-- 服务器上的项目目录固定为 `/root/EulerPilot`；后续代码创建、编译、运行和测试默认都在该服务器目录中完成。
+- 本项目当前核心验证与最终交付验证仓库为 openEuler 服务器 `openEuler-2403-LTS-SP4`，主机 `192.168.1.123`，用户 `root`，系统为 openEuler 24.03 LTS SP4。
+- SP4 服务器上的项目目录固定为 `/root/EulerPilot`；新增功能、Web Console、Kubernetes 验证和最终 evidence 收口优先在该目录完成。
+- `EulerPilot-openEuler` / `192.168.1.121:/root/EulerPilot` 已降级为初代迭代仓库和 SP3 历史验证仓库，只作为旧版本参考、兼容性回归和对照证据，不再作为最终主验证线。
 - 本地目录 `D:\code\Ubuntu\EulerPilot` 作为项目镜像和同步落点；只有在用户要求同步时，才从服务器同步到本地，再按用户要求同步到 GitHub。
 - 在用户明确要求同步或推送之前，不要主动把服务器代码同步到本地或 GitHub，也不要主动 push。
 - 项目主要开发语言为 C 和 C++；eBPF 内核侧程序优先使用 C，用户态 Agent/工具优先使用 C/C++，除非某个辅助脚本或工具链明显更适合用 Shell/Python。
@@ -46,8 +47,8 @@
 
 ## 最终交付要求
 
-- 最终代码需能在 openEuler 24.03-LTS-SP3 上正常编译、运行和测试。
-- 鼓励在更多 Linux 发行版上编译、运行和测试，但 openEuler 24.03-LTS-SP3 是硬性目标环境。
+- 当前项目验证与最终交付验收基线调整为 openEuler 24.03 LTS SP4；SP3 证据继续保留为历史兼容和回归对照。
+- 鼓励在 SP3、SP4 和更多 Linux 发行版上编译、运行和测试；新增最终证据优先以 SP4 主验证仓库为准。
 - 技术报告需要包含作品链接、设计方案、实现方案、运行效果/测试结果、演示视频、特色创新等内容。
 - 系统创新赛道会重点考察项目代码、开发过程数据、技术报告和现场答辩表现。
 
@@ -83,6 +84,19 @@
 - 每次阶段收口前必须执行一次文档一致性检查：阶段计划、README、状态看板、质量门禁结果和实际目录内容不能互相矛盾。
 - C/C++ 代码风格应接近 openEuler 常见开源项目：命名直接、结构清晰、错误路径显式、避免过度封装；系统调用、eBPF attach/detach、cgroup/TC/XDP/LSM 等有副作用代码必须有必要注释说明安全边界和回滚语义。
 - 注释应服务于理解关键系统行为，不写空泛注释；对于 verifier 约束、hook 作用域、默认不 enforce、不会影响 SSH/管理网卡等安全前提，要在代码或相邻文档中写清楚。
+
+## SP4 / Kubernetes 验证规则
+
+- Kubernetes master 可按本地 SSH 配置中的 `k8s-master` 或等价别名连接；连接后先做只读盘点，包括当前 context、节点状态、namespace、已有 Pod/Deployment/DaemonSet/Service、RuntimeClass、CRD、runtime、kernel、cgroup v2、BTF、PSI、LSM、Kata 和 vArmor 状态。
+- Kubernetes 验证必须旁路、隔离、可复现、可清理；严禁影响已有生产 Pod、系统组件、`kube-system`、`varmor`、已有业务 namespace、监控组件、vArmor/Kata/Kafka/Elasticsearch/Web 等现有工具链。
+- 所有验证资源必须创建在独立 namespace，例如 `eulerpilot-webconsole-lab` 或 `eulerpilot-sp4-validation`；禁止修改 `kube-system`、`varmor`、已有业务 namespace 或已有 workload。
+- 所有验证资源必须带统一 label：`app.kubernetes.io/part-of=eulerpilot-validation` 与 `eulerpilot.io/owner=web-console`。
+- 所有验证 Pod/Deployment 必须设置有限 CPU/Memory requests 和 limits；Network/Security/Resource 类验证优先使用专用 namespace、专用 Pod、专用 cgroup、专用 veth/qdisc 或专用测试目标。
+- 验证分级执行：先只读检查，再最小写入创建独立 namespace 和最小测试 Pod/Deployment，再执行受控 live 链路，最后 cleanup 并复查残留。
+- 验证完成后必须删除本次创建的 namespace、Pod、Deployment、Service、ConfigMap、Job、临时文件、临时日志、临时 cgroup、临时 veth/qdisc 等资源，并用以下 selector 二次确认：
+  - `kubectl get all -A -l app.kubernetes.io/part-of=eulerpilot-validation`
+  - `kubectl get all -A -l eulerpilot.io/owner=web-console`
+- 清理后再次确认节点 `Ready`、`kube-system` 正常、现有工具链组件状态未被本次验证改变、没有 EulerPilot 验证残留资源。
 
 ## 参考仓库与复用边界
 

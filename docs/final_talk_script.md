@@ -61,7 +61,7 @@
 1. SP3 上完成主闭环，可正式交付。
 2. OLK-6.6 和 SP4 上完成 Redis/Nginx sched_ext 正式 compare 与复核。
 3. Skills 框架 + Network/Security/Resource/Policy Engine 证明 Agent 可扩展、可联动、可回滚。
-4. 项目已形成 32 条 final evidence compact、Web Console 和最终质量门禁证据。
+4. 项目已形成 35 条 final evidence compact、Web Console 和最终质量门禁证据。
 
 ## 收尾
 

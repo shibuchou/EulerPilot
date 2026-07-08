@@ -1,0 +1,20 @@
+{
+  "job": {
+    "job_id": "check_env-1783478318112-d3f493a0",
+    "action_id": "check_env",
+    "kind": "readonly",
+    "status": "succeeded",
+    "started_at": "2026-07-08T02:38:38.114Z",
+    "ended_at": "2026-07-08T02:38:38.168Z",
+    "exit_code": 0,
+    "signal": "",
+    "log_tail": "[stdout] EulerPilot environment check\n[stdout] ============================\n[stdout] Host: cernet2.net\n[stdout] Kernel: 6.6.0-159.4.3.154.oe2403sp4.x86_64-eulerpilot-scx\n[stdout] OS: [stdout] openEuler release 24.03 (LTS-SP4)\n[stdout] [OK] gcc: /usr/bin/gcc\n[stdout] [OK] g++: /usr/bin/g++\n[stdout] [OK] clang: /usr/bin/clang\n[stdout] [OK] make: /usr/bin/make\n[stdout] [OK] git: /usr/bin/git\n[stdout] [OK] bpftool: /usr/sbin/bpftool\n[stdout] [OK] llvm-strip: /usr/bin/llvm-strip\n[stdout] [OK] readelf: /usr/bin/readelf\n[stdout] [OK] yaml-cpp is available\n[stdout] [OK] libbpf headers are installed\n[stdout] [OK] BTF vmlinux is available\n[stdout] [OK] CONFIG_SCHED_CLASS_EXT=y\n[stdout] [OK] /sys/kernel/sched_ext exists\n[stdout] [OK] CPU PSI is available\n[stdout] [PSI] some avg10=0.00 avg60=0.02 avg300=0.04 total=1682238360\n[stdout] [PSI] full avg10=0.00 avg60=0.00 avg300=0.00 total=0\n[stdout] [OK] cgroup v2 is mounted\n[stdout] [OK] workload observer dump tool is built\n[stdout] \n[stdout] Next step: integrate the workload observer output into the Agent runtime.\n",
+    "log_file": "web_console/runtime/jobs/check_env-1783478318112-d3f493a0.log",
+    "command": [
+      "bash",
+      "scripts/check_env.sh"
+    ],
+    "pid": 37577,
+    "error": ""
+  }
+}

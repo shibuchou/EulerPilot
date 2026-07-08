@@ -1,0 +1,64 @@
+NAMESPACE              NAME                                                       READY   STATUS             RESTARTS         AGE     IP              NODE          NOMINATED NODE   READINESS GATES
+chaos-mesh             chaos-controller-manager-7779bf747d-csbbb                  1/1     Running            1 (3d21h ago)    21d     10.244.2.210    k8s-worker2   <none>           <none>
+default                backend-image-importer                                     0/1     Completed          0                42h     10.244.0.70     k8s-master    <none>           <none>
+default                demo-one                                                   1/1     Running            3 (3d21h ago)    50d     10.244.1.67     k8s-worker1   <none>           <none>
+default                elasticsearch-764c7cc448-5sm9h                             1/1     Running            2 (3d21h ago)    45d     10.244.2.214    k8s-worker2   <none>           <none>
+default                frontend-image-importer                                    0/1     Completed          0                43h     10.244.0.66     k8s-master    <none>           <none>
+default                kata-ebpf                                                  1/1     Running            1 (3d21h ago)    10d     10.244.1.63     k8s-worker1   <none>           <none>
+default                kata-ebpf-mount                                            1/1     Running            1 (3d21h ago)    10d     10.244.2.215    k8s-worker2   <none>           <none>
+default                kata-nginx-master                                          2/2     Running            13 (3d21h ago)   62d     10.244.2.209    k8s-worker2   <none>           <none>
+default                katalsm-infra-observability-es-consumer-7bdbb7cb99-pgmqc   1/1     Running            0                3d15h   10.244.1.79     k8s-worker1   <none>           <none>
+default                katalsm-stack-katalsm-controller-9c5f78695-x5hph           1/1     Running            0                2d17h   10.244.0.46     k8s-master    <none>           <none>
+default                katalsm-stack-katalsm-kafka-bridge-btt7m                   1/1     Running            0                2d17h   192.168.1.201   k8s-master    <none>           <none>
+default                katalsm-stack-katalsm-kafka-bridge-qpw8m                   1/1     Running            0                3d13h   192.168.1.202   k8s-worker1   <none>           <none>
+default                katalsm-stack-katalsm-kafka-bridge-xlvdd                   1/1     Running            0                3d13h   192.168.1.203   k8s-worker2   <none>           <none>
+default                katalsm-stack-katalsm-node-agent-ghrfx                     1/1     Running            0                3d13h   192.168.1.202   k8s-worker1   <none>           <none>
+default                katalsm-stack-katalsm-node-agent-xmzgb                     1/1     Running            0                3d13h   192.168.1.203   k8s-worker2   <none>           <none>
+default                katalsm-stack-katalsm-node-agent-zqgzv                     1/1     Running            0                2d17h   192.168.1.201   k8s-master    <none>           <none>
+default                katalsm-stack-katalsm-webhook-5df99cb7b4-6dqn2             1/1     Running            0                2d1h    10.244.0.50     k8s-master    <none>           <none>
+default                katalsm-stack-varmor-forwarder-dhbj5                       1/1     Running            0                3d14h   192.168.1.203   k8s-worker2   <none>           <none>
+default                katalsm-stack-varmor-forwarder-dsg8h                       1/1     Running            0                3d15h   192.168.1.202   k8s-worker1   <none>           <none>
+default                katalsm-web-frontend-import                                0/1     Completed          0                46h     10.244.0.64     k8s-master    <none>           <none>
+default                katalsm-web-web-console-backend-8565fb6cb4-m2mt5           1/1     Running            0                37h     10.244.0.87     k8s-master    <none>           <none>
+default                katalsm-web-web-console-frontend-558954c8b5-xz886          1/1     Running            0                37h     10.244.0.91     k8s-master    <none>           <none>
+default                katalsm-web-web-console-migrations-c6pdl                   0/1     Completed          0                47h     10.244.1.94     k8s-worker1   <none>           <none>
+default                katalsm-web-web-console-mysql-666bbd6944-6hbdp             1/1     Running            0                47h     10.244.1.92     k8s-worker1   <none>           <none>
+default                kibana-6d85f87996-j767z                                    1/1     Running            1 (3d21h ago)    43d     10.244.1.65     k8s-worker1   <none>           <none>
+ebpf-nodeport-system   ebpf-nodeport-agent-8zhtv                                  1/1     Running            2 (3d19h ago)    21d     192.168.1.203   k8s-worker2   <none>           <none>
+ebpf-nodeport-system   ebpf-nodeport-agent-tpj7d                                  1/1     Running            2 (3d19h ago)    21d     192.168.1.202   k8s-worker1   <none>           <none>
+ebpf-nodeport-test     nodeport-echo-754db9c844-mcbg2                             1/1     Running            1 (3d21h ago)    20d     10.244.1.55     k8s-worker1   <none>           <none>
+ebpf-nodeport-test     nodeport-echo-754db9c844-np2sk                             1/1     Running            1 (3d21h ago)    20d     10.244.2.219    k8s-worker2   <none>           <none>
+ebpf-service-system    ebpf-clusterip-agent-8kfmg                                 1/1     Running            3 (3d21h ago)    56d     192.168.1.203   k8s-worker2   <none>           <none>
+ebpf-service-system    ebpf-clusterip-agent-h8lw2                                 0/1     ImagePullBackOff   0                2d17h   192.168.1.201   k8s-master    <none>           <none>
+ebpf-service-system    ebpf-clusterip-agent-xd247                                 1/1     Running            3 (3d21h ago)    56d     192.168.1.202   k8s-worker1   <none>           <none>
+ebpf-service-test      clusterip-client-cnf74                                     0/1     ImagePullBackOff   0                2d17h   10.244.0.48     k8s-master    <none>           <none>
+ebpf-service-test      clusterip-client-v8fv5                                     1/1     Running            4 (3d21h ago)    57d     10.244.1.68     k8s-worker1   <none>           <none>
+ebpf-service-test      clusterip-client-xwrq6                                     1/1     Running            4 (3d21h ago)    57d     10.244.2.211    k8s-worker2   <none>           <none>
+ebpf-service-test      clusterip-echo-7586694cb7-d8qwb                            1/1     Running            4 (3d21h ago)    57d     10.244.2.221    k8s-worker2   <none>           <none>
+ebpf-service-test      clusterip-echo-7586694cb7-x62nr                            1/1     Running            1 (3d21h ago)    21d     10.244.1.53     k8s-worker1   <none>           <none>
+kube-flannel           kube-flannel-ds-dcnsq                                      1/1     Running            7 (3d21h ago)    90d     192.168.1.202   k8s-worker1   <none>           <none>
+kube-flannel           kube-flannel-ds-hpjjr                                      1/1     Running            6 (3d21h ago)    87d     192.168.1.203   k8s-worker2   <none>           <none>
+kube-flannel           kube-flannel-ds-jd4gc                                      1/1     Running            4 (3d20h ago)    57d     192.168.1.201   k8s-master    <none>           <none>
+kube-system            coredns-955c4db64-pb7z5                                    1/1     Running            4 (3d21h ago)    59d     10.244.1.59     k8s-worker1   <none>           <none>
+kube-system            coredns-955c4db64-xfjsz                                    1/1     Running            4 (3d21h ago)    59d     10.244.2.222    k8s-worker2   <none>           <none>
+kube-system            etcd-k8s-master                                            1/1     Running            8 (3d21h ago)    90d     192.168.1.201   k8s-master    <none>           <none>
+kube-system            kube-apiserver-k8s-master                                  1/1     Running            8 (3d21h ago)    90d     192.168.1.201   k8s-master    <none>           <none>
+kube-system            kube-controller-manager-k8s-master                         1/1     Running            52 (2d ago)      90d     192.168.1.201   k8s-master    <none>           <none>
+kube-system            kube-proxy-55j6w                                           1/1     Running            7 (3d21h ago)    90d     192.168.1.203   k8s-worker2   <none>           <none>
+kube-system            kube-proxy-7rx4c                                           1/1     Running            7 (3d20h ago)    90d     192.168.1.201   k8s-master    <none>           <none>
+kube-system            kube-proxy-9wwm5                                           1/1     Running            7 (3d21h ago)    90d     192.168.1.202   k8s-worker1   <none>           <none>
+kube-system            kube-scheduler-k8s-master                                  1/1     Running            51 (2d ago)      90d     192.168.1.201   k8s-master    <none>           <none>
+varmor-log-test        varmor-log-demo-b876978c8-k6zc6                            1/1     Running            0                41h     10.244.1.103    k8s-worker1   <none>           <none>
+varmor-rule-dual       dm-23-6d9748f9c5-slrmw                                     1/1     Running            198 (26m ago)    34d     10.244.2.212    k8s-worker2   <none>           <none>
+varmor-rule-dual       dm-25-c778bf68c-bcg5f                                      1/1     Running            636 (25m ago)    34d     10.244.2.216    k8s-worker2   <none>           <none>
+varmor-verify-515      varmor-demo-sleep-515-66c76689-66svr                       2/2     Running            2 (3d21h ago)    34d     10.244.2.225    k8s-worker2   <none>           <none>
+varmor-verify-515      varmor-demo-sleep-515-66c76689-dllgr                       2/2     Running            2 (3d21h ago)    34d     10.244.1.61     k8s-worker1   <none>           <none>
+varmor                 varmor-agent-5znp4                                         1/1     Running            0                3d14h   10.244.2.233    k8s-worker2   <none>           <none>
+varmor                 varmor-agent-f5v4k                                         1/1     Running            0                2d17h   10.244.0.47     k8s-master    <none>           <none>
+varmor                 varmor-agent-gwlrn                                         1/1     Running            0                3d14h   10.244.1.88     k8s-worker1   <none>           <none>
+varmor                 varmor-bin-loader-5lqp4                                    1/1     Running            8 (6h27m ago)    3d14h   10.244.2.234    k8s-worker2   <none>           <none>
+varmor                 varmor-bin-loader-8hgcn                                    1/1     Running            6 (5h18m ago)    2d17h   10.244.0.49     k8s-master    <none>           <none>
+varmor                 varmor-bin-loader-8kqtt                                    1/1     Running            8 (6h26m ago)    3d14h   10.244.1.91     k8s-worker1   <none>           <none>
+varmor                 varmor-manager-746556c4b5-grcv6                            1/1     Running            5 (2d ago)       9d      10.244.1.69     k8s-worker1   <none>           <none>
+varmor                 varmor-manager-746556c4b5-jl6kt                            1/1     Running            6 (2d ago)       9d      10.244.2.218    k8s-worker2   <none>           <none>
+varmor                 varmor-manager-746556c4b5-wl2wk                            1/1     Running            3 (3d21h ago)    9d      10.244.1.72     k8s-worker1   <none>           <none>

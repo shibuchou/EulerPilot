@@ -23,7 +23,7 @@ EulerPilot 是面向 openEuler 的自适应资源管控 Agent——一个本地�
 - Policy Engine：跨 Skill 决策、审计、失败回滚和 Agent stop rollback
 - Redis RUNS=5 + Nginx RUNS=5 候选结果
 - SP4 Redis/Nginx RUNS=3 sched_ext 复核结果
-- Web Console v1 + 32 条 final evidence compact + 中文报告主稿
+- Web Console v1 + 35 条 final evidence compact + 中文报告主稿
 
 ## 赛题覆盖
 

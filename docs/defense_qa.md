@@ -59,7 +59,7 @@ v3.1 默认只允许 lab netdev，测试脚本创建 isolated veth，例如 `ep-
 
 ## 9. 结果是否只在单机上成立？
 
-不是。121/122 双机完成了 SP3 主路径验证；SP4 主机用于自编译 sched_ext/scx 增强路径与 Redis/Nginx RUNS=3 复核。最终 evidence manifest 将这些结果统一收口到 32 条核心证据。
+不是。121/122 双机完成了 SP3 主路径与历史对照验证；SP4 主机现在作为核心验证仓库，已完成自编译 sched_ext/scx 增强路径、Redis/Nginx RUNS=3 复核、Web Console 和 Kubernetes 旁路验证。最终 evidence manifest 将这些结果统一收口到 35 条核心证据。
 
 ## 10. 如果现场环境波动怎么办？
 

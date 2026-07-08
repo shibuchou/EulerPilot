@@ -1,0 +1,10 @@
+NAME                                 READY   STATUS    RESTARTS        AGE   IP              NODE          NOMINATED NODE   READINESS GATES
+coredns-955c4db64-pb7z5              1/1     Running   4 (3d21h ago)   59d   10.244.1.59     k8s-worker1   <none>           <none>
+coredns-955c4db64-xfjsz              1/1     Running   4 (3d21h ago)   59d   10.244.2.222    k8s-worker2   <none>           <none>
+etcd-k8s-master                      1/1     Running   8 (3d21h ago)   90d   192.168.1.201   k8s-master    <none>           <none>
+kube-apiserver-k8s-master            1/1     Running   8 (3d21h ago)   90d   192.168.1.201   k8s-master    <none>           <none>
+kube-controller-manager-k8s-master   1/1     Running   52 (2d ago)     90d   192.168.1.201   k8s-master    <none>           <none>
+kube-proxy-55j6w                     1/1     Running   7 (3d21h ago)   90d   192.168.1.203   k8s-worker2   <none>           <none>
+kube-proxy-7rx4c                     1/1     Running   7 (3d20h ago)   90d   192.168.1.201   k8s-master    <none>           <none>
+kube-proxy-9wwm5                     1/1     Running   7 (3d21h ago)   90d   192.168.1.202   k8s-worker1   <none>           <none>
+kube-scheduler-k8s-master            1/1     Running   51 (2d ago)     90d   192.168.1.201   k8s-master    <none>           <none>

@@ -1,0 +1,226 @@
+[
+  {
+    "action": "status_json",
+    "start": {
+      "job": {
+        "job_id": "status_json-1783478767998-3d275b1f",
+        "action_id": "status_json",
+        "kind": "readonly",
+        "status": "running",
+        "started_at": "2026-07-08T02:46:07.998Z",
+        "ended_at": "",
+        "exit_code": null,
+        "signal": "",
+        "log_tail": "",
+        "log_file": "web_console/runtime/jobs/status_json-1783478767998-3d275b1f.log",
+        "command": [
+          "build/eulerpilot-agent",
+          "--status",
+          "--json"
+        ],
+        "pid": 38126,
+        "error": ""
+      }
+    },
+    "job_id": "status_json-1783478767998-3d275b1f",
+    "final": {
+      "job_id": "status_json-1783478767998-3d275b1f",
+      "action_id": "status_json",
+      "kind": "readonly",
+      "status": "succeeded",
+      "started_at": "2026-07-08T02:46:07.998Z",
+      "ended_at": "2026-07-08T02:46:08.015Z",
+      "exit_code": 0,
+      "signal": "",
+      "log_tail": "[stdout] {\"skills\":[{\"name\":\"resource_control\",\"available\":false,\"running\":false,\"state\":\"created\",\"evidence\":{\"backend\":\"resource_control_adapter\",\"cpu_max\":\"enabled\",\"io\":\"enabled\",\"memory\":\"enabled\",\"mode\":\"enforce\",\"reason\":\"ok\",\"scheduler_backend\":\"cgroup_v2\"}},{\"name\":\"psi_gate\",\"available\":false,\"running\":false,\"state\":\"created\",\"evidence\":{\"backend\":\"cgroup_v2\",\"gate_mode\":\"adapter\",\"reason\":\"ok\",\"requires_gate_state_map\":\"no\"}},{\"name\":\"policy_engine\",\"available\":false,\"running\":false,\"state\":\"created\",\"evidence\":{\"action_count\":\"2\",\"last_transaction_id\":\"\",\"mode\":\"enforce\",\"policy_id\":\"cross_skill_response\",\"reason\":\"ok\",\"source_path\":\"reports/events/security_policy.jsonl\",\"trigger_count\":\"0\",\"watch_operation\":\"anomaly\",\"watch_rule_id\":\"burst_execve\",\"watch_skill\":\"security_policy\"}},{\"name\":\"network_policy\",\"available\":false,\"running\":false,\"state\":\"created\",\"evidence\":{\"allow_count\":\"0\",\"cgroup_id\":\"0\",\"cgroup_path\":\"/sys/fs/cgroup/eulerpilot/demo-net\",\"deny_count\":\"0\",\"dst_port\":\"18080\",\"hook\":\"cgroup_connect4\",\"link_pin_path\":\"/sys/fs/bpf/eulerpilot_network_policy_link\",\"mode\":\"audit\",\"reason\":\"ok\",\"rule_id\":\"deny_demo_port\",\"target_ref\":\"demo_cgroup\"}},{\"name\":\"network_policy_demo\",\"available\":false,\"running\":false,\"state\":\"created\",\"evidence\":{\"allow_count\":\"0\",\"cgroup_id\":\"0\",\"cgroup_path\":\"/sys/fs/cgroup/eulerpilot/demo-net\",\"deny_count\":\"0\",\"dst_port\":\"18080\",\"hook\":\"cgroup_connect4\",\"link_pin_path\":\"/sys/fs/bpf/eulerpilot_network_policy_demo_link\",\"mode\":\"enforce\",\"reason\":\"ok\",\"rule_id\":\"connect4-deny-port-18080\",\"target_ref\":\"legacy_cgroup\"}},{\"name\":\"network_qos\",\"available\":false,\"running\":false,\"state\":\"created\",\"evidence\":{\"burst\":\"32kb\",\"byte_count\":\"0\",\"dst_port\":\"0\",\"hook\":\"tc_egress\",\"ifindex\":\"0\",\"ifname\":\"ep-veth-qos0\",\"latency\":\"50ms\",\"mode\":\"audit\",\"packet_count\":\"0\",\"protocol\":\"any\",\"rate\":\"1mbit\",\"reason\":\"ok\",\"rule_id\":\"limit_lab_egress\",\"target_ref\":\"lab_veth\",\"target_type\":\"netdev\"}},{\"name\":\"network_xdp\",\"available\":false,\"running\":false,\"state\":\"created\",\"evidence\":{\"byte_count\":\"0\",\"drop_count\":\"0\",\"hook\":\"xdp\",\"ifindex\":\"0\",\"ifname\":\"ep-veth-xdp0\",\"mode\":\"audit\",\"pass_count\":\"0\",\"reason\":\"ok\",\"rule.drop_icmp_lab.byte_count\":\"0\",\"rule.drop_icmp_lab.drop_count\":\"0\",\"rule.drop_icmp_lab.dst_ip\":\"any\",\"rule.drop_icmp_lab.dst_port\":\"0\",\"rule.drop_icmp_lab.pass_count\":\"0\",\"rule.drop_icmp_lab.protocol\":\"icmp\",\"rule.drop_icmp_lab.src_ip\":\"any\",\"rule.drop_icmp_lab.src_port\":\"0\",\"rule.drop_tcp_probe_lab.byte_count\":\"0\",\"rule.drop_tcp_probe_lab.drop_count\":\"0\",\"rule.drop_tcp_probe_lab.dst_ip\":\"any\",\"rule.drop_tcp_probe_lab.dst_port\":\"19092\",\"rule.drop_tcp_probe_lab.pass_count\":\"0\",\"rule.drop_tcp_probe_lab.protocol\":\"tcp\",\"rule.drop_tcp_probe_lab.src_ip\":\"any\",\"rule.drop_tcp_probe_lab.src_port\":\"0\",\"rule.drop_udp_probe_lab.byte_count\":\"0\",\"rule.drop_udp_probe_lab.drop_count\":\"0\",\"rule.drop_udp_probe_lab.dst_ip\":\"any\",\"rule.drop_udp_probe_lab.dst_port\":\"19093\",\"rule.drop_udp_probe_lab.pass_count\":\"0\",\"rule.drop_udp_probe_lab.protocol\":\"udp\",\"rule.drop_udp_probe_lab.src_ip\":\"any\",\"rule.drop_udp_probe_lab.src_port\":\"0\",\"rule.drop_udp_tuple_lab.byte_count\":\"0\",\"rule.drop_udp_tuple_lab.drop_count\":\"0\",\"rule.drop_udp_tuple_lab.dst_ip\":\"10.89.0.1\",\"rule.drop_udp_tuple_lab.dst_port\":\"19094\",\"rule.drop_udp_tuple_lab.pass_count\":\"0\",\"rule.drop_udp_tuple_lab.protocol\":\"udp\",\"rule.drop_udp_tuple_lab.src_ip\":\"10.89.0.2\",\"rule.drop_udp_tuple_lab.src_port\":\"39094\",\"rule_count\":\"4\",\"rule_ids\":\"drop_icmp_lab,drop_tcp_probe_lab,drop_udp_probe_lab,drop_udp_tuple_lab\",\"rule_stats\":\"drop_icmp_lab:proto=icmp,src_ip=any,dst_ip=any,src_port=0,dst_port=0,pass=0,drop=0,bytes=0;drop_tcp_probe_lab:proto=tcp,src_ip=any,dst_ip=any,src_port=0,dst_port=19092,pass=0,drop=0,bytes=0;drop_udp_probe_lab:proto=udp,src_ip=any,dst_ip=any,src_port=0,dst_port=19093,pass=0,drop=0,bytes=0;drop_udp_tuple_lab:proto=udp,src_ip=10.89.0.2,dst_ip=10.89.0.1,src_port=39094,dst_port=19094,pass=0,drop=0,bytes=0\",\"target_ref\":\"lab_xdp_veth\"}},{\"name\":\"security_policy\",\"available\":false,\"running\":false,\"state\":\"created\",\"evidence\":{\"action\":\"deny\",\"anomal[stdout] y_alert_count\":\"0\",\"anomaly_rule_count\":\"0\",\"deny_count\":\"0\",\"exec_prefix\":\"\",\"exec_target_path\":\"/root/EulerPilot/demo/security_policy_demo/deny_exec.sh\",\"file_access\":\"any\",\"hit_count\":\"0\",\"hook\":\"lsm_file_open\",\"mode\":\"audit\",\"path_prefix\":\"\",\"reason\":\"ok\",\"rule_id\":\"deny_demo_secret_open\",\"target_count\":\"1\",\"target_path\":\"/root/EulerPilot/demo/security_policy_demo/secret.txt\",\"target_ref\":\"demo_secret\"}},{\"name\":\"security_policy_demo\",\"available\":false,\"running\":false,\"state\":\"created\",\"evidence\":{\"action\":\"deny\",\"anomaly_alert_count\":\"0\",\"anomaly_rule_count\":\"0\",\"deny_count\":\"0\",\"exec_prefix\":\"\",\"exec_target_path\":\"/root/EulerPilot/demo/security_policy_demo/deny_exec.sh\",\"file_access\":\"any\",\"hit_count\":\"0\",\"hook\":\"lsm_file_open\",\"mode\":\"enforce\",\"path_prefix\":\"\",\"reason\":\"ok\",\"rule_id\":\"deny-demo-secret-open\",\"target_count\":\"1\",\"target_path\":\"/root/EulerPilot/demo/security_policy_demo/secret.txt\",\"target_ref\":\"legacy_path\"}}]}\n",
+      "log_file": "web_console/runtime/jobs/status_json-1783478767998-3d275b1f.log",
+      "command": [
+        "build/eulerpilot-agent",
+        "--status",
+        "--json"
+      ],
+      "pid": 38126,
+      "error": ""
+    }
+  },
+  {
+    "action": "validate_default_config",
+    "start": {
+      "job": {
+        "job_id": "validate_default_config-1783478769017-4579b965",
+        "action_id": "validate_default_config",
+        "kind": "verify",
+        "status": "running",
+        "started_at": "2026-07-08T02:46:09.017Z",
+        "ended_at": "",
+        "exit_code": null,
+        "signal": "",
+        "log_tail": "",
+        "log_file": "web_console/runtime/jobs/validate_default_config-1783478769017-4579b965.log",
+        "command": [
+          "build/eulerpilot-agent",
+          "--validate-config",
+          "configs/agent.yaml"
+        ],
+        "pid": 38127,
+        "error": ""
+      }
+    },
+    "job_id": "validate_default_config-1783478769017-4579b965",
+    "final": {
+      "job_id": "validate_default_config-1783478769017-4579b965",
+      "action_id": "validate_default_config",
+      "kind": "verify",
+      "status": "succeeded",
+      "started_at": "2026-07-08T02:46:09.017Z",
+      "ended_at": "2026-07-08T02:46:09.033Z",
+      "exit_code": 0,
+      "signal": "",
+      "log_tail": "[stdout] EulerPilot config valid: configs/agent.yaml\n",
+      "log_file": "web_console/runtime/jobs/validate_default_config-1783478769017-4579b965.log",
+      "command": [
+        "build/eulerpilot-agent",
+        "--validate-config",
+        "configs/agent.yaml"
+      ],
+      "pid": 38127,
+      "error": ""
+    }
+  },
+  {
+    "action": "doctor_skills",
+    "start": {
+      "job": {
+        "job_id": "doctor_skills-1783478770033-ac23acdb",
+        "action_id": "doctor_skills",
+        "kind": "verify",
+        "status": "running",
+        "started_at": "2026-07-08T02:46:10.034Z",
+        "ended_at": "",
+        "exit_code": null,
+        "signal": "",
+        "log_tail": "",
+        "log_file": "web_console/runtime/jobs/doctor_skills-1783478770033-ac23acdb.log",
+        "command": [
+          "build/eulerpilot-agent",
+          "--doctor-skills",
+          "--config",
+          "configs/agent.yaml"
+        ],
+        "pid": 38128,
+        "error": ""
+      }
+    },
+    "job_id": "doctor_skills-1783478770033-ac23acdb",
+    "final": {
+      "job_id": "doctor_skills-1783478770033-ac23acdb",
+      "action_id": "doctor_skills",
+      "kind": "verify",
+      "status": "succeeded",
+      "started_at": "2026-07-08T02:46:10.034Z",
+      "ended_at": "2026-07-08T02:46:10.065Z",
+      "exit_code": 0,
+      "signal": "",
+      "log_tail": "[stdout] \n[stdout]   Capability Detector\n[stdout]   --------------------------------------------------\n[stdout]   + bpf_lsm            available /sys/kernel/security/lsm\n[stdout]   + btf                available /sys/kernel/btf/vmlinux\n[stdout]   + cgroup_v2          available /sys/fs/cgroup/cgroup.controllers\n[stdout]   ! kubernetes         missing kubectl command\n[stdout]   + memory_reclaim     available /sys/fs/cgroup/memory.reclaim\n[stdout]   + psi_cpu            available /proc/pressure/cpu\n[stdout]   + psi_io             available /proc/pressure/io\n[stdout]   + psi_memory         available /proc/pressure/memory\n[stdout]   + ringbuf            available libbpf ringbuf requires BTF/libbpf runtime\n[stdout]   + sched_ext          available /sys/kernel/sched_ext\n[stdout]   + tc                 available tc command\n[stdout]   + xdp                available /sys/class/net/* with generic fallback\n[stdout]   --------------------------------------------------\n[stdout] \n[stdout]   Skills Doctor\n[stdout]   --------------------------------------------------\n[stdout]   + resource_control       created\n[stdout]   + psi_gate               created\n[stdout]   x policy_engine          created [policy-engine-target-missing:anomaly_background]\n[stdout]   x network_policy         created [network-policy-bpf-not-built]\n[stdout]   x network_policy_demo    created [network-policy-bpf-not-built]\n[stdout]   x network_qos            created [tc-ifname-missing]\n[stdout]   x network_xdp            created [network-xdp-bpf-not-built]\n[stdout]   x security_policy        created [security-policy-bpf-not-built]\n[stdout]   x security_policy_demo   created [security-policy-bpf-not-built]\n[stdout]   --------------------------------------------------\n[stdout] \n",
+      "log_file": "web_console/runtime/jobs/doctor_skills-1783478770033-ac23acdb.log",
+      "command": [
+        "build/eulerpilot-agent",
+        "--doctor-skills",
+        "--config",
+        "configs/agent.yaml"
+      ],
+      "pid": 38128,
+      "error": ""
+    }
+  },
+  {
+    "action": "demo_offline",
+    "start": {
+      "job": {
+        "job_id": "demo_offline-1783478771052-ec095588",
+        "action_id": "demo_offline",
+        "kind": "demo",
+        "status": "running",
+        "started_at": "2026-07-08T02:46:11.052Z",
+        "ended_at": "",
+        "exit_code": null,
+        "signal": "",
+        "log_tail": "",
+        "log_file": "web_console/runtime/jobs/demo_offline-1783478771052-ec095588.log",
+        "command": [
+          "bash",
+          "demo/demo_all_final.sh",
+          "--mode",
+          "offline"
+        ],
+        "pid": 38136,
+        "error": ""
+      }
+    },
+    "job_id": "demo_offline-1783478771052-ec095588",
+    "final": {
+      "job_id": "demo_offline-1783478771052-ec095588",
+      "action_id": "demo_offline",
+      "kind": "demo",
+      "status": "succeeded",
+      "started_at": "2026-07-08T02:46:11.052Z",
+      "ended_at": "2026-07-08T02:46:11.080Z",
+      "exit_code": 0,
+      "signal": "",
+      "log_tail": "[stdout] \n[stdout] == evidence index ==\n[stdout] # EulerPilot 最终证据索引\n[stdout] \n[stdout] 更新时间：`2026-07-08`\n[stdout] \n[stdout] 本文作为答辩和最终提交前的证据入口，集中索引 EulerPilot 当前已经具备的设计文档、测试脚本、结果目录和演示材料。日期快照文档不反复覆盖；滚动进度以 `docs/progress_status.md` 为准。\n[stdout] \n[stdout] ## 核心入口\n[stdout] \n[stdout] - 项目总览：`README.md`\n[stdout] - 最终提交指南：`docs/final_submission_guide.md`\n[stdout] - 提交包入口：`submission/README.md`\n[stdout] - 赛题宣讲参考：`docs/contest_briefing_reference.md`\n[stdout] - 架构说明：`docs/architecture.md`\n[stdout] - 当前进度看板：`docs/progress_status.md`\n[stdout] - 提交检查表：`docs/submission_checklist.md`\n[stdout] - 答辩问答预案：`docs/defense_qa.md`\n[stdout] - v3.1 开始状态：`docs/v3_1_start_status_20260629.md`\n[stdout] - v3.1 开始仓库快照：`reports/v3_1_start_repo_status_20260629-1859.log`\n[stdout] \n[stdout] ## 证据压缩入口\n[stdout] \n[stdout] - 证据白名单清单：`configs/final_evidence_manifest.json`\n[stdout] - 生成脚本：`scripts/collect_final_evidence.py`\n[stdout] - 压缩 Markdown 报告：`reports/final_evidence_compact.md`\n[stdout] - 机器可读 JSON：`reports/final_evidence_compact.json`\n[stdout] \n[stdout] 生成命令：\n[stdout] \n[stdout] ```bash\n[stdout] python3 scripts/collect_final_evidence.py --strict\n[stdout] ```\n[stdout] \n[stdout] 当前压缩报告覆盖 32 个核心条目：质量门禁、仓库快照、Redis/Nginx sched_ext、SP4 RUNS=3 workload、Network QoS/XDP、Security anomaly/process filter/combo scope/deep hook、Resource Control CPU/Memory/IO/Pod target、Policy Engine 双机联动与真实 Pod 联动。`--strict` 当前通过，必需证据缺失为 0、清单警告为 0。\n[stdout] \n[stdout] ## Skill 证据\n[stdout] \n[stdout] - CPU Scheduling / sched_ext：`docs/final_results_summary.md`、`docs/final_report_submission.md`\n[stdout] - Network Policy / QoS / XDP：`docs/network_policy_skill.md`\n[stdout] - Security Policy / LSM / anomaly：`docs/security_policy_skill.md`\n[stdout] - Resource Control / CPU+Memory+IO：`docs/resource_control_skill.md`\n[stdout] - Policy Engine 跨 Skill 联动：`docs/policy_engine_skill.md`\n[stdout] \n[stdout] ## v3.1 关键链路\n[stdout] \n[stdout] 第二条跨 Skill 联动链路：\n[stdout] \n[stdout] ```text\n[stdout] security_policy burst_connect anomaly\n[stdout]   -> policy_engine decision\n[stdout]   -> resource_control demo_cgroup cpu.max / memory.high\n[stdout]   -> network_qos lab_netdev tc/tbf 2mbit\n[stdout]   -> AuditBus + ActionJournal\n[stdout]   -> stop rollback\n[stdout] ```\n[stdout] \n[stdout] 配置入口：\n[stdout] \n[stdout] - `configs/policy_engine_security_network_resource.yaml`\n[stdout] - `configs/policy_engine_security_network_resource.skills.yaml`\n[stdout] \n[stdout] 服务联动 Security anomaly 证据：\n[stdout] \n[stdout] - 121：`results/security_policy/anomaly-rules-20260703-121-v4`\n[stdout] - 122：`results/security_policy/anomaly-rules-20260703-122-v2`\n[stdout] - 关键文件：`security_policy_events.anomaly-rules.jsonl`、`anomaly_event_summary.txt`、`summary.txt`、`report.md`\n[stdout] \n[stdout] Security anomaly 进程过滤证据：\n[stdout] \n[stdout] - 121：`results/security_policy/anomaly-process-filter-20260703-121-v1`\n[stdout] - 122：`results/security_policy/anomaly-process-filter-20260703-122-v1`\n[stdout] - 关键文件：`security_policy_events.anomaly-process-filter.jsonl`、`anomaly_process_filter_summary.txt`、`summary.txt`、`report.md`\n[stdout] \n[stdout] Security anomaly 组合 scope 过滤证据：\n[stdout] \n[stdout] - 121：`results/security_policy/anomaly-combo-scope-20260703-121-v1`\n[stdout] - 122：`results/security_policy/anomaly-combo-scope-20260703-122-v1`\n[stdout] - 关键文件：`security_policy_events.anomaly-combo-scope.jsonl`、`anomaly_combo_scope_summary.txt`、`summary.txt`、`report.md`\n[stdout] - 验证口径：scope 外同样的 Python `/etc` open burst 不触发；进入目标 cgroup 后，同一条规则同时匹配 `target_ref`、`path_prefix` 和 `comm_prefix` 才触发。\n[stdout] \n[stdout] Credential 生命周期 anomaly 证据：\n[stdout] \n[stdout] - 121：`results/security_policy/credential-anomaly-20260703-121-v4`\n[stdout] - 122：`results/security_policy/credential-anomaly-20260703-122-v4`\n[stdout] - 关键文件：`security_policy_events.credential-anomaly.jsonl`、`security_policy_events.credential-hits.jsonl`、`anomaly_event_summary.txt`、`summary.txt`、`report.md`\n[stdout] \n[stdout] Credential deep hook 评估证据：\n[stdout] \n[stdout] - 121：`results/security_policy/credential-deep-hooks-20260703-121-v2`\n[stdout] - 122：`results/security_policy/credential-deep-hooks-20260703-122-v2`\n[stdout] - 关键文件：`deep_hook_status.txt`、`security_policy_events.credential-deep-hits.jsonl`、`security_policy_events.credential-deep-anomaly.jsonl`、`summary.txt`、`report.md`\n[stdout] - 证据口径：`lsm_cred_alloc_blank/lsm_cred_transfer` 已 scoped 配置并随 Agent attach；普通用户态 workload 未稳定触发 runtime hit，结果明确记录 `deep_hook_runtime_note=no-userland-hit-observed`。\n[stdout] \n[stdout] 验证入口：\n[stdout] \n[stdout] ```bash\n[stdout] sudo tests/integration/test_security_policy_credential_deep_hooks.sh\n[stdout] sudo tests/integration/test_policy_engine_security_network_resource.sh\n[stdout] sudo tests/integration/test_policy_engine_security_network_resource.sh --repeat 10\n[stdout] ```\n[stdout] \n[stdout] 双机已通过结果目录：\n[stdout] \n[stdout] - 121：`results/policy_engine/security-network-resource-20260629-214952`\n[stdout] - 122：`results/policy_engine/security-network-resource-20260629-215950`\n[stdout] - 最终彩排：`results/policy_engine/security-network-resource-20260706-164539`\n[stdout] \n[stdout] ## 结果文件清单\n[stdout] \n[stdout] v3.1 结果目录至少应包含：\n[stdout] \n[stdout] - `before_rate.txt`\n[stdout] - `after_rate.txt`\n[stdout] - `tc_qdisc_before.txt`\n[stdout] - `tc_qdisc_after.txt`\n[stdout] - `tc_qdisc_rollback.txt`\n[stdout] - `policy_engine_events.jsonl`\n[stdout] - `security_policy_events.jsonl`\n[stdout] - `network_policy_events.jsonl`\n[stdout] - `resource_control_events.jsonl`\n[stdout] - `action_journal.jsonl`\n[stdout] - `summary.txt`\n[stdout] - `report.md`\n[stdout] \n[stdout] ## 演示入口\n[stdout] \n[stdout] 一键演示脚本：\n[stdout] \n[stdout] ```bash\n[stdout] sudo demo/demo_all_final.sh --mode live\n[stdout] demo/demo_all_final.sh --mode offline\n[stdout] sudo demo/demo_all_final.sh --cleanup\n[stdout] ```\n[stdout] \n[stdout] 演示说明：`docs/demo_final_runbook.md`\n[stdout] \n[stdout] 演示顺序：\n[stdout] \n[stdout] ```text\n[stdout] check_env\n[stdout] -> list-skills\n[stdout] -> validate-config\n[stdout] -> doctor-skills\n[stdout] -> CPU sched_ext 结果展示\n[stdout] -> Network QoS/XDP\n[stdout] -> Security anomaly/LSM\n[stdout] -> Resource CPU/Memory/IO\n[stdout] -> Policy Engine cross-skill v1/v2\n[stdout] -> rollback/status\n[stdout] ```\n[stdout] \n[stdout] \n[stdout] ## v3.2 真实 runtime / Kubernetes Pod 证据\n[stdout] \n[stdout] v3.2 计划：`docs/next_phase_plan_v3_2.md`\n[stdout] \n[stdout] 2026-06-30 Podman 真实 runtime 已转 pass：\n[stdout] \n[stdout] - 121 Podman runtime readiness：`results/resource_control/runtime-readiness-20260630-podman-121`，`container_runtime_ready=1`、`kubernetes_ready=0`\n[stdout] - 122 Podman runtime readiness：`results/resource_control/runtime-readiness-20260630-podman-122`，`container_runtime_ready=1`、`kubernetes_ready=0`\n[stdout] - 121 fake runtime target 回归：`results/resource_control/runtime-target-20260630-113310`\n[stdout] - 122 fake runtime target 回归：`results/resource_control/runtime-target-20260630-113354`\n[stdout] - 121 real Podman container target：`results/resource_control/real-runtime-target-20260630-podman-121-final2`\n[stdout] - 122 real Podman container target：`results/resource_control/real-runtime-target-20260630-podman-122-final2`\n[stdout] \n[stdout] 2026-06-30 k3s Kubernetes lab 已转 pass：\n[stdout] \n[stdout] - 121 k3s readiness：`results/resource_control/runtime-readiness-20260630-k3s-121`，`container_runtime_ready=1`、`kubernetes_ready=1`\n[stdout] - 122 k3s readiness：`results/resource_control/runtime-readiness-20260630-k3s-122`，`container_runtime_ready=1`、`kubernetes_ready=1`\n[stdout] - 121 real Pod cgroup target：`results/resource_control/real-pod-target-20260630-k3s-121-v2`\n[stdout] - 122 real Pod cgroup target：`results/resource_control/real-pod-target-20260630-k3s-122-v1`\n[stdout] - 121 real Pod host veth QoS：`results/network_policy/real-pod-veth-qos-20260630-k3s-121-v2`\n[stdout] - 122 real Pod host veth QoS：`results/network_policy/real-pod-veth-qos-20260630-k3s-122-v1`\n[stdout] - 121 real Pod host veth XDP ICMP/TCP/UDP + UDP tuple：`results/network_policy/real-pod-veth-xdp-20260703-k3s-121-tuple-v1`\n[stdout] - 122 real Pod host veth XDP ICMP/TCP/UDP + UDP tuple：`results/network_policy/real-pod-veth-xdp-20260703-k3s-122-tuple-v1`\n[stdout] - 121 isolated-veth XDP ICMP/TCP/UDP + UDP tuple：`results/network_policy/xdp-20260703-121-fields-v1`\n[stdout] - 122 isolated-veth XDP ICMP/TCP/UDP + UDP tuple：`results/network_policy/xdp-20260703-122-fields-v1`\n[stdout] - 121 Security credential anomaly：`results/security_policy/credential-anomaly-20260703-121-v4`\n[stdout] - 122 Security credential anomaly：`results/security_policy/credential-anomaly-20260703-122-v4`\n[stdout] - 121 Security anomaly combo scope：`results/security_policy/anomaly-combo-scope-20260703-121-v1`\n[stdout] - 122 Security anomaly combo scope：`results/security_policy/anomaly-combo-scope-20260703-122-v1`\n[stdout] \n[stdout] == latest policy engine v3.1 results ==\n[stdout] /root/EulerPilot/results/policy_engine/security-network-resource-20260630-102629\n[stdout] /root/EulerPilot/results/policy_engine/security-network-resource-20260705-211329\n[stdout] /root/EulerPilot/results/policy_engine/security-network-resource-20260705-211407\n[stdout] /root/EulerPilot/results/policy_engine/security-network-resource-20260706-145547\n[stdout] /root/EulerPilot/results/policy_engine/security-network-resource-20260706-164539\n[stdout] \n[stdout] == summary ==\n[stdout] result=pass\n[stdout] repeat=1\n[stdout] success_cases=1\n[stdout] failure_rollback=pass\n[stdout] result_dir=results/policy_engine/security-network-resource-20260706-164539\n[stdout] \n[stdout] == report ==\n[stdout] # EulerPilot v3.1 Policy Engine Security -> Network + Resource Report\n[stdout] \n[stdout] - result: `pass`\n[stdout] - repeat: `1`\n[stdout] - success chain: `security_policy burst_connect -> policy_engine -> resource_control + network_qos -> rollback`\n[stdout] - failure chain: resource action applied, network action failed, resource rollback verified\n[stdout] \n[stdout] Each iteration stores security, policy_engine, network_qos, resource_control and ActionJournal JSONL evidence plus TC qdisc and rate probe files.\n",
+      "log_file": "web_console/runtime/jobs/demo_offline-1783478771052-ec095588.log",
+      "command": [
+        "bash",
+        "demo/demo_all_final.sh",
+        "--mode",
+        "offline"
+      ],
+      "pid": 38136,
+      "error": ""
+    }
+  },
+  {
+    "action": "demo_cleanup",
+    "start": {
+      "job": {
+        "job_id": "demo_cleanup-1783478772072-ee69ec1b",
+        "action_id": "demo_cleanup",
+        "kind": "cleanup",
+        "status": "running",
+        "started_at": "2026-07-08T02:46:12.072Z",
+        "ended_at": "",
+        "exit_code": null,
+        "signal": "",
+        "log_tail": "",
+        "log_file": "web_console/runtime/jobs/demo_cleanup-1783478772072-ee69ec1b.log",
+        "command": [
+          "bash",
+          "demo/demo_all_final.sh",
+          "--cleanup"
+        ],
+        "pid": 38149,
+        "error": ""
+      }
+    },
+    "job_id": "demo_cleanup-1783478772072-ee69ec1b",
+    "final": {
+      "job_id": "demo_cleanup-1783478772072-ee69ec1b",
+      "action_id": "demo_cleanup",
+      "kind": "cleanup",
+      "status": "succeeded",
+      "started_at": "2026-07-08T02:46:12.072Z",
+      "ended_at": "2026-07-08T02:46:12.235Z",
+      "exit_code": 0,
+      "signal": "",
+      "log_tail": "[stdout] \n[stdout] == cleanup lab network ==\n[stdout] \n[stdout] == cleanup lab cgroup ==\n[stdout] \n[stdout] == cleanup helper scripts ==\n[stderr] [rollback] scx binary: /root/olk/kernel-OLK-6.6-atomgit/tools/sched_ext/build/bin/scx_eulerpilot\n[stdout] [Rollback] restore cgroup parameters and stop active sched_ext scheduler if configured.\n[stdout] [Rollback] done.\n[stdout] cleanup=done\n",
+      "log_file": "web_console/runtime/jobs/demo_cleanup-1783478772072-ee69ec1b.log",
+      "command": [
+        "bash",
+        "demo/demo_all_final.sh",
+        "--cleanup"
+      ],
+      "pid": 38149,
+      "error": ""
+    }
+  }
+]

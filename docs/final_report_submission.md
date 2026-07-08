@@ -414,12 +414,12 @@ EulerPilot 的价值不在于证明某一组参数在所有场景下都优于默
 1. EulerPilot 已在 `SP3` 上完成 cgroup v2 主闭环，具备正式交付能力。
 2. EulerPilot 已在 `OLK-6.6` 上完成 Redis 与 Nginx 的 `sched_ext` 正式 compare，并在 `SP4` 自编译 sched_ext 内核上完成 Redis/Nginx `RUNS=3` 复核。
 3. EulerPilot 已实现 Skills 插件化框架与 YAML v2 驱动，并通过 `network_policy`、`network_qos`、`network_xdp` 和正式 `security_policy` 证明了 Agent 能力可扩展。
-4. 项目已通过最新质量门禁（`reports/final_quality_gate_20260706-quality-121.log`，22/22 P0、100 轮 smoke、5 轮 doctor）和安全审计，并形成 32 条 final evidence compact。
+4. 项目已通过最新 SP4 质量门禁（`results/k8s/sp4-validation-20260708-023552/final_quality_gate.log`，22/22 P0、100 轮 smoke、5 轮 doctor）和安全审计，并形成 35 条 final evidence compact。
 
 补充说明：
 
 - `cgroup v2` 是当前 SP3 上的正式主交付路径；`sched_ext/scx` 是在 OLK-6.6 与 SP4 自编译内核环境完成的增强验证线。
-- 当前建议提交时以 `192.168.1.121:/root/EulerPilot` 作为统一交付目录。
+- 当前建议提交时以 `192.168.1.123:/root/EulerPilot` 作为 SP4 主验证和最终交付验证目录；`192.168.1.121:/root/EulerPilot` 作为 SP3 历史验证和回归对照目录保留。
 - 项目代码已同步推送至 GitHub 私密仓库 `shibuchou/EulerPilot`。
 
 项目代码已同步推送至 GitHub 私密仓库 `shibuchou/EulerPilot`。

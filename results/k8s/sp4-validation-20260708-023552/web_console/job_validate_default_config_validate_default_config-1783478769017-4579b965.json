@@ -1,0 +1,44 @@
+{
+  "action": "validate_default_config",
+  "start": {
+    "job": {
+      "job_id": "validate_default_config-1783478769017-4579b965",
+      "action_id": "validate_default_config",
+      "kind": "verify",
+      "status": "running",
+      "started_at": "2026-07-08T02:46:09.017Z",
+      "ended_at": "",
+      "exit_code": null,
+      "signal": "",
+      "log_tail": "",
+      "log_file": "web_console/runtime/jobs/validate_default_config-1783478769017-4579b965.log",
+      "command": [
+        "build/eulerpilot-agent",
+        "--validate-config",
+        "configs/agent.yaml"
+      ],
+      "pid": 38127,
+      "error": ""
+    }
+  },
+  "job_id": "validate_default_config-1783478769017-4579b965",
+  "final": {
+    "job_id": "validate_default_config-1783478769017-4579b965",
+    "action_id": "validate_default_config",
+    "kind": "verify",
+    "status": "succeeded",
+    "started_at": "2026-07-08T02:46:09.017Z",
+    "ended_at": "2026-07-08T02:46:09.033Z",
+    "exit_code": 0,
+    "signal": "",
+    "log_tail": "[stdout] EulerPilot config valid: configs/agent.yaml\n",
+    "log_file": "web_console/runtime/jobs/validate_default_config-1783478769017-4579b965.log",
+    "command": [
+      "build/eulerpilot-agent",
+      "--validate-config",
+      "configs/agent.yaml"
+    ],
+    "pid": 38127,
+    "error": ""
+  }
+}

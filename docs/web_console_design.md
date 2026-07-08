@@ -8,7 +8,7 @@ Web Console 的所有状态、图表和结论均来自 EulerPilot 现有 CLI、�
 
 它只负责把现有系统能力以浏览器控制台方式展示出来，并通过白名单动作触发少量可控演示。它不替代 C++ Agent，不进入资源管控热路径，不修改 `agent/`、`bpf/`、`sched/` 主干。
 
-默认部署在 `192.168.1.121:/root/EulerPilot`，监听 `127.0.0.1:18080`，本地通过 SSH 隧道访问。
+默认部署在 SP4 主验证仓库 `192.168.1.123:/root/EulerPilot`，监听 `127.0.0.1:18080`，本地通过 SSH 隧道访问。`192.168.1.121:/root/EulerPilot` 只作为 SP3 历史验证和回归对照仓库。
 
 ## 架构
 
@@ -32,11 +32,11 @@ Browser
 
 ## SP3/SP4 路径口径
 
-Overview 不把 SP3 上 `sched_ext` 不可用显示为项目失败，而显示为路径分工：
+Overview 不把 SP3 上 `sched_ext` 不可用显示为项目失败，而显示为路径分工；在 SP4 自编译 sched_ext 内核上则显示增强路径已可用：
 
 ```text
 SP3 主交付路径：cgroup v2 已启用
-sched_ext/scx 增强路径：SP4 / 自编译内核迁移目标
+sched_ext/scx 增强路径：SP4 / 自编译内核迁移目标或当前内核已可用
 ```
 
 当前 SP3 稳定主路径是 cgroup v2；sched_ext/scx 是增强路径和 SP4 迁移目标。
@@ -90,7 +90,7 @@ Evidence 页面按比赛评分关注点分组：
 4. 非白名单 action 无法执行。
 5. SSE 日志可实时显示。
 6. `demo/lab/cleanup` 单任务锁生效。
-7. Evidence 能按评分项展示 32 条证据。
+7. Evidence 能按评分项展示 35 条证据。
 8. `policy_engine_lab` 可作为主演示链路。
 9. `demo_cleanup` 可清理现场资源。
 10. `scripts/final_quality_gate.sh` 仍能独立运行。

@@ -114,9 +114,9 @@ http://127.0.0.1:18080
 最新代码已同步到：
 
 - 本地：`D:\code\Ubuntu\EulerPilot`
-- 121：`192.168.1.121:/root/EulerPilot`
+- SP4 主验证仓库：`192.168.1.123:/root/EulerPilot`
+- 121/SP3 历史仓库：`192.168.1.121:/root/EulerPilot`
 - 122：`192.168.1.122:/root/EulerPilot`
-- SP4：`192.168.1.123:/root/EulerPilot`
 - GitHub：`https://github.com/shibuchou/EulerPilot`
 
 最终提交前再次生成：

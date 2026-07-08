@@ -1,0 +1,17 @@
+[info] output=/tmp/eulerpilot-sp4-k8s-20260708-023552
+[info] context=kubernetes-admin@kubernetes
+[apply] create isolated namespace/deployment/service
+namespace/eulerpilot-sp4-validation created
+deployment.apps/eulerpilot-k8s-smoke created
+service/eulerpilot-k8s-smoke created
+[wait] rollout
+Waiting for deployment spec update to be observed...
+Waiting for deployment "eulerpilot-k8s-smoke" rollout to finish: 0 out of 1 new replicas have been updated...
+Waiting for deployment "eulerpilot-k8s-smoke" rollout to finish: 0 of 1 updated replicas are available...
+deployment "eulerpilot-k8s-smoke" successfully rolled out
+[baseline after apply]
+[summary] status=0
+bash: line 129: exit: 0: numeric argument required
+[cleanup] start
+namespace "eulerpilot-sp4-validation" deleted
+[cleanup] done

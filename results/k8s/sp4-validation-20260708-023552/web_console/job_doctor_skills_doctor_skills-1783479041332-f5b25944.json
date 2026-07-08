@@ -1,0 +1,22 @@
+{
+  "job": {
+    "job_id": "doctor_skills-1783479041332-f5b25944",
+    "action_id": "doctor_skills",
+    "kind": "verify",
+    "status": "succeeded",
+    "started_at": "2026-07-08T02:50:41.333Z",
+    "ended_at": "2026-07-08T02:50:43.957Z",
+    "exit_code": 0,
+    "signal": "",
+    "log_tail": "[stdout] \n[stdout]   Capability Detector\n[stdout]   --------------------------------------------------\n[stdout]   + bpf_lsm            available /sys/kernel/security/lsm\n[stdout]   + btf                available /sys/kernel/btf/vmlinux\n[stdout]   + cgroup_v2          available /sys/fs/cgroup/cgroup.controllers\n[stdout]   ! kubernetes         missing kubectl command\n[stdout]   + memory_reclaim     available /sys/fs/cgroup/memory.reclaim\n[stdout]   + psi_cpu            available /proc/pressure/cpu\n[stdout]   + psi_io             available /proc/pressure/io\n[stdout]   + psi_memory         available /proc/pressure/memory\n[stdout]   + ringbuf            available libbpf ringbuf requires BTF/libbpf runtime\n[stdout]   + sched_ext          available /sys/kernel/sched_ext\n[stdout]   + tc                 available tc command\n[stdout]   + xdp                available /sys/class/net/* with generic fallback\n[stdout]   --------------------------------------------------\n[stdout] \n[stdout]   Skills Doctor\n[stdout]   --------------------------------------------------\n[stdout]   + resource_control       created\n[stdout]   + psi_gate               created\n[stdout]   x policy_engine          created [policy-engine-target-missing:anomaly_background]\n[stdout]   + network_policy         created\n[stdout]   + network_policy_demo    created\n[stdout]   x network_qos            created [tc-ifname-missing]\n[stdout]   x network_xdp            created [xdp-ifname-missing]\n[stdout]   + security_policy        created\n[stdout]   + security_policy_demo   created\n[stdout]   --------------------------------------------------\n[stdout] \n",
+    "log_file": "web_console/runtime/jobs/doctor_skills-1783479041332-f5b25944.log",
+    "command": [
+      "build/eulerpilot-agent",
+      "--doctor-skills",
+      "--config",
+      "configs/agent.yaml"
+    ],
+    "pid": 38578,
+    "error": ""
+  }
+}

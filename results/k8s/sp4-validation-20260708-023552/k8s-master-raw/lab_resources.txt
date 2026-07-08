@@ -1,0 +1,11 @@
+NAME                                       READY   STATUS    RESTARTS   AGE   IP             NODE          NOMINATED NODE   READINESS GATES
+pod/eulerpilot-k8s-smoke-c448f7795-tl48p   1/1     Running   0          9s    10.244.1.104   k8s-worker1   <none>           <none>
+
+NAME                           TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE   SELECTOR
+service/eulerpilot-k8s-smoke   ClusterIP   10.97.219.104   <none>        8080/TCP   10s   app.kubernetes.io/name=eulerpilot-k8s-smoke
+
+NAME                                   READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS   IMAGES         SELECTOR
+deployment.apps/eulerpilot-k8s-smoke   1/1     1            1           10s   smoke        busybox:1.36   app.kubernetes.io/name=eulerpilot-k8s-smoke
+
+NAME                                             DESIRED   CURRENT   READY   AGE   CONTAINERS   IMAGES         SELECTOR
+replicaset.apps/eulerpilot-k8s-smoke-c448f7795   1         1         1       10s   smoke        busybox:1.36   app.kubernetes.io/name=eulerpilot-k8s-smoke,pod-template-hash=c448f7795
