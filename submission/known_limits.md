@@ -4,7 +4,7 @@
 
 ## 1. SP3 与 sched_ext
 
-openEuler 24.03 LTS SP3 是主交付平台，但默认内核不保证 `sched_ext/scx` 可用。SP3 主线以 `cgroup v2` 保证稳定闭环；SP4 / OLK-6.6 / 自编译内核作为增强验证路径。
+openEuler 24.03 LTS SP4 是当前核心验证和最终交付验证仓库。发行内核稳定控制路径以 `cgroup v2` 保证闭环；`sched_ext/scx` 基于 SP4 官方源码自编译启用 `CONFIG_SCHED_CLASS_EXT` 的内核完成复核，不声称 SP4 发行默认内核直接支持 sched_ext。
 
 ## 2. Web Console 边界
 

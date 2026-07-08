@@ -26,7 +26,7 @@ warnings=0
 | 类别 | 路径 |
 |------|------|
 | 质量门禁 | `reports/final_quality_gate_20260706-quality-121.log` |
-| Redis/Nginx SP4 复核 | `results/final/redis-scx-compare-20260706-115029`、`results/final/nginx-scx-compare-20260706-120547` |
+| Redis/Nginx SP4 复核 | `results/final/redis-scx-compare-20260708-150702`、`results/final/nginx-scx-compare-20260708-152602` |
 | Policy Engine v3.1 | `results/policy_engine/security-network-resource-20260706-164539` |
 | Network | `results/network_policy/` |
 | Security | `results/security_policy/` |
@@ -39,6 +39,7 @@ warnings=0
 |--------|------|
 | 创新性 | Skills 框架、Policy Engine、跨 Skill 联动、sched_ext/scx 增强路径 |
 | 功能完整性 | Resource / Network / Security / Policy Engine 四类能力 |
-| 性能提升 | Redis/Nginx 多轮结果、SP4 RUNS=3 复核 |
+| 性能提升 | Redis/Nginx 多轮结果、SP4 RUNS=5 复核 |
 | 代码质量 | C++ 单元测试、GitHub Actions、final_quality_gate |
 | 演示效果 | Web Console、demo_all_final、final evidence compact |
+

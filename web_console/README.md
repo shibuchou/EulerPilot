@@ -20,7 +20,7 @@ Evidence-first + 白名单 Demo + 旁路展示控制台
 
 ## 部署
 
-在 121 服务器：
+在 SP4 主验证仓库：
 
 ```bash
 cd /root/EulerPilot/web_console
@@ -33,7 +33,7 @@ web_console/scripts/run_console.sh --daemon
 本地通过 SSH 隧道访问：
 
 ```bash
-ssh -L 18080:127.0.0.1:18080 EulerPilot-openEuler
+ssh -L 18080:127.0.0.1:18080 openEuler-2403-LTS-SP4
 ```
 
 浏览器打开：

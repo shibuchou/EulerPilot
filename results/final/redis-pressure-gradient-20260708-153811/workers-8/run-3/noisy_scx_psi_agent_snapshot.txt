@@ -1,0 +1,84 @@
+
+  * EulerPilot Agent 
+  --------------------------------------------------
+  config:     /root/EulerPilot/configs/agent.yaml
+  interval:   1000ms  duration:   6s  warmup: 0
+  mode:       active  backend:    sched_ext
+  gate:       psi
+  env:         psi:ok  cg:ok  scx:ok
+  --------------------------------------------------
+
+  --- legend ---
+  mark: . UNKNOWN  L LATENCY_SENSITIVE  B BACKGROUND_NOISY  T THROUGHPUT_BATCH
+  act:  + applied  ~ managed  - none
+  --- observing ---
+  mark name             pid  class        act profile    w:weight reason
+  B stress-ng-cpu      59054 BACKGROUND_NOISY |~ normal_profile w:0 scx-binary-missing
+  L redis-server       58459 LATENCY_SENSITIVE |~ normal_profile w:0 scx-binary-missing
+  B stress-ng-cpu      59057 BACKGROUND_NOISY |~ normal_profile w:0 scx-binary-missing
+  B stress-ng-cpu      59056 BACKGROUND_NOISY |~ normal_profile w:0 scx-binary-missing
+  B stress-ng-cpu      59050 BACKGROUND_NOISY |~ normal_profile w:0 scx-binary-missing
+  B stress-ng-cpu      59053 BACKGROUND_NOISY |~ normal_profile w:0 scx-binary-missing
+  B stress-ng-cpu      59051 BACKGROUND_NOISY |~ normal_profile w:0 scx-binary-missing
+  B stress-ng-cpu      59055 BACKGROUND_NOISY |~ normal_profile w:0 scx-binary-missing
+  T redis-benchmark    59064 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  T redis-benchmark    59062 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  B stress-ng-cpu      59052 BACKGROUND_NOISY |~ normal_profile w:0 scx-binary-missing
+  B stress-ng-cpu      59054 BACKGROUND_NOISY |~ normal_profile w:0 scx-binary-missing
+  L redis-server       58459 LATENCY_SENSITIVE |~ normal_profile w:0 scx-binary-missing
+  B stress-ng-cpu      59057 BACKGROUND_NOISY |~ normal_profile w:0 scx-binary-missing
+  B stress-ng-cpu      59056 BACKGROUND_NOISY |~ normal_profile w:0 scx-binary-missing
+  B stress-ng-cpu      59050 BACKGROUND_NOISY |~ normal_profile w:0 scx-binary-missing
+  B stress-ng-cpu      59053 BACKGROUND_NOISY |~ normal_profile w:0 scx-binary-missing
+  B stress-ng-cpu      59051 BACKGROUND_NOISY |~ normal_profile w:0 scx-binary-missing
+  B stress-ng-cpu      59055 BACKGROUND_NOISY |~ normal_profile w:0 scx-binary-missing
+  T redis-benchmark    59064 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  T redis-benchmark    59062 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  B stress-ng-cpu      59052 BACKGROUND_NOISY |~ normal_profile w:0 scx-binary-missing
+  B stress-ng-cpu      59054 BACKGROUND_NOISY |~ mixed_profile w:0 scx-binary-missing
+  L redis-server       58459 LATENCY_SENSITIVE |~ latency_profile w:0 scx-binary-missing
+  B stress-ng-cpu      59057 BACKGROUND_NOISY |~ mixed_profile w:0 scx-binary-missing
+  B stress-ng-cpu      59056 BACKGROUND_NOISY |~ mixed_profile w:0 scx-binary-missing
+  B stress-ng-cpu      59050 BACKGROUND_NOISY |~ mixed_profile w:0 scx-binary-missing
+  B stress-ng-cpu      59053 BACKGROUND_NOISY |~ mixed_profile w:0 scx-binary-missing
+  B stress-ng-cpu      59051 BACKGROUND_NOISY |~ mixed_profile w:0 scx-binary-missing
+  B stress-ng-cpu      59055 BACKGROUND_NOISY |~ mixed_profile w:0 scx-binary-missing
+  T redis-benchmark    59064 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  T redis-benchmark    59062 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  B stress-ng-cpu      59052 BACKGROUND_NOISY |~ mixed_profile w:0 scx-binary-missing
+  B stress-ng-cpu      59054 BACKGROUND_NOISY |~ mixed_profile w:0 scx-binary-missing
+  L redis-server       58459 LATENCY_SENSITIVE |~ latency_profile w:0 scx-binary-missing
+  B stress-ng-cpu      59057 BACKGROUND_NOISY |~ mixed_profile w:0 scx-binary-missing
+  B stress-ng-cpu      59056 BACKGROUND_NOISY |~ mixed_profile w:0 scx-binary-missing
+  B stress-ng-cpu      59050 BACKGROUND_NOISY |~ mixed_profile w:0 scx-binary-missing
+  B stress-ng-cpu      59053 BACKGROUND_NOISY |~ mixed_profile w:0 scx-binary-missing
+  B stress-ng-cpu      59051 BACKGROUND_NOISY |~ mixed_profile w:0 scx-binary-missing
+  B stress-ng-cpu      59055 BACKGROUND_NOISY |~ mixed_profile w:0 scx-binary-missing
+  T redis-benchmark    59064 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  T redis-benchmark    59062 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  B stress-ng-cpu      59052 BACKGROUND_NOISY |~ mixed_profile w:0 scx-binary-missing
+  B stress-ng-cpu      59054 BACKGROUND_NOISY |~ mixed_profile w:0 scx-binary-missing
+  L redis-server       58459 LATENCY_SENSITIVE |~ latency_profile w:0 scx-binary-missing
+  B stress-ng-cpu      59057 BACKGROUND_NOISY |~ mixed_profile w:0 scx-binary-missing
+  B stress-ng-cpu      59056 BACKGROUND_NOISY |~ mixed_profile w:0 scx-binary-missing
+  B stress-ng-cpu      59050 BACKGROUND_NOISY |~ mixed_profile w:0 scx-binary-missing
+  B stress-ng-cpu      59053 BACKGROUND_NOISY |~ mixed_profile w:0 scx-binary-missing
+  B stress-ng-cpu      59051 BACKGROUND_NOISY |~ mixed_profile w:0 scx-binary-missing
+  B stress-ng-cpu      59055 BACKGROUND_NOISY |~ mixed_profile w:0 scx-binary-missing
+  T redis-benchmark    59064 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  T redis-benchmark    59062 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  B stress-ng-cpu      59052 BACKGROUND_NOISY |~ mixed_profile w:0 scx-binary-missing
+  B stress-ng-cpu      59054 BACKGROUND_NOISY |~ mixed_profile w:0 scx-binary-missing
+  L redis-server       58459 LATENCY_SENSITIVE |~ latency_profile w:0 scx-binary-missing
+  B stress-ng-cpu      59057 BACKGROUND_NOISY |~ mixed_profile w:0 scx-binary-missing
+  B stress-ng-cpu      59056 BACKGROUND_NOISY |~ mixed_profile w:0 scx-binary-missing
+  B stress-ng-cpu      59050 BACKGROUND_NOISY |~ mixed_profile w:0 scx-binary-missing
+  B stress-ng-cpu      59053 BACKGROUND_NOISY |~ mixed_profile w:0 scx-binary-missing
+  B stress-ng-cpu      59051 BACKGROUND_NOISY |~ mixed_profile w:0 scx-binary-missing
+  B stress-ng-cpu      59055 BACKGROUND_NOISY |~ mixed_profile w:0 scx-binary-missing
+  T redis-benchmark    59064 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  T redis-benchmark    59062 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  B stress-ng-cpu      59052 BACKGROUND_NOISY |~ mixed_profile w:0 scx-binary-missing
+  --------------------------------------------------
+  DONE  total=129  applied=0  L=6  T=12  B=48  U=63
+

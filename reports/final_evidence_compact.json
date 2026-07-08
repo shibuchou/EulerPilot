@@ -1,30 +1,74 @@
 {
-  "generated_at": "2026-07-08T11:18:56+08:00",
+  "generated_at": "2026-07-08T16:51:36+08:00",
   "manifest_path": "configs/final_evidence_manifest.json",
   "manifest_title": "EulerPilot final evidence manifest",
   "git_status_short": [
-    " M AGENTS.md",
+    " M Makefile",
     " M README.md",
+    " M agent/include/eulerpilot.hpp",
+    " M agent/src/builtin_skills/common.hpp",
+    " M agent/src/builtin_skills/psi_gate.cpp",
+    " M agent/src/main.cpp",
+    " M agent/src/runtime.cpp",
+    " M bench/nginx/run_nginx_sched_ext_compare.sh",
+    " M bench/redis/run_redis_sched_ext_compare.sh",
+    " M bpf/network_xdp.bpf.c",
+    " M bpf/security_policy.bpf.c",
+    " M bpf/workload_observer.h",
     " M configs/final_evidence_manifest.json",
     " M docs/defense_final.md",
     " M docs/defense_qa.md",
     " M docs/defense_slides_outline.md",
     " M docs/defense_summary.md",
-    " M docs/final_delivery_status.md",
+    " M docs/demo_final_runbook.md",
+    " M docs/demo_runbook.md",
+    " M docs/evaluation_report.md",
+    " M docs/final_evidence_index.md",
+    " M docs/final_report_draft.md",
+    " M docs/final_report_outline.md",
+    " M docs/final_report_release_candidate.md",
     " M docs/final_report_submission.md",
+    " M docs/final_report_v1.md",
+    " M docs/final_report_v2.md",
     " M docs/final_submission_guide.md",
     " M docs/final_submission_packet.md",
-    " M docs/final_submission_readme.md",
     " M docs/final_talk_script.md",
+    " M docs/handover_manual.md",
     " M docs/one_page_summary.md",
     " M docs/progress_status.md",
+    " M docs/project_status_overview.md",
     " M docs/sp4_validation_plan.md",
+    " M docs/stage_delivery_summary.md",
     " M docs/stage_g_benchmark_freeze.md",
+    " M docs/submission_checklist.md",
     " M docs/web_console_design.md",
-    "?? docs/sp4_k8s_validation_plan.md",
-    "?? reports/sp4_sync_hash_local_20260708.txt",
-    "?? reports/sp4_sync_hash_remote_20260708.txt",
-    "?? results/k8s/"
+    " M scripts/extract_wrk_metrics.py",
+    " M scripts/nginx_compare_summary.py",
+    " M scripts/redis_compare_summary.py",
+    " M scripts/render_nginx_backend_compare_report.py",
+    " M scripts/render_redis_backend_compare_report.py",
+    " M submission/build_and_run.md",
+    " M submission/evidence_summary.md",
+    " M submission/known_limits.md",
+    " M web_console/README.md",
+    " M web_console/backend/src/data.js",
+    " M web_console/docs/security.md",
+    " M web_console/frontend/src/App.tsx",
+    "?? bench/redis/run_redis_pressure_gradient.sh",
+    "?? bench/redis/run_static_vs_agent_compare.sh",
+    "?? docs/demo_video_recording_script.md",
+    "?? reports/final_quality_gate_20260708-closeout-sp4.log",
+    "?? reports/sp4/final_quality_gate_20260708-90to93.log",
+    "?? reports/sp4/nginx_runs5_20260708-152602.log",
+    "?? reports/sp4/redis_pressure_gradient_20260708-153811.log",
+    "?? reports/sp4/redis_runs5_20260708-150702.log",
+    "?? reports/sp4/redis_static_vs_agent_20260708-162543.log",
+    "?? results/final/nginx-scx-compare-20260708-152602/",
+    "?? results/final/redis-pressure-gradient-20260708-153811/",
+    "?? results/final/redis-scx-compare-20260708-150702/",
+    "?? results/final/redis-static-vs-agent-20260708-162543/",
+    "?? results/policy_engine/security-network-resource-20260708-115001/",
+    "?? tests/unit/test_runtime_policy.cpp"
   ],
   "entries": [
     {
@@ -193,77 +237,138 @@
     },
     {
       "category": "cpu_sched_ext",
-      "name": "SP4 Redis sched_ext comparison RUNS=3",
+      "name": "SP4 Redis sched_ext comparison RUNS=5",
       "host": "123",
-      "path": "results/final/redis-scx-compare-20260706-115029",
+      "path": "results/final/redis-scx-compare-20260708-150702",
       "kind": "result_dir",
       "required": true,
       "exists": true,
       "status": "present",
-      "notes": "SP4 sched_ext kernel Redis RUNS=3 workload comparison.",
+      "notes": "SP4 sched_ext kernel Redis RUNS=5 workload comparison with CPU efficiency metrics.",
       "summary": {
-        "summary_excerpt": "# Redis sched_ext 正式对照 / - timestamp: 2026-07-06T12:02:53+08:00 / - runs: 3",
+        "summary_excerpt": "# Redis sched_ext 正式对照 / - timestamp: 2026-07-08T15:25:52+08:00 / - runs: 5",
         "csv_rows": 4,
         "test": "GET",
-        "quiet_default_rps_avg": "35285.903",
-        "quiet_scx_normal_rps_avg": "35800.853",
-        "noisy_default_rps_avg": "16532.470",
-        "noisy_cgroup_v2_rps_avg": "31942.873",
-        "noisy_scx_psi_rps_avg": "9864.123"
+        "quiet_default_rps_avg": "35075.634",
+        "quiet_scx_normal_rps_avg": "35559.110",
+        "noisy_default_rps_avg": "17245.446",
+        "noisy_cgroup_v2_rps_avg": "32695.928",
+        "noisy_scx_psi_rps_avg": "10454.576"
       },
       "evidence_files": [
         {
-          "path": "results/final/redis-scx-compare-20260706-115029/compare_summary_avg.csv",
+          "path": "results/final/redis-scx-compare-20260708-150702/compare_summary_avg.csv",
           "exists": true,
-          "bytes": 1611
+          "bytes": 2550
         },
         {
-          "path": "results/final/redis-scx-compare-20260706-115029/run_manifest.json",
+          "path": "results/final/redis-scx-compare-20260708-150702/run_manifest.json",
           "exists": true,
-          "bytes": 4147
+          "bytes": 6067
         },
         {
-          "path": "results/final/redis-scx-compare-20260706-115029/report.md",
+          "path": "results/final/redis-scx-compare-20260708-150702/report.md",
           "exists": true,
-          "bytes": 3669
+          "bytes": 4108
         }
       ],
       "warnings": []
     },
     {
       "category": "cpu_sched_ext",
-      "name": "SP4 Nginx sched_ext comparison RUNS=3",
+      "name": "SP4 Nginx sched_ext comparison RUNS=5",
       "host": "123",
-      "path": "results/final/nginx-scx-compare-20260706-120547",
+      "path": "results/final/nginx-scx-compare-20260708-152602",
       "kind": "result_dir",
       "required": true,
       "exists": true,
       "status": "present",
-      "notes": "SP4 sched_ext kernel Nginx RUNS=3 workload comparison.",
+      "notes": "SP4 sched_ext kernel Nginx RUNS=5 workload comparison with CPU efficiency metrics.",
       "summary": {
-        "summary_excerpt": "# Nginx sched_ext 正式对照 / - timestamp: 2026-07-06T12:12:59+08:00 / - runs: 3",
+        "summary_excerpt": "# Nginx sched_ext 正式对照 / - timestamp: 2026-07-08T15:38:01+08:00 / - runs: 5",
         "csv_rows": 1,
-        "quiet_default_rps_avg": "22138.920",
-        "quiet_scx_normal_rps_avg": "13182.823",
-        "noisy_default_rps_avg": "15203.393",
-        "noisy_cgroup_v2_rps_avg": "16060.380",
-        "noisy_scx_psi_rps_avg": "6750.803"
+        "quiet_default_rps_avg": "22344.040",
+        "quiet_scx_normal_rps_avg": "22517.994",
+        "noisy_default_rps_avg": "15921.544",
+        "noisy_cgroup_v2_rps_avg": "16265.772",
+        "noisy_scx_psi_rps_avg": "16997.658"
       },
       "evidence_files": [
         {
-          "path": "results/final/nginx-scx-compare-20260706-120547/compare_summary_avg.csv",
+          "path": "results/final/nginx-scx-compare-20260708-152602/compare_summary_avg.csv",
           "exists": true,
-          "bytes": 948
+          "bytes": 1579
         },
         {
-          "path": "results/final/nginx-scx-compare-20260706-120547/run_manifest.json",
+          "path": "results/final/nginx-scx-compare-20260708-152602/run_manifest.json",
           "exists": true,
-          "bytes": 4133
+          "bytes": 6053
         },
         {
-          "path": "results/final/nginx-scx-compare-20260706-120547/report.md",
+          "path": "results/final/nginx-scx-compare-20260708-152602/report.md",
           "exists": true,
-          "bytes": 1670
+          "bytes": 1704
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "category": "cpu_sched_ext",
+      "name": "SP4 Redis pressure gradient comparison",
+      "host": "123",
+      "path": "results/final/redis-pressure-gradient-20260708-153811",
+      "kind": "result_dir",
+      "required": true,
+      "exists": true,
+      "status": "present",
+      "notes": "Redis interference gradient across 0/1/2/4/8 stress workers, used to show workload-dependent benefit and cost boundaries.",
+      "summary": {
+        "summary_excerpt": "# Redis 压力递增梯度实验 / - 结果目录：`/root/EulerPilot/results/final/redis-pressure-gradient-20260708-153811` / - worker 档位：0 / 1 / 2 / 4 / 8"
+      },
+      "evidence_files": [
+        {
+          "path": "results/final/redis-pressure-gradient-20260708-153811/pressure_gradient_summary.csv",
+          "exists": true,
+          "bytes": 2643
+        },
+        {
+          "path": "results/final/redis-pressure-gradient-20260708-153811/report.md",
+          "exists": true,
+          "bytes": 1483
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "category": "cpu_sched_ext",
+      "name": "SP4 Redis manual static vs agent dynamic comparison",
+      "host": "123",
+      "path": "results/final/redis-static-vs-agent-20260708-162543",
+      "kind": "result_dir",
+      "required": true,
+      "exists": true,
+      "status": "present",
+      "notes": "Redis noisy workload comparison among default, manual static cgroup control and EulerPilot dynamic Agent control.",
+      "summary": {
+        "summary_excerpt": "# Redis static vs Agent dynamic compare / - timestamp: 2026-07-08T16:33:19+08:00 / - runs: 5",
+        "csv_rows": 4,
+        "test": "GET"
+      },
+      "evidence_files": [
+        {
+          "path": "results/final/redis-static-vs-agent-20260708-162543/compare_summary_avg.csv",
+          "exists": true,
+          "bytes": 1144
+        },
+        {
+          "path": "results/final/redis-static-vs-agent-20260708-162543/report.md",
+          "exists": true,
+          "bytes": 1008
+        },
+        {
+          "path": "results/final/redis-static-vs-agent-20260708-162543/summary.md",
+          "exists": true,
+          "bytes": 318
         }
       ],
       "warnings": []

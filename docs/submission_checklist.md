@@ -175,13 +175,13 @@
 - `reports/final_quality_gate_20260706-quality-121.log`：121 最新门禁通过记录，22/22 P0 通过，100 轮 smoke 与 5 轮 doctor 通过
 - `configs/final_evidence_manifest.json`：最终证据压缩白名单清单
 - `scripts/collect_final_evidence.py`：最终证据压缩报告生成脚本
-- `reports/final_evidence_compact.md`：答辩入口压缩报告，当前覆盖 32 个核心证据条目
+- `reports/final_evidence_compact.md`：答辩入口压缩报告，当前覆盖 37 个核心证据条目
 - `reports/final_evidence_compact.json`：机器可读证据状态，当前 `--strict` 检查必需缺失 0、警告 0
 - `docs/final_security_audit.md`：最终安全与质量审计报告
 
 ## 当前结论
 
-项目已进入争奖证据收口阶段。当前已完成 Security anomaly -> Policy Engine -> Resource Control 降级、Security anomaly -> Policy Engine -> Network+Resource 联动，以及真实 Pod 版 Network+Resource 联动。121/122 的真实 Podman container target、k3s Pod target、Network QoS Pod host veth、Network XDP Pod host veth、真实 Pod Policy Engine 跨 Skill 联动、服务联动 Security anomaly 规则、anomaly 进程过滤、anomaly 组合 scope 过滤、credential 生命周期 anomaly、credential deep hook scoped attach 评估、isolated-veth XDP ICMP/TCP/UDP + UDP tuple 四规则、real Pod host veth XDP ICMP/TCP/UDP + UDP tuple 四规则均已转为 pass；SP4/123 的 sched_ext 自编译内核、Redis/Nginx RUNS=3 workload 对照和最终质量门禁也已转为 pass。下一步重点是答辩材料冻结、现场演示压测和最终演示脚本彩排。
+项目已进入争奖证据收口阶段。当前已完成 Security anomaly -> Policy Engine -> Resource Control 降级、Security anomaly -> Policy Engine -> Network+Resource 联动，以及真实 Pod 版 Network+Resource 联动。121/122 的真实 Podman container target、k3s Pod target、Network QoS Pod host veth、Network XDP Pod host veth、真实 Pod Policy Engine 跨 Skill 联动、服务联动 Security anomaly 规则、anomaly 进程过滤、anomaly 组合 scope 过滤、credential 生命周期 anomaly、credential deep hook scoped attach 评估、isolated-veth XDP ICMP/TCP/UDP + UDP tuple 四规则、real Pod host veth XDP ICMP/TCP/UDP + UDP tuple 四规则均已转为 pass；SP4/123 的 sched_ext 自编译内核、Redis/Nginx RUNS=5 workload 对照和最终质量门禁也已转为 pass。下一步重点是答辩材料冻结、现场演示压测和最终演示脚本彩排。
 
 ## v3.1 提交前新增检查
 
@@ -213,6 +213,8 @@
 - [x] Security anomaly 组合 scope 过滤 121/122 通过。
 - [x] Network XDP isolated-veth tuple 字段演示 121/122 通过。
 - [x] Network XDP real Pod host veth tuple 字段演示 121/122 通过。
-- [x] `python3 scripts/collect_final_evidence.py --strict` 通过，最终证据压缩报告覆盖 32 个核心条目，必需缺失 0、警告 0。
+- [x] `python3 scripts/collect_final_evidence.py --strict` 通过，最终证据压缩报告覆盖 37 个核心条目，必需缺失 0、警告 0。
+- [ ] 正式演示视频录制与链接填写。当前已准备 `docs/demo_video_recording_script.md`，但仓库内未包含正式视频文件。
 - [x] SP4 Redis/Nginx `RUNS=3` sched_ext workload 复核通过，结果纳入 `configs/final_evidence_manifest.json` 和 `reports/final_evidence_compact.*`。
 - [x] Stage G Benchmark 与冻结材料已完成：主 Benchmark 结论冻结，现场演示日志仅作为追加彩排记录。
+

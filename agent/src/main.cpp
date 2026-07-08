@@ -154,6 +154,11 @@ void print_decision(const eulerpilot::WorkloadDecision &d, bool verbose, bool js
                   << ",\"latency_wait_high\":" << (d.latency_wait_high ? "true" : "false")
                   << ",\"background_runtime_high\":" << (d.background_runtime_high ? "true" : "false")
                   << ",\"trigger_reason\":\"" << d.trigger_reason << "\""
+                  << ",\"adaptive_thresholds_enabled\":" << (d.adaptive_thresholds_enabled ? "true" : "false")
+                  << ",\"adaptive_thresholds_calibrated\":" << (d.adaptive_thresholds_calibrated ? "true" : "false")
+                  << ",\"calibrated_latency_wait_threshold_ns\":" << d.calibrated_latency_wait_threshold_ns
+                  << ",\"calibrated_background_runtime_threshold_ns\":" << d.calibrated_background_runtime_threshold_ns
+                  << ",\"calibrated_cpu_psi_threshold\":" << d.calibrated_cpu_psi_threshold
                   << ",\"executor\":\"" << d.action.executor << "\""
                   << ",\"group\":\"" << d.action.target_group << "\""
                   << ",\"target_ref\":\"" << d.action.target_ref << "\""
@@ -203,6 +208,11 @@ void print_decision(const eulerpilot::WorkloadDecision &d, bool verbose, bool js
                   << " cpu_psi_high=" << (d.cpu_psi_high ? "yes" : "no")
                   << " latency_wait_high=" << (d.latency_wait_high ? "yes" : "no")
                   << " background_runtime_high=" << (d.background_runtime_high ? "yes" : "no") << "\n"
+                  << "    adaptive_thresholds: enabled=" << (d.adaptive_thresholds_enabled ? "yes" : "no")
+                  << " calibrated=" << (d.adaptive_thresholds_calibrated ? "yes" : "no")
+                  << " latency_wait_ns=" << d.calibrated_latency_wait_threshold_ns
+                  << " background_runtime_ns=" << d.calibrated_background_runtime_threshold_ns
+                  << " cpu_psi=" << d.calibrated_cpu_psi_threshold << "\n"
                   << "    action: executor=" << d.action.executor
                   << " group=" << d.action.target_group
                   << " applied=" << (d.action.applied ? "yes" : "no")

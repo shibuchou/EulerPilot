@@ -44,7 +44,7 @@ web_console/scripts/run_console.sh --daemon
 本地：
 
 ```bash
-ssh -L 18080:127.0.0.1:18080 EulerPilot-openEuler
+ssh -L 18080:127.0.0.1:18080 openEuler-2403-LTS-SP4
 ```
 
 访问：

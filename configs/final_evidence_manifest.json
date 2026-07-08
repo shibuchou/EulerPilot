@@ -63,25 +63,47 @@
     },
     {
       "category": "cpu_sched_ext",
-      "name": "SP4 Redis sched_ext comparison RUNS=3",
+      "name": "SP4 Redis sched_ext comparison RUNS=5",
       "host": "123",
-      "path": "results/final/redis-scx-compare-20260706-115029",
+      "path": "results/final/redis-scx-compare-20260708-150702",
       "kind": "result_dir",
       "summary": "summary.md",
       "files": ["compare_summary_avg.csv", "run_manifest.json", "report.md"],
       "required": true,
-      "notes": "SP4 sched_ext kernel Redis RUNS=3 workload comparison."
+      "notes": "SP4 sched_ext kernel Redis RUNS=5 workload comparison with CPU efficiency metrics."
     },
     {
       "category": "cpu_sched_ext",
-      "name": "SP4 Nginx sched_ext comparison RUNS=3",
+      "name": "SP4 Nginx sched_ext comparison RUNS=5",
       "host": "123",
-      "path": "results/final/nginx-scx-compare-20260706-120547",
+      "path": "results/final/nginx-scx-compare-20260708-152602",
       "kind": "result_dir",
       "summary": "summary.md",
       "files": ["compare_summary_avg.csv", "run_manifest.json", "report.md"],
       "required": true,
-      "notes": "SP4 sched_ext kernel Nginx RUNS=3 workload comparison."
+      "notes": "SP4 sched_ext kernel Nginx RUNS=5 workload comparison with CPU efficiency metrics."
+    },
+    {
+      "category": "cpu_sched_ext",
+      "name": "SP4 Redis pressure gradient comparison",
+      "host": "123",
+      "path": "results/final/redis-pressure-gradient-20260708-153811",
+      "kind": "result_dir",
+      "summary": "report.md",
+      "files": ["pressure_gradient_summary.csv", "report.md"],
+      "required": true,
+      "notes": "Redis interference gradient across 0/1/2/4/8 stress workers, used to show workload-dependent benefit and cost boundaries."
+    },
+    {
+      "category": "cpu_sched_ext",
+      "name": "SP4 Redis manual static vs agent dynamic comparison",
+      "host": "123",
+      "path": "results/final/redis-static-vs-agent-20260708-162543",
+      "kind": "result_dir",
+      "summary": "summary.md",
+      "files": ["compare_summary_avg.csv", "report.md", "summary.md"],
+      "required": true,
+      "notes": "Redis noisy workload comparison among default, manual static cgroup control and EulerPilot dynamic Agent control."
     },
     {
       "category": "cpu_sched_ext",

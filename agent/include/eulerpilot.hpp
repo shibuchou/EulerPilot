@@ -128,6 +128,11 @@ struct WorkloadDecision {
     bool latency_exists = false;
     bool background_exists = false;
     std::string trigger_reason = "unclassified";
+    bool adaptive_thresholds_enabled = false;
+    bool adaptive_thresholds_calibrated = false;
+    double calibrated_latency_wait_threshold_ns = 5000000.0;
+    double calibrated_background_runtime_threshold_ns = 4000000.0;
+    double calibrated_cpu_psi_threshold = 0.10;
 };
 
 enum class ControlMode : int {
@@ -147,6 +152,17 @@ struct TriggerContext {
     bool background_runtime_high = false;
     double wait_threshold_ns = 5000000.0;
     double background_runtime_threshold_ns = 4000000.0;
+};
+
+struct RuntimeThresholds {
+    double cpu_psi_threshold = 0.10;
+    double wait_threshold_ns = 5000000.0;
+    double background_runtime_threshold_ns = 4000000.0;
+    bool cpu_psi_explicit = false;
+    bool wait_explicit = false;
+    bool background_explicit = false;
+    bool adaptive_enabled = false;
+    bool calibrated = false;
 };
 
 struct GateDecision {
@@ -172,10 +188,17 @@ RuntimeConfig parse_args(int argc, char **argv);
 EnvironmentStatus detect_environment();
 PsiSnapshot read_psi_snapshot();
 WorkloadDecision classify_sample(const WorkloadSample &sample);
+RuntimeThresholds calibrate_runtime_thresholds(const RuntimeThresholds &base,
+                                                const std::vector<double> &latency_wait_ns,
+                                                const std::vector<double> &background_runtime_ns,
+                                                const std::vector<double> &cpu_psi_avg10);
+ControlMode derive_desired_mode(const TriggerContext &ctx);
 ExecutionAction apply_cgroup_assignment(const RuntimeConfig &config, const WorkloadDecision &decision);
 ExecutionAction apply_scx_assignment(const RuntimeConfig &config, const WorkloadDecision &decision,
                                      bool scheduler_active, const std::string &scheduler_reason);
 TriggerContext build_trigger_context(std::vector<WorkloadDecision> &decisions, bool cpu_psi_high, bool cpu_psi_triggered);
+TriggerContext build_trigger_context(std::vector<WorkloadDecision> &decisions, bool cpu_psi_high,
+                                     bool cpu_psi_triggered, const RuntimeThresholds &thresholds);
 std::vector<WorkloadDecision> run_once(const RuntimeConfig &config);
 std::vector<WorkloadDecision> run_cycles(const RuntimeConfig &config);
 void request_shutdown();

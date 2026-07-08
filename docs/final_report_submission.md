@@ -4,7 +4,7 @@
 
 ## 摘要
 
-EulerPilot 是一个面向 openEuler 的自适应资源管控 Agent。项目通过 eBPF 进行低开销观测，在用户态完成 workload 分类、压力识别和策略决策，并通过 `cgroup v2` 与 `sched_ext/scx` 双执行后端实现资源调控。当前项目已经完成从系统观测、策略执行到正式实验、Web Console 展示和中文报告输出的完整工程闭环，并分别在 Redis 与 Nginx 两条业务线上形成 `RUNS=5` 的候选结果目录，在 SP4 自编译 sched_ext 内核上形成 `RUNS=3` 复核结果。
+EulerPilot 是一个面向 openEuler 的自适应资源管控 Agent。项目通过 eBPF 进行低开销观测，在用户态完成 workload 分类、压力识别和策略决策，并通过 `cgroup v2` 与 `sched_ext/scx` 双执行后端实现资源调控。当前项目已经完成从系统观测、策略执行到正式实验、Web Console 展示和中文报告输出的完整工程闭环，并分别在 Redis 与 Nginx 两条业务线上形成 `RUNS=5` 的候选结果目录，在 SP4 自编译 sched_ext 内核上形成 `RUNS=5` 复核结果，同时补充 Redis pressure gradient 与 manual static vs agent dynamic 两组争奖增强证据。
 
 EulerPilot 不追求无条件替代 Linux 默认调度器，而是面向混部干扰场景，通过 eBPF/PSI 感知 workload 状态，在延迟敏感服务与后台干扰共存时，选择 cgroup v2 或 sched_ext/scx 后端进行按需控制，并通过 Redis/Nginx 对照实验展示收益、边界与可回滚能力。
 
@@ -225,12 +225,12 @@ TC QoS 还完成了速率误差 Benchmark：在 2 Mbit/s 目标下，121 实测 
 
 ## 4. 实验环境
 
-### 4.1 SP3 主交付环境
+### 4.1 SP3 历史验证环境
 
 ```text
 主机：192.168.1.121
 系统：openEuler 24.03 LTS SP3
-定位：主闭环、主交付，以及当前统一提交目录所在环境
+定位：SP3 历史验证与回归对照；最终主验证线已切换到 SP4
 ```
 
 ### 4.2 OLK-6.6 正式对照环境
@@ -255,7 +255,7 @@ TC QoS 还完成了速率误差 Benchmark：在 2 Mbit/s 目标下，121 实测 
 |------|------|-----------|------|----------|
 | 121 / SP3 主环境 | openEuler 24.03 LTS SP3 官方内核 | 不可用 | cgroup v2 主闭环、代码、文档、Dashboard、质量门禁 | **主交付** |
 | 122 / OLK-6.6 验证环境 | 6.6.0-olk66-scx | 可用 | sched_ext/scx 正式 compare、class_map、PsiGate 验证 | **增强验证** |
-| 123 / SP4 复核环境 | openEuler 24.03 LTS SP4，自编译 `eulerpilot-scx` 内核 | 可用 | SP4 sched_ext、Redis/Nginx RUNS=3、Web Console 与最终门禁复核 | **平台复核** |
+| 123 / SP4 复核环境 | openEuler 24.03 LTS SP4，自编译 `eulerpilot-scx` 内核 | 可用 | SP4 sched_ext、Redis/Nginx RUNS=5、Web Console 与最终门禁复核 | **平台复核** |
 
 `cgroup v2` 是当前 SP3 上的正式主交付路径；`sched_ext/scx` 已在 OLK-6.6 和 SP4 自编译内核环境完成增强验证，用于证明 Agent 架构可以对接用户态调度后端。
 
@@ -266,7 +266,7 @@ TC QoS 还完成了速率误差 Benchmark：在 2 Mbit/s 目标下，121 实测 
 当前建议直接引用的 Redis 候选结果目录为：
 
 - `/root/EulerPilot/results/final/redis-scx-compare-20260612-191543`
-- SP4 复核目录：`/root/EulerPilot/results/final/redis-scx-compare-20260706-115029`
+- SP4 复核目录：`/root/EulerPilot/results/final/redis-scx-compare-20260708-150702`
 
 该目录当前满足：
 
@@ -310,7 +310,7 @@ TC QoS 还完成了速率误差 Benchmark：在 2 Mbit/s 目标下，121 实测 
 当前建议直接引用的 Nginx 候选结果目录为：
 
 - `/root/EulerPilot/results/final/nginx-scx-compare-20260612-194018`
-- SP4 复核目录：`/root/EulerPilot/results/final/nginx-scx-compare-20260706-120547`
+- SP4 复核目录：`/root/EulerPilot/results/final/nginx-scx-compare-20260708-152602`
 
 该目录当前满足：
 
@@ -400,7 +400,7 @@ EulerPilot 的价值不在于证明某一组参数在所有场景下都优于默
 
 但最终报告中不应写成：
 
-- "sched_ext 全面优于默认调度器"
+- "sched_ext 对所有 workload 都稳定提升"
 - "所有模式都稳定带来收益"
 
 更稳的结论应是：
@@ -412,9 +412,9 @@ EulerPilot 的价值不在于证明某一组参数在所有场景下都优于默
 ## 9. 当前结论
 
 1. EulerPilot 已在 `SP3` 上完成 cgroup v2 主闭环，具备正式交付能力。
-2. EulerPilot 已在 `OLK-6.6` 上完成 Redis 与 Nginx 的 `sched_ext` 正式 compare，并在 `SP4` 自编译 sched_ext 内核上完成 Redis/Nginx `RUNS=3` 复核。
+2. EulerPilot 已在 `OLK-6.6` 上完成 Redis 与 Nginx 的 `sched_ext` 正式 compare，并在 `SP4` 自编译 sched_ext 内核上完成 Redis/Nginx `RUNS=5` 复核。
 3. EulerPilot 已实现 Skills 插件化框架与 YAML v2 驱动，并通过 `network_policy`、`network_qos`、`network_xdp` 和正式 `security_policy` 证明了 Agent 能力可扩展。
-4. 项目已通过最新 SP4 质量门禁（`results/k8s/sp4-validation-20260708-023552/final_quality_gate.log`，22/22 P0、100 轮 smoke、5 轮 doctor）和安全审计，并形成 35 条 final evidence compact。
+4. 项目已通过最新 SP4 质量门禁（`results/k8s/sp4-validation-20260708-023552/final_quality_gate.log`，22/22 P0、100 轮 smoke、5 轮 doctor）和安全审计，并形成 37 条 final evidence compact；新增 SP4 Redis pressure gradient 与 static-vs-agent 对比用于说明收益边界和 Agent 动态调控价值。
 
 补充说明：
 
@@ -425,3 +425,4 @@ EulerPilot 的价值不在于证明某一组参数在所有场景下都优于默
 项目代码已同步推送至 GitHub 私密仓库 `shibuchou/EulerPilot`。
 
 当前项目已覆盖 resource control、network policy、security policy 三类 OS Agent 扩展方向：其中 resource control 进入 Redis/Nginx 主实验路径，network policy 已具备 connect4、TC QoS、XDP 三个可验证子能力，XDP 已支持 ICMP/TCP/UDP 与 UDP tuple 多字段规则和 per-rule 字段统计，security policy 已从独立 demo 升级为正式 Skill，覆盖 file、exec、socket、ptrace 四类 eBPF/LSM hook 的 audit、deny、rollback、recover 可演示闭环。
+

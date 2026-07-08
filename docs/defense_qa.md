@@ -8,7 +8,7 @@
 
 ## 2. 为什么 SP3 主线使用 cgroup v2，而不是强行使用 sched_ext？
 
-openEuler 24.03 LTS SP3 是比赛要求的主交付系统，默认内核环境下 `sched_ext/scx` 不一定可用。为了保证可编译、可运行、可复现，SP3 主线采用 cgroup v2 的 CPU/Memory/IO 控制作为稳定路径；sched_ext/scx 放在 SP4 / OLK-6.6 / 自编译内核上作为增强验证路径。
+openEuler 24.03 LTS SP4 是当前核心验证和最终交付验证仓库。发行内核稳定控制路径采用 cgroup v2 的 CPU/Memory/IO 控制；sched_ext/scx 基于 SP4 官方源码自编译启用 `CONFIG_SCHED_CLASS_EXT` 的内核完成复核，不声称发行默认内核直接支持 sched_ext。SP3 121 保留为历史验证和回归对照仓库。
 
 答辩口径：
 
@@ -59,7 +59,7 @@ v3.1 默认只允许 lab netdev，测试脚本创建 isolated veth，例如 `ep-
 
 ## 9. 结果是否只在单机上成立？
 
-不是。121/122 双机完成了 SP3 主路径与历史对照验证；SP4 主机现在作为核心验证仓库，已完成自编译 sched_ext/scx 增强路径、Redis/Nginx RUNS=3 复核、Web Console 和 Kubernetes 旁路验证。最终 evidence manifest 将这些结果统一收口到 35 条核心证据。
+不是。121/122 双机完成了 SP3 主路径与历史对照验证；SP4 主机现在作为核心验证仓库，已完成自编译 sched_ext/scx 增强路径、Redis/Nginx RUNS=5 复核、Web Console 和 Kubernetes 旁路验证。最终 evidence manifest 将这些结果统一收口到 37 条核心证据。
 
 ## 10. 如果现场环境波动怎么办？
 

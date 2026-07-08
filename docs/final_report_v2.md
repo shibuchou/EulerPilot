@@ -226,7 +226,7 @@ EulerPilot 没有把 `cgroup v2` 和 `sched_ext` 做成两套割裂系统，而�
 ```text
 主机：192.168.1.121
 系统：openEuler 24.03 LTS SP3
-定位：SP3 主交付环境
+定位：SP3 历史验证环境
 ```
 
 该环境当前用于：

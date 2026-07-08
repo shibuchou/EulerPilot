@@ -1,0 +1,1 @@
+bench/redis/run_redis_sched_ext_compare.sh: line 176: /root/olk/kernel-OLK-6.6-atomgit/tools/sched_ext/build/bin/scx_eulerpilot: No such file or directory

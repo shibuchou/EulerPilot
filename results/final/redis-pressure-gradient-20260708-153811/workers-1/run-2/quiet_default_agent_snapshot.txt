@@ -1,0 +1,22 @@
+
+  * EulerPilot Agent 
+  --------------------------------------------------
+  config:     /root/EulerPilot/configs/agent.yaml
+  interval:   1000ms  duration:   2s  warmup: 0
+  mode:       dry-run  backend:    cgroup_v2
+  gate:       always-active
+  env:         psi:ok  cg:ok  scx:ok
+  --------------------------------------------------
+
+  --- legend ---
+  mark: . UNKNOWN  L LATENCY_SENSITIVE  B BACKGROUND_NOISY  T THROUGHPUT_BATCH
+  act:  + applied  ~ managed  - none
+  --- observing ---
+  mark name             pid  class        act profile    w:weight reason
+  L redis-server       56209 LATENCY_SENSITIVE |~ normal_profile w:100 no-group-for-class
+  T redis-benchmark    56538 THROUGHPUT_BATCH |- normal_profile w:100 non-target-process
+  L redis-server       56209 LATENCY_SENSITIVE |~ latency_profile w:1000 dry-run
+  T redis-benchmark    56538 THROUGHPUT_BATCH |- normal_profile w:100 non-target-process
+  --------------------------------------------------
+  DONE  total=23  applied=0  L=2  T=2  B=0  U=19
+

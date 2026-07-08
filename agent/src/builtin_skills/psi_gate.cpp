@@ -18,11 +18,7 @@ public:
     }
 
     bool probe() override {
-        const bool sched_ext = backend_ == ExecutorBackend::SchedExt;
         available_ = file_exists("/proc/pressure/cpu");
-        if (sched_ext) {
-            available_ = available_ && file_exists("/sys/fs/bpf/eulerpilot/scx_eulerpilot/v1/gate_state_map");
-        }
         last_error_ = available_ ? "" : "psi-gate-prerequisites-missing";
         return available_;
     }
@@ -68,7 +64,7 @@ public:
         snapshot.state = state_;
         snapshot.evidence["gate_mode"] = "adapter";
         snapshot.evidence["backend"] = backend_ == ExecutorBackend::SchedExt ? "sched_ext" : "cgroup_v2";
-        snapshot.evidence["requires_gate_state_map"] = backend_ == ExecutorBackend::SchedExt ? "yes" : "no";
+        snapshot.evidence["requires_gate_state_map"] = "executor-managed";
         snapshot.evidence["reason"] = last_error_.empty() ? "ok" : last_error_;
         return snapshot;
     }

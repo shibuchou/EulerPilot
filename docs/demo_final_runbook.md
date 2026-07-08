@@ -44,15 +44,19 @@ security_policy burst_connect anomaly
   -> Agent stop rollback
 ```
 
-SP4 增强验证链路已经完成，现场默认作为证据展示，不作为必须 live 重跑项：
+SP4 增强验证链路已经完成，现场默认作为证据展示，不作为必须 live 重跑项。注意：SP4 发行环境已完成适配验证，但发行内核未默认启用 `CONFIG_SCHED_CLASS_EXT`；sched_ext/scx 路径基于 SP4 官方源码自编译启用内核完成复核。
 
 ```text
 SP4 / 123 sched_ext kernel
-  -> Redis RUNS=3 sched_ext compare
-  -> Nginx RUNS=3 sched_ext compare
+  -> Redis RUNS=5 sched_ext compare
+  -> Nginx RUNS=5 sched_ext compare
   -> final_quality_gate.sh 22/22 P0 + 100 smoke + 5 doctor
-  -> final evidence compact 32 entries / missing 0 / warnings 0
+  -> final evidence compact 35 entries / missing 0 / warnings 0
 ```
+
+## 演示视频状态
+
+当前仓库未包含正式演示视频文件，不能在最终报告中写成“视频已录制”。录制脚本和命令清单见 `docs/demo_video_recording_script.md`。提交前需要按该脚本录制 8-10 分钟视频，并在提交清单中补充视频文件路径或公开访问链接。
 
 ## offline 演示材料
 
@@ -67,8 +71,8 @@ SP4 / 123 sched_ext kernel
 - `docs/resource_control_skill.md`
 - `docs/sp4_validation_plan.md`
 - `reports/sp4/final_quality_gate_scx_workload_20260706-1214.log`
-- `results/final/redis-scx-compare-20260706-115029/report.md`
-- `results/final/nginx-scx-compare-20260706-120547/report.md`
+- `results/final/redis-scx-compare-20260708-150702/report.md`
+- `results/final/nginx-scx-compare-20260708-152602/report.md`
 - `results/policy_engine/security-network-resource-*/report.md`
 - `results/policy_engine/security-network-resource-*/summary.txt`
 
@@ -94,3 +98,4 @@ curl http://127.0.0.1:9108/metrics
 - 只监听 `127.0.0.1:9108`，不绑定公网或生产网卡。
 - 演示结束后停止 Agent，metrics exporter 会随进程退出。
 - 默认 `configs/agent.yaml` 保持 `exporter.prometheus.enabled: false`。
+

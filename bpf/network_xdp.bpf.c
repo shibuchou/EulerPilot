@@ -9,6 +9,9 @@
 #define IPPROTO_UDP 17
 #define XDP_POLICY_PASS 0
 #define XDP_POLICY_DROP 1
+/* Small fixed rule table keeps generic XDP verification predictable and covers
+ * the current ICMP/TCP/UDP tuple demo set plus rollback statistics.
+ */
 #define XDP_MAX_RULES 8
 
 char LICENSE[] SEC("license") = "GPL";

@@ -1,0 +1,4 @@
+reconcile_scx_session: enter backend=sched_ext dry_run=false
+start_scx_session: enter binary=/root/olk/kernel-OLK-6.6-atomgit/tools/sched_ext/build/bin/scx_eulerpilot
+start_scx_session: scx-binary-missing
+reconcile_scx_session: start failed reason=scx-binary-missing

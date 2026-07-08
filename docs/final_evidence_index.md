@@ -30,7 +30,7 @@
 python3 scripts/collect_final_evidence.py --strict
 ```
 
-当前压缩报告覆盖 32 个核心条目：质量门禁、仓库快照、Redis/Nginx sched_ext、SP4 RUNS=3 workload、Network QoS/XDP、Security anomaly/process filter/combo scope/deep hook、Resource Control CPU/Memory/IO/Pod target、Policy Engine 双机联动与真实 Pod 联动。`--strict` 当前通过，必需证据缺失为 0、清单警告为 0。
+当前压缩报告覆盖 37 个核心条目：质量门禁、仓库快照、Redis/Nginx sched_ext、SP4 RUNS=5 workload、Redis pressure gradient、Redis static-vs-agent、Network QoS/XDP、Security anomaly/process filter/combo scope/deep hook、Resource Control CPU/Memory/IO/Pod target、Policy Engine 双机联动、真实 Pod 联动、Web Console 与 K8s 旁路验证。`--strict` 当前通过，必需证据缺失为 0、清单警告为 0。
 
 ## Skill 证据
 
@@ -191,8 +191,10 @@ SP4 sched_ext 增强复核：
 - SP4 check 121：`results/resource_control/sp4-env-20260630-101422-121.log`
 - SP4 check 122：`results/resource_control/sp4-env-20260630-101422-122.log`
 - SP4 Redis PSI ACTIVE probe：`results/final/redis-scx-psi-probe-20260706-100857`
-- SP4 Redis RUNS=3 compare：`results/final/redis-scx-compare-20260706-115029`
-- SP4 Nginx RUNS=3 compare：`results/final/nginx-scx-compare-20260706-120547`
+- SP4 Redis RUNS=5 compare：`results/final/redis-scx-compare-20260708-150702`
+- SP4 Nginx RUNS=5 compare：`results/final/nginx-scx-compare-20260708-152602`
+- SP4 Redis pressure gradient：`results/final/redis-pressure-gradient-20260708-153811`
+- SP4 Redis static-vs-agent compare：`results/final/redis-static-vs-agent-20260708-162543`
 - SP4 final quality gate：`reports/sp4/final_quality_gate_scx_workload_20260706-1214.log`
 
 历史 blocked / iSulad 准备证据保留：
@@ -208,3 +210,4 @@ SP4 sched_ext 增强复核：
 
 - SP4 sched_ext 自编译内核复核已完成，准备文档为 `docs/sp4_validation_plan.md`，检查脚本为 `scripts/check_sp4_env.sh`。
 - 真实 Kubernetes Pod target、Pod host veth QoS、Pod host veth XDP 与真实 Pod Policy Engine 跨 Skill 联动均已转 pass；isolated-veth 与 real Pod host veth XDP 均已补齐 ICMP/TCP/UDP + UDP tuple 四规则和 per-rule 字段证据；Security 已补齐 `credential_churn` 生命周期 anomaly、`cred_alloc_blank/cred_transfer` scoped attach 评估、anomaly 进程过滤和组合 scope 过滤双机证据。下一优先级是答辩材料冻结、现场演示压测和最终演示脚本彩排。
+

@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT="/root/EulerPilot"
 STAMP="$(date +%Y%m%d-%H%M%S)"
-OUTDIR="$ROOT/results/final/redis-scx-compare-$STAMP"
+OUTDIR="${OUTDIR:-$ROOT/results/final/redis-scx-compare-$STAMP}"
 REDIS_PORT="${REDIS_PORT:-6386}"
 INTERVAL_MS="${INTERVAL_MS:-1000}"
 STRESS_WORKERS="${STRESS_WORKERS:-2}"
@@ -25,6 +25,10 @@ LABELS=(
     "noisy_scx_always_active"
     "noisy_scx_psi"
 )
+
+if [ -n "${LABEL_FILTER:-}" ]; then
+    IFS=',' read -r -a LABELS <<< "$LABEL_FILTER"
+fi
 
 declare -A LABEL_TITLES=(
     ["quiet_default"]="仅 Redis，默认调度器"
@@ -78,13 +82,64 @@ stop_psi_redis_probe() {
     unset PSI_PROBE_PID
 }
 
+start_stress() {
+    local rundir="$1"
+    local label="$2"
+    if [ "$STRESS_WORKERS" -le 0 ]; then
+        printf 'stress_skipped_workers=0\n' > "$rundir/${label}_stress.log"
+        return 0
+    fi
+    stress-ng --cpu "$STRESS_WORKERS" --timeout 20s > "$rundir/${label}_stress.log" 2>&1 &
+    STRESS_PID=$!
+    sleep 1
+}
+
+stop_stress() {
+    [ -n "${STRESS_PID:-}" ] && wait "$STRESS_PID" 2>/dev/null || true
+    unset STRESS_PID
+}
+
+read_cpu_stat() {
+    awk '/^cpu / { total=0; for (i=2; i<=NF; i++) total += $i; idle=$5+$6; print total, idle; }' /proc/stat
+}
+
+write_cpu_usage() {
+    local rundir="$1"
+    local label="$2"
+    local before="$3"
+    local after="$4"
+    local requests="$5"
+    local before_total before_idle after_total after_idle
+    read -r before_total before_idle <<< "$before"
+    read -r after_total after_idle <<< "$after"
+    local total_delta=$((after_total - before_total))
+    local idle_delta=$((after_idle - before_idle))
+    local busy_delta=$((total_delta - idle_delta))
+    awk -v total="$total_delta" -v idle="$idle_delta" -v busy="$busy_delta" -v requests="$requests" '
+        BEGIN {
+            ratio = total > 0 ? busy / total : 0;
+            per10k = requests > 0 ? busy / requests * 10000 : 0;
+            printf("cpu_total_delta=%d\n", total);
+            printf("cpu_idle_delta=%d\n", idle);
+            printf("cpu_busy_delta=%d\n", busy);
+            printf("cpu_busy_ratio=%.6f\n", ratio);
+            printf("cpu_per_10k_requests=%.6f\n", per10k);
+            printf("requests_total=%d\n", requests);
+        }' > "$rundir/${label}_cpu_usage.env"
+}
+
 run_benchmark() {
     local rundir="$1"
     local label="$2"
+    local cpu_before
+    cpu_before="$(read_cpu_stat)"
     redis-benchmark -h 127.0.0.1 -p "$REDIS_PORT" -c "$BENCH_CLIENTS" -n "$BENCH_REQUESTS" \
         --csv > "$rundir/${label}_redis_benchmark.csv"
     awk -f "$ROOT/scripts/extract_redis_metrics.awk" \
         "$rundir/${label}_redis_benchmark.csv" > "$rundir/${label}_summary.csv"
+    local row_count
+    row_count="$(tail -n +2 "$rundir/${label}_summary.csv" | wc -l)"
+    write_cpu_usage "$rundir" "$label" "$cpu_before" "$(read_cpu_stat)" "$((BENCH_REQUESTS * row_count))"
 }
 
 run_benchmark_with_snapshot() {
@@ -95,6 +150,8 @@ run_benchmark_with_snapshot() {
     local warmup_cycles="${5:-0}"
     local backend="${6:-cgroup_v2}"
 
+    local cpu_before
+    cpu_before="$(read_cpu_stat)"
     redis-benchmark -h 127.0.0.1 -p "$REDIS_PORT" -c "$BENCH_CLIENTS" -n "$BENCH_REQUESTS" \
         --csv > "$rundir/${label}_redis_benchmark.csv" &
     local bench_pid=$!
@@ -105,6 +162,9 @@ run_benchmark_with_snapshot() {
 
     awk -f "$ROOT/scripts/extract_redis_metrics.awk" \
         "$rundir/${label}_redis_benchmark.csv" > "$rundir/${label}_summary.csv"
+    local row_count
+    row_count="$(tail -n +2 "$rundir/${label}_summary.csv" | wc -l)"
+    write_cpu_usage "$rundir" "$label" "$cpu_before" "$(read_cpu_stat)" "$((BENCH_REQUESTS * row_count))"
 }
 
 write_group_snapshot() {
@@ -142,6 +202,10 @@ validate_case_output() {
     esac
 
     if [ "$label" = "noisy_scx_psi" ]; then
+        if [ "$STRESS_WORKERS" -le 0 ]; then
+            printf 'psi-active-not-required-with-zero-stress-workers\n' > "$rundir/${label}_psi_gate_note.txt"
+            return 0
+        fi
         local trace="$rundir/${label}_psi_gate_trace.jsonl"
         local gate_status="$rundir/${label}_gate_status.txt"
         if [ -f "$trace" ]; then
@@ -191,6 +255,21 @@ run_order_for_index() {
     printf '%s\n' "${RUN_ORDERS[$idx]}"
 }
 
+filter_run_order() {
+    local order="$1"
+    local result=()
+    local candidate label
+    for candidate in $order; do
+        for label in "${LABELS[@]}"; do
+            if [ "$candidate" = "$label" ]; then
+                result+=("$candidate")
+                break
+            fi
+        done
+    done
+    printf '%s\n' "${result[*]}"
+}
+
 run_case() {
     local rundir="$1"
     local label="$2"
@@ -211,23 +290,17 @@ run_case() {
             assert_sched_ext_state "disabled"
             ;;
         noisy_default)
-            stress-ng --cpu "$STRESS_WORKERS" --timeout 20s > "$rundir/${label}_stress.log" 2>&1 &
-            STRESS_PID=$!
-            sleep 1
+            start_stress "$rundir" "$label"
             assert_sched_ext_state "disabled"
             run_benchmark_with_snapshot "$rundir" "$label" "" 2 0 cgroup_v2
-            wait "$STRESS_PID" 2>/dev/null || true
-            unset STRESS_PID
+            stop_stress
             ;;
         noisy_cgroup_v2)
             "$ROOT/scripts/setup_cgroup_v2.sh" > "$rundir/${label}_setup.log" 2>&1 || true
-            stress-ng --cpu "$STRESS_WORKERS" --timeout 20s > "$rundir/${label}_stress.log" 2>&1 &
-            STRESS_PID=$!
-            sleep 1
+            start_stress "$rundir" "$label"
             assert_sched_ext_state "disabled"
             run_benchmark_with_snapshot "$rundir" "$label" --active 6 2 cgroup_v2
-            wait "$STRESS_PID" 2>/dev/null || true
-            unset STRESS_PID
+            stop_stress
             ;;
         noisy_scx_normal|noisy_scx_always_active|noisy_scx_psi)
             local gate_mode="normal"
@@ -236,9 +309,7 @@ run_case() {
             elif [ "$label" = "noisy_scx_psi" ]; then
                 gate_mode="psi"
             fi
-            stress-ng --cpu "$STRESS_WORKERS" --timeout 20s > "$rundir/${label}_stress.log" 2>&1 &
-            STRESS_PID=$!
-            sleep 1
+            start_stress "$rundir" "$label"
             assert_sched_ext_state "disabled"
             if [ "$label" = "noisy_scx_psi" ]; then
                 start_psi_redis_probe "$rundir" "$label"
@@ -259,8 +330,7 @@ run_case() {
                 stop_psi_redis_probe
             fi
             assert_sched_ext_state "disabled"
-            wait "$STRESS_PID" 2>/dev/null || true
-            unset STRESS_PID
+            stop_stress
             ;;
         *)
             printf 'unknown label: %s\n' "$label" >&2
@@ -297,7 +367,7 @@ for run in $(seq 1 "$RUNS"); do
     local_rundir="$OUTDIR/run-$run"
     mkdir -p "$local_rundir"
     printf '[INFO] run %s/%s\n' "$run" "$RUNS"
-    run_order="$(run_order_for_index "$run")"
+    run_order="$(filter_run_order "$(run_order_for_index "$run")")"
     printf '%s\n' "$run_order" > "$local_rundir/run_order.txt"
     for label in $run_order; do
         run_case "$local_rundir" "$label"

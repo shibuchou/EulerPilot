@@ -7,7 +7,9 @@ CPPFLAGS ?= -Iagent/include
 BUILD_DIR := build
 AGENT_BIN := $(BUILD_DIR)/eulerpilot-agent
 UNIT_SKILL_REGISTRY_BIN := $(BUILD_DIR)/test_skill_registry
-AGENT_SRCS := agent/src/main.cpp agent/src/runtime.cpp agent/src/executors.cpp agent/src/psi_gate.cpp agent/src/skill_registry.cpp agent/src/skill_manager.cpp agent/src/builtin_skills.cpp agent/src/builtin_skills/resource_control.cpp agent/src/builtin_skills/psi_gate.cpp agent/src/builtin_skills/network_policy.cpp agent/src/builtin_skills/network_qos.cpp agent/src/builtin_skills/network_xdp.cpp agent/src/builtin_skills/security_policy.cpp agent/src/builtin_skills/policy_engine.cpp agent/src/skill_runtime_context.cpp agent/src/metrics_exporter.cpp agent/src/metrics_state.cpp agent/src/capability_detector.cpp agent/src/target_resolver.cpp agent/src/audit_bus.cpp agent/src/action_journal.cpp agent/observer/psi_reader.cpp
+UNIT_RUNTIME_POLICY_BIN := $(BUILD_DIR)/test_runtime_policy
+AGENT_LIB_SRCS := agent/src/runtime.cpp agent/src/executors.cpp agent/src/psi_gate.cpp agent/src/skill_registry.cpp agent/src/skill_manager.cpp agent/src/builtin_skills.cpp agent/src/builtin_skills/resource_control.cpp agent/src/builtin_skills/psi_gate.cpp agent/src/builtin_skills/network_policy.cpp agent/src/builtin_skills/network_qos.cpp agent/src/builtin_skills/network_xdp.cpp agent/src/builtin_skills/security_policy.cpp agent/src/builtin_skills/policy_engine.cpp agent/src/skill_runtime_context.cpp agent/src/metrics_exporter.cpp agent/src/metrics_state.cpp agent/src/capability_detector.cpp agent/src/target_resolver.cpp agent/src/audit_bus.cpp agent/src/action_journal.cpp agent/observer/psi_reader.cpp
+AGENT_SRCS := agent/src/main.cpp $(AGENT_LIB_SRCS)
 AGENT_CPPFLAGS := $(CPPFLAGS) -I./bpf -I$(BUILD_DIR) -I./agent/observer
 LIBBPF_CFLAGS := $(shell pkg-config --cflags libbpf 2>/dev/null)
 LIBBPF_LIBS := $(shell pkg-config --libs libbpf 2>/dev/null)
@@ -32,8 +34,9 @@ agent: $(AGENT_BIN)
 
 observer: $(OBSERVER_BIN)
 
-unit-tests: $(UNIT_SKILL_REGISTRY_BIN)
+unit-tests: $(UNIT_SKILL_REGISTRY_BIN) $(UNIT_RUNTIME_POLICY_BIN)
 	$(UNIT_SKILL_REGISTRY_BIN)
+	$(UNIT_RUNTIME_POLICY_BIN)
 
 network-policy: $(NETWORK_POLICY_BPF) $(NETWORK_POLICY_SKEL)
 
@@ -56,6 +59,9 @@ $(AGENT_BIN): $(AGENT_SRCS) bpf/workload_observer.h $(BPF_SKEL) $(VMLINUX) | $(B
 
 $(UNIT_SKILL_REGISTRY_BIN): tests/unit/test_skill_registry.cpp agent/src/skill_registry.cpp | $(BUILD_DIR)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ -o $@
+
+$(UNIT_RUNTIME_POLICY_BIN): tests/unit/test_runtime_policy.cpp $(AGENT_LIB_SRCS) bpf/workload_observer.h $(BPF_SKEL) $(VMLINUX) | $(BUILD_DIR)
+	$(CXX) $(AGENT_CPPFLAGS) $(CXXFLAGS) $(LIBBPF_CFLAGS) $(YAMLCPP_CFLAGS) tests/unit/test_runtime_policy.cpp $(AGENT_LIB_SRCS) -o $@ $(LIBBPF_LIBS) $(YAMLCPP_LIBS) -lelf -lz
 
 $(VMLINUX):
 	$(BPFTOOL) btf dump file /sys/kernel/btf/vmlinux format c > $@

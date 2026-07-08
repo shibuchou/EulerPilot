@@ -727,6 +727,9 @@ struct NetworkXdpRule {
 };
 
 constexpr std::size_t kNetworkXdpMaxRules = 8;
+// Keep the Security target map intentionally small. Each entry is 1056 bytes in
+// the BPF ARRAY map, so eight entries cover the current demo/competition rules
+// while keeping verifier state and map memory bounded on small SP3/SP4 VMs.
 constexpr std::size_t kSecurityPolicyMaxTargets = 8;
 constexpr std::uint32_t kSecurityTargetUnknown = 0xffffffffu;
 

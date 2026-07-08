@@ -50,11 +50,12 @@ def main() -> int:
         lines.append(f"- `{label}`：{label_titles.get(label, label)}")
 
     lines.extend(["", "## 汇总表", ""])
-    lines.append("| 组别 | Requests/sec | P99(ms) |")
-    lines.append("| --- | ---: | ---: |")
+    lines.append("| 组别 | Requests/sec | P99(ms) | CPU/10k requests |")
+    lines.append("| --- | ---: | ---: | ---: |")
     for label in labels:
         lines.append(
-            f"| {label} | {row.get(f'{label}_rps_avg','')} | {row.get(f'{label}_p99_ms_avg','')} |"
+            f"| {label} | {row.get(f'{label}_rps_avg','')} | {row.get(f'{label}_p99_ms_avg','')} | "
+            f"{row.get(f'{label}_cpu_per_10k_requests_avg','')} |"
         )
 
     if "noisy_default" in labels:

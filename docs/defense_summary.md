@@ -19,8 +19,9 @@ EulerPilot 是一个面向 openEuler 的自适应资源管控 Agent，通过 `eB
 - Policy Engine：Security anomaly 驱动 Resource、Network+Resource、真实 Pod 联动
 - Redis `RUNS=5` 正式候选结果
 - Nginx `RUNS=5` 正式候选结果
-- SP4 Redis/Nginx `RUNS=3` sched_ext 多轮复核
-- Web Console v1 + 35 条 final evidence compact + 中文报告主稿
+- SP4 Redis/Nginx `RUNS=5` sched_ext 多轮复核
+- Redis pressure gradient 与 manual static vs agent dynamic 对比
+- Web Console v1 + 37 条 final evidence compact + 中文报告主稿
 
 ## 3. 核心架构
 
@@ -55,13 +56,14 @@ Observer -> Analyzer -> Policy Engine -> Skill Manager -> Executor -> Benchmark/
 
 ### Redis（`redis-scx-compare-20260612-191543`）
 - `noisy_cgroup_v2` 与 `noisy_scx_normal` 在部分操作呈现正向趋势
-- `sched_ext` 不应表述为"全面优于默认调度器"
-- SP4 追加复核：`results/final/redis-scx-compare-20260706-115029`，`RUNS=3`
+- `sched_ext` 不应表述为对所有 workload 都稳定提升
+- SP4 追加复核：`results/final/redis-scx-compare-20260708-150702`，`RUNS=5`
+- 争奖增强证据：`results/final/redis-pressure-gradient-20260708-153811`、`results/final/redis-static-vs-agent-20260708-162543`
 
 ### Nginx（`nginx-scx-compare-20260612-194018`）
 - `cgroup_v2` 在 Nginx 场景下更稳
 - `sched_ext` 效果依赖具体模式，部分模式存在显著尾延迟代价
-- SP4 追加复核：`results/final/nginx-scx-compare-20260706-120547`，`RUNS=3`
+- SP4 追加复核：`results/final/nginx-scx-compare-20260708-152602`，`RUNS=5`
 
 ## 6. 图表材料（7 张 SVG）
 
@@ -69,6 +71,7 @@ Observer -> Analyzer -> Policy Engine -> Skill Manager -> Executor -> Benchmark/
 
 ## 7. 可答辩口径
 
-> EulerPilot 已经完成从 SP3 + cgroup v2 主闭环到 OLK-6.6 / SP4 sched_ext 与 Kubernetes 旁路验证的完整工程收口，并实现了 Skills 框架、三方向 OS Agent 扩展和跨 Skill 联动。项目已形成 Redis/Nginx 双业务线多轮候选结果、35 条 final evidence compact、质量门禁和 Web Console 演示入口，具备真实可复现的系统调控能力。
+> EulerPilot 已经完成从 SP3 + cgroup v2 历史主闭环到 SP4 发行环境适配、SP4 官方源码自编译 sched_ext 内核复核与 Kubernetes 旁路验证的完整工程收口，并实现了 Skills 框架、三方向 OS Agent 扩展和跨 Skill 联动。项目已形成 Redis/Nginx 双业务线多轮候选结果、37 条 final evidence compact、质量门禁和 Web Console 演示入口，具备真实可复现的系统调控能力。
 
 项目代码：`https://github.com/shibuchou/EulerPilot`（私密仓库）
+

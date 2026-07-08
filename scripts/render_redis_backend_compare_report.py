@@ -69,6 +69,7 @@ def main() -> int:
     for label in labels:
         header.append(f"{label} RPS")
         header.append(f"{label} P99(ms)")
+        header.append(f"{label} CPU/10k")
     lines.append("| " + " | ".join(header) + " |")
     lines.append("| " + " | ".join(["---"] + ["---:" for _ in range(len(header) - 1)]) + " |")
 
@@ -77,6 +78,7 @@ def main() -> int:
         for label in labels:
             cols.append(row.get(f"{label}_rps_avg", ""))
             cols.append(row.get(f"{label}_p99_ms_avg", ""))
+            cols.append(row.get(f"{label}_cpu_per_10k_requests_avg", ""))
         lines.append("| " + " | ".join(cols) + " |")
 
     if "noisy_default" in labels:

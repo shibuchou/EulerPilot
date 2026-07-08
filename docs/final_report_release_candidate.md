@@ -263,7 +263,7 @@ openEuler 24.03 LTS SP3
 
 但最终报告中应避免写成：
 
-- “sched_ext 已全面优于默认调度器”
+- “sched_ext 对所有 workload 都稳定提升”
 - “所有模式都稳定带来收益”
 
 更稳的结论应是：

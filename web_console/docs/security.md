@@ -6,7 +6,7 @@ Web Console 能触发部分 root 级演示脚本，因此默认只能作为本�
 
 ```bash
 web_console/scripts/run_console.sh --daemon
-ssh -L 18080:127.0.0.1:18080 EulerPilot-openEuler
+ssh -L 18080:127.0.0.1:18080 openEuler-2403-LTS-SP4
 ```
 
 默认监听：

@@ -35,11 +35,11 @@ Browser
 Overview 不把 SP3 上 `sched_ext` 不可用显示为项目失败，而显示为路径分工；在 SP4 自编译 sched_ext 内核上则显示增强路径已可用：
 
 ```text
-SP3 主交付路径：cgroup v2 已启用
-sched_ext/scx 增强路径：SP4 / 自编译内核迁移目标或当前内核已可用
+SP3 历史主路径：cgroup v2 已启用
+sched_ext/scx 增强路径：SP4 官方源码自编译内核迁移目标，或 SP4 自编译启用内核当前可用
 ```
 
-当前 SP3 稳定主路径是 cgroup v2；sched_ext/scx 是增强路径和 SP4 迁移目标。
+当前 SP3 历史稳定路径是 cgroup v2；SP4 发行环境已完成适配验证，但发行内核未默认启用 `CONFIG_SCHED_CLASS_EXT`。sched_ext/scx 路径基于 SP4 官方源码自编译启用内核完成复核，用于证明 EulerPilot 的 scx 后端兼容性和迁移能力。
 
 ## Evidence 分组
 
@@ -90,7 +90,8 @@ Evidence 页面按比赛评分关注点分组：
 4. 非白名单 action 无法执行。
 5. SSE 日志可实时显示。
 6. `demo/lab/cleanup` 单任务锁生效。
-7. Evidence 能按评分项展示 35 条证据。
+7. Evidence 能按评分项展示 37 条证据。
 8. `policy_engine_lab` 可作为主演示链路。
 9. `demo_cleanup` 可清理现场资源。
 10. `scripts/final_quality_gate.sh` 仍能独立运行。
+

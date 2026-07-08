@@ -1,0 +1,78 @@
+
+  * EulerPilot Agent 
+  --------------------------------------------------
+  config:     /root/EulerPilot/configs/agent.yaml
+  interval:   1000ms  duration:   6s  warmup: 2
+  mode:       active  backend:    cgroup_v2
+  gate:       always-active
+  env:         psi:ok  cg:ok  scx:ok
+  --------------------------------------------------
+
+  --- legend ---
+  mark: . UNKNOWN  L LATENCY_SENSITIVE  B BACKGROUND_NOISY  T THROUGHPUT_BATCH
+  act:  + applied  ~ managed  - none
+  --- observing ---
+  mark name             pid  class        act profile    w:weight reason
+  B stress-ng-cpu      58638 BACKGROUND_NOISY |~ normal_profile w:100 no-group-for-class
+  B stress-ng-cpu      58639 BACKGROUND_NOISY |~ normal_profile w:100 no-group-for-class
+  B stress-ng-cpu      58635 BACKGROUND_NOISY |~ normal_profile w:100 no-group-for-class
+  B stress-ng-cpu      58633 BACKGROUND_NOISY |~ normal_profile w:100 no-group-for-class
+  T redis-benchmark    58643 THROUGHPUT_BATCH |- normal_profile w:100 non-target-process
+  B stress-ng-cpu      58637 BACKGROUND_NOISY |~ normal_profile w:100 no-group-for-class
+  L redis-server       58459 LATENCY_SENSITIVE |~ normal_profile w:100 no-group-for-class
+  B stress-ng-cpu      58636 BACKGROUND_NOISY |~ normal_profile w:100 no-group-for-class
+  B stress-ng-cpu      58634 BACKGROUND_NOISY |~ normal_profile w:100 no-group-for-class
+  B stress-ng-cpu      58632 BACKGROUND_NOISY |~ normal_profile w:100 no-group-for-class
+  B stress-ng-cpu      58638 BACKGROUND_NOISY |+ mixed_profile w:5 cpuset-fallback-cpu-weight-only
+  B stress-ng-cpu      58639 BACKGROUND_NOISY |+ mixed_profile w:5 cpuset-fallback-cpu-weight-only
+  B stress-ng-cpu      58635 BACKGROUND_NOISY |+ mixed_profile w:5 cpuset-fallback-cpu-weight-only
+  B stress-ng-cpu      58633 BACKGROUND_NOISY |+ mixed_profile w:5 cpuset-fallback-cpu-weight-only
+  T redis-benchmark    58643 THROUGHPUT_BATCH |- normal_profile w:100 non-target-process
+  B stress-ng-cpu      58637 BACKGROUND_NOISY |+ mixed_profile w:5 cpuset-fallback-cpu-weight-only
+  L redis-server       58459 LATENCY_SENSITIVE |+ latency_profile w:1000 assigned
+  B stress-ng-cpu      58636 BACKGROUND_NOISY |+ mixed_profile w:5 cpuset-fallback-cpu-weight-only
+  B stress-ng-cpu      58634 BACKGROUND_NOISY |+ mixed_profile w:5 cpuset-fallback-cpu-weight-only
+  B stress-ng-cpu      58632 BACKGROUND_NOISY |+ mixed_profile w:5 cpuset-fallback-cpu-weight-only
+  B stress-ng-cpu      58638 BACKGROUND_NOISY |+ mixed_profile w:5 cpuset-fallback-cpu-weight-only
+  B stress-ng-cpu      58639 BACKGROUND_NOISY |+ mixed_profile w:5 cpuset-fallback-cpu-weight-only
+  B stress-ng-cpu      58635 BACKGROUND_NOISY |+ mixed_profile w:5 cpuset-fallback-cpu-weight-only
+  B stress-ng-cpu      58633 BACKGROUND_NOISY |+ mixed_profile w:5 cpuset-fallback-cpu-weight-only
+  T redis-benchmark    58643 THROUGHPUT_BATCH |- normal_profile w:100 non-target-process
+  B stress-ng-cpu      58637 BACKGROUND_NOISY |+ mixed_profile w:5 cpuset-fallback-cpu-weight-only
+  L redis-server       58459 LATENCY_SENSITIVE |+ latency_profile w:1000 assigned
+  B stress-ng-cpu      58636 BACKGROUND_NOISY |+ mixed_profile w:5 cpuset-fallback-cpu-weight-only
+  B stress-ng-cpu      58634 BACKGROUND_NOISY |+ mixed_profile w:5 cpuset-fallback-cpu-weight-only
+  B stress-ng-cpu      58632 BACKGROUND_NOISY |+ mixed_profile w:5 cpuset-fallback-cpu-weight-only
+  B stress-ng-cpu      58638 BACKGROUND_NOISY |+ mixed_profile w:5 cpuset-fallback-cpu-weight-only
+  B stress-ng-cpu      58639 BACKGROUND_NOISY |+ mixed_profile w:5 cpuset-fallback-cpu-weight-only
+  B stress-ng-cpu      58635 BACKGROUND_NOISY |+ mixed_profile w:5 cpuset-fallback-cpu-weight-only
+  B stress-ng-cpu      58633 BACKGROUND_NOISY |+ mixed_profile w:5 cpuset-fallback-cpu-weight-only
+  T redis-benchmark    58643 THROUGHPUT_BATCH |- normal_profile w:100 non-target-process
+  B stress-ng-cpu      58637 BACKGROUND_NOISY |+ mixed_profile w:5 cpuset-fallback-cpu-weight-only
+  L redis-server       58459 LATENCY_SENSITIVE |+ latency_profile w:1000 assigned
+  B stress-ng-cpu      58636 BACKGROUND_NOISY |+ mixed_profile w:5 cpuset-fallback-cpu-weight-only
+  B stress-ng-cpu      58634 BACKGROUND_NOISY |+ mixed_profile w:5 cpuset-fallback-cpu-weight-only
+  B stress-ng-cpu      58632 BACKGROUND_NOISY |+ mixed_profile w:5 cpuset-fallback-cpu-weight-only
+  B stress-ng-cpu      58638 BACKGROUND_NOISY |+ mixed_profile w:5 cpuset-fallback-cpu-weight-only
+  B stress-ng-cpu      58639 BACKGROUND_NOISY |+ mixed_profile w:5 cpuset-fallback-cpu-weight-only
+  B stress-ng-cpu      58635 BACKGROUND_NOISY |+ mixed_profile w:5 cpuset-fallback-cpu-weight-only
+  B stress-ng-cpu      58633 BACKGROUND_NOISY |+ mixed_profile w:5 cpuset-fallback-cpu-weight-only
+  T redis-benchmark    58643 THROUGHPUT_BATCH |- normal_profile w:100 non-target-process
+  B stress-ng-cpu      58637 BACKGROUND_NOISY |+ mixed_profile w:5 cpuset-fallback-cpu-weight-only
+  L redis-server       58459 LATENCY_SENSITIVE |+ latency_profile w:1000 assigned
+  B stress-ng-cpu      58636 BACKGROUND_NOISY |+ mixed_profile w:5 cpuset-fallback-cpu-weight-only
+  B stress-ng-cpu      58634 BACKGROUND_NOISY |+ mixed_profile w:5 cpuset-fallback-cpu-weight-only
+  B stress-ng-cpu      58632 BACKGROUND_NOISY |+ mixed_profile w:5 cpuset-fallback-cpu-weight-only
+  B stress-ng-cpu      58638 BACKGROUND_NOISY |+ mixed_profile w:5 cpuset-fallback-cpu-weight-only
+  B stress-ng-cpu      58639 BACKGROUND_NOISY |+ mixed_profile w:5 cpuset-fallback-cpu-weight-only
+  B stress-ng-cpu      58635 BACKGROUND_NOISY |+ mixed_profile w:5 cpuset-fallback-cpu-weight-only
+  B stress-ng-cpu      58633 BACKGROUND_NOISY |+ mixed_profile w:5 cpuset-fallback-cpu-weight-only
+  T redis-benchmark    58643 THROUGHPUT_BATCH |- normal_profile w:100 non-target-process
+  B stress-ng-cpu      58637 BACKGROUND_NOISY |+ mixed_profile w:5 cpuset-fallback-cpu-weight-only
+  L redis-server       58459 LATENCY_SENSITIVE |+ latency_profile w:1000 assigned
+  B stress-ng-cpu      58636 BACKGROUND_NOISY |+ mixed_profile w:5 cpuset-fallback-cpu-weight-only
+  B stress-ng-cpu      58634 BACKGROUND_NOISY |+ mixed_profile w:5 cpuset-fallback-cpu-weight-only
+  B stress-ng-cpu      58632 BACKGROUND_NOISY |+ mixed_profile w:5 cpuset-fallback-cpu-weight-only
+  --------------------------------------------------
+  DONE  total=162  applied=45  L=6  T=6  B=48  U=102
+

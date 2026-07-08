@@ -223,7 +223,7 @@ eBPF Observer
 - `sched_ext` 已经形成正式 compare 框架
 - Redis / Nginx 都已经有多轮候选结果
 - 某些模式在某些 workload 上表现出正向趋势
-- 但不应简单概括为“全面优于默认调度器”
+- 但不应简单概括为所有 workload 都稳定提升
 
 也就是说，当前项目已经进入：
 

@@ -1,0 +1,3 @@
+[rollback] scx binary: /root/olk/kernel-OLK-6.6-atomgit/tools/sched_ext/build/bin/scx_eulerpilot
+[Rollback] restore cgroup parameters and stop active sched_ext scheduler if configured.
+[Rollback] done.

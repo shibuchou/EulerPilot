@@ -1,0 +1,1 @@
+bench/nginx/run_nginx_sched_ext_compare.sh: line 132: /root/olk/kernel-OLK-6.6-atomgit/tools/sched_ext/build/bin/scx_eulerpilot: No such file or directory

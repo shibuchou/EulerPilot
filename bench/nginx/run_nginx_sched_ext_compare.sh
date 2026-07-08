@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT="/root/EulerPilot"
 STAMP="$(date +%Y%m%d-%H%M%S)"
-OUTDIR="$ROOT/results/final/nginx-scx-compare-$STAMP"
+OUTDIR="${OUTDIR:-$ROOT/results/final/nginx-scx-compare-$STAMP}"
 NGINX_PORT="${NGINX_PORT:-18082}"
 INTERVAL_MS="${INTERVAL_MS:-1000}"
 STRESS_WORKERS="${STRESS_WORKERS:-2}"
@@ -23,6 +23,10 @@ LABELS=(
     "noisy_scx_always_active"
     "noisy_scx_psi"
 )
+
+if [ -n "${LABEL_FILTER:-}" ]; then
+    IFS=',' read -r -a LABELS <<< "$LABEL_FILTER"
+fi
 
 declare -A LABEL_TITLES=(
     ["quiet_default"]="仅 Nginx，默认调度器"
@@ -49,6 +53,52 @@ cleanup() {
 }
 trap cleanup EXIT
 
+read_cpu_stat() {
+    awk '/^cpu / { total=0; for (i=2; i<=NF; i++) total += $i; idle=$5+$6; print total, idle; }' /proc/stat
+}
+
+write_cpu_usage() {
+    local rundir="$1"
+    local label="$2"
+    local before="$3"
+    local after="$4"
+    local requests="$5"
+    local before_total before_idle after_total after_idle
+    read -r before_total before_idle <<< "$before"
+    read -r after_total after_idle <<< "$after"
+    local total_delta=$((after_total - before_total))
+    local idle_delta=$((after_idle - before_idle))
+    local busy_delta=$((total_delta - idle_delta))
+    awk -v total="$total_delta" -v idle="$idle_delta" -v busy="$busy_delta" -v requests="$requests" '
+        BEGIN {
+            ratio = total > 0 ? busy / total : 0;
+            per10k = requests > 0 ? busy / requests * 10000 : 0;
+            printf("cpu_total_delta=%d\n", total);
+            printf("cpu_idle_delta=%d\n", idle);
+            printf("cpu_busy_delta=%d\n", busy);
+            printf("cpu_busy_ratio=%.6f\n", ratio);
+            printf("cpu_per_10k_requests=%.6f\n", per10k);
+            printf("requests_total=%d\n", requests);
+        }' > "$rundir/${label}_cpu_usage.env"
+}
+
+start_stress() {
+    local rundir="$1"
+    local label="$2"
+    if [ "$STRESS_WORKERS" -le 0 ]; then
+        printf 'stress_skipped_workers=0\n' > "$rundir/${label}_stress.log"
+        return 0
+    fi
+    stress-ng --cpu "$STRESS_WORKERS" --timeout 20s > "$rundir/${label}_stress.log" 2>&1 &
+    STRESS_PID=$!
+    sleep 1
+}
+
+stop_stress() {
+    [ -n "${STRESS_PID:-}" ] && wait "$STRESS_PID" 2>/dev/null || true
+    unset STRESS_PID
+}
+
 run_wrk_with_snapshot() {
     local rundir="$1"
     local label="$2"
@@ -57,6 +107,8 @@ run_wrk_with_snapshot() {
     local warmup_cycles="${5:-0}"
     local backend="${6:-cgroup_v2}"
 
+    local cpu_before
+    cpu_before="$(read_cpu_stat)"
     wrk -t"$WRK_THREADS" -c"$WRK_CONNECTIONS" -d"$WRK_DURATION" --latency "http://127.0.0.1:$NGINX_PORT/" \
         > "$rundir/${label}_wrk.txt" &
     local wrk_pid=$!
@@ -66,6 +118,9 @@ run_wrk_with_snapshot() {
     wait "$wrk_pid"
 
     python3 "$ROOT/scripts/extract_wrk_metrics.py" "$rundir/${label}_wrk.txt" "$rundir/${label}_summary.csv"
+    local total_requests
+    total_requests="$(awk -F, 'NR==2 {print int($6)}' "$rundir/${label}_summary.csv")"
+    write_cpu_usage "$rundir" "$label" "$cpu_before" "$(read_cpu_stat)" "${total_requests:-0}"
 }
 
 write_group_snapshot() {
@@ -94,6 +149,10 @@ validate_case_output() {
     esac
 
     if [ "$label" = "noisy_scx_psi" ]; then
+        if [ "$STRESS_WORKERS" -le 0 ]; then
+            printf 'psi-active-not-required-with-zero-stress-workers\n' > "$rundir/${label}_psi_gate_note.txt"
+            return 0
+        fi
         grep -q '"next_state":"ACTIVE"' "$rundir/${label}_psi_gate_trace.jsonl" 2>/dev/null || \
             grep -Eq 'scx-class-map-updated|gate-state-map-updated' "$snapshot"
     fi
@@ -119,6 +178,21 @@ run_order_for_index() {
     printf '%s\n' "${RUN_ORDERS[$idx]}"
 }
 
+filter_run_order() {
+    local order="$1"
+    local result=()
+    local candidate label
+    for candidate in $order; do
+        for label in "${LABELS[@]}"; do
+            if [ "$candidate" = "$label" ]; then
+                result+=("$candidate")
+                break
+            fi
+        done
+    done
+    printf '%s\n' "${result[*]}"
+}
+
 run_case() {
     local rundir="$1"
     local label="$2"
@@ -139,23 +213,17 @@ run_case() {
             assert_sched_ext_state "disabled"
             ;;
         noisy_default)
-            stress-ng --cpu "$STRESS_WORKERS" --timeout 20s > "$rundir/${label}_stress.log" 2>&1 &
-            STRESS_PID=$!
-            sleep 1
+            start_stress "$rundir" "$label"
             assert_sched_ext_state "disabled"
             run_wrk_with_snapshot "$rundir" "$label" "" 2 0 cgroup_v2
-            wait "$STRESS_PID" 2>/dev/null || true
-            unset STRESS_PID
+            stop_stress
             ;;
         noisy_cgroup_v2)
             "$ROOT/scripts/setup_cgroup_v2.sh" > "$rundir/${label}_setup.log" 2>&1 || true
-            stress-ng --cpu "$STRESS_WORKERS" --timeout 20s > "$rundir/${label}_stress.log" 2>&1 &
-            STRESS_PID=$!
-            sleep 1
+            start_stress "$rundir" "$label"
             assert_sched_ext_state "disabled"
             run_wrk_with_snapshot "$rundir" "$label" --active 6 2 cgroup_v2
-            wait "$STRESS_PID" 2>/dev/null || true
-            unset STRESS_PID
+            stop_stress
             ;;
         noisy_scx_normal|noisy_scx_always_active|noisy_scx_psi)
             local gate_mode="normal"
@@ -164,9 +232,7 @@ run_case() {
             elif [ "$label" = "noisy_scx_psi" ]; then
                 gate_mode="psi"
             fi
-            stress-ng --cpu "$STRESS_WORKERS" --timeout 20s > "$rundir/${label}_stress.log" 2>&1 &
-            STRESS_PID=$!
-            sleep 1
+            start_stress "$rundir" "$label"
             assert_sched_ext_state "disabled"
             local warmup_cycles=2
             if [ "$label" = "noisy_scx_psi" ]; then
@@ -180,8 +246,7 @@ run_case() {
             EULERPILOT_GATE_ACTIVATION_WINDOWS="${EULERPILOT_GATE_ACTIVATION_WINDOWS:-1}" \
                 run_wrk_with_snapshot "$rundir" "$label" --active 6 "$warmup_cycles" sched_ext
             assert_sched_ext_state "disabled"
-            wait "$STRESS_PID" 2>/dev/null || true
-            unset STRESS_PID
+            stop_stress
             ;;
     esac
 
@@ -220,7 +285,7 @@ for run in $(seq 1 "$RUNS"); do
     rundir="$OUTDIR/run-$run"
     mkdir -p "$rundir"
     printf '[INFO] run %s/%s\n' "$run" "$RUNS"
-    run_order="$(run_order_for_index "$run")"
+    run_order="$(filter_run_order "$(run_order_for_index "$run")")"
     printf '%s\n' "$run_order" > "$rundir/run_order.txt"
     for label in $run_order; do
         run_case "$rundir" "$label"

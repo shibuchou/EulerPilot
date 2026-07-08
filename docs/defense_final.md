@@ -84,7 +84,7 @@ Observer (eBPF + PSI)
 | 项目 | 内容 |
 |------|------|
 | 候选目录 | `results/final/redis-scx-compare-20260612-191543` |
-| SP4 复核目录 | `results/final/redis-scx-compare-20260706-115029` |
+| SP4 复核目录 | `results/final/redis-scx-compare-20260708-150702` |
 | 轮数 | RUNS=5 |
 | 矩阵 | quiet_default / quiet_scx_normal / noisy_default / noisy_cgroup_v2 / noisy_scx_normal / noisy_scx_always_active / noisy_scx_psi |
 | 观察 | noisy_cgroup_v2 在 GET 上吞吐明显提升；noisy_scx_normal 在 GET/INCR/SET 上 RPS 改善 |
@@ -95,7 +95,7 @@ Observer (eBPF + PSI)
 | 项目 | 内容 |
 |------|------|
 | 候选目录 | `results/final/nginx-scx-compare-20260612-194018` |
-| SP4 复核目录 | `results/final/nginx-scx-compare-20260706-120547` |
+| SP4 复核目录 | `results/final/nginx-scx-compare-20260708-152602` |
 | 轮数 | RUNS=5 |
 | 矩阵 | 与 Redis 保持一致 |
 | 观察 | cgroup_v2 在 Nginx 场景下更稳；部分 sched_ext 模式存在明显 P99 代价 |
@@ -184,7 +184,7 @@ cat demo/security_policy_demo/secret.txt  # -> Operation not permitted
 | 可视化 | `reports/dashboard/index.html` 静态 Dashboard + Agent `/metrics` 端点 + `web_console/` |
 | 图表 | `reports/final_figures/`（7 张 SVG） |
 | 实验结果 | `results/final/`、`results/network_policy/`、`results/security_policy/`、`results/resource_control/`、`results/policy_engine/` |
-| 证据压缩入口 | `configs/final_evidence_manifest.json`、`reports/final_evidence_compact.md/json`，35 条核心证据、必需缺失 0、警告 0 |
+| 证据压缩入口 | `configs/final_evidence_manifest.json`、`reports/final_evidence_compact.md/json`，37 条核心证据、必需缺失 0、警告 0 |
 | 代码仓库 | `https://github.com/shibuchou/EulerPilot` |
 
 ---
@@ -193,12 +193,13 @@ cat demo/security_policy_demo/secret.txt  # -> Operation not permitted
 
 **可以说的：**
 - 系统实现完成，双后端均可真实运行
-- Redis/Nginx 双业务线均有 RUNS=5 正式候选结果，SP4 上有 RUNS=3 复核结果
+- Redis/Nginx 双业务线均有 RUNS=5 正式候选结果，SP4 上有 RUNS=5 复核结果
+- SP4 上补充 Redis pressure gradient 与 manual static vs agent dynamic 对比，用于解释干扰强度变化、CPU 效率和动态调控价值
 - Skills 框架可扩展，Network/Security/Resource/Policy Engine 证明 eBPF hook 与系统控制器可统一编排
 - 正式 compare 框架具备可复现性
 
 **不能说的：**
-- sched_ext 全面优于默认调度器
+- sched_ext 对所有 workload 都稳定提升
 - 所有场景都稳定带来收益
 - 某一组参数已经是绝对最优
 
@@ -206,6 +207,7 @@ cat demo/security_policy_demo/secret.txt  # -> Operation not permitted
 
 ## 十、最终结论
 
-> EulerPilot 已完成为一个面向 openEuler 的、可运行、可实验、可解释、可复现、可扩展的系统资源管控 Agent 工程闭环。项目同时覆盖了 resource control、network policy、security policy 三个 OS Agent 扩展方向，并通过 Policy Engine 跨 Skill 联动、SP4 sched_ext/Kubernetes 复核、Web Console 和 35 条 final evidence compact 证明了新增 eBPF hook 与系统控制器可以在统一 Agent 框架下安全编排和回滚。
+> EulerPilot 已完成为一个面向 openEuler 的、可运行、可实验、可解释、可复现、可扩展的系统资源管控 Agent 工程闭环。项目同时覆盖了 resource control、network policy、security policy 三个 OS Agent 扩展方向，并通过 Policy Engine 跨 Skill 联动、SP4 发行环境适配、SP4 官方源码自编译 sched_ext 内核复核、Kubernetes 旁路验证、Web Console 和 37 条 final evidence compact 证明了新增 eBPF hook 与系统控制器可以在统一 Agent 框架下安全编排和回滚。
 
 **当前状态：代码冻结，已进入提交准备阶段。**
+

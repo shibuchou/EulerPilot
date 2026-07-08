@@ -6,7 +6,7 @@
 
 ## 1. 项目定位
 
-EulerPilot 是面向 openEuler 的自适应资源管控 Agent。项目以 `SP3 + cgroup v2` 作为稳定主交付路径，以 `SP4 / OLK-6.6 + sched_ext/scx` 作为增强验证路径，通过 eBPF/PSI 感知 workload，经过 Policy Engine 与 Skills 框架做策略决策，最终由 Resource、Network、Security 等 Skill 执行可审计、可回滚的控制动作。
+EulerPilot 是面向 openEuler 的自适应资源管控 Agent。项目以 openEuler 24.03 LTS SP4 作为当前核心验证和最终交付验证仓库，以 cgroup v2 作为发行内核稳定控制路径；sched_ext/scx 路径基于 SP4 官方源码自编译启用 `CONFIG_SCHED_CLASS_EXT` 的内核完成复核，不声称 SP4 发行默认内核直接支持 sched_ext。Agent 通过 eBPF/PSI 感知 workload，经过 Policy Engine 与 Skills 框架做策略决策，最终由 Resource、Network、Security 等 Skill 执行可审计、可回滚的控制动作。
 
 核心闭环：
 
@@ -84,7 +84,7 @@ tests/integration/test_policy_engine_security_network_resource.sh --repeat 10
 
 Web Console 是旁路展示控制台，不进入 Agent 热路径，不生成新的性能结论。它读取现有 CLI、日志、结果和 evidence 文件，并通过白名单动作运行少量可控演示。
 
-121 主机启动：
+SP4 主验证仓库启动：
 
 ```bash
 cd /root/EulerPilot
@@ -94,7 +94,7 @@ web_console/scripts/run_console.sh --daemon
 本地访问：
 
 ```bash
-ssh -L 18080:127.0.0.1:18080 EulerPilot-openEuler
+ssh -L 18080:127.0.0.1:18080 openEuler-2403-LTS-SP4
 ```
 
 浏览器打开：
@@ -131,3 +131,7 @@ reports/final_repo_consistency_YYYYMMDD-HHMM.log
 - 不在真实业务网卡上运行 TC/XDP 演示。
 - 不在未确认环境的 Kubernetes 集群中运行 real Pod 高级演示。
 - 不把 Web Console 当作新的控制平面解释；它只是 evidence-first 展示层。
+
+## 8. 演示视频
+
+仓库当前只提供录制脚本和命令清单：`docs/demo_video_recording_script.md`。正式提交前需要补充 8-10 分钟演示视频，并在最终报告或提交包中填写视频文件路径或公开链接；在视频未录制前，不把该项标记为已完成。

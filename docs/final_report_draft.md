@@ -211,7 +211,7 @@ Observer
 ```text
 主机：192.168.1.121
 系统：openEuler 24.03 LTS SP3
-定位：SP3 主交付环境
+定位：SP3 历史验证环境
 ```
 
 ### 5.2 sched_ext 验证环境
@@ -274,7 +274,7 @@ hostname：cernet2.net
 同时，Redis 结果也说明：
 
 - `noisy_scx_always_active` 并不总是最佳选择
-- `sched_ext` 不应被叙述为“全面优于默认调度器”
+- `sched_ext` 不应被叙述为对所有 workload 都稳定提升
 - 应结合不同操作类型分别理解结果
 
 ---
@@ -325,7 +325,7 @@ hostname：cernet2.net
 
 而不适合写成：
 
-- “Nginx 上 `sched_ext` 已全面优于默认调度器”
+- “Nginx 上 `sched_ext` 对所有 workload 都稳定提升”
 
 ---
 

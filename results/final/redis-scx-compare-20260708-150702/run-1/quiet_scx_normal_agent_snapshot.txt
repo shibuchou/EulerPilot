@@ -1,0 +1,26 @@
+
+  * EulerPilot Agent 
+  --------------------------------------------------
+  config:     /root/EulerPilot/configs/agent.yaml
+  interval:   1000ms  duration:   4s  warmup: 0
+  mode:       active  backend:    sched_ext
+  gate:       normal
+  env:         psi:ok  cg:ok  scx:ok
+  --------------------------------------------------
+
+  --- legend ---
+  mark: . UNKNOWN  L LATENCY_SENSITIVE  B BACKGROUND_NOISY  T THROUGHPUT_BATCH
+  act:  + applied  ~ managed  - none
+  --- observing ---
+  mark name             pid  class        act profile    w:weight reason
+  T redis-benchmark    51765 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  L redis-server       51695 LATENCY_SENSITIVE |~ normal_profile w:0 scx-binary-missing
+  T redis-benchmark    51765 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  L redis-server       51695 LATENCY_SENSITIVE |~ normal_profile w:0 scx-binary-missing
+  T redis-benchmark    51765 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  L redis-server       51695 LATENCY_SENSITIVE |~ normal_profile w:0 scx-binary-missing
+  T redis-benchmark    51765 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  L redis-server       51695 LATENCY_SENSITIVE |~ normal_profile w:0 scx-binary-missing
+  --------------------------------------------------
+  DONE  total=46  applied=0  L=4  T=4  B=0  U=38
+

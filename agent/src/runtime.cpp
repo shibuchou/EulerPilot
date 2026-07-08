@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <csignal>
 #include <cstdlib>
 #include <cstring>
@@ -81,6 +82,44 @@ double get_env_double(const char *name, double fallback) {
         return fallback;
     }
     return std::atof(value);
+}
+
+bool env_is_set(const char *name) {
+    const char *value = std::getenv(name);
+    return value && *value;
+}
+
+bool env_flag_enabled(const char *name) {
+    const char *value = std::getenv(name);
+    if (!value || !*value) {
+        return false;
+    }
+    return std::strcmp(value, "1") == 0 ||
+           std::strcmp(value, "true") == 0 ||
+           std::strcmp(value, "yes") == 0 ||
+           std::strcmp(value, "on") == 0;
+}
+
+double percentile95_or_fallback(std::vector<double> values, double fallback) {
+    if (values.empty()) {
+        return fallback;
+    }
+    std::sort(values.begin(), values.end());
+    const auto raw_index = std::ceil(static_cast<double>(values.size()) * 0.95) - 1.0;
+    const auto bounded = std::min<double>(static_cast<double>(values.size() - 1), std::max<double>(0.0, raw_index));
+    return values[static_cast<std::size_t>(bounded)];
+}
+
+RuntimeThresholds runtime_thresholds_from_env() {
+    RuntimeThresholds thresholds;
+    thresholds.cpu_psi_explicit = env_is_set("EULERPILOT_CPU_PSI_THRESHOLD");
+    thresholds.wait_explicit = env_is_set("EULERPILOT_LATENCY_WAIT_THRESHOLD_NS");
+    thresholds.background_explicit = env_is_set("EULERPILOT_BACKGROUND_RUNTIME_THRESHOLD_NS");
+    thresholds.cpu_psi_threshold = get_env_double("EULERPILOT_CPU_PSI_THRESHOLD", thresholds.cpu_psi_threshold);
+    thresholds.wait_threshold_ns = get_env_double("EULERPILOT_LATENCY_WAIT_THRESHOLD_NS", thresholds.wait_threshold_ns);
+    thresholds.background_runtime_threshold_ns =
+        get_env_double("EULERPILOT_BACKGROUND_RUNTIME_THRESHOLD_NS", thresholds.background_runtime_threshold_ns);
+    return thresholds;
 }
 
 WorkloadSample to_sample(const task_metrics &metrics) {
@@ -249,6 +288,27 @@ EnvironmentStatus detect_environment() {
     return status;
 }
 
+RuntimeThresholds calibrate_runtime_thresholds(const RuntimeThresholds &base,
+                                                const std::vector<double> &latency_wait_ns,
+                                                const std::vector<double> &background_runtime_ns,
+                                                const std::vector<double> &cpu_psi_avg10) {
+    RuntimeThresholds calibrated = base;
+    calibrated.adaptive_enabled = true;
+    calibrated.calibrated = true;
+    if (!base.wait_explicit) {
+        calibrated.wait_threshold_ns = percentile95_or_fallback(latency_wait_ns, base.wait_threshold_ns);
+    }
+    if (!base.background_explicit) {
+        calibrated.background_runtime_threshold_ns =
+            percentile95_or_fallback(background_runtime_ns, base.background_runtime_threshold_ns);
+    }
+    if (!base.cpu_psi_explicit) {
+        const double p95 = percentile95_or_fallback(cpu_psi_avg10, base.cpu_psi_threshold);
+        calibrated.cpu_psi_threshold = std::min(0.50, std::max(0.001, p95));
+    }
+    return calibrated;
+}
+
 WorkloadDecision classify_sample(const WorkloadSample &sample) {
     WorkloadDecision decision;
     decision.sample = sample;
@@ -293,6 +353,27 @@ WorkloadDecision classify_sample(const WorkloadSample &sample) {
         decision.gate_relevant = false;
         decision.gate_reason = "mixed-service-not-gate-relevant";
         decision.target_profile = "mixed_profile";
+    } else if (env_flag_enabled("EULERPILOT_FEATURE_CLASSIFY_UNKNOWN") &&
+               sample.wakeup_count >= 8 && decision.latency_score >= 0.75) {
+        decision.klass = WorkloadClass::LatencySensitive;
+        decision.managed_target = false;
+        decision.gate_relevant = false;
+        decision.gate_reason = "feature-vector-diagnostic-only";
+        decision.target_profile = "normal_profile";
+    } else if (env_flag_enabled("EULERPILOT_FEATURE_CLASSIFY_UNKNOWN") &&
+               sample.runtime_ns >= 5000000 && sample.wakeup_count <= 3) {
+        decision.klass = WorkloadClass::ThroughputBatch;
+        decision.managed_target = false;
+        decision.gate_relevant = false;
+        decision.gate_reason = "feature-vector-diagnostic-only";
+        decision.target_profile = "normal_profile";
+    } else if (env_flag_enabled("EULERPILOT_FEATURE_CLASSIFY_UNKNOWN") &&
+               (decision.interference_score >= 0.70 || sample.migrate_count >= 3)) {
+        decision.klass = WorkloadClass::BackgroundNoisy;
+        decision.managed_target = false;
+        decision.gate_relevant = false;
+        decision.gate_reason = "feature-vector-diagnostic-only";
+        decision.target_profile = "normal_profile";
     } else {
         decision.klass = WorkloadClass::Unknown;
         decision.managed_target = false;
@@ -304,12 +385,13 @@ WorkloadDecision classify_sample(const WorkloadSample &sample) {
     return decision;
 }
 
-TriggerContext build_trigger_context(std::vector<WorkloadDecision> &decisions, bool cpu_psi_high, bool cpu_psi_triggered) {
+TriggerContext build_trigger_context(std::vector<WorkloadDecision> &decisions, bool cpu_psi_high,
+                                     bool cpu_psi_triggered, const RuntimeThresholds &thresholds) {
     TriggerContext ctx;
     ctx.cpu_psi_high = cpu_psi_high;
     ctx.cpu_psi_triggered = cpu_psi_triggered;
-    ctx.wait_threshold_ns = get_env_double("EULERPILOT_LATENCY_WAIT_THRESHOLD_NS", 5000000.0);
-    ctx.background_runtime_threshold_ns = get_env_double("EULERPILOT_BACKGROUND_RUNTIME_THRESHOLD_NS", 4000000.0);
+    ctx.wait_threshold_ns = thresholds.wait_threshold_ns;
+    ctx.background_runtime_threshold_ns = thresholds.background_runtime_threshold_ns;
 
     for (auto &decision : decisions) {
         if (decision.klass == WorkloadClass::LatencySensitive) {
@@ -346,6 +428,10 @@ TriggerContext build_trigger_context(std::vector<WorkloadDecision> &decisions, b
     }
 
     return ctx;
+}
+
+TriggerContext build_trigger_context(std::vector<WorkloadDecision> &decisions, bool cpu_psi_high, bool cpu_psi_triggered) {
+    return build_trigger_context(decisions, cpu_psi_high, cpu_psi_triggered, runtime_thresholds_from_env());
 }
 
 ControlMode derive_desired_mode(const TriggerContext &ctx) {
@@ -489,6 +575,11 @@ std::vector<WorkloadDecision> run_cycles(const RuntimeConfig &config) {
     std::uint32_t normal_streak = 0;
     ControlMode current_mode = ControlMode::Normal;
     auto &skill_context = global_skill_runtime_context();
+    RuntimeThresholds thresholds = runtime_thresholds_from_env();
+    thresholds.adaptive_enabled = env_flag_enabled("EULERPILOT_ADAPTIVE_THRESHOLDS") && config.warmup_cycles > 0;
+    std::vector<double> warmup_latency_wait_ns;
+    std::vector<double> warmup_background_runtime_ns;
+    std::vector<double> warmup_cpu_psi_avg10;
 
     if (!skill_context.resource_ops) {
         throw std::runtime_error("resource_control skill not running; cannot apply decisions");
@@ -519,10 +610,27 @@ std::vector<WorkloadDecision> run_cycles(const RuntimeConfig &config) {
         }
         auto cycle_decisions = collect_cycle_decisions(skel, self_pid);
         const PsiSnapshot psi = read_psi_snapshot();
-        const double cpu_psi_threshold = get_env_double("EULERPILOT_CPU_PSI_THRESHOLD", 0.10);
-        const bool cpu_psi_high = psi.cpu.some.avg10 >= cpu_psi_threshold;
+        if (thresholds.adaptive_enabled && cycle < config.warmup_cycles) {
+            warmup_cpu_psi_avg10.push_back(psi.cpu.some.avg10);
+            for (const auto &decision : cycle_decisions) {
+                if (decision.klass == WorkloadClass::LatencySensitive && decision.sample.total_wait_ns_delta > 0) {
+                    warmup_latency_wait_ns.push_back(static_cast<double>(decision.sample.total_wait_ns_delta));
+                }
+                if ((decision.klass == WorkloadClass::BackgroundNoisy ||
+                     decision.klass == WorkloadClass::ThroughputBatch) &&
+                    decision.sample.runtime_ns_delta > 0) {
+                    warmup_background_runtime_ns.push_back(static_cast<double>(decision.sample.runtime_ns_delta));
+                }
+            }
+            if (cycle + 1 >= config.warmup_cycles) {
+                thresholds = calibrate_runtime_thresholds(thresholds, warmup_latency_wait_ns,
+                                                          warmup_background_runtime_ns, warmup_cpu_psi_avg10);
+            }
+        }
 
-        auto trigger_ctx = build_trigger_context(cycle_decisions, cpu_psi_high, false);
+        const bool cpu_psi_high = psi.cpu.some.avg10 >= thresholds.cpu_psi_threshold;
+
+        auto trigger_ctx = build_trigger_context(cycle_decisions, cpu_psi_high, false, thresholds);
         GateDecision gate_decision;
         if (skill_context.psi_gate_ops) {
             gate_decision = skill_context.psi_gate_ops->tick_gate(trigger_ctx);
@@ -546,6 +654,13 @@ std::vector<WorkloadDecision> run_cycles(const RuntimeConfig &config) {
         }
         current_mode = update_mode_with_hysteresis(current_mode, desired_mode, latency_streak, mixed_streak, normal_streak);
         assign_profiles(cycle_decisions, current_mode);
+        for (auto &decision : cycle_decisions) {
+            decision.adaptive_thresholds_enabled = thresholds.adaptive_enabled;
+            decision.adaptive_thresholds_calibrated = thresholds.calibrated;
+            decision.calibrated_latency_wait_threshold_ns = thresholds.wait_threshold_ns;
+            decision.calibrated_background_runtime_threshold_ns = thresholds.background_runtime_threshold_ns;
+            decision.calibrated_cpu_psi_threshold = thresholds.cpu_psi_threshold;
+        }
 
         skill_context.resource_ops->apply_in_cycle(cycle_decisions, gate_decision);
 

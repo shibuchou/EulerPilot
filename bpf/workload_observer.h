@@ -10,6 +10,9 @@
 #endif
 
 #define EULERPILOT_COMM_LEN 16
+/* Bound the per-task metrics map to a VM-friendly size while still covering
+ * benchmark and Kubernetes lab bursts without frequent key eviction.
+ */
 #define EULERPILOT_MAX_TASKS 16384
 
 struct task_metrics {

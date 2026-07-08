@@ -105,19 +105,19 @@ background workload
 
 其中：
 
-- `CgroupExecutor` 服务于 `SP3` 主交付线
-- `ScxExecutor` 服务于 `OLK-6.6` 上的 `sched_ext` 正式对照线
+- `CgroupExecutor` 服务于发行内核 cgroup v2 稳定控制路径
+- `ScxExecutor` 服务于 `OLK-6.6` 与 SP4 官方源码自编译 sched_ext 内核复核路径
 
 ---
 
 ## 4. 实验环境
 
-### 4.1 官方主交付环境
+### 4.1 SP3 历史验证环境
 
 ```text
 主机：192.168.1.121
 系统：openEuler 24.03 LTS SP3
-定位：SP3 主交付环境，也是当前统一交付目录所在主机
+定位：SP3 历史验证与回归对照，最终主验证线已切换到 SP4
 ```
 
 ### 4.2 sched_ext 正式对照环境
@@ -238,7 +238,7 @@ Nginx 正式 compare 矩阵与 Redis 保持一致。
 
 但不应被写成：
 
-- “sched_ext 已全面优于默认调度器”
+- “sched_ext 对所有 workload 都稳定提升”
 - “所有业务线都在所有模式下稳定提升”
 
 更稳的结论应是：

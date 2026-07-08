@@ -22,8 +22,8 @@ EulerPilot 是面向 openEuler 的自适应资源管控 Agent——一个本地�
 - Resource Control：CPU + Memory + IO 自动闭环，真实 container / Pod target
 - Policy Engine：跨 Skill 决策、审计、失败回滚和 Agent stop rollback
 - Redis RUNS=5 + Nginx RUNS=5 候选结果
-- SP4 Redis/Nginx RUNS=3 sched_ext 复核结果
-- Web Console v1 + 35 条 final evidence compact + 中文报告主稿
+- SP4 Redis/Nginx RUNS=5 sched_ext 复核结果
+- Web Console v1 + 37 条 final evidence compact + 中文报告主稿
 
 ## 赛题覆盖
 
@@ -36,8 +36,8 @@ EulerPilot 是面向 openEuler 的自适应资源管控 Agent——一个本地�
 ## 核心结果目录
 - Redis：`results/final/redis-scx-compare-20260612-191543`
 - Nginx：`results/final/nginx-scx-compare-20260612-194018`
-- SP4 Redis：`results/final/redis-scx-compare-20260706-115029`
-- SP4 Nginx：`results/final/nginx-scx-compare-20260706-120547`
+- SP4 Redis：`results/final/redis-scx-compare-20260708-150702`
+- SP4 Nginx：`results/final/nginx-scx-compare-20260708-152602`
 - Evidence：`reports/final_evidence_compact.md`
 
 ## 核心文档
@@ -50,3 +50,4 @@ EulerPilot 是面向 openEuler 的自适应资源管控 Agent——一个本地�
 
 ## 当前结论
 项目已完成系统实现、双后端实验、SP4 增强复核、三方向 OS Agent 扩展、跨 Skill 联动、Web Console、图表材料和中文主稿。剩余工作集中在答辩页视觉打磨与现场演示彩排。
+

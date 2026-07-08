@@ -216,7 +216,7 @@
 - sched_ext 收益不均匀（noisy_scx_always_active 不稳定）
 - quiet_scx_normal 有基础开销
 - Nginx 部分 sched_ext 模式 P99 代价明显
-- 不能得出"全面优于默认调度器"结论
+- 不能得出对所有 workload 都稳定提升的结论
 
 ---
 
@@ -305,7 +305,7 @@
 
 **核心结论**：
 
-> EulerPilot 已完成赛题全部 6 项要求的工程实现，在用户态 Agent 框架、实验可复现性、Skills 扩展架构三个维度表现突出。sched_ext 的性能提升存在场景差异，不宜表述为"全面优于默认调度器"。network/security policy demo 填补了赛题的 eBPF hook 扩展要求，使三方向 OS Agent 全部具备可演示代码闭环。项目当前处于提交冻结阶段，剩余优化空间约为 5 分，取决于演示脚本完善和 PSI 多维度接入。
+> EulerPilot 已完成赛题全部 6 项要求的工程实现，在用户态 Agent 框架、实验可复现性、Skills 扩展架构三个维度表现突出。sched_ext 的性能提升存在场景差异，不宜表述为对所有 workload 都稳定提升。network/security policy demo 填补了赛题的 eBPF hook 扩展要求，使三方向 OS Agent 全部具备可演示代码闭环。项目当前处于提交冻结阶段，剩余优化空间约为 5 分，取决于演示脚本完善和 PSI 多维度接入。
 
 **与同类赛题的差异化竞争力**：
 1. 不是单一调度器 demo，而是可扩展 Agent 框架

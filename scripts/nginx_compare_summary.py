@@ -31,6 +31,26 @@ def read_summary(path: Path) -> dict[str, float]:
     return {"requests_per_sec": 0.0, "p99_latency_ms": 0.0}
 
 
+def read_cpu_usage(summary_path: Path) -> dict[str, float]:
+    path = summary_path.with_name(summary_path.name.replace("_summary.csv", "_cpu_usage.env"))
+    metrics = {
+        "cpu_busy_ratio": 0.0,
+        "cpu_per_10k_requests": 0.0,
+    }
+    if not path.exists():
+        return metrics
+    for line in path.read_text(encoding="utf-8", errors="ignore").splitlines():
+        if "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        if key in metrics:
+            try:
+                metrics[key] = float(value)
+            except ValueError:
+                pass
+    return metrics
+
+
 def mean(values: list[float]) -> str:
     return f"{statistics.mean(values):.3f}" if values else ""
 
@@ -57,9 +77,13 @@ def main() -> int:
 
     for label in labels:
         for path_str in manifest["summary_paths"].get(label, []):
-            summary = read_summary(Path(path_str))
+            summary_path = Path(path_str)
+            summary = read_summary(summary_path)
+            cpu_usage = read_cpu_usage(summary_path)
             bucket[f"{label}_rps"].append(summary["requests_per_sec"])
             bucket[f"{label}_p99_ms"].append(summary["p99_latency_ms"])
+            bucket[f"{label}_cpu_busy_ratio"].append(cpu_usage["cpu_busy_ratio"])
+            bucket[f"{label}_cpu_per_10k_requests"].append(cpu_usage["cpu_per_10k_requests"])
 
     fieldnames = []
     for label in labels:
@@ -69,6 +93,8 @@ def main() -> int:
                 f"{label}_rps_std",
                 f"{label}_p99_ms_avg",
                 f"{label}_p99_ms_std",
+                f"{label}_cpu_busy_ratio_avg",
+                f"{label}_cpu_per_10k_requests_avg",
             ]
         )
 
@@ -81,6 +107,8 @@ def main() -> int:
             row[f"{label}_rps_std"] = stddev(bucket[f"{label}_rps"])
             row[f"{label}_p99_ms_avg"] = mean(bucket[f"{label}_p99_ms"])
             row[f"{label}_p99_ms_std"] = stddev(bucket[f"{label}_p99_ms"])
+            row[f"{label}_cpu_busy_ratio_avg"] = mean(bucket[f"{label}_cpu_busy_ratio"])
+            row[f"{label}_cpu_per_10k_requests_avg"] = mean(bucket[f"{label}_cpu_per_10k_requests"])
         writer.writerow(row)
 
     return 0

@@ -1,0 +1,69 @@
+{
+  "run_id": "workers-4",
+  "timestamp": "2026-07-08T16:06:12+08:00",
+  "host": "cernet2.net",
+  "kernel_release": "6.6.0-159.4.3.154.oe2403sp4.x86_64-eulerpilot-scx",
+  "runs": 3,
+  "redis_port": "6386",
+  "bench_clients": "16",
+  "bench_requests": "20000",
+  "stress_workers": "4",
+  "sched_ext_switch_mode": "full",
+  "labels": [
+    "quiet_default",
+    "noisy_default",
+    "noisy_cgroup_v2",
+    "noisy_scx_psi"
+  ],
+  "label_titles": {
+    "quiet_default": "仅 Redis，默认调度器",
+    "quiet_scx_normal": "仅 Redis，sched_ext 常驻但保持 normal",
+    "noisy_default": "Redis + stress-ng，默认调度器",
+    "noisy_cgroup_v2": "Redis + stress-ng，cgroup v2 控制",
+    "noisy_scx_normal": "Redis + stress-ng，sched_ext normal",
+    "noisy_scx_always_active": "Redis + stress-ng，sched_ext always-active",
+    "noisy_scx_psi": "Redis + stress-ng，sched_ext psi"
+  },
+  "summary_paths": {
+    "quiet_default": [
+      "/root/EulerPilot/results/final/redis-pressure-gradient-20260708-153811/workers-4/run-1/quiet_default_summary.csv",
+      "/root/EulerPilot/results/final/redis-pressure-gradient-20260708-153811/workers-4/run-2/quiet_default_summary.csv",
+      "/root/EulerPilot/results/final/redis-pressure-gradient-20260708-153811/workers-4/run-3/quiet_default_summary.csv"
+    ],
+    "noisy_default": [
+      "/root/EulerPilot/results/final/redis-pressure-gradient-20260708-153811/workers-4/run-1/noisy_default_summary.csv",
+      "/root/EulerPilot/results/final/redis-pressure-gradient-20260708-153811/workers-4/run-2/noisy_default_summary.csv",
+      "/root/EulerPilot/results/final/redis-pressure-gradient-20260708-153811/workers-4/run-3/noisy_default_summary.csv"
+    ],
+    "noisy_cgroup_v2": [
+      "/root/EulerPilot/results/final/redis-pressure-gradient-20260708-153811/workers-4/run-1/noisy_cgroup_v2_summary.csv",
+      "/root/EulerPilot/results/final/redis-pressure-gradient-20260708-153811/workers-4/run-2/noisy_cgroup_v2_summary.csv",
+      "/root/EulerPilot/results/final/redis-pressure-gradient-20260708-153811/workers-4/run-3/noisy_cgroup_v2_summary.csv"
+    ],
+    "noisy_scx_psi": [
+      "/root/EulerPilot/results/final/redis-pressure-gradient-20260708-153811/workers-4/run-1/noisy_scx_psi_summary.csv",
+      "/root/EulerPilot/results/final/redis-pressure-gradient-20260708-153811/workers-4/run-2/noisy_scx_psi_summary.csv",
+      "/root/EulerPilot/results/final/redis-pressure-gradient-20260708-153811/workers-4/run-3/noisy_scx_psi_summary.csv"
+    ]
+  },
+  "run_orders": {
+    "run-1": [
+      "quiet_default",
+      "noisy_default",
+      "noisy_cgroup_v2",
+      "noisy_scx_psi"
+    ],
+    "run-2": [
+      "noisy_scx_psi",
+      "quiet_default",
+      "noisy_default",
+      "noisy_cgroup_v2"
+    ],
+    "run-3": [
+      "noisy_scx_psi",
+      "quiet_default",
+      "noisy_default",
+      "noisy_cgroup_v2"
+    ]
+  }
+}

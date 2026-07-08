@@ -1,0 +1,5 @@
+test,default_noisy_rps_avg,default_noisy_p99_ms_avg,default_noisy_cpu_per_10k_requests_avg,default_noisy_cpu_busy_ratio_avg,default_noisy_nr_throttled_delta_avg,default_noisy_throttled_usec_delta_avg,manual_static_rps_avg,manual_static_p99_ms_avg,manual_static_cpu_per_10k_requests_avg,manual_static_cpu_busy_ratio_avg,manual_static_nr_throttled_delta_avg,manual_static_throttled_usec_delta_avg,agent_dynamic_rps_avg,agent_dynamic_p99_ms_avg,agent_dynamic_cpu_per_10k_requests_avg,agent_dynamic_cpu_busy_ratio_avg,agent_dynamic_nr_throttled_delta_avg,agent_dynamic_throttled_usec_delta_avg
+GET,17365.876,3.101,667.050,0.974,0.000,0.000,17099.272,3.090,667.750,0.974,0.000,0.000,33108.208,1.167,563.975,0.984,8.200,651433.400
+INCR,17282.628,2.989,667.050,0.974,0.000,0.000,18024.318,2.842,667.750,0.974,0.000,0.000,33342.938,0.993,563.975,0.984,8.200,651433.400
+PING_INLINE,17680.154,2.986,667.050,0.974,0.000,0.000,16519.148,3.047,667.750,0.974,0.000,0.000,16963.908,3.604,563.975,0.984,8.200,651433.400
+SET,16839.454,2.973,667.050,0.974,0.000,0.000,16770.778,2.993,667.750,0.974,0.000,0.000,29219.290,1.714,563.975,0.984,8.200,651433.400

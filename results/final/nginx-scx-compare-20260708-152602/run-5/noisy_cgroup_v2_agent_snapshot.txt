@@ -1,0 +1,36 @@
+
+  * EulerPilot Agent 
+  --------------------------------------------------
+  config:     /root/EulerPilot/configs/agent.yaml
+  interval:   1000ms  duration:   6s  warmup: 2
+  mode:       active  backend:    cgroup_v2
+  gate:       always-active
+  env:         psi:ok  cg:ok  scx:ok
+  --------------------------------------------------
+
+  --- legend ---
+  mark: . UNKNOWN  L LATENCY_SENSITIVE  B BACKGROUND_NOISY  T THROUGHPUT_BATCH
+  act:  + applied  ~ managed  - none
+  --- observing ---
+  mark name             pid  class        act profile    w:weight reason
+  B stress-ng-cpu      55281 BACKGROUND_NOISY |~ normal_profile w:100 no-group-for-class
+  B stress-ng-cpu      55282 BACKGROUND_NOISY |~ normal_profile w:100 no-group-for-class
+  L nginx              53700 LATENCY_SENSITIVE |~ normal_profile w:100 no-group-for-class
+  B stress-ng-cpu      55281 BACKGROUND_NOISY |+ mixed_profile w:5 cpuset-fallback-cpu-weight-only
+  B stress-ng-cpu      55282 BACKGROUND_NOISY |+ mixed_profile w:5 cpuset-fallback-cpu-weight-only
+  L nginx              53700 LATENCY_SENSITIVE |+ latency_profile w:1000 assigned
+  B stress-ng-cpu      55281 BACKGROUND_NOISY |+ mixed_profile w:5 cpuset-fallback-cpu-weight-only
+  B stress-ng-cpu      55282 BACKGROUND_NOISY |+ mixed_profile w:5 cpuset-fallback-cpu-weight-only
+  L nginx              53700 LATENCY_SENSITIVE |+ latency_profile w:1000 assigned
+  B stress-ng-cpu      55281 BACKGROUND_NOISY |+ mixed_profile w:5 cpuset-fallback-cpu-weight-only
+  B stress-ng-cpu      55282 BACKGROUND_NOISY |+ mixed_profile w:5 cpuset-fallback-cpu-weight-only
+  L nginx              53700 LATENCY_SENSITIVE |+ latency_profile w:1000 assigned
+  B stress-ng-cpu      55281 BACKGROUND_NOISY |+ mixed_profile w:5 cpuset-fallback-cpu-weight-only
+  B stress-ng-cpu      55282 BACKGROUND_NOISY |+ mixed_profile w:5 cpuset-fallback-cpu-weight-only
+  L nginx              53700 LATENCY_SENSITIVE |+ latency_profile w:1000 assigned
+  B stress-ng-cpu      55281 BACKGROUND_NOISY |+ mixed_profile w:5 cpuset-fallback-cpu-weight-only
+  B stress-ng-cpu      55282 BACKGROUND_NOISY |+ mixed_profile w:5 cpuset-fallback-cpu-weight-only
+  L nginx              53700 LATENCY_SENSITIVE |+ latency_profile w:1000 assigned
+  --------------------------------------------------
+  DONE  total=79  applied=15  L=6  T=0  B=12  U=61
+

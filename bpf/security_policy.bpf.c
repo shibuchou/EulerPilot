@@ -25,7 +25,15 @@ char LICENSE[] SEC("license") = "GPL";
 #define EVENT_LSM_CRED_PREPARE 13
 #define EVENT_LSM_CRED_ALLOC_BLANK 14
 #define EVENT_LSM_CRED_TRANSFER 15
+/* Keep path buffers fixed-size for verifier-friendly stack/map layout. 256
+ * bytes is enough for lab policy prefixes while keeping each target entry
+ * small enough for low-memory SP3/SP4 VMs.
+ */
 #define MAX_SECURITY_PATH 256
+/* Must stay aligned with kSecurityPolicyMaxTargets in user space. Eight scoped
+ * targets cover the current competition rules without turning the LSM hot path
+ * into an unbounded policy scan.
+ */
 #define MAX_SECURITY_TARGETS 8
 #define SECURITY_TARGET_UNKNOWN 0xffffffff
 #define SECURITY_CAPABILITY_UNSET -1

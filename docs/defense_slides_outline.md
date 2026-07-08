@@ -39,19 +39,19 @@
 | policy engine | Security anomaly -> Resource / Network+Resource / real Pod | 已完成 |
 
 ## 第 6 页：环境与工程完成度
-- `192.168.1.121` — SP3 主交付 + 代码开发
+- `192.168.1.121` — SP3 历史验证 + 回归对照
 - `192.168.1.122` — OLK-6.6 sched_ext 正式对照
-- `192.168.1.123` — SP4 自编译 sched_ext 内核复核
+- `192.168.1.123` — SP4 核心验证仓库 + 官方源码自编译 sched_ext 内核复核
 - GitHub `shibuchou/EulerPilot` — 代码仓库
 
 ## 第 7 页：Redis 正式结果
 引用：`results/final/redis-scx-compare-20260612-191543`
-SP4 复核：`results/final/redis-scx-compare-20260706-115029`
+SP4 复核：`results/final/redis-scx-compare-20260708-150702`
 图表：redis_sched_ext_rps / p99 / quiet_overhead
 
 ## 第 8 页：Nginx 正式结果
 引用：`results/final/nginx-scx-compare-20260612-194018`
-SP4 复核：`results/final/nginx-scx-compare-20260706-120547`
+SP4 复核：`results/final/nginx-scx-compare-20260708-152602`
 图表：nginx_sched_ext_rps / p99 / quiet_overhead
 
 ## 第 9 页：关键证据链
@@ -67,7 +67,8 @@ SP4 复核：`results/final/nginx-scx-compare-20260706-120547`
 - sched_ext 结果需按 workload 谨慎解释
 
 ## 第 11 页：最终结论
-1. SP3 上完成主闭环，可正式交付
-2. OLK-6.6 与 SP4 上完成 Redis/Nginx sched_ext compare / RUNS=3 复核
+1. 发行内核 cgroup v2 稳定闭环可正式交付
+2. OLK-6.6 与 SP4 官方源码自编译 sched_ext 内核上完成 Redis/Nginx compare / RUNS=5 复核
 3. Skills 框架 + Network/Security/Resource/Policy Engine 证明 Agent 可扩展、可联动、可回滚
-4. 35 条 final evidence compact + Web Console + 最终质量门禁完成争奖证据收口
+4. 37 条 final evidence compact + Web Console + 最终质量门禁完成争奖证据收口
+

@@ -1,0 +1,32 @@
+[INFO] Redis pressure gradient output: /root/EulerPilot/results/final/redis-pressure-gradient-20260708-153811
+[INFO] pressure workers=0 runs=3 labels=quiet_default,noisy_default,noisy_cgroup_v2,noisy_scx_psi
+[INFO] Redis sched_ext compare output: /root/EulerPilot/results/final/redis-pressure-gradient-20260708-153811/workers-0
+[INFO] run 1/3
+[INFO] run 2/3
+[INFO] run 3/3
+[INFO] Redis sched_ext compare complete: /root/EulerPilot/results/final/redis-pressure-gradient-20260708-153811/workers-0
+[INFO] pressure workers=1 runs=3 labels=quiet_default,noisy_default,noisy_cgroup_v2,noisy_scx_psi
+[INFO] Redis sched_ext compare output: /root/EulerPilot/results/final/redis-pressure-gradient-20260708-153811/workers-1
+[INFO] run 1/3
+[INFO] run 2/3
+[INFO] run 3/3
+[INFO] Redis sched_ext compare complete: /root/EulerPilot/results/final/redis-pressure-gradient-20260708-153811/workers-1
+[INFO] pressure workers=2 runs=3 labels=quiet_default,noisy_default,noisy_cgroup_v2,noisy_scx_psi
+[INFO] Redis sched_ext compare output: /root/EulerPilot/results/final/redis-pressure-gradient-20260708-153811/workers-2
+[INFO] run 1/3
+[INFO] run 2/3
+[INFO] run 3/3
+[INFO] Redis sched_ext compare complete: /root/EulerPilot/results/final/redis-pressure-gradient-20260708-153811/workers-2
+[INFO] pressure workers=4 runs=3 labels=quiet_default,noisy_default,noisy_cgroup_v2,noisy_scx_psi
+[INFO] Redis sched_ext compare output: /root/EulerPilot/results/final/redis-pressure-gradient-20260708-153811/workers-4
+[INFO] run 1/3
+[INFO] run 2/3
+[INFO] run 3/3
+[INFO] Redis sched_ext compare complete: /root/EulerPilot/results/final/redis-pressure-gradient-20260708-153811/workers-4
+[INFO] pressure workers=8 runs=3 labels=quiet_default,noisy_default,noisy_cgroup_v2,noisy_scx_psi
+[INFO] Redis sched_ext compare output: /root/EulerPilot/results/final/redis-pressure-gradient-20260708-153811/workers-8
+[INFO] run 1/3
+[INFO] run 2/3
+[INFO] run 3/3
+[INFO] Redis sched_ext compare complete: /root/EulerPilot/results/final/redis-pressure-gradient-20260708-153811/workers-8
+[INFO] Redis pressure gradient complete: /root/EulerPilot/results/final/redis-pressure-gradient-20260708-153811

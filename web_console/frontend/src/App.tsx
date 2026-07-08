@@ -338,12 +338,12 @@ function Overview({ system, evidence, status, jobs }: { system: SystemInfo | nul
         </div>
         <div className="role-grid">
           <div>
-            <span>SP3 official path</span>
-            <strong>{system?.path_roles.sp3 || 'loading'}</strong>
+            <span>SP3 历史主路径</span>
+            <strong>{system?.path_roles.sp3 || '加载中'}</strong>
           </div>
           <div>
-            <span>sched_ext/scx</span>
-            <strong>{system?.path_roles.scx || 'loading'}</strong>
+            <span>sched_ext/scx 增强路径</span>
+            <strong>{system?.path_roles.scx || '加载中'}</strong>
           </div>
         </div>
         <div className="capability-row">
