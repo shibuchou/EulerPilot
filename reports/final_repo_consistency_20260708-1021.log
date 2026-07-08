@@ -1,0 +1,28 @@
+EulerPilot final repository consistency
+timestamp=20260708-1021
+timezone=Asia/Shanghai
+
+local_head=0cb1ff4b9d471a26a68287701977d83a28c9705f
+local_status_begin
+?? reports/final_repo_consistency_20260630-1040.log
+?? reports/final_repo_consistency_20260630-1531.log
+?? reports/final_repo_consistency_20260630-1639.log
+?? reports/final_repo_consistency_20260630-1746.log
+?? reports/final_repo_consistency_20260630-2038.log
+local_status_end
+
+github_main=0cb1ff4b9d471a26a68287701977d83a28c9705f	refs/heads/main
+
+121_begin
+0cb1ff4b9d471a26a68287701977d83a28c9705f
+121_end
+
+122_begin
+0cb1ff4b9d471a26a68287701977d83a28c9705f
+122_end
+
+sp4_123_begin
+0cb1ff4b9d471a26a68287701977d83a28c9705f
+sp4_123_end
+
+note=local untracked 20260630 final_repo_consistency logs are historical scratch logs and intentionally not included
