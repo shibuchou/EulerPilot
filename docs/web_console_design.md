@@ -1,6 +1,6 @@
 # EulerPilot Web Console v1 设计
 
-## Summary
+## 摘要
 
 Web Console v1 = `Evidence-first + 白名单 Demo + 旁路展示控制台`。
 
@@ -14,7 +14,7 @@ Web Console 的所有状态、图表和结论均来自 EulerPilot 现有 CLI、�
 
 ```text
 Browser
-  -> React Web Console
+  -> React Web Console（中文优先展示）
   -> Node.js API
   -> actions.yaml whitelist
   -> existing EulerPilot CLI / demo scripts / tests
@@ -23,20 +23,20 @@ Browser
 
 ## 页面
 
-- `Overview`：Host、Kernel、Git HEAD、Agent 状态、质量门禁、证据完整度。
-- `Skills & Agent`：`list-skills`、`status --json`、`doctor-skills`、配置校验。
-- `Scheduling & PSI`：Redis/Nginx、sched_ext/scx、PsiGate、性能图表。
-- `eBPF Extensions`：Network、Security、Resource 三类能力用 Tabs 展示。
-- `Policy Engine Timeline`：按 `transaction_id` 展示跨 Skill 联动证据链。
-- `Evidence & Live Demo`：证据清单、白名单动作、实时日志、cleanup。
+- `总览`：Host、Kernel、Git HEAD、Agent 状态、质量门禁、证据完整度。
+- `Skills 与 Agent`：`list-skills`、`status --json`、`doctor-skills`、配置校验。
+- `调度与 PSI`：Redis/Nginx、sched_ext/scx、PsiGate、性能图表。
+- `eBPF 扩展能力`：Network、Security、Resource 三类能力用 Tabs 展示。
+- `Policy Engine 时间线`：按 `transaction_id` 展示跨 Skill 联动证据链。
+- `证据与现场演示`：证据清单、白名单动作、实时日志、cleanup。
 
 ## SP3/SP4 路径口径
 
 Overview 不把 SP3 上 `sched_ext` 不可用显示为项目失败，而显示为路径分工：
 
 ```text
-SP3 official path: cgroup v2 active
-sched_ext/scx: enhanced path / SP4 migration target
+SP3 主交付路径：cgroup v2 已启用
+sched_ext/scx 增强路径：SP4 / 自编译内核迁移目标
 ```
 
 当前 SP3 稳定主路径是 cgroup v2；sched_ext/scx 是增强路径和 SP4 迁移目标。
@@ -45,21 +45,21 @@ sched_ext/scx: enhanced path / SP4 migration target
 
 Evidence 页面按比赛评分关注点分组：
 
-- Agent Framework
-- CPU Scheduling / PSI
-- Performance
-- Network Policy
-- Security Policy
-- Resource Control
-- Policy Engine
-- Rollback / Cleanup
-- Quality Gate
+- Agent 框架
+- CPU 调度 / PSI
+- 性能结果
+- 网络策略
+- 安全策略
+- 资源管控
+- 策略引擎
+- 回滚 / 清理
+- 质量门禁
 
 核心证据来自 `configs/final_evidence_manifest.json` 和 `reports/final_evidence_compact.json`。
 
 ## 白名单动作
 
-Recommended Demo：
+推荐演示：
 
 - `check_env`
 - `list_skills`
@@ -69,7 +69,7 @@ Recommended Demo：
 - `policy_engine_lab`
 - `demo_cleanup`
 
-Advanced / Optional：
+高级 / 可选：
 
 - `policy_engine_real_pod`
 - `final_quality_gate`

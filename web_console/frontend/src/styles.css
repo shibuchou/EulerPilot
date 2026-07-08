@@ -525,6 +525,16 @@ details .data-table {
   font-size: 15px;
 }
 
+.action-meta {
+  width: fit-content;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-muted);
+  color: #3f5155;
+  padding: 2px 8px;
+  font-size: 12px;
+}
+
 .action-card span {
   color: var(--muted);
   font-size: 13px;

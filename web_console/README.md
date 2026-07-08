@@ -57,6 +57,17 @@ curl http://127.0.0.1:18080/api/jobs
 
 ## 当前完成状态
 
-- 已支持 Overview、Skills & Agent、Scheduling & PSI、eBPF Extensions、Policy Engine Timeline、Evidence & Live Demo 六个页面。
+- 已支持总览、Skills 与 Agent、调度与 PSI、eBPF 扩展能力、Policy Engine 时间线、证据与现场演示六个页面。
 - 已支持 `actions.yaml` 白名单动作、SSE 日志流、最近 job 查询、demo/lab/cleanup 单任务锁。
+- 关键页面已中文优先展示；Shell 脚本、集成测试、质量门禁、清理动作使用明确图标和风险说明。
 - 默认只监听 `127.0.0.1:18080`，建议始终通过 SSH 隧道访问。
+
+## 推荐现场按钮
+
+- 环境检查
+- 查看 Skills
+- Agent 状态 JSON
+- Skill 诊断
+- 离线证据演示
+- 跨 Skill 联动实验
+- 清理现场资源

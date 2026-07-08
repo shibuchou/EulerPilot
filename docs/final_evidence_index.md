@@ -1,16 +1,19 @@
 # EulerPilot 最终证据索引
 
-更新时间：`2026-07-06`
+更新时间：`2026-07-08`
 
 本文作为答辩和最终提交前的证据入口，集中索引 EulerPilot 当前已经具备的设计文档、测试脚本、结果目录和演示材料。日期快照文档不反复覆盖；滚动进度以 `docs/progress_status.md` 为准。
 
 ## 核心入口
 
 - 项目总览：`README.md`
+- 最终提交指南：`docs/final_submission_guide.md`
+- 提交包入口：`submission/README.md`
 - 赛题宣讲参考：`docs/contest_briefing_reference.md`
 - 架构说明：`docs/architecture.md`
 - 当前进度看板：`docs/progress_status.md`
 - 提交检查表：`docs/submission_checklist.md`
+- 答辩问答预案：`docs/defense_qa.md`
 - v3.1 开始状态：`docs/v3_1_start_status_20260629.md`
 - v3.1 开始仓库快照：`reports/v3_1_start_repo_status_20260629-1859.log`
 
@@ -99,6 +102,7 @@ sudo tests/integration/test_policy_engine_security_network_resource.sh --repeat 
 
 - 121：`results/policy_engine/security-network-resource-20260629-214952`
 - 122：`results/policy_engine/security-network-resource-20260629-215950`
+- 最终彩排：`results/policy_engine/security-network-resource-20260706-164539`
 
 ## 结果文件清单
 

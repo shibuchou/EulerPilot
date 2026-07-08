@@ -102,8 +102,8 @@ export async function getSystem(rootDir) {
       btf: fs.existsSync('/sys/kernel/btf/vmlinux')
     },
     path_roles: {
-      sp3: cgroupV2 ? 'SP3 official path: cgroup v2 active' : 'SP3 official path: cgroup v2 unavailable',
-      scx: schedExt ? 'sched_ext/scx: enhanced path available' : 'sched_ext/scx: enhanced path / SP4 migration target'
+      sp3: cgroupV2 ? 'SP3 主交付路径：cgroup v2 已启用' : 'SP3 主交付路径：cgroup v2 不可用',
+      scx: schedExt ? 'sched_ext/scx 增强路径：当前内核已可用' : 'sched_ext/scx 增强路径：SP4 / 自编译内核迁移目标'
     },
     files: {
       evidence_manifest: exists(rootDir, 'configs/final_evidence_manifest.json'),
