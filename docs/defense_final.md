@@ -1,6 +1,6 @@
 # EulerPilot 最终答辩文档
 
-更新时间：`2026-07-06`
+更新时间：`2026-07-08`
 
 ---
 
@@ -161,9 +161,9 @@ cat demo/security_policy_demo/secret.txt  # -> Operation not permitted
 
 | 环境 | IP | 系统 | 角色 |
 |------|-----|------|------|
-| 主交付机 | 192.168.1.121 | openEuler 24.03 LTS SP3 | 代码 + 文档 + 主闭环 |
-| OLK 验证机 | 192.168.1.122 | openEuler 24.03 LTS SP3 (6.6.0-olk66-scx) | sched_ext 正式对照 |
-| SP4 复核机 | 192.168.1.123 | openEuler 24.03 LTS SP4，自编译 sched_ext 内核 | SP4 sched_ext / Web Console / 质量门禁复核 |
+| SP4 主验证机 | 192.168.1.123 | openEuler 24.03 LTS SP4，自编译 sched_ext 内核 | 核心验证仓库、最终 evidence、Web Console、K8s 旁路验证、质量门禁 |
+| SP3 历史验证机 | 192.168.1.121 | openEuler 24.03 LTS SP3 | 初代 cgroup v2 主闭环、历史结果和回归对照 |
+| OLK 对照验证机 | 192.168.1.122 | openEuler 24.03 LTS SP3 (6.6.0-olk66-scx) | sched_ext 正式对照和双机历史结果 |
 | GitHub | `shibuchou/EulerPilot` | — | 代码仓库（私密） |
 
 ---

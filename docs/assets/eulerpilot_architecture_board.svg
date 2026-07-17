@@ -1,0 +1,137 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1680" height="1280" viewBox="0 0 1680 1280">
+<rect width="1680" height="1280" fill="#F8FAFC"/>
+<defs>
+<filter id="shadow" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#0F172A" flood-opacity="0.10"/></filter>
+<marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M2,2 L10,6 L2,10 Z" fill="#64748B"/></marker>
+</defs>
+<text x="840.0" y="48" font-size="34" font-weight="700" fill="#0F172A" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">EulerPilot 分层项目架构总览</text>
+<text x="840.0" y="86" font-size="18" font-weight="500" fill="#475569" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">eBPF / PSI 观测 -&gt; 用户态 Agent 决策 -&gt; Skills 编排 -&gt; 系统控制器执行 -&gt; evidence 与 Web Console 展示</text>
+<g filter="url(#shadow)"><rect x="56" y="122" width="1568" height="138" rx="18" fill="#FFFFFF" stroke="#0891B2" stroke-width="2"/></g>
+<rect x="56" y="122" width="220" height="138" rx="18" fill="#ECFEFF" stroke="#0891B2" stroke-width="0"/>
+<text x="166" y="174" font-size="22" font-weight="700" fill="#0891B2" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">1. 业务负载与验证目标</text>
+<rect x="296.0" y="148" width="424.0" height="86" rx="12" fill="#FFFFFF" stroke="#0891B2" stroke-width="1.5"/>
+<text x="508.0" y="178" font-size="17" font-weight="700" fill="#0F172A" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">延迟敏感服务</text>
+<text x="508.0" y="206" font-size="13" font-weight="500" fill="#475569" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">Redis / Nginx / mixed workload</text>
+<rect x="738.0" y="148" width="424.0" height="86" rx="12" fill="#FFFFFF" stroke="#0891B2" stroke-width="1.5"/>
+<text x="950.0" y="178" font-size="17" font-weight="700" fill="#0F172A" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">后台干扰任务</text>
+<text x="950.0" y="206" font-size="13" font-weight="500" fill="#475569" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">stress-ng / make -j / sysbench</text>
+<rect x="1180.0" y="148" width="424.0" height="86" rx="12" fill="#FFFFFF" stroke="#0891B2" stroke-width="1.5"/>
+<text x="1392.0" y="178" font-size="17" font-weight="700" fill="#0F172A" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">真实目标对象</text>
+<text x="1392.0" y="206" font-size="13" font-weight="500" fill="#475569" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">PID / cgroup / container /</text>
+<text x="1392.0" y="223" font-size="13" font-weight="500" fill="#475569" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">Kubernetes Pod</text>
+<line x1="840.0" y1="260" x2="840.0" y2="282" stroke="#64748B" stroke-width="2.5" marker-end="url(#arrow)"/>
+<g filter="url(#shadow)"><rect x="56" y="282" width="1568" height="138" rx="18" fill="#FFFFFF" stroke="#4F46E5" stroke-width="2"/></g>
+<rect x="56" y="282" width="220" height="138" rx="18" fill="#EEF2FF" stroke="#4F46E5" stroke-width="0"/>
+<text x="166" y="334" font-size="22" font-weight="700" fill="#4F46E5" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">2. openEuler</text>
+<text x="166" y="360" font-size="22" font-weight="700" fill="#4F46E5" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">内核能力</text>
+<rect x="296.0" y="308" width="247.2" height="86" rx="12" fill="#FFFFFF" stroke="#4F46E5" stroke-width="1.5"/>
+<text x="419.6" y="338" font-size="17" font-weight="700" fill="#0F172A" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">调度观测</text>
+<text x="419.6" y="366" font-size="13" font-weight="500" fill="#475569" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">sched_wakeup / sched_switch /</text>
+<text x="419.6" y="383" font-size="13" font-weight="500" fill="#475569" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">migrate</text>
+<rect x="561.2" y="308" width="247.2" height="86" rx="12" fill="#FFFFFF" stroke="#4F46E5" stroke-width="1.5"/>
+<text x="684.8000000000001" y="338" font-size="17" font-weight="700" fill="#0F172A" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">压力信号</text>
+<text x="684.8000000000001" y="366" font-size="13" font-weight="500" fill="#475569" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">PSI: CPU / Memory / IO</text>
+<rect x="826.4" y="308" width="247.2" height="86" rx="12" fill="#FFFFFF" stroke="#4F46E5" stroke-width="1.5"/>
+<text x="950.0" y="338" font-size="17" font-weight="700" fill="#0F172A" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">控制器</text>
+<text x="950.0" y="366" font-size="13" font-weight="500" fill="#475569" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">cgroup v2: cpu / memory / io</text>
+<rect x="1091.6" y="308" width="247.2" height="86" rx="12" fill="#FFFFFF" stroke="#4F46E5" stroke-width="1.5"/>
+<text x="1215.1999999999998" y="338" font-size="17" font-weight="700" fill="#0F172A" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">增强调度</text>
+<text x="1215.1999999999998" y="366" font-size="13" font-weight="500" fill="#475569" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">sched_ext / scx: SP4 源码自编译复核</text>
+<rect x="1356.8" y="308" width="247.2" height="86" rx="12" fill="#FFFFFF" stroke="#4F46E5" stroke-width="1.5"/>
+<text x="1480.3999999999999" y="338" font-size="17" font-weight="700" fill="#0F172A" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">eBPF Hook</text>
+<text x="1480.3999999999999" y="366" font-size="13" font-weight="500" fill="#475569" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">LSM / TC / XDP / cgroup</text>
+<line x1="840.0" y1="420" x2="840.0" y2="442" stroke="#64748B" stroke-width="2.5" marker-end="url(#arrow)"/>
+<g filter="url(#shadow)"><rect x="56" y="442" width="1568" height="138" rx="18" fill="#FFFFFF" stroke="#16A34A" stroke-width="2"/></g>
+<rect x="56" y="442" width="220" height="138" rx="18" fill="#F0FDF4" stroke="#16A34A" stroke-width="0"/>
+<text x="166" y="494" font-size="22" font-weight="700" fill="#16A34A" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">3. eBPF 观测与</text>
+<text x="166" y="520" font-size="22" font-weight="700" fill="#16A34A" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">Hook</text>
+<rect x="296.0" y="468" width="424.0" height="86" rx="12" fill="#FFFFFF" stroke="#16A34A" stroke-width="1.5"/>
+<text x="508.0" y="498" font-size="17" font-weight="700" fill="#0F172A" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">workload observer</text>
+<text x="508.0" y="526" font-size="13" font-weight="500" fill="#475569" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">task_stats / cgroup_stats /</text>
+<text x="508.0" y="543" font-size="13" font-weight="500" fill="#475569" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">ringbuf</text>
+<rect x="738.0" y="468" width="424.0" height="86" rx="12" fill="#FFFFFF" stroke="#16A34A" stroke-width="1.5"/>
+<text x="950.0" y="498" font-size="17" font-weight="700" fill="#0F172A" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">network policy</text>
+<text x="950.0" y="526" font-size="13" font-weight="500" fill="#475569" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">connect4 audit / enforce, TC</text>
+<text x="950.0" y="543" font-size="13" font-weight="500" fill="#475569" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">QoS, XDP</text>
+<rect x="1180.0" y="468" width="424.0" height="86" rx="12" fill="#FFFFFF" stroke="#16A34A" stroke-width="1.5"/>
+<text x="1392.0" y="498" font-size="17" font-weight="700" fill="#0F172A" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">security policy</text>
+<text x="1392.0" y="526" font-size="13" font-weight="500" fill="#475569" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">LSM enforce, syscall tracing,</text>
+<text x="1392.0" y="543" font-size="13" font-weight="500" fill="#475569" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">anomaly</text>
+<line x1="840.0" y1="580" x2="840.0" y2="602" stroke="#64748B" stroke-width="2.5" marker-end="url(#arrow)"/>
+<g filter="url(#shadow)"><rect x="56" y="602" width="1568" height="138" rx="18" fill="#FFFFFF" stroke="#EA580C" stroke-width="2"/></g>
+<rect x="56" y="602" width="220" height="138" rx="18" fill="#FFF7ED" stroke="#EA580C" stroke-width="0"/>
+<text x="166" y="654" font-size="22" font-weight="700" fill="#EA580C" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">4. 用户态 Agent</text>
+<text x="166" y="680" font-size="22" font-weight="700" fill="#EA580C" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">控制面</text>
+<rect x="296.0" y="628" width="247.2" height="86" rx="12" fill="#FFFFFF" stroke="#EA580C" stroke-width="1.5"/>
+<text x="419.6" y="658" font-size="17" font-weight="700" fill="#0F172A" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">Runtime</text>
+<text x="419.6" y="686" font-size="13" font-weight="500" fill="#475569" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">采样循环、生命周期、stop_all</text>
+<rect x="561.2" y="628" width="247.2" height="86" rx="12" fill="#FFFFFF" stroke="#EA580C" stroke-width="1.5"/>
+<text x="684.8000000000001" y="658" font-size="17" font-weight="700" fill="#0F172A" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">Analyzer + PsiGate</text>
+<text x="684.8000000000001" y="686" font-size="13" font-weight="500" fill="#475569" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">workload 分类、压力窗口门控</text>
+<rect x="826.4" y="628" width="247.2" height="86" rx="12" fill="#FFFFFF" stroke="#EA580C" stroke-width="1.5"/>
+<text x="950.0" y="658" font-size="17" font-weight="700" fill="#0F172A" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">Policy Engine</text>
+<text x="950.0" y="686" font-size="13" font-weight="500" fill="#475569" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">跨 Skill 决策、统一 transaction_id</text>
+<rect x="1091.6" y="628" width="247.2" height="86" rx="12" fill="#FFFFFF" stroke="#EA580C" stroke-width="1.5"/>
+<text x="1215.1999999999998" y="658" font-size="17" font-weight="700" fill="#0F172A" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">TargetResolver</text>
+<text x="1215.1999999999998" y="686" font-size="13" font-weight="500" fill="#475569" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">PID / cgroup / container / Pod</text>
+<text x="1215.1999999999998" y="703" font-size="13" font-weight="500" fill="#475569" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">解析</text>
+<rect x="1356.8" y="628" width="247.2" height="86" rx="12" fill="#FFFFFF" stroke="#EA580C" stroke-width="1.5"/>
+<text x="1480.3999999999999" y="658" font-size="17" font-weight="700" fill="#0F172A" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">AuditBus + Journal</text>
+<text x="1480.3999999999999" y="686" font-size="13" font-weight="500" fill="#475569" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">事务化写入、失败恢复、rollback</text>
+<line x1="840.0" y1="740" x2="840.0" y2="762" stroke="#64748B" stroke-width="2.5" marker-end="url(#arrow)"/>
+<g filter="url(#shadow)"><rect x="56" y="762" width="1568" height="138" rx="18" fill="#FFFFFF" stroke="#DB2777" stroke-width="2"/></g>
+<rect x="56" y="762" width="220" height="138" rx="18" fill="#FDF2F8" stroke="#DB2777" stroke-width="0"/>
+<text x="166" y="814" font-size="22" font-weight="700" fill="#DB2777" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">5. Skills</text>
+<text x="166" y="840" font-size="22" font-weight="700" fill="#DB2777" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">能力层</text>
+<rect x="296.0" y="788" width="247.2" height="86" rx="12" fill="#FFFFFF" stroke="#DB2777" stroke-width="1.5"/>
+<text x="419.6" y="818" font-size="17" font-weight="700" fill="#0F172A" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">CPU Schedule</text>
+<text x="419.6" y="846" font-size="13" font-weight="500" fill="#475569" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">CgroupExecutor / ScxExecutor</text>
+<text x="419.6" y="863" font-size="13" font-weight="500" fill="#475569" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">后端选择</text>
+<rect x="561.2" y="788" width="247.2" height="86" rx="12" fill="#FFFFFF" stroke="#DB2777" stroke-width="1.5"/>
+<text x="684.8000000000001" y="818" font-size="17" font-weight="700" fill="#0F172A" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">Resource Control</text>
+<text x="684.8000000000001" y="846" font-size="13" font-weight="500" fill="#475569" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">CPU + Memory + IO 自动闭环</text>
+<rect x="826.4" y="788" width="247.2" height="86" rx="12" fill="#FFFFFF" stroke="#DB2777" stroke-width="1.5"/>
+<text x="950.0" y="818" font-size="17" font-weight="700" fill="#0F172A" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">Network Policy</text>
+<text x="950.0" y="846" font-size="13" font-weight="500" fill="#475569" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">connect4 / QoS / XDP / Pod</text>
+<text x="950.0" y="863" font-size="13" font-weight="500" fill="#475569" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">host veth</text>
+<rect x="1091.6" y="788" width="247.2" height="86" rx="12" fill="#FFFFFF" stroke="#DB2777" stroke-width="1.5"/>
+<text x="1215.1999999999998" y="818" font-size="17" font-weight="700" fill="#0F172A" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">Security Policy</text>
+<text x="1215.1999999999998" y="846" font-size="13" font-weight="500" fill="#475569" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">LSM / syscall / credential</text>
+<text x="1215.1999999999998" y="863" font-size="13" font-weight="500" fill="#475569" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">anomaly</text>
+<rect x="1356.8" y="788" width="247.2" height="86" rx="12" fill="#FFFFFF" stroke="#DB2777" stroke-width="1.5"/>
+<text x="1480.3999999999999" y="818" font-size="17" font-weight="700" fill="#0F172A" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">Benchmark + Rollback</text>
+<text x="1480.3999999999999" y="846" font-size="13" font-weight="500" fill="#475569" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">实验、证据、cleanup、恢复现场</text>
+<line x1="840.0" y1="900" x2="840.0" y2="922" stroke="#64748B" stroke-width="2.5" marker-end="url(#arrow)"/>
+<g filter="url(#shadow)"><rect x="56" y="922" width="1568" height="138" rx="18" fill="#FFFFFF" stroke="#475569" stroke-width="2"/></g>
+<rect x="56" y="922" width="220" height="138" rx="18" fill="#F8FAFC" stroke="#475569" stroke-width="0"/>
+<text x="166" y="974" font-size="22" font-weight="700" fill="#475569" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">6. 执行效果与可视化</text>
+<rect x="296.0" y="948" width="313.5" height="86" rx="12" fill="#FFFFFF" stroke="#475569" stroke-width="1.5"/>
+<text x="452.75" y="978" font-size="17" font-weight="700" fill="#0F172A" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">cgroup v2 写入</text>
+<text x="452.75" y="1006" font-size="13" font-weight="500" fill="#475569" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">cpu.max / memory.high / io.max</text>
+<rect x="627.5" y="948" width="313.5" height="86" rx="12" fill="#FFFFFF" stroke="#475569" stroke-width="1.5"/>
+<text x="784.25" y="978" font-size="17" font-weight="700" fill="#0F172A" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">scx_eulerpilot</text>
+<text x="784.25" y="1006" font-size="13" font-weight="500" fill="#475569" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">class_map / DSQ / sched_ext 对照</text>
+<rect x="959.0" y="948" width="313.5" height="86" rx="12" fill="#FFFFFF" stroke="#475569" stroke-width="1.5"/>
+<text x="1115.75" y="978" font-size="17" font-weight="700" fill="#0F172A" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">TC/XDP/LSM</text>
+<text x="1115.75" y="1006" font-size="13" font-weight="500" fill="#475569" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">网络限速过滤、安全阻断与审计</text>
+<rect x="1290.5" y="948" width="313.5" height="86" rx="12" fill="#FFFFFF" stroke="#475569" stroke-width="1.5"/>
+<text x="1447.25" y="978" font-size="17" font-weight="700" fill="#0F172A" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">Web Console</text>
+<text x="1447.25" y="1006" font-size="13" font-weight="500" fill="#475569" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">Evidence-first + 白名单 Demo 旁路展示</text>
+<line x1="840.0" y1="1060" x2="840.0" y2="1082" stroke="#64748B" stroke-width="2.5" marker-end="url(#arrow)"/>
+<g filter="url(#shadow)"><rect x="56" y="1082" width="1568" height="138" rx="18" fill="#FFFFFF" stroke="#CA8A04" stroke-width="2"/></g>
+<rect x="56" y="1082" width="220" height="138" rx="18" fill="#FEFCE8" stroke="#CA8A04" stroke-width="0"/>
+<text x="166" y="1134" font-size="22" font-weight="700" fill="#CA8A04" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">7. 证据与交付</text>
+<rect x="296.0" y="1108" width="424.0" height="86" rx="12" fill="#FFFFFF" stroke="#CA8A04" stroke-width="1.5"/>
+<text x="508.0" y="1138" font-size="17" font-weight="700" fill="#0F172A" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">Benchmark 结果</text>
+<text x="508.0" y="1166" font-size="13" font-weight="500" fill="#475569" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">Redis / Nginx RUNS=5、压力梯度、CPU</text>
+<text x="508.0" y="1183" font-size="13" font-weight="500" fill="#475569" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">效率</text>
+<rect x="738.0" y="1108" width="424.0" height="86" rx="12" fill="#FFFFFF" stroke="#CA8A04" stroke-width="1.5"/>
+<text x="950.0" y="1138" font-size="17" font-weight="700" fill="#0F172A" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">事件证据</text>
+<text x="950.0" y="1166" font-size="13" font-weight="500" fill="#475569" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">reports / events / *.jsonl</text>
+<text x="950.0" y="1183" font-size="13" font-weight="500" fill="#475569" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">串起决策与回滚</text>
+<rect x="1180.0" y="1108" width="424.0" height="86" rx="12" fill="#FFFFFF" stroke="#CA8A04" stroke-width="1.5"/>
+<text x="1392.0" y="1138" font-size="17" font-weight="700" fill="#0F172A" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">Final Evidence</text>
+<text x="1392.0" y="1166" font-size="13" font-weight="500" fill="#475569" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">manifest strict</text>
+<text x="1392.0" y="1183" font-size="13" font-weight="500" fill="#475569" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">pass、报告、答辩、演示脚本</text>
+<text x="840.0" y="1245" font-size="15" font-weight="600" fill="#334155" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">环境口径：SP3 是 cgroup v2 稳定主路径；OLK-6.6 与 SP4 官方源码自编译启用内核用于 sched_ext/scx 复核，不声称发行默认内核直接支持 sched_ext。</text>
+</svg>

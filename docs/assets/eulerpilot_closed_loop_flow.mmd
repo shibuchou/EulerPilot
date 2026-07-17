@@ -1,0 +1,47 @@
+---
+config:
+  theme: base
+  themeVariables:
+    fontFamily: "Microsoft YaHei, Segoe UI, Arial"
+    primaryColor: "#E8F1FF"
+    primaryBorderColor: "#2563EB"
+    primaryTextColor: "#172033"
+    lineColor: "#4B5563"
+---
+flowchart TD
+  Start(["启动 Agent / 选择配置"]) --> Check["环境探测<br/>BTF / PSI / cgroup v2 / sched_ext"]
+  Check --> Observe["采集观测数据<br/>eBPF maps + ringbuf + PSI"]
+  Observe --> Snapshot["构建 Snapshot<br/>workload / cgroup / target 状态"]
+  Snapshot --> Classify{"Workload 分类<br/>延迟敏感 / 吞吐型 / 后台干扰 / 未知"}
+  Classify --> Gate{"PsiGate 压力门控<br/>是否需要动作"}
+  Gate -->|无持续压力| AuditNoop["输出 no-op 审计<br/>保留观测证据"]
+  Gate -->|压力成立| Policy["Policy Engine 决策<br/>选择 Skill + target_ref + profile"]
+  Policy --> Resolve["TargetResolver 解析<br/>PID / cgroup / container / Pod"]
+  Resolve --> Txn["ActionJournal 开启事务<br/>读取旧值 + 白名单校验"]
+  Txn --> Apply{"执行动作"}
+  Apply -->|Resource| Resource["写 cgroup v2<br/>cpu.max / memory.high / io.max"]
+  Apply -->|Network| Network["写 TC/XDP<br/>lab veth / Pod host veth"]
+  Apply -->|Security| Security["写 LSM / map<br/>enforce + anomaly scope"]
+  Apply -->|scx| Scx["写 class_map<br/>scx_eulerpilot 调度"]
+  Resource --> Verify["复读验证 + 事件审计"]
+  Network --> Verify
+  Security --> Verify
+  Scx --> Verify
+  Verify --> Result{"动作是否全部成功"}
+  Result -->|成功| Evidence["写入 evidence<br/>events JSONL / report / Web Console"]
+  Result -->|失败| Rollback["事务 rollback<br/>恢复旧值 / 清理 qdisc/map/cgroup"]
+  Evidence --> Stop{"Agent 停止或 demo cleanup?"}
+  Rollback --> Evidence
+  Stop -->|否| Observe
+  Stop -->|是| Restore["stop_all 恢复现场<br/>输出 restored 事件"]
+  Restore --> End(["可复现实验结果与答辩证据"])
+
+  classDef action fill:#FFF7ED,stroke:#EA580C,color:#431407,stroke-width:1.5px
+  classDef decision fill:#FEF3C7,stroke:#D97706,color:#451A03,stroke-width:1.5px
+  classDef evidence fill:#ECFDF5,stroke:#16A34A,color:#052E16,stroke-width:1.5px
+  classDef terminal fill:#EEF2FF,stroke:#4F46E5,color:#111827,stroke-width:1.5px
+
+  class Classify,Gate,Apply,Result,Stop decision
+  class Policy,Resolve,Txn,Resource,Network,Security,Scx,Rollback,Restore action
+  class Evidence,Verify,AuditNoop evidence
+  class Start,End terminal

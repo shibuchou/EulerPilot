@@ -1,53 +1,63 @@
 # EulerPilot 一页式简介
 
-更新时间：`2026-07-06`
+更新时间：`2026-07-08`
 
 ## 项目是什么
 
-EulerPilot 是面向 openEuler 的自适应资源管控 Agent——一个本地运行的系统自治控制程序：
+EulerPilot 是面向 openEuler 的自适应资源管控 Agent。它用 eBPF/PSI 感知 workload 和系统压力，在用户态完成分类、策略决策和 Skill 编排，再通过 cgroup v2、sched_ext/scx、TC/XDP、BPF LSM 等系统能力执行可审计、可回滚的控制动作。
 
+```text
+观测系统状态
+-> 识别 workload 类型
+-> 判断压力或安全事件
+-> 选择 Resource / Network / Security / Policy Engine 策略
+-> 执行控制动作
+-> 输出审计、rollback 和实验结果
 ```
-观测系统状态 -> 识别 workload 类型 -> 判断压力场景 -> 选择控制策略 -> 执行 -> 输出结果
-```
 
-## 当前做成了什么
+项目架构图：`docs/assets/eulerpilot_architecture_board.svg`
 
-- SP3 + cgroup v2 主闭环
-- OLK-6.6 + sched_ext 正式对照线
-- SP4 + 自编译 sched_ext 内核增强复核线
-- PsiGate v1 门控状态机
-- Skills 插件化框架（Resource / Network / Security / Policy Engine）
-- Network Policy：connect4、TC QoS、XDP、真实 Pod host veth
-- Security Policy：LSM、syscall tracing、服务联动 anomaly、credential anomaly
-- Resource Control：CPU + Memory + IO 自动闭环，真实 container / Pod target
-- Policy Engine：跨 Skill 决策、审计、失败回滚和 Agent stop rollback
-- Redis RUNS=5 + Nginx RUNS=5 候选结果
-- SP4 Redis/Nginx RUNS=5 sched_ext 复核结果
-- Web Console v1 + 37 条 final evidence compact + 中文报告主稿
+闭环流程图：`docs/assets/eulerpilot_closed_loop_flow.svg`
+
+## 当前完成度
+
+- SP4 主验证仓库：`192.168.1.123:/root/EulerPilot`。
+- SP3 历史验证：`192.168.1.121`；SP3/OLK 对照验证：`192.168.1.122`。
+- SP4 发行环境已完成适配验证；sched_ext/scx 基于 SP4 官方源码自编译启用内核完成复核。
+- `scripts/final_quality_gate.sh` 通过 `22/22 P0`、`100` 轮 Agent smoke、`5` 轮 doctor。
+- `python3 scripts/collect_final_evidence.py --strict` 通过，覆盖 `37` 条核心证据，缺失 `0`、警告 `0`。
+- Web Console v1 已落地为旁路展示控制台。
+- Kubernetes 真实 Pod 旁路验证已完成，使用独立 namespace、独立 label、有限 resources，cleanup 后无 EulerPilot 残留。
 
 ## 赛题覆盖
 
 | 方向 | 实现 | 状态 |
 |------|------|------|
-| resource control agent | CPU/Memory/IO + cgroup/scx + runtime/Pod target | 已完成 |
-| network policy agent | connect4 + TC QoS + XDP + Pod host veth | 已完成 |
-| security policy agent | BPF LSM + syscall tracing + anomaly | 已完成 |
+| Agent Framework | Runtime、SkillRegistry、SkillManager、YAML、CLI、AuditBus、ActionJournal | 已完成 |
+| CPU Scheduling / PSI | eBPF 调度观测、PSI Gate、cgroup v2 主路径、ScxExecutor/scx 增强路径 | 已完成 |
+| Resource Control Agent | CPU/Memory/IO、target_ref、container/Pod cgroup、事务写入和 rollback | 已完成 |
+| Network Policy Agent | cgroup/connect4、TC QoS、XDP、真实 Pod host veth | 已完成 |
+| Security Policy Agent | BPF LSM、syscall tracing、anomaly、credential lifecycle、scope 过滤 | 已完成 |
+| Policy Engine | Security anomaly -> Resource / Network 联动，统一 transaction 和失败回滚 | 已完成 |
 
-## 核心结果目录
-- Redis：`results/final/redis-scx-compare-20260612-191543`
-- Nginx：`results/final/nginx-scx-compare-20260612-194018`
-- SP4 Redis：`results/final/redis-scx-compare-20260708-150702`
-- SP4 Nginx：`results/final/nginx-scx-compare-20260708-152602`
+## 核心证据目录
+
+- SP4 Redis RUNS=5：`results/final/redis-scx-compare-20260708-150702`
+- SP4 Nginx RUNS=5：`results/final/nginx-scx-compare-20260708-152602`
+- SP4 Redis 压力梯度：`results/final/redis-pressure-gradient-20260708-153811`
+- SP4 Redis 静态 vs Agent 动态：`results/final/redis-static-vs-agent-20260708-162543`
+- SP4/K8s/Web Console 旁路验证：`results/k8s/sp4-validation-20260708-023552`
+- Policy Engine SP4 repeat 10：`results/policy_engine/security-network-resource-20260705-211407`
 - Evidence：`reports/final_evidence_compact.md`
 
-## 核心文档
-- `docs/final_report_submission.md` — 最终报告主稿
-- `docs/defense_summary.md` — 答辩摘要
-- `docs/handover_manual.md` — 项目交接手册
+## 推荐阅读
 
-## 代码仓库
-`https://github.com/shibuchou/EulerPilot`（私密仓库）
+- `README.md`：GitHub 首页入口。
+- `docs/progress_status.md`：当前滚动进度。
+- `docs/final_evidence_index.md`：最终证据索引。
+- `docs/final_report_submission.md`：最终报告主稿。
+- `docs/demo_final_runbook.md`：现场演示流程。
 
-## 当前结论
-项目已完成系统实现、双后端实验、SP4 增强复核、三方向 OS Agent 扩展、跨 Skill 联动、Web Console、图表材料和中文主稿。剩余工作集中在答辩页视觉打磨与现场演示彩排。
+## 当前结论边界
 
+EulerPilot 不声称所有 workload 永远优于默认调度器。当前证据表明：Redis 等 latency-sensitive 混布场景收益更明确；Nginx 等 workload 存在场景边界。项目核心价值在于统一 Agent 框架能完成观测、决策、执行、审计、rollback 和证据收口。

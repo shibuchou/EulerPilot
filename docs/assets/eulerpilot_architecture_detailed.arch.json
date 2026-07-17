@@ -1,0 +1,522 @@
+{
+  "version": 1,
+  "title": "EulerPilot 分层项目架构图",
+  "type": "engineering-diagram",
+  "source": "generated",
+  "profile": "engineering-review",
+  "theme": "academic-color",
+  "layout": "hierarchical",
+  "counts": {
+    "nodes": 34,
+    "edges": 45,
+    "modules": 7
+  },
+  "nodes": [
+    {
+      "id": "workload_frontend",
+      "label": "Redis / Nginx / 延迟敏感服务",
+      "type": "service",
+      "module": "targets"
+    },
+    {
+      "id": "workload_background",
+      "label": "stress-ng / make -j / 后台干扰任务",
+      "type": "process",
+      "module": "targets"
+    },
+    {
+      "id": "workload_runtime",
+      "label": "Container / Pod / cgroup / 真实目标对象",
+      "type": "cloud",
+      "module": "targets"
+    },
+    {
+      "id": "kernel_sched",
+      "label": "sched tracepoints / wakeup / switch / migrate",
+      "type": "service",
+      "module": "kernel"
+    },
+    {
+      "id": "kernel_psi",
+      "label": "PSI / CPU / Memory / IO pressure",
+      "type": "document",
+      "module": "kernel"
+    },
+    {
+      "id": "kernel_cgroup",
+      "label": "cgroup v2 / cpu / memory / io controller",
+      "type": "database",
+      "module": "kernel"
+    },
+    {
+      "id": "kernel_scx",
+      "label": "sched_ext / scx / SP4 源码自编译复核",
+      "type": "service",
+      "module": "kernel"
+    },
+    {
+      "id": "kernel_hooks",
+      "label": "BPF hooks / LSM / TC / XDP / cgroup",
+      "type": "service",
+      "module": "kernel"
+    },
+    {
+      "id": "bpf_sched",
+      "label": "workload_observer.bpf.c / 调度行为采样",
+      "type": "process",
+      "module": "bpf"
+    },
+    {
+      "id": "bpf_maps",
+      "label": "task_stats / cgroup_stats / ringbuf / 结构化事件输出",
+      "type": "database",
+      "module": "bpf"
+    },
+    {
+      "id": "bpf_network",
+      "label": "network_*.bpf.c / connect4 / TC QoS / XDP",
+      "type": "process",
+      "module": "bpf"
+    },
+    {
+      "id": "bpf_security",
+      "label": "security_policy.bpf.c / LSM + syscall tracing",
+      "type": "process",
+      "module": "bpf"
+    },
+    {
+      "id": "agent_runtime",
+      "label": "Runtime 主循环 / 采样、生命周期、stop_all",
+      "type": "service",
+      "module": "agent"
+    },
+    {
+      "id": "agent_snapshot",
+      "label": "Snapshot Builder / 多源状态聚合",
+      "type": "process",
+      "module": "agent"
+    },
+    {
+      "id": "agent_analyzer",
+      "label": "Workload Analyzer / comm + eBPF 特征分类",
+      "type": "process",
+      "module": "agent"
+    },
+    {
+      "id": "agent_psigate",
+      "label": "PsiGate / 压力窗口门控",
+      "type": "decision",
+      "module": "agent"
+    },
+    {
+      "id": "agent_policy",
+      "label": "Policy Engine / 跨 Skill 决策",
+      "type": "process",
+      "module": "agent"
+    },
+    {
+      "id": "agent_target",
+      "label": "TargetResolver / PID / cgroup / container / Pod",
+      "type": "process",
+      "module": "agent"
+    },
+    {
+      "id": "agent_journal",
+      "label": "AuditBus + ActionJournal / 审计、事务、rollback",
+      "type": "database",
+      "module": "agent"
+    },
+    {
+      "id": "skill_cpu",
+      "label": "CPU Schedule Skill / cgroup/scx 后端选择",
+      "type": "service",
+      "module": "skills"
+    },
+    {
+      "id": "skill_resource",
+      "label": "Resource Control Skill / CPU + Memory + IO",
+      "type": "service",
+      "module": "skills"
+    },
+    {
+      "id": "skill_network",
+      "label": "Network Policy Skill / connect4 / QoS / XDP",
+      "type": "service",
+      "module": "skills"
+    },
+    {
+      "id": "skill_security",
+      "label": "Security Policy Skill / LSM enforce + anomaly",
+      "type": "service",
+      "module": "skills"
+    },
+    {
+      "id": "skill_benchmark",
+      "label": "Benchmark / Evidence Skill / 实验、图表、报告",
+      "type": "service",
+      "module": "skills"
+    },
+    {
+      "id": "skill_rollback",
+      "label": "Rollback Skill / cleanup 与现场恢复",
+      "type": "service",
+      "module": "skills"
+    },
+    {
+      "id": "exec_cgroup",
+      "label": "CgroupExecutor / cpu.max / memory.high / io.max",
+      "type": "process",
+      "module": "execute"
+    },
+    {
+      "id": "exec_scx",
+      "label": "ScxExecutor + scx_eulerpilot / class_map / DSQ",
+      "type": "process",
+      "module": "execute"
+    },
+    {
+      "id": "exec_network",
+      "label": "TC/XDP Executor / lab veth / Pod host veth",
+      "type": "process",
+      "module": "execute"
+    },
+    {
+      "id": "exec_security",
+      "label": "LSM Enforcer / file / ptrace / capability / cred",
+      "type": "process",
+      "module": "execute"
+    },
+    {
+      "id": "exec_console",
+      "label": "Web Console / 只读展示 + 白名单 Demo",
+      "type": "service",
+      "module": "execute"
+    },
+    {
+      "id": "evidence_benchmark",
+      "label": "Redis / Nginx / Mixed Benchmark / RUNS=5 + CPU 效率",
+      "type": "document",
+      "module": "evidence"
+    },
+    {
+      "id": "evidence_events",
+      "label": "reports/events/*.jsonl / 统一 transaction_id",
+      "type": "document",
+      "module": "evidence"
+    },
+    {
+      "id": "evidence_manifest",
+      "label": "final_evidence_manifest.json / strict evidence compact",
+      "type": "database",
+      "module": "evidence"
+    },
+    {
+      "id": "evidence_submission",
+      "label": "Final Report / Defense / Demo / 中文报告与答辩材料",
+      "type": "document",
+      "module": "evidence"
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-1",
+      "from": "workload_frontend",
+      "to": "kernel_sched",
+      "type": "primary"
+    },
+    {
+      "id": "edge-2",
+      "from": "workload_background",
+      "to": "kernel_sched",
+      "type": "primary"
+    },
+    {
+      "id": "edge-3",
+      "from": "workload_runtime",
+      "to": "kernel_cgroup",
+      "type": "primary"
+    },
+    {
+      "id": "edge-4",
+      "from": "workload_runtime",
+      "to": "kernel_hooks",
+      "type": "primary"
+    },
+    {
+      "id": "edge-5",
+      "from": "kernel_sched",
+      "to": "bpf_sched",
+      "type": "primary"
+    },
+    {
+      "id": "edge-6",
+      "from": "kernel_psi",
+      "to": "agent_snapshot",
+      "type": "data"
+    },
+    {
+      "id": "edge-7",
+      "from": "kernel_hooks",
+      "to": "bpf_network",
+      "type": "primary"
+    },
+    {
+      "id": "edge-8",
+      "from": "kernel_hooks",
+      "to": "bpf_security",
+      "type": "primary"
+    },
+    {
+      "id": "edge-9",
+      "from": "bpf_sched",
+      "to": "bpf_maps",
+      "type": "primary"
+    },
+    {
+      "id": "edge-10",
+      "from": "bpf_maps",
+      "to": "agent_runtime",
+      "type": "primary"
+    },
+    {
+      "id": "edge-11",
+      "from": "bpf_network",
+      "to": "agent_runtime",
+      "type": "data"
+    },
+    {
+      "id": "edge-12",
+      "from": "bpf_security",
+      "to": "agent_runtime",
+      "type": "data"
+    },
+    {
+      "id": "edge-13",
+      "from": "agent_runtime",
+      "to": "agent_snapshot",
+      "type": "primary"
+    },
+    {
+      "id": "edge-14",
+      "from": "agent_snapshot",
+      "to": "agent_analyzer",
+      "type": "primary"
+    },
+    {
+      "id": "edge-15",
+      "from": "agent_analyzer",
+      "to": "agent_psigate",
+      "type": "primary"
+    },
+    {
+      "id": "edge-16",
+      "from": "agent_psigate",
+      "to": "agent_policy",
+      "type": "primary"
+    },
+    {
+      "id": "edge-17",
+      "from": "agent_policy",
+      "to": "agent_target",
+      "type": "data"
+    },
+    {
+      "id": "edge-18",
+      "from": "agent_policy",
+      "to": "agent_journal",
+      "type": "data"
+    },
+    {
+      "id": "edge-19",
+      "from": "agent_policy",
+      "to": "skill_cpu",
+      "type": "primary"
+    },
+    {
+      "id": "edge-20",
+      "from": "agent_policy",
+      "to": "skill_resource",
+      "type": "primary"
+    },
+    {
+      "id": "edge-21",
+      "from": "agent_policy",
+      "to": "skill_network",
+      "type": "primary"
+    },
+    {
+      "id": "edge-22",
+      "from": "agent_policy",
+      "to": "skill_security",
+      "type": "primary"
+    },
+    {
+      "id": "edge-23",
+      "from": "agent_runtime",
+      "to": "skill_benchmark",
+      "type": "data"
+    },
+    {
+      "id": "edge-24",
+      "from": "agent_journal",
+      "to": "skill_rollback",
+      "type": "data"
+    },
+    {
+      "id": "edge-25",
+      "from": "skill_cpu",
+      "to": "exec_cgroup",
+      "type": "primary"
+    },
+    {
+      "id": "edge-26",
+      "from": "skill_cpu",
+      "to": "exec_scx",
+      "type": "primary"
+    },
+    {
+      "id": "edge-27",
+      "from": "skill_resource",
+      "to": "exec_cgroup",
+      "type": "primary"
+    },
+    {
+      "id": "edge-28",
+      "from": "skill_network",
+      "to": "exec_network",
+      "type": "primary"
+    },
+    {
+      "id": "edge-29",
+      "from": "skill_security",
+      "to": "exec_security",
+      "type": "primary"
+    },
+    {
+      "id": "edge-30",
+      "from": "skill_benchmark",
+      "to": "evidence_benchmark",
+      "type": "primary"
+    },
+    {
+      "id": "edge-31",
+      "from": "skill_rollback",
+      "to": "exec_cgroup",
+      "type": "data"
+    },
+    {
+      "id": "edge-32",
+      "from": "skill_rollback",
+      "to": "exec_network",
+      "type": "data"
+    },
+    {
+      "id": "edge-33",
+      "from": "skill_rollback",
+      "to": "exec_security",
+      "type": "data"
+    },
+    {
+      "id": "edge-34",
+      "from": "exec_cgroup",
+      "to": "kernel_cgroup",
+      "type": "data"
+    },
+    {
+      "id": "edge-35",
+      "from": "exec_scx",
+      "to": "kernel_scx",
+      "type": "data"
+    },
+    {
+      "id": "edge-36",
+      "from": "exec_network",
+      "to": "kernel_hooks",
+      "type": "data"
+    },
+    {
+      "id": "edge-37",
+      "from": "exec_security",
+      "to": "kernel_hooks",
+      "type": "data"
+    },
+    {
+      "id": "edge-38",
+      "from": "exec_cgroup",
+      "to": "evidence_events",
+      "type": "data"
+    },
+    {
+      "id": "edge-39",
+      "from": "exec_scx",
+      "to": "evidence_events",
+      "type": "data"
+    },
+    {
+      "id": "edge-40",
+      "from": "exec_network",
+      "to": "evidence_events",
+      "type": "data"
+    },
+    {
+      "id": "edge-41",
+      "from": "exec_security",
+      "to": "evidence_events",
+      "type": "data"
+    },
+    {
+      "id": "edge-42",
+      "from": "exec_console",
+      "to": "evidence_manifest",
+      "type": "data"
+    },
+    {
+      "id": "edge-43",
+      "from": "evidence_benchmark",
+      "to": "evidence_manifest",
+      "type": "primary"
+    },
+    {
+      "id": "edge-44",
+      "from": "evidence_events",
+      "to": "evidence_manifest",
+      "type": "primary"
+    },
+    {
+      "id": "edge-45",
+      "from": "evidence_manifest",
+      "to": "evidence_submission",
+      "type": "primary"
+    }
+  ],
+  "modules": [
+    {
+      "id": "targets",
+      "label": "业务负载与验证目标"
+    },
+    {
+      "id": "kernel",
+      "label": "openEuler 内核能力层"
+    },
+    {
+      "id": "bpf",
+      "label": "eBPF 观测与 Hook 层"
+    },
+    {
+      "id": "agent",
+      "label": "用户态 Agent 控制面"
+    },
+    {
+      "id": "skills",
+      "label": "Skills 能力层"
+    },
+    {
+      "id": "execute",
+      "label": "执行与系统效果层"
+    },
+    {
+      "id": "evidence",
+      "label": "证据与交付层"
+    }
+  ]
+}

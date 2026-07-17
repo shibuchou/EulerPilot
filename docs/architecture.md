@@ -1,170 +1,141 @@
 # 架构设计
 
-EulerPilot 采用“观测 - 决策 - 执行 - 反馈”的闭环架构。
+更新时间：`2026-07-08`
+
+EulerPilot 采用“观测 - 决策 - 执行 - 反馈”的闭环架构。当前实现已经从早期 CPU 资源控制扩展为统一 OS Agent 框架，覆盖 Resource Control、Network Policy、Security Policy、Policy Engine、Web Console 和最终证据链。
 
 ```text
-Workloads
-  -> eBPF Observer
+Workloads / Containers / Kubernetes Pods
+  -> eBPF Observer / PSI / LSM / TC / XDP / sched_ext maps
   -> Agent Runtime
-  -> Workload Analyzer
+  -> Workload Analyzer / TargetResolver / CapabilityDetector
   -> Policy Engine
-  -> Optional PolicyAdvisor
   -> Skill Manager
-  -> CgroupExecutor / ScxExecutor
-  -> Benchmark / Dashboard / Report
+  -> Resource Control / Network Policy / Security Policy / ScxExecutor
+  -> AuditBus / ActionJournal / rollback
+  -> Benchmark / Evidence / Web Console / Report
+```
+
+## 环境路径
+
+| 路径 | 作用 | 当前状态 |
+|------|------|----------|
+| SP3 + cgroup v2 | 官方稳定主路径，证明项目可运行、可测试、可回滚 | 121 历史验证和回归对照 |
+| OLK-6.6 + sched_ext | scx 提前验证线，打通 `ScxExecutor`、`class_map` 和 `scx_eulerpilot` | 122 对照验证 |
+| SP4 + 自编译 sched_ext 内核 | 当前核心验证和最终交付验证线 | 123 已完成适配、RUNS=5 复核、K8s/Web Console 验证 |
+
+统一口径：
+
+```text
+SP4 发行环境已完成适配验证；
+sched_ext/scx 基于 SP4 官方源码自编译启用 CONFIG_SCHED_CLASS_EXT 的内核完成复核；
+不声称 SP4 发行默认内核直接支持 sched_ext。
 ```
 
 ## 模块边界
 
-- `bpf/`：只负责低开销观测，不做复杂策略判断。
-- `agent/`：负责状态聚合、分类、策略选择和 Skill 编排。
-- `Optional PolicyAdvisor`：预留的可选扩展接口，用于后续解释、总结或离线调参建议，不进入当前热路径。
-- `sched/`：负责 `sched_ext/scx` 预留执行后端。
-- `agent/skills/`：封装具体执行能力，例如 CPU 调度、cgroup 控制、benchmark 和 rollback。
-- `bench/`：负责可复现实验和结果产出。
+- `bpf/`：低开销观测和 hook 程序，包括 workload observer、network connect4/TC/XDP、security LSM/syscall tracing。
+- `agent/`：用户态控制面，负责配置解析、状态聚合、workload 分类、target 解析、Policy Engine 和 Skill 生命周期。
+- `agent/skills/`：各 Skill 的独立实现与 README，承载 Resource/Network/Security/Policy Engine 的业务边界。
+- `sched/`：`sched_ext/scx` 调度器、BPF map、DSQ 分流和 `scx_eulerpilot` 构建脚本。
+- `configs/`：默认配置、Skill 配置、Policy Engine 联动配置和 final evidence manifest。
+- `bench/`：Redis/Nginx、压力梯度、静态调参与 Agent 动态调控等可复现实验入口。
+- `tests/`：单元测试、集成测试、benchmark 验证和真实 runtime/Pod 验证。
+- `web_console/`：旁路展示控制台，只读取现有证据和白名单脚本，不进入 Agent 热路径。
+- `reports/`、`results/`：最终报告、质量门禁、事件日志、图表和实验结果。
 
-## 执行后端优先级
+## Agent 控制面
 
-当前阶段按双后端设计推进：
+Agent Runtime 提供统一生命周期：
 
 ```text
-Policy Engine
-  -> CgroupExecutor   当前官方内核主路径
+load config
+-> detect capabilities
+-> start enabled skills
+-> collect observer / PSI / skill events
+-> build snapshots
+-> make decisions
+-> apply actions through allowed skills
+-> audit and journal
+-> stop_all rollback
+```
+
+核心公共组件：
+
+- `CapabilityDetector`：探测 BTF、BPF LSM、XDP、TC、cgroup v2、PSI、sched_ext、Kubernetes 等能力。
+- `TargetResolver`：把 cgroup、PID、container、container_id、Kubernetes Pod 解析为真实 cgroup 或 host veth。
+- `AuditBus`：统一输出 skill 事件、decision、applied、restored、failed 等审计记录。
+- `ActionJournal`：记录副作用动作，支撑失败回滚和 Agent stop rollback。
+- `SkillManager`：统一管理 Skill 启停、doctor、status、rollback。
+
+## 执行后端
+
+```text
+Policy Engine / Skill Manager
+  -> CgroupExecutor   稳定主路径
   -> ScxExecutor      sched_ext 环境确认后的增强路径
+  -> NetworkExecutor  TC / XDP / connect4
+  -> SecurityExecutor BPF LSM / syscall tracing
 ```
 
-其中：
+- `CgroupExecutor`：支持 `cpu.weight`、`cpu.max`、`cpuset.cpus`、`memory.high/low/max`、`io.weight/io.max`，并提供旧值读取、值校验、复读验证、审计和 rollback。
+- `ScxExecutor`：使用 `class_map`、`gate_state_map`、`stats` 等 pinned maps，把用户态分类结果传给 `scx_eulerpilot`，按 latency/batch/background 分流。
+- `NetworkExecutor`：限制在 lab netdev 或已解析的安全 Pod host veth 上，支持 connect4、TC/TBF、XDP drop 和 cleanup。
+- `SecurityExecutor`：支持 scoped LSM enforce、syscall tracing、anomaly 聚合和 credential 生命周期事件。
 
-- `CgroupExecutor`：基于 `cgroup v2` 的 `cpu.weight`、`cpu.max`、`cpuset` 等能力实现资源控制。
-  当前已稳定打通的是 `cpu.weight + cgroup.procs` 主路径。
-  `cpuset` 作为增强隔离能力继续保留，但不阻塞主实验。
-  当前 `cpu.weight` 的解释范围限定为同一父级 `/eulerpilot` 下的 sibling cgroup：
-  `latency`、`batch`、`background`。它表示同级 cgroup 之间的相对 CPU 分配权重，而不是绝对 CPU 限额。
-- `ScxExecutor`：保留 `class_map`、`latency_dsq`、`batch_dsq`、`background_dsq` 等 scx 执行设计，待后续实验内核或官方支持环境验证。
-  当前已完成第一版模块化执行器和 `class_map -> scx_eulerpilot` 链路，但仍处于小规模 smoke 与参数收敛阶段。
+## Skill 能力层
 
-## 第一阶段闭环
+| Skill | 主要能力 | 当前状态 |
+|-------|----------|----------|
+| `resource_control` | CPU/Memory/IO、target_ref、container/Pod cgroup、quota sweep、rollback | 已完成 |
+| `network_policy` | connect4 audit/enforce、TC QoS、XDP、real Pod host veth | 已完成 |
+| `security_policy` | LSM、syscall tracing、anomaly、credential lifecycle、scope 过滤 | 已完成 |
+| `policy_engine` | 跨 Skill 联动、统一 transaction、多动作失败回滚 | 已完成 |
+| `web_console` | Evidence-first 展示、白名单 Demo、SSE job 日志、单任务锁 | 已完成 |
 
-第一阶段优先完成 Redis + stress-ng 混合负载：
+## Policy Engine 联动
+
+当前已完成三类核心链路：
 
 ```text
-sched_wakeup/sched_switch 指标
-  -> latency_score / interference_score
-  -> profile 选择
-  -> cgroup v2 控制后台干扰
-  -> Redis P99/P999 对比
+security_policy burst_execve
+  -> policy_engine
+  -> resource_control cgroup 降级
+  -> rollback
+
+security_policy burst_connect
+  -> policy_engine
+  -> resource_control demo_cgroup
+  -> network_qos lab_netdev
+  -> rollback
+
+security_policy burst_connect
+  -> policy_engine target_ref=lab_pod(type=k8s_pod)
+  -> resource_control Pod cgroup
+  -> network_qos Pod host veth
+  -> rollback
 ```
 
-当前开发节奏上，`cgroup v2` 不再只是兜底，而是第一阶段必须跑通的主执行路径。
+这些链路都通过 `transaction_id` 串起 security、policy_engine、resource_control、network_qos 和 ActionJournal。
 
-## 当前证据采集层次
+## 证据和交付层
 
-EulerPilot 当前与后续规划中的证据采集分三层：
+当前最终证据由以下入口收口：
 
-### 第一层：基础运行时证据
+- `configs/final_evidence_manifest.json`
+- `scripts/collect_final_evidence.py`
+- `reports/final_evidence_compact.md`
+- `reports/final_evidence_compact.json`
+- `docs/final_evidence_index.md`
+- `docs/final_report_submission.md`
+- `docs/demo_final_runbook.md`
 
-- eBPF 调度观测
-  - `sched_wakeup`
-  - `sched_switch`
-  - `sched_migrate_task`
-- task 级指标
-  - `wakeup_count`
-  - `total_wait_ns`
-  - `runtime_ns`
-  - `ctx_switch_count`
-  - `migrate_count`
+当前 strict evidence 覆盖 `37` 条核心证据，必需缺失 `0`、警告 `0`。最终质量门禁在 SP4 主验证线上通过 `22/22 P0`、`100` 轮 Agent smoke 和 `5` 轮 doctor。
 
-### 第二层：压力证据
+## 设计边界
 
-- `/proc/pressure/cpu`
-- `/proc/pressure/memory`
-- `/proc/pressure/io`
-
-当前 CPU PSI 已经进入实验报告，并且 `psi_reader` 已接入 Agent 主循环。
-当前阶段使用用户态 PSI reader；后续第二阶段再落地更低开销、更底层的 BPF 版 `psi_gate`。
-
-### 第三层：执行证据
-
-- profile 选择结果
-- `cpu.weight` 变化
-- `cgroup.procs` 写入
-- 目标进程进入 `latency/background/batch` 组的记录
-
-## 当前策略分层
-
-当前推荐的控制逻辑不是简单的全 AND，也不是单纯 OR，而是分层判断：
-
-```text
-第一层：
-  latency_workload_exists
-  and background_workload_exists
-
-第二层：
-  cpu_psi_high
-  or latency_workload_wait_high
-  or background_runtime_high
-
-第三层：
-  cpu_psi_high
-  and latency_workload_wait_high
-  -> mixed_profile
-```
-
-其中：
-
-- `latency_profile` 对应轻度控制，当前默认 `background_weight=50`
-- `mixed_profile` 对应强控制，当前候选 `background_weight=5`
-- `background_weight=5` 只作为强控制候选值，不视为唯一最终值
-
-## 框架优势
-
-相对单一规则或单一指标，当前框架的优势在于：
-
-- 不把 PSI 当成唯一结论，而是把它作为压力窗口信号
-- 不把 eBPF 单点指标当成唯一触发，而是与 workload 角色和执行结果结合
-- 支持轻度控制与强控制分级，而不是只有“控”或“不控”
-- 可直接把证据链输出到 benchmark 结果和中文报告中
-
-## 当前已完成的最小闭环
-
-```text
-observer metrics
-  -> first-stage classification
-  -> cgroup group selection
-  -> set profile cpu.weight
-  -> write cgroup.procs
-```
-
-## 当前已知限制
-
-- `sched_ext/scx` 在当前官方 SP3 内核上仍不能作为正式主执行后端直接使用。
-- `cpuset` 虽然已经进入执行设计，但当前运行路径仍以 `cpu.weight + cgroup.procs` 为稳定方案。
-- 目标 workload 的识别规则在工程上已基本可用，但最终报告中仍需如实说明其仍依赖规则收敛与场景解释。
-
-## 后续演进路线
-
-当前架构按“两条线并行、主线优先”的方式推进：
-
-### 当前主线
-
-- 继续在 openEuler 24.03 LTS SP3 官方环境上打磨 `eBPF + Agent + cgroup v2 + benchmark + 中文报告`
-- 优先把主实验结果、证据链和比赛材料做稳
-
-### 后续增强线
-
-- 先在独立 openEuler 环境上使用 `OLK-6.6` 分支验证 `sched_ext/scx`
-- 待 `openEuler 24.03-LTS-SP4` 发布后，再迁移到 SP4 做正式 `sched_ext` 验证
-- 后续继续把 `ScxExecutor` 从 smoke 阶段推进到正式对照实验阶段
-
-截至 `2026-06-10`，独立 `OLK-6.6` 验证线已经完成环境部署与启动核验：
-
-- 新内核版本：`6.6.0-olk66-scx`
-- `CONFIG_SCHED_CLASS_EXT=y`
-- `/sys/kernel/sched_ext` 存在
-
-因此当前 `scx` 的主要阻塞点已经从“内核能力不存在”转为“最终结果解释、图表材料和正式报告收口”。
-
-这样做的目的是：
-
-- 当前不让 `scx` 阻塞主交付
-- 但后续仍能在合适内核环境中完成调度增强验证
+- 不把 SP4 发行默认内核描述为直接支持 `sched_ext`。
+- 不把 Redis/Nginx 所有场景都写成无条件性能提升。
+- 不让 Web Console 产生新的实验结论；它只展示现有 CLI、脚本、事件日志和 evidence 文件。
+- Kubernetes 验证必须旁路、隔离、可清理，不修改生产 namespace 或既有 workload。
+- `third_party/reference/` 只作为参考快照，不作为 EulerPilot 生产代码直接复制。

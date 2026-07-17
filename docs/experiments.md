@@ -1,5 +1,7 @@
 # 实验设计
 
+> 当前最终实验口径已更新到 `2026-07-08`：SP4 主验证线完成 Redis/Nginx `RUNS=5` 复核、Redis pressure gradient 和 Redis manual static vs agent dynamic 对比。本文中早期 `RUNS=1/3` 内容保留为阶段实验记录；最终提交与答辩请以 `docs/final_evidence_index.md`、`docs/final_report_submission.md` 和 `reports/final_evidence_compact.md` 为准。
+
 ## Redis 抗干扰实验
 
 工作负载：

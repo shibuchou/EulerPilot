@@ -1,0 +1,399 @@
+meta:
+  profile: engineering-review
+  theme: academic-color
+  source: generated
+  layout: hierarchical
+  routing: orthogonal
+  title: EulerPilot 分层项目架构图
+  description: 面向 openEuler 的自适应资源管控 Agent，覆盖观测、决策、Skills、执行、证据与演示。
+  legend: 主链路从业务负载进入内核观测，再到用户态 Agent 决策，最后由 Resource/Network/Security/scx 后端执行并输出证据；虚线表示证据、审计和回滚链路。
+modules:
+  - id: targets
+    label: 业务负载与验证目标
+  - id: kernel
+    label: openEuler 内核能力层
+  - id: bpf
+    label: eBPF 观测与 Hook 层
+  - id: agent
+    label: 用户态 Agent 控制面
+  - id: skills
+    label: Skills 能力层
+  - id: execute
+    label: 执行与系统效果层
+  - id: evidence
+    label: 证据与交付层
+nodes:
+  - id: workload_frontend
+    label: Redis / Nginx / 延迟敏感服务
+    type: service
+    module: targets
+    position:
+      x: 40
+      'y': 72
+  - id: workload_background
+    label: stress-ng / make -j / 后台干扰任务
+    type: process
+    module: targets
+    position:
+      x: 40
+      'y': 152
+  - id: workload_runtime
+    label: Container / Pod / cgroup / 真实目标对象
+    type: cloud
+    module: targets
+    position:
+      x: 40
+      'y': 232
+  - id: kernel_sched
+    label: sched tracepoints / wakeup / switch / migrate
+    type: service
+    module: kernel
+    position:
+      x: 256
+      'y': 72
+  - id: kernel_psi
+    label: PSI / CPU / Memory / IO pressure
+    type: document
+    module: kernel
+    position:
+      x: 256
+      'y': 152
+  - id: kernel_cgroup
+    label: cgroup v2 / cpu / memory / io controller
+    type: database
+    module: kernel
+    position:
+      x: 256
+      'y': 232
+  - id: kernel_scx
+    label: sched_ext / scx / SP4 源码自编译复核
+    type: service
+    module: kernel
+    position:
+      x: 256
+      'y': 312
+  - id: kernel_hooks
+    label: BPF hooks / LSM / TC / XDP / cgroup
+    type: service
+    module: kernel
+    position:
+      x: 256
+      'y': 392
+  - id: bpf_sched
+    label: workload_observer.bpf.c / 调度行为采样
+    type: process
+    module: bpf
+    position:
+      x: 480
+      'y': 72
+  - id: bpf_maps
+    label: task_stats / cgroup_stats / ringbuf / 结构化事件输出
+    type: database
+    module: bpf
+    position:
+      x: 480
+      'y': 152
+  - id: bpf_network
+    label: network_*.bpf.c / connect4 / TC QoS / XDP
+    type: process
+    module: bpf
+    position:
+      x: 480
+      'y': 232
+  - id: bpf_security
+    label: security_policy.bpf.c / LSM + syscall tracing
+    type: process
+    module: bpf
+    position:
+      x: 480
+      'y': 312
+  - id: agent_runtime
+    label: Runtime 主循环 / 采样、生命周期、stop_all
+    type: service
+    module: agent
+    position:
+      x: 720
+      'y': 72
+  - id: agent_snapshot
+    label: Snapshot Builder / 多源状态聚合
+    type: process
+    module: agent
+    position:
+      x: 720
+      'y': 152
+  - id: agent_analyzer
+    label: Workload Analyzer / comm + eBPF 特征分类
+    type: process
+    module: agent
+    position:
+      x: 720
+      'y': 232
+  - id: agent_psigate
+    label: PsiGate / 压力窗口门控
+    type: decision
+    module: agent
+    position:
+      x: 720
+      'y': 312
+  - id: agent_policy
+    label: Policy Engine / 跨 Skill 决策
+    type: process
+    module: agent
+    position:
+      x: 720
+      'y': 408
+  - id: agent_target
+    label: TargetResolver / PID / cgroup / container / Pod
+    type: process
+    module: agent
+    position:
+      x: 720
+      'y': 488
+  - id: agent_journal
+    label: AuditBus + ActionJournal / 审计、事务、rollback
+    type: database
+    module: agent
+    position:
+      x: 720
+      'y': 568
+  - id: skill_cpu
+    label: CPU Schedule Skill / cgroup/scx 后端选择
+    type: service
+    module: skills
+    position:
+      x: 984
+      'y': 72
+  - id: skill_resource
+    label: Resource Control Skill / CPU + Memory + IO
+    type: service
+    module: skills
+    position:
+      x: 984
+      'y': 152
+  - id: skill_network
+    label: Network Policy Skill / connect4 / QoS / XDP
+    type: service
+    module: skills
+    position:
+      x: 984
+      'y': 232
+  - id: skill_security
+    label: Security Policy Skill / LSM enforce + anomaly
+    type: service
+    module: skills
+    position:
+      x: 984
+      'y': 312
+  - id: skill_benchmark
+    label: Benchmark / Evidence Skill / 实验、图表、报告
+    type: service
+    module: skills
+    position:
+      x: 984
+      'y': 392
+  - id: skill_rollback
+    label: Rollback Skill / cleanup 与现场恢复
+    type: service
+    module: skills
+    position:
+      x: 984
+      'y': 472
+  - id: exec_cgroup
+    label: CgroupExecutor / cpu.max / memory.high / io.max
+    type: process
+    module: execute
+    position:
+      x: 1240
+      'y': 72
+  - id: exec_scx
+    label: ScxExecutor + scx_eulerpilot / class_map / DSQ
+    type: process
+    module: execute
+    position:
+      x: 1240
+      'y': 152
+  - id: exec_network
+    label: TC/XDP Executor / lab veth / Pod host veth
+    type: process
+    module: execute
+    position:
+      x: 1240
+      'y': 232
+  - id: exec_security
+    label: LSM Enforcer / file / ptrace / capability / cred
+    type: process
+    module: execute
+    position:
+      x: 1240
+      'y': 312
+  - id: exec_console
+    label: Web Console / 只读展示 + 白名单 Demo
+    type: service
+    module: execute
+    position:
+      x: 1240
+      'y': 392
+  - id: evidence_benchmark
+    label: Redis / Nginx / Mixed Benchmark / RUNS=5 + CPU 效率
+    type: document
+    module: evidence
+    position:
+      x: 1504
+      'y': 72
+  - id: evidence_events
+    label: reports/events/*.jsonl / 统一 transaction_id
+    type: document
+    module: evidence
+    position:
+      x: 1504
+      'y': 152
+  - id: evidence_manifest
+    label: final_evidence_manifest.json / strict evidence compact
+    type: database
+    module: evidence
+    position:
+      x: 1504
+      'y': 232
+  - id: evidence_submission
+    label: Final Report / Defense / Demo / 中文报告与答辩材料
+    type: document
+    module: evidence
+    position:
+      x: 1504
+      'y': 312
+edges:
+  - from: workload_frontend
+    to: kernel_sched
+    type: primary
+  - from: workload_background
+    to: kernel_sched
+    type: primary
+  - from: workload_runtime
+    to: kernel_cgroup
+    type: primary
+  - from: workload_runtime
+    to: kernel_hooks
+    type: primary
+  - from: kernel_sched
+    to: bpf_sched
+    type: primary
+  - from: kernel_psi
+    to: agent_snapshot
+    type: data
+  - from: kernel_hooks
+    to: bpf_network
+    type: primary
+  - from: kernel_hooks
+    to: bpf_security
+    type: primary
+  - from: bpf_sched
+    to: bpf_maps
+    type: primary
+  - from: bpf_maps
+    to: agent_runtime
+    type: primary
+  - from: bpf_network
+    to: agent_runtime
+    type: data
+  - from: bpf_security
+    to: agent_runtime
+    type: data
+  - from: agent_runtime
+    to: agent_snapshot
+    type: primary
+  - from: agent_snapshot
+    to: agent_analyzer
+    type: primary
+  - from: agent_analyzer
+    to: agent_psigate
+    type: primary
+  - from: agent_psigate
+    to: agent_policy
+    type: primary
+  - from: agent_policy
+    to: agent_target
+    type: data
+  - from: agent_policy
+    to: agent_journal
+    type: data
+  - from: agent_policy
+    to: skill_cpu
+    type: primary
+  - from: agent_policy
+    to: skill_resource
+    type: primary
+  - from: agent_policy
+    to: skill_network
+    type: primary
+  - from: agent_policy
+    to: skill_security
+    type: primary
+  - from: agent_runtime
+    to: skill_benchmark
+    type: data
+  - from: agent_journal
+    to: skill_rollback
+    type: data
+  - from: skill_cpu
+    to: exec_cgroup
+    type: primary
+  - from: skill_cpu
+    to: exec_scx
+    type: primary
+  - from: skill_resource
+    to: exec_cgroup
+    type: primary
+  - from: skill_network
+    to: exec_network
+    type: primary
+  - from: skill_security
+    to: exec_security
+    type: primary
+  - from: skill_benchmark
+    to: evidence_benchmark
+    type: primary
+  - from: skill_rollback
+    to: exec_cgroup
+    type: data
+  - from: skill_rollback
+    to: exec_network
+    type: data
+  - from: skill_rollback
+    to: exec_security
+    type: data
+  - from: exec_cgroup
+    to: kernel_cgroup
+    type: data
+  - from: exec_scx
+    to: kernel_scx
+    type: data
+  - from: exec_network
+    to: kernel_hooks
+    type: data
+  - from: exec_security
+    to: kernel_hooks
+    type: data
+  - from: exec_cgroup
+    to: evidence_events
+    type: data
+  - from: exec_scx
+    to: evidence_events
+    type: data
+  - from: exec_network
+    to: evidence_events
+    type: data
+  - from: exec_security
+    to: evidence_events
+    type: data
+  - from: exec_console
+    to: evidence_manifest
+    type: data
+  - from: evidence_benchmark
+    to: evidence_manifest
+    type: primary
+  - from: evidence_events
+    to: evidence_manifest
+    type: primary
+  - from: evidence_manifest
+    to: evidence_submission
+    type: primary

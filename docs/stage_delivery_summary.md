@@ -1,6 +1,8 @@
 # EulerPilot 阶段交付汇总
 
-更新时间：`2026-06-12`
+更新时间：`2026-07-08`
+
+> 本文保留阶段交付脉络。当前最终交付验证线已升级为 `192.168.1.123:/root/EulerPilot` 的 SP4 主验证仓库；121 作为 SP3 历史验证和回归对照，122 作为 SP3/OLK 对照验证。最终状态以 `docs/progress_status.md`、`docs/final_evidence_index.md` 和 `reports/final_evidence_compact.md` 为准。
 
 ## 1. 当前项目做到哪了
 
@@ -27,7 +29,23 @@
 
 ## 2. 当前实际使用的环境
 
-### 2.1 官方主交付环境
+### 2.1 SP4 核心验证环境
+
+```text
+主机：192.168.1.123
+系统：openEuler 24.03 LTS SP4
+目录：/root/EulerPilot
+定位：核心验证和最终交付验证仓库
+```
+
+这台机器当前承担：
+
+- SP4 发行环境适配验证
+- SP4 官方源码自编译 sched_ext 内核复核
+- Redis/Nginx RUNS=5 复核
+- Web Console、Kubernetes 旁路验证和最终质量门禁
+
+### 2.2 SP3 历史验证环境
 
 ```text
 主机：192.168.1.121
@@ -40,9 +58,9 @@
 
 - `eBPF + Agent + cgroup v2` 主闭环
 - Redis / Nginx 主实验
-- 中文文档与报告主线
+- 早期中文文档与报告主线
 
-### 2.2 sched_ext 提前验证环境
+### 2.3 sched_ext 提前验证环境
 
 ```text
 主机：192.168.1.122

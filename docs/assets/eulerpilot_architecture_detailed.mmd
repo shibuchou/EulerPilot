@@ -1,0 +1,136 @@
+---
+config:
+  theme: base
+  layout: dagre
+  themeVariables:
+    fontFamily: "Microsoft YaHei, Segoe UI, Arial"
+    primaryColor: "#E8F1FF"
+    primaryBorderColor: "#2F6FED"
+    primaryTextColor: "#172033"
+    lineColor: "#4B5563"
+    clusterBkg: "#F8FAFC"
+    clusterBorder: "#CBD5E1"
+---
+flowchart TB
+  %% EulerPilot detailed architecture overview.
+
+  subgraph L1["1. 业务负载与验证目标"]
+    direction LR
+    W1["Redis / Nginx<br/>延迟敏感服务"]
+    W2["stress-ng / make -j<br/>后台干扰任务"]
+    W3["Container / Pod / cgroup<br/>真实目标对象"]
+  end
+
+  subgraph L2["2. openEuler 内核能力层"]
+    direction LR
+    K1["sched tracepoints<br/>wakeup / switch / migrate"]
+    K2["PSI<br/>CPU / Memory / IO pressure"]
+    K3["cgroup v2<br/>cpu / memory / io controller"]
+    K4["sched_ext / scx<br/>SP4 源码自编译复核路径"]
+    K5["BPF hooks<br/>LSM / TC / XDP / cgroup"]
+    K6["BTF / CO-RE<br/>跨内核结构适配"]
+  end
+
+  subgraph L3["3. eBPF 观测与 Hook 层"]
+    direction LR
+    B1["workload_observer.bpf.c<br/>调度行为采样"]
+    B2["task_stats / cgroup_stats / ringbuf<br/>结构化事件输出"]
+    B3["network_*.bpf.c<br/>connect4 / TC QoS / XDP"]
+    B4["security_policy.bpf.c<br/>LSM + syscall tracing"]
+  end
+
+  subgraph L4["4. 用户态 Agent 控制面"]
+    direction LR
+    A1["Runtime 主循环<br/>周期采样与生命周期管理"]
+    A2["Snapshot Builder<br/>多源状态聚合"]
+    A3["Workload Analyzer<br/>comm + eBPF 特征分类"]
+    A4["PsiGate<br/>压力窗口门控"]
+    A5["Policy Engine<br/>跨 Skill 决策"]
+    A6["TargetResolver<br/>PID / cgroup / container / Pod"]
+    A7["AuditBus + ActionJournal<br/>审计、事务、rollback"]
+  end
+
+  subgraph L5["5. Skills 能力层"]
+    direction LR
+    S1["CPU Schedule Skill<br/>cgroup/scx 后端选择"]
+    S2["Resource Control Skill<br/>CPU + Memory + IO"]
+    S3["Network Policy Skill<br/>connect4 / QoS / XDP"]
+    S4["Security Policy Skill<br/>LSM enforce + anomaly"]
+    S5["Benchmark / Evidence Skill<br/>实验、图表、报告"]
+    S6["Rollback Skill<br/>stop/cleanup 恢复现场"]
+  end
+
+  subgraph L6["6. 执行与系统效果层"]
+    direction LR
+    E1["CgroupExecutor<br/>cpu.max / cpu.weight / memory.high / io.max"]
+    E2["ScxExecutor + scx_eulerpilot<br/>class_map / DSQ / 调度策略"]
+    E3["TC/XDP Executor<br/>lab veth / Pod host veth 限速与过滤"]
+    E4["LSM Enforcer<br/>文件、ptrace、capability、cred"]
+    E5["Status / Web Console<br/>只读展示 + 白名单 Demo"]
+  end
+
+  subgraph L7["7. 证据与交付层"]
+    direction LR
+    R1["Redis / Nginx / Mixed Benchmark<br/>RUNS=5 + CPU 效率"]
+    R2["reports/events/*.jsonl<br/>统一 transaction_id"]
+    R3["final_evidence_manifest.json<br/>strict evidence compact"]
+    R4["Final Report / Defense / Demo<br/>中文报告与答辩材料"]
+  end
+
+  W1 --> K1
+  W2 --> K1
+  W3 --> K3
+  W3 --> K5
+  K1 --> B1
+  K2 --> A2
+  K3 --> E1
+  K4 --> E2
+  K5 --> B3
+  K5 --> B4
+  K6 --> B1
+  B1 --> B2
+  B2 --> A1
+  B3 --> A1
+  B4 --> A1
+  A1 --> A2 --> A3 --> A4 --> A5
+  A5 --> A6
+  A5 --> A7
+  A5 --> S1
+  A5 --> S2
+  A5 --> S3
+  A5 --> S4
+  A1 --> S5
+  A7 --> S6
+  S1 --> E1
+  S1 --> E2
+  S2 --> E1
+  S3 --> E3
+  S4 --> E4
+  S5 --> R1
+  S6 --> E1
+  S6 --> E3
+  S6 --> E4
+  E1 --> R2
+  E2 --> R2
+  E3 --> R2
+  E4 --> R2
+  E5 --> R3
+  R1 --> R3 --> R4
+  R2 --> R3
+  A1 --> E5
+
+  classDef workload fill:#ECFEFF,stroke:#0891B2,color:#0F172A,stroke-width:1.5px
+  classDef kernel fill:#EEF2FF,stroke:#4F46E5,color:#111827,stroke-width:1.5px
+  classDef bpf fill:#F0FDF4,stroke:#16A34A,color:#052E16,stroke-width:1.5px
+  classDef agent fill:#FFF7ED,stroke:#EA580C,color:#431407,stroke-width:1.5px
+  classDef skill fill:#FDF2F8,stroke:#DB2777,color:#500724,stroke-width:1.5px
+  classDef exec fill:#F8FAFC,stroke:#475569,color:#0F172A,stroke-width:1.5px
+  classDef evidence fill:#FEFCE8,stroke:#CA8A04,color:#422006,stroke-width:1.5px
+
+  class W1,W2,W3 workload
+  class K1,K2,K3,K4,K5,K6 kernel
+  class B1,B2,B3,B4 bpf
+  class A1,A2,A3,A4,A5,A6,A7 agent
+  class S1,S2,S3,S4,S5,S6 skill
+  class E1,E2,E3,E4,E5 exec
+  class R1,R2,R3,R4 evidence

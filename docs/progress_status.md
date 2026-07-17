@@ -12,7 +12,7 @@
 - SP4 最终质量门禁已刷新：`scripts/final_quality_gate.sh` 通过 22/22 P0、100 轮 Agent smoke 和 5 轮 doctor，日志为 `results/k8s/sp4-validation-20260708-023552/final_quality_gate.log`。
 - 本次结果目录：`results/k8s/sp4-validation-20260708-023552/`；验证方案：`docs/sp4_k8s_validation_plan.md`；报告：`results/k8s/sp4-validation-20260708-023552/report.md`。
 
-## v3.2 最新进展（2026-07-06）
+## v3.2 历史进展（2026-07-06）
 
 - v3.2 已把真实 container runtime、Kubernetes Pod cgroup target、Pod host veth QoS、Pod host veth XDP 和真实 Pod Policy Engine 跨 Skill 联动从 blocked/待增强推进到 121/122 双机 pass。
 - 121/122 均安装 `docker-engine`、`podman`、`k3s` 与 `kubernetes-client`。Docker 18.09 daemon 在当前 cgroup v2 环境下因 `Devices cgroup isn't mounted` 不作为主验证 runtime；Podman 4.9.4 与 k3s v1.24.2 作为当前真实 target 验证入口。
@@ -30,7 +30,7 @@
 - Credential 生命周期 anomaly 已在 121/122 通过并完成回归：121 `results/security_policy/credential-anomaly-20260703-121-v4`，122 `results/security_policy/credential-anomaly-20260703-122-v4`；验证 scoped `setuid(65534)` 触发 `lsm_cred_prepare/lsm_task_fix_setuid` 命中并聚合为 `credential_churn`，anomaly 事件携带 `credential_stage` 与 `uid`，hit 事件保留 `cred_gfp` 等细节。
 - Credential deep hook 评估已在 121/122 通过：121 `results/security_policy/credential-deep-hooks-20260703-121-v2`，122 `results/security_policy/credential-deep-hooks-20260703-122-v2`；验证 `lsm_cred_alloc_blank` 与 `lsm_cred_transfer` 可被 scoped 配置并随 Agent attach，`hook_type` 映射避免同 cgroup 多个 scope-only credential 规则串错。普通用户态 workload 未稳定触发这两个 hook，结果明确记录 `deep_hook_runtime_note=no-userland-hit-observed`，不把 hit=0 写成业务命中。
 - isolated-veth XDP 更多报文特征已在 121/122 通过：121 `results/network_policy/xdp-20260703-121-fields-v1`，122 `results/network_policy/xdp-20260703-122-fields-v1`；验证 `drop_icmp_lab`、`drop_tcp_probe_lab`、`drop_udp_probe_lab` 与 `drop_udp_tuple_lab` 四条规则，并在 rollback 事件中输出 per-rule `protocol/src_ip/dst_ip/src_port/dst_port/drop_count/byte_count`。两端当前统计一致：ICMP 1、TCP 4、UDP 8、UDP tuple 8，总 drop 21。
-- 121 最新质量门禁：`reports/final_quality_gate_20260706-quality-121.log`，22/22 P0、100 轮 Agent smoke、5 轮 doctor 均通过；新增 C++ unit tests。
+- 121 历史质量门禁：`reports/final_quality_gate_20260706-quality-121.log`，22/22 P0、100 轮 Agent smoke、5 轮 doctor 均通过；新增 C++ unit tests。当前最终入口以 SP4 `results/k8s/sp4-validation-20260708-023552/final_quality_gate.log` 为准。
 - 最终答辩证据压缩入口已完成：`configs/final_evidence_manifest.json`、`scripts/collect_final_evidence.py`、`reports/final_evidence_compact.md`、`reports/final_evidence_compact.json`。当前 `python3 scripts/collect_final_evidence.py --strict` 通过，覆盖 37 个核心证据条目，必需证据缺失为 0、清单警告为 0。
 - Web Console v1 已作为旁路展示控制台落地：`web_console/` 独立存在，不修改 `agent/`、`bpf/`、`sched/` 主干；支持 Evidence-first 展示、白名单 Demo、SSE 日志、`demo/lab/cleanup` 单任务锁和 121 loopback 部署。设计文档：`docs/web_console_design.md`，安全说明：`web_console/docs/security.md`。
 - SP4 平台完整复核已完成：123 已启动基于 SP4 官方源码自编译启用 sched_ext 的 `6.6.0-159.4.3.154.oe2403sp4.x86_64-eulerpilot-scx`，`CONFIG_SCHED_CLASS_EXT=y`、`/sys/kernel/sched_ext` 可用；`scripts/check_sp4_env.sh`、`make agent`、`--validate-config`、`--doctor-skills`、`scripts/final_quality_gate.sh`、Redis/Nginx `RUNS=5` 对照均通过。
@@ -61,9 +61,9 @@
 - SP4 平台复核已完成：123 机器 `/root/EulerPilot` 已启动自编译 `eulerpilot-scx` 内核，`CONFIG_SCHED_CLASS_EXT=y`、`/sys/kernel/sched_ext` 可用；Web Console、质量门禁、Redis/Nginx `RUNS=5` 对照、Redis 压力梯度和静态/动态对比均通过。
 - Kubernetes/真实 runtime/真实 Pod veth 不作为 v3.1 完成条件，但保留为 v3.2 第一优先级。
 
-更新时间：`2026-07-05`
+更新时间：`2026-07-08`
 
-当前执行口径：v3.1 已按 `docs/final_evidence_index.md`、`docs/policy_engine_skill.md` 和本看板收口；`docs/next_phase_plan_v2_1.md` 作为历史阶段计划保留。
+当前执行口径：SP4/123 是核心验证和最终交付验证线；v3.1/v3.2 计划文档作为历史阶段归档。最终状态以 `docs/final_evidence_index.md`、`docs/submission_checklist.md`、`reports/final_evidence_compact.md` 和本看板为准。
 
 ## 当前阶段
 
@@ -242,7 +242,7 @@
   - Agent 退出后无 XDP attachment 残留，连通性恢复。
 - 121 最新 XDP ICMP/TCP/UDP + UDP tuple 集成测试证据目录：`results/network_policy/xdp-20260703-121-fields-v1/`。
 - 122 最新 XDP ICMP/TCP/UDP + UDP tuple 集成测试证据目录：`results/network_policy/xdp-20260703-122-fields-v1/`。
-- 121 最新完整质量门禁已通过：`reports/final_quality_gate_20260629_policy_engine.log`，21/21 P0、100 轮 Agent smoke 和 5 轮 doctor 均通过。
+- 历史质量门禁 `reports/final_quality_gate_20260629_policy_engine.log` 曾通过 21/21 P0；当前最终质量门禁已升级为 SP4 `results/k8s/sp4-validation-20260708-023552/final_quality_gate.log`，22/22 P0、100 轮 Agent smoke 和 5 轮 doctor 均通过。
 
 ### TargetResolver / container + Pod veth 预备证据
 
