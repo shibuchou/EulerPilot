@@ -1,6 +1,6 @@
 # 架构设计
 
-更新时间：`2026-07-08`
+更新时间：`2026-07-17`
 
 EulerPilot 采用“观测 - 决策 - 执行 - 反馈”的闭环架构。当前实现已经从早期 CPU 资源控制扩展为统一 OS Agent 框架，覆盖 Resource Control、Network Policy、Security Policy、Policy Engine、Web Console 和最终证据链。
 

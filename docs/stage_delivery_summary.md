@@ -1,6 +1,6 @@
 # EulerPilot 阶段交付汇总
 
-更新时间：`2026-07-08`
+更新时间：`2026-07-17`
 
 > 本文保留阶段交付脉络。当前最终交付验证线已升级为 `192.168.1.123:/root/EulerPilot` 的 SP4 主验证仓库；121 作为 SP3 历史验证和回归对照，122 作为 SP3/OLK 对照验证。最终状态以 `docs/progress_status.md`、`docs/final_evidence_index.md` 和 `reports/final_evidence_compact.md` 为准。
 

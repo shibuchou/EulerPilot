@@ -1,6 +1,6 @@
 # EulerPilot
 
-> 面向 openEuler 的自适应资源管控 Agent。状态基线：`2026-07-08`；本页于 `2026-07-17` 整理为 GitHub 首页入口。
+> 面向 openEuler 的自适应资源管控 Agent。文档更新时间：`2026-07-17`；最新验证批次：`2026-07-08`。
 
 EulerPilot 不是单一调度器 demo，而是一套围绕“观测 -> 决策 -> 执行 -> 反馈 -> 证据”的系统级 Agent 框架。项目使用 eBPF/PSI 感知 workload 和系统压力，在用户态完成分类、策略决策和 Skill 编排，并通过 `cgroup v2`、`sched_ext/scx`、TC/XDP、BPF LSM 等系统控制器完成可审计、可回滚的资源管控。
 
