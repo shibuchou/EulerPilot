@@ -1,6 +1,6 @@
 # 架构设计
 
-更新时间：`2026-07-17`
+更新时间：`2026-07-20`
 
 EulerPilot 采用“观测 - 决策 - 执行 - 反馈”的闭环架构。当前实现已经从早期 CPU 资源控制扩展为统一 OS Agent 框架，覆盖 Resource Control、Network Policy、Security Policy、Policy Engine、Web Console 和最终证据链。
 
@@ -130,7 +130,7 @@ security_policy burst_connect
 - `docs/final_report_submission.md`
 - `docs/demo_final_runbook.md`
 
-当前 strict evidence 覆盖 `37` 条核心证据，必需缺失 `0`、警告 `0`。最终质量门禁在 SP4 主验证线上通过 `22/22 P0`、`100` 轮 Agent smoke 和 `5` 轮 doctor。
+当前 strict evidence 覆盖 `40` 条核心证据，必需缺失 `0`、警告 `0`。最终质量门禁在 SP4 主验证线上通过 `22/22 P0`、`100` 轮 Agent smoke 和 `5` 轮 doctor。
 
 ## 设计边界
 

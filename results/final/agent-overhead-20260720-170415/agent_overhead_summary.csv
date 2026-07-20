@@ -1,0 +1,10 @@
+run,label,status,samples,cpu_seconds,cpu_percent_of_one_core,rss_kb_avg,rss_kb_max,bpf_map_snapshot
+run-1,observe_only_cgroup,present,6,0.030000,0.375,7089.333,8760,1
+run-1,active_cgroup,present,6,0.020000,0.250,8333.333,16208,1
+run-1,active_sched_ext,present,6,0.040000,0.500,8109.333,14584,1
+run-2,observe_only_cgroup,present,6,0.030000,0.375,8233.333,15480,1
+run-2,active_cgroup,present,5,0.030000,0.375,7893.600,12688,1
+run-2,active_sched_ext,present,6,0.040000,0.500,7562.000,11340,1
+run-3,observe_only_cgroup,present,5,0.030000,0.375,8479.200,15776,1
+run-3,active_cgroup,present,5,0.040000,0.500,8147.200,14276,1
+run-3,active_sched_ext,present,6,0.040000,0.500,7894.000,13216,1

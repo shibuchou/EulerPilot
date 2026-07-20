@@ -1,0 +1,10 @@
+{
+  "run_id": "agent-overhead-20260720-170415",
+  "timestamp": "2026-07-20T17:05:47+08:00",
+  "host": "cernet2.net",
+  "kernel_release": "6.6.0-159.4.3.154.oe2403sp4.x86_64-eulerpilot-scx",
+  "runs": 3,
+  "duration_s": 8.0,
+  "benchmark": "agent-overhead",
+  "notes": "CPU percent is computed from /proc/<pid>/stat ticks over the configured agent duration; it is control-plane overhead evidence, not workload CPU accounting."
+}

@@ -1,6 +1,6 @@
 # EulerPilot 最终答辩文档
 
-更新时间：`2026-07-17`
+更新时间：`2026-07-20`
 
 ---
 
@@ -186,7 +186,7 @@ cat demo/security_policy_demo/secret.txt  # -> Operation not permitted
 | 可视化 | `reports/dashboard/index.html` 静态 Dashboard + Agent `/metrics` 端点 + `web_console/` |
 | 图表 | `reports/final_figures/`（7 张 SVG） |
 | 实验结果 | `results/final/`、`results/network_policy/`、`results/security_policy/`、`results/resource_control/`、`results/policy_engine/` |
-| 证据压缩入口 | `configs/final_evidence_manifest.json`、`reports/final_evidence_compact.md/json`，37 条核心证据、必需缺失 0、警告 0 |
+| 证据压缩入口 | `configs/final_evidence_manifest.json`、`reports/final_evidence_compact.md/json`，40 条核心证据、必需缺失 0、警告 0 |
 | 代码仓库 | `https://github.com/shibuchou/EulerPilot` |
 
 ---
@@ -209,7 +209,7 @@ cat demo/security_policy_demo/secret.txt  # -> Operation not permitted
 
 ## 十、最终结论
 
-> EulerPilot 已完成为一个面向 openEuler 的、可运行、可实验、可解释、可复现、可扩展的系统资源管控 Agent 工程闭环。项目同时覆盖了 resource control、network policy、security policy 三个 OS Agent 扩展方向，并通过 Policy Engine 跨 Skill 联动、SP4 发行环境适配、SP4 官方源码自编译 sched_ext 内核复核、Kubernetes 旁路验证、Web Console 和 37 条 final evidence compact 证明了新增 eBPF hook 与系统控制器可以在统一 Agent 框架下安全编排和回滚。
+> EulerPilot 已完成为一个面向 openEuler 的、可运行、可实验、可解释、可复现、可扩展的系统资源管控 Agent 工程闭环。项目同时覆盖了 resource control、network policy、security policy 三个 OS Agent 扩展方向，并通过 Policy Engine 跨 Skill 联动、SP4 发行环境适配、SP4 官方源码自编译 sched_ext 内核复核、Kubernetes 旁路验证、Web Console 和 40 条 final evidence compact 证明了新增 eBPF hook 与系统控制器可以在统一 Agent 框架下安全编排和回滚。
 
 **当前状态：最终收口修复中；static-vs-Agent 证据已用修复脚本 RUNS=5 重跑并恢复到最终提交清单。**
 

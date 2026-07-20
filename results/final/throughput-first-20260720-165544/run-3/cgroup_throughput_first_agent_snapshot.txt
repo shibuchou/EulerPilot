@@ -1,0 +1,51 @@
+
+  * EulerPilot Agent 
+  --------------------------------------------------
+  config:     /root/EulerPilot/configs/agent.yaml
+  interval:   500ms  duration:   8s  warmup: 0
+  mode:       active  backend:    cgroup_v2
+  scx binary: auto (auto)
+  gate:       normal
+  env:         psi:ok  cg:ok  scx:ok
+  --------------------------------------------------
+
+  --- legend ---
+  mark: . UNKNOWN  L LATENCY_SENSITIVE  B BACKGROUND_NOISY  T THROUGHPUT_BATCH
+  act:  + applied  ~ managed  - none
+  --- observing ---
+  mark name             pid  class        act profile    w:weight reason
+  T sysbench           74432 THROUGHPUT_BATCH |+ throughput_profile w:100 cpuset-fallback-cpu-weight-only
+  T sysbench           74431 THROUGHPUT_BATCH |+ throughput_profile w:100 cpuset-fallback-cpu-weight-only
+  T sysbench           74432 THROUGHPUT_BATCH |+ throughput_profile w:100 cpuset-fallback-cpu-weight-only
+  T sysbench           74431 THROUGHPUT_BATCH |+ throughput_profile w:100 cpuset-fallback-cpu-weight-only
+  T sysbench           74432 THROUGHPUT_BATCH |+ throughput_profile w:100 cpuset-fallback-cpu-weight-only
+  T sysbench           74431 THROUGHPUT_BATCH |+ throughput_profile w:100 cpuset-fallback-cpu-weight-only
+  T sysbench           74432 THROUGHPUT_BATCH |+ throughput_profile w:100 cpuset-fallback-cpu-weight-only
+  T sysbench           74431 THROUGHPUT_BATCH |+ throughput_profile w:100 cpuset-fallback-cpu-weight-only
+  T sysbench           74432 THROUGHPUT_BATCH |+ throughput_profile w:100 cpuset-fallback-cpu-weight-only
+  T sysbench           74431 THROUGHPUT_BATCH |+ throughput_profile w:100 cpuset-fallback-cpu-weight-only
+  T sysbench           74432 THROUGHPUT_BATCH |+ throughput_profile w:100 cpuset-fallback-cpu-weight-only
+  T sysbench           74431 THROUGHPUT_BATCH |+ throughput_profile w:100 cpuset-fallback-cpu-weight-only
+  T sysbench           74432 THROUGHPUT_BATCH |+ throughput_profile w:100 cpuset-fallback-cpu-weight-only
+  T sysbench           74431 THROUGHPUT_BATCH |+ throughput_profile w:100 cpuset-fallback-cpu-weight-only
+  T sysbench           74432 THROUGHPUT_BATCH |+ throughput_profile w:100 cpuset-fallback-cpu-weight-only
+  T sysbench           74431 THROUGHPUT_BATCH |+ throughput_profile w:100 cpuset-fallback-cpu-weight-only
+  T sysbench           74432 THROUGHPUT_BATCH |+ throughput_profile w:100 cpuset-fallback-cpu-weight-only
+  T sysbench           74431 THROUGHPUT_BATCH |+ throughput_profile w:100 cpuset-fallback-cpu-weight-only
+  T sysbench           74432 THROUGHPUT_BATCH |+ throughput_profile w:100 cpuset-fallback-cpu-weight-only
+  T sysbench           74431 THROUGHPUT_BATCH |+ throughput_profile w:100 cpuset-fallback-cpu-weight-only
+  T sysbench           74432 THROUGHPUT_BATCH |+ throughput_profile w:100 cpuset-fallback-cpu-weight-only
+  T sysbench           74431 THROUGHPUT_BATCH |+ throughput_profile w:100 cpuset-fallback-cpu-weight-only
+  T sysbench           74432 THROUGHPUT_BATCH |+ throughput_profile w:100 cpuset-fallback-cpu-weight-only
+  T sysbench           74431 THROUGHPUT_BATCH |+ throughput_profile w:100 cpuset-fallback-cpu-weight-only
+  T sysbench           74432 THROUGHPUT_BATCH |+ throughput_profile w:100 cpuset-fallback-cpu-weight-only
+  T sysbench           74431 THROUGHPUT_BATCH |+ throughput_profile w:100 cpuset-fallback-cpu-weight-only
+  T sysbench           74432 THROUGHPUT_BATCH |+ throughput_profile w:100 cpuset-fallback-cpu-weight-only
+  T sysbench           74431 THROUGHPUT_BATCH |+ throughput_profile w:100 cpuset-fallback-cpu-weight-only
+  T sysbench           74432 THROUGHPUT_BATCH |+ throughput_profile w:100 cpuset-fallback-cpu-weight-only
+  T sysbench           74431 THROUGHPUT_BATCH |+ throughput_profile w:100 cpuset-fallback-cpu-weight-only
+  T sysbench           74432 THROUGHPUT_BATCH |+ throughput_profile w:100 cpuset-fallback-cpu-weight-only
+  T sysbench           74431 THROUGHPUT_BATCH |+ throughput_profile w:100 cpuset-fallback-cpu-weight-only
+  --------------------------------------------------
+  DONE  total=162  applied=32  L=0  T=32  B=0  U=130
+

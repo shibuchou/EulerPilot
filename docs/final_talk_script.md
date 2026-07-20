@@ -1,6 +1,6 @@
 # EulerPilot 答辩讲稿
 
-更新时间：`2026-07-17`
+更新时间：`2026-07-20`
 
 ## 开场（30秒）
 
@@ -61,7 +61,7 @@
 1. SP3 上完成主闭环，可正式交付。
 2. OLK-6.6 和 SP4 官方源码自编译 sched_ext 内核上完成 Redis/Nginx compare 与复核。
 3. Skills 框架 + Network/Security/Resource/Policy Engine 证明 Agent 可扩展、可联动、可回滚。
-4. 项目已形成 37 条 final evidence compact、Web Console 和最终质量门禁证据。
+4. 项目已形成 40 条 final evidence compact、Web Console 和最终质量门禁证据。
 
 ## 收尾
 

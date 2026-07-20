@@ -100,6 +100,10 @@ bool env_flag_enabled(const char *name) {
            std::strcmp(value, "on") == 0;
 }
 
+bool throughput_first_enabled() {
+    return env_flag_enabled("EULERPILOT_THROUGHPUT_FIRST");
+}
+
 double percentile95_or_fallback(std::vector<double> values, double fallback) {
     if (values.empty()) {
         return fallback;
@@ -501,6 +505,12 @@ void assign_profiles(std::vector<WorkloadDecision> &decisions, ControlMode mode)
         case ControlMode::Normal:
             if (!decision.latency_exists || !decision.background_exists) {
                 decision.trigger_reason = "missing-latency-or-background-workload";
+            }
+            if (throughput_first_enabled() &&
+                decision.klass == WorkloadClass::ThroughputBatch &&
+                decision.managed_target) {
+                decision.target_profile = "throughput_profile";
+                decision.trigger_reason = "throughput-first-explicitly-enabled";
             }
             break;
         case ControlMode::Latency:

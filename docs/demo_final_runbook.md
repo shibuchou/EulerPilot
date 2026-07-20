@@ -1,6 +1,6 @@
 # EulerPilot 最终演示 Runbook
 
-更新时间：`2026-07-17`
+更新时间：`2026-07-20`
 
 本文用于现场答辩和本地复现。演示脚本入口为 `demo/demo_all_final.sh`，支持 live、offline 和 cleanup 三种模式。
 
@@ -51,7 +51,7 @@ SP4 / 123 sched_ext kernel
   -> Redis RUNS=5 sched_ext compare
   -> Nginx RUNS=5 sched_ext compare
   -> final_quality_gate.sh 22/22 P0 + 100 smoke + 5 doctor
-  -> final evidence compact 37 entries / missing 0 / warnings 0
+  -> final evidence compact 40 entries / missing 0 / warnings 0
 ```
 
 ## 演示视频状态

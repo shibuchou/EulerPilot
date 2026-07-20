@@ -1,11 +1,11 @@
 # docs
 
-本目录保存 EulerPilot 的设计方案、阶段计划、实验结论、最终报告和答辩材料。文档更新时间为 `2026-07-17`；当前验证基线以 `2026-07-08` SP4/123 验证线为准；带日期的历史快照文档只作为过程记录，不再反复覆盖。
+本目录保存 EulerPilot 的设计方案、阶段计划、实验结论、最终报告和答辩材料。文档更新时间为 `2026-07-20`；当前验证基线以 `2026-07-08` SP4/123 验证线为准；带日期的历史快照文档只作为过程记录，不再反复覆盖。
 
 ## 推荐阅读顺序
 
 1. `one_page_summary.md`：一页式项目简介。
-2. `progress_status.md`：当前滚动进度状态，包含 SP4/123、Kubernetes、Web Console、37 条 evidence和 22/22 质量门禁。
+2. `progress_status.md`：当前滚动进度状态，包含 SP4/123、Kubernetes、Web Console、40 条 evidence和 22/22 质量门禁。
 3. `final_evidence_index.md`：最终证据索引和 `collect_final_evidence.py --strict` 入口。
 4. `final_report_submission.md`：最终报告主稿。
 5. `architecture.md`：系统架构、模块边界和双执行后端说明。

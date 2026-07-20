@@ -1,0 +1,1 @@
+gate_state=0 generation=16 updated_at_ns=784416406317909 evidence_mask=1

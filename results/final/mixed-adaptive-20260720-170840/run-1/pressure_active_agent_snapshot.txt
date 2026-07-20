@@ -1,0 +1,102 @@
+
+  * EulerPilot Agent 
+  --------------------------------------------------
+  config:     /root/EulerPilot/configs/agent.yaml
+  interval:   500ms  duration:   8s  warmup: 0
+  mode:       active  backend:    sched_ext
+  scx binary: auto (auto)
+  gate:       psi
+  env:         psi:ok  cg:ok  scx:ok
+  --------------------------------------------------
+
+  --- legend ---
+  mark: . UNKNOWN  L LATENCY_SENSITIVE  B BACKGROUND_NOISY  T THROUGHPUT_BATCH
+  act:  + applied  ~ managed  - none
+  --- observing ---
+  mark name             pid  class        act profile    w:weight reason
+  B stress-ng-cpu      76313 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  T redis-benchmark    76319 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  T redis-benchmark    76317 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  B stress-ng-cpu      76314 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  L redis-server       76265 LATENCY_SENSITIVE |~ normal_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      76313 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  T redis-benchmark    76319 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  T redis-benchmark    76317 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  B stress-ng-cpu      76314 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  L redis-server       76265 LATENCY_SENSITIVE |~ normal_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      76313 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  T redis-benchmark    76319 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  T redis-benchmark    76317 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  B stress-ng-cpu      76314 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  L redis-server       76265 LATENCY_SENSITIVE |+ latency_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      76313 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  T redis-benchmark    76319 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  T redis-benchmark    76317 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  B stress-ng-cpu      76314 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  L redis-server       76265 LATENCY_SENSITIVE |+ latency_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      76313 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  T redis-benchmark    76319 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  T redis-benchmark    76317 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  B stress-ng-cpu      76314 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  L redis-server       76265 LATENCY_SENSITIVE |+ latency_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      76313 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  T redis-benchmark    76319 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  T redis-benchmark    76317 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  B stress-ng-cpu      76314 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  L redis-server       76265 LATENCY_SENSITIVE |+ latency_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      76313 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  T redis-benchmark    76319 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  T redis-benchmark    76317 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  B stress-ng-cpu      76314 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  L redis-server       76265 LATENCY_SENSITIVE |+ latency_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      76313 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  T redis-benchmark    76319 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  T redis-benchmark    76317 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  B stress-ng-cpu      76314 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  L redis-server       76265 LATENCY_SENSITIVE |+ latency_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      76313 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  T redis-benchmark    76319 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  T redis-benchmark    76317 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  B stress-ng-cpu      76314 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  L redis-server       76265 LATENCY_SENSITIVE |+ latency_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      76313 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  T redis-benchmark    76319 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  T redis-benchmark    76317 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  B stress-ng-cpu      76314 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  L redis-server       76265 LATENCY_SENSITIVE |+ latency_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      76313 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  T redis-benchmark    76319 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  T redis-benchmark    76317 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  B stress-ng-cpu      76314 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  L redis-server       76265 LATENCY_SENSITIVE |+ latency_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      76313 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  T redis-benchmark    76319 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  T redis-benchmark    76317 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  B stress-ng-cpu      76314 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  L redis-server       76265 LATENCY_SENSITIVE |+ latency_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      76313 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  T redis-benchmark    76319 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  T redis-benchmark    76317 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  B stress-ng-cpu      76314 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  L redis-server       76265 LATENCY_SENSITIVE |+ latency_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      76313 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  T redis-benchmark    76319 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  T redis-benchmark    76317 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  B stress-ng-cpu      76314 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  T redis-benchmark    76330 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  L redis-server       76265 LATENCY_SENSITIVE |+ latency_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      76313 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  T redis-benchmark    76319 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  T redis-benchmark    76317 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  B stress-ng-cpu      76314 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  T redis-benchmark    76330 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  L redis-server       76265 LATENCY_SENSITIVE |+ latency_profile w:0 gate-state-map-updated
+  B stress-ng-cpu      76313 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  T redis-benchmark    76319 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  T redis-benchmark    76317 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  B stress-ng-cpu      76314 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  T redis-benchmark    76330 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  L redis-server       76265 LATENCY_SENSITIVE |+ latency_profile w:0 gate-state-map-updated
+  --------------------------------------------------
+  DONE  total=376  applied=42  L=16  T=35  B=32  U=293
+

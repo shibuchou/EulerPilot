@@ -1,0 +1,51 @@
+
+  * EulerPilot Agent 
+  --------------------------------------------------
+  config:     /root/EulerPilot/configs/agent.yaml
+  interval:   500ms  duration:   8s  warmup: 0
+  mode:       active  backend:    sched_ext
+  scx binary: auto (auto)
+  gate:       psi
+  env:         psi:ok  cg:ok  scx:ok
+  --------------------------------------------------
+
+  --- legend ---
+  mark: . UNKNOWN  L LATENCY_SENSITIVE  B BACKGROUND_NOISY  T THROUGHPUT_BATCH
+  act:  + applied  ~ managed  - none
+  --- observing ---
+  mark name             pid  class        act profile    w:weight reason
+  T redis-benchmark    76532 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  L redis-server       76265 LATENCY_SENSITIVE |~ normal_profile w:0 gate-state-map-updated
+  T redis-benchmark    76532 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  L redis-server       76265 LATENCY_SENSITIVE |~ normal_profile w:0 gate-state-map-updated
+  T redis-benchmark    76532 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  L redis-server       76265 LATENCY_SENSITIVE |~ normal_profile w:0 gate-state-map-updated
+  T redis-benchmark    76532 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  L redis-server       76265 LATENCY_SENSITIVE |~ normal_profile w:0 gate-state-map-updated
+  T redis-benchmark    76532 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  L redis-server       76265 LATENCY_SENSITIVE |~ normal_profile w:0 gate-state-map-updated
+  T redis-benchmark    76532 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  L redis-server       76265 LATENCY_SENSITIVE |~ normal_profile w:0 gate-state-map-updated
+  T redis-benchmark    76532 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  L redis-server       76265 LATENCY_SENSITIVE |~ normal_profile w:0 gate-state-map-updated
+  T redis-benchmark    76532 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  L redis-server       76265 LATENCY_SENSITIVE |~ normal_profile w:0 gate-state-map-updated
+  T redis-benchmark    76532 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  L redis-server       76265 LATENCY_SENSITIVE |~ normal_profile w:0 gate-state-map-updated
+  T redis-benchmark    76532 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  L redis-server       76265 LATENCY_SENSITIVE |~ normal_profile w:0 gate-state-map-updated
+  T redis-benchmark    76532 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  L redis-server       76265 LATENCY_SENSITIVE |~ normal_profile w:0 gate-state-map-updated
+  T redis-benchmark    76532 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  L redis-server       76265 LATENCY_SENSITIVE |~ normal_profile w:0 gate-state-map-updated
+  T redis-benchmark    76532 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  L redis-server       76265 LATENCY_SENSITIVE |~ normal_profile w:0 gate-state-map-updated
+  T redis-benchmark    76532 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  L redis-server       76265 LATENCY_SENSITIVE |~ normal_profile w:0 gate-state-map-updated
+  T redis-benchmark    76532 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  L redis-server       76265 LATENCY_SENSITIVE |~ normal_profile w:0 gate-state-map-updated
+  T redis-benchmark    76532 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  L redis-server       76265 LATENCY_SENSITIVE |~ normal_profile w:0 gate-state-map-updated
+  --------------------------------------------------
+  DONE  total=307  applied=0  L=16  T=16  B=0  U=275
+

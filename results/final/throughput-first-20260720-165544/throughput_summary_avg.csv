@@ -1,0 +1,4 @@
+label,runs,ops_per_sec_avg,agent_applied_count_avg,throughput_profile_hits_avg,class_hits_batch_avg,enqueue_batch_avg,dispatch_batch_avg,running_batch_avg
+default_batch,3,204710400.000,0.000,0.000,0.000,0.000,0.000,0.000
+cgroup_throughput_first,3,204715212.800,32.000,32.000,0.000,0.000,0.000,0.000
+scx_throughput_first,3,45483622.400,32.000,32.000,5.000,5.000,0.000,33.000

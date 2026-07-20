@@ -44,6 +44,9 @@ KEY_FIELDS = [
     "lsm_task_fix_setuid_hits",
     "static_vs_agent_validity",
     "static_vs_agent_groups",
+    "throughput_first_validity",
+    "mixed_adaptive_validity",
+    "agent_overhead_validity",
 ]
 
 
@@ -152,6 +155,16 @@ def csv_fieldnames(path: Path) -> list[str]:
         return []
 
 
+def csv_rows(path: Path) -> list[dict[str, str]]:
+    if not path.exists():
+        return []
+    try:
+        with path.open("r", encoding="utf-8", newline="") as f:
+            return list(csv.DictReader(f))
+    except (OSError, csv.Error):
+        return []
+
+
 def parse_int(value: str | None) -> int:
     if value is None or value == "":
         return 0
@@ -159,6 +172,15 @@ def parse_int(value: str | None) -> int:
         return int(float(value))
     except ValueError:
         return 0
+
+
+def parse_float(value: str | None) -> float:
+    if value is None or value == "":
+        return 0.0
+    try:
+        return float(value)
+    except ValueError:
+        return 0.0
 
 
 def cgroup_path_from_snapshot_line(line: str) -> str:
@@ -243,6 +265,126 @@ def validate_static_vs_agent_dir(path: Path) -> tuple[dict[str, Any], list[str]]
     return summary, warnings
 
 
+def validate_throughput_first_dir(path: Path) -> tuple[dict[str, Any], list[str]]:
+    summary: dict[str, Any] = {}
+    warnings: list[str] = []
+    invalid_files = sorted(path.glob("run-*/*_invalid_reason.txt"))
+    for invalid in invalid_files:
+        warnings.append(f"invalid marker present: {invalid.relative_to(path)}: {compact_excerpt(read_text(invalid))}")
+
+    rows = {row.get("label", ""): row for row in csv_rows(path / "throughput_summary_avg.csv")}
+    for label in ["default_batch", "cgroup_throughput_first", "scx_throughput_first"]:
+        if label not in rows:
+            warnings.append(f"throughput_summary_avg.csv missing label: {label}")
+
+    cgroup = rows.get("cgroup_throughput_first", {})
+    scx = rows.get("scx_throughput_first", {})
+    if parse_float(cgroup.get("throughput_profile_hits_avg")) <= 0:
+        warnings.append("cgroup_throughput_first did not record throughput_profile_hits_avg > 0")
+    if parse_float(scx.get("throughput_profile_hits_avg")) <= 0:
+        warnings.append("scx_throughput_first did not record throughput_profile_hits_avg > 0")
+    if max(
+        parse_float(scx.get("class_hits_batch_avg")),
+        parse_float(scx.get("enqueue_batch_avg")),
+        parse_float(scx.get("running_batch_avg")),
+    ) <= 0:
+        warnings.append("scx_throughput_first did not record batch class/enqueue/running evidence")
+
+    run_dirs = sorted(p for p in path.glob("run-*") if p.is_dir())
+    if not run_dirs:
+        warnings.append("missing run-* directories")
+    for run_dir in run_dirs:
+        for label in ["default_batch", "cgroup_throughput_first", "scx_throughput_first"]:
+            for suffix in ["summary.csv", "worker_pids.txt", "metrics.env"]:
+                if not (run_dir / f"{label}_{suffix}").exists():
+                    warnings.append(f"{run_dir.name}/{label}_{suffix} missing")
+        for label in ["cgroup_throughput_first", "scx_throughput_first"]:
+            snapshot = run_dir / f"{label}_agent_snapshot.txt"
+            if not snapshot.exists() or file_size(snapshot) == 0:
+                warnings.append(f"{run_dir.name}/{label}_agent_snapshot.txt missing or empty")
+
+    summary["throughput_first_validity"] = "pass" if not warnings else "warning"
+    summary["throughput_first_runs"] = len(run_dirs)
+    return summary, warnings
+
+
+def validate_mixed_adaptive_dir(path: Path) -> tuple[dict[str, Any], list[str]]:
+    summary: dict[str, Any] = {}
+    warnings: list[str] = []
+    invalid_files = sorted(path.glob("run-*/invalid_reason.txt"))
+    for invalid in invalid_files:
+        warnings.append(f"invalid marker present: {invalid.relative_to(path)}: {compact_excerpt(read_text(invalid))}")
+
+    rows = {row.get("phase", ""): row for row in csv_rows(path / "mixed_adaptive_summary.csv")}
+    for phase in ["quiet_pre", "pressure_active", "recovery"]:
+        if phase not in rows:
+            warnings.append(f"mixed_adaptive_summary.csv missing phase: {phase}")
+
+    pressure = rows.get("pressure_active", {})
+    recovery = rows.get("recovery", {})
+    if parse_int(pressure.get("active_seen_count")) <= 0:
+        warnings.append("pressure_active did not record ACTIVE transition")
+    if parse_int(pressure.get("scheduler_update_evidence_count")) <= 0:
+        warnings.append("pressure_active did not record scheduler update evidence")
+    if parse_float(pressure.get("switch_latency_ms_avg")) <= 0:
+        warnings.append("pressure_active missing switch latency")
+    if parse_int(recovery.get("recovery_seen_count")) <= 0:
+        warnings.append("recovery did not record recovery evidence")
+    if parse_int(recovery.get("active_seen_count")) > 0:
+        warnings.append("recovery phase unexpectedly recorded ACTIVE transition")
+
+    run_dirs = sorted(p for p in path.glob("run-*") if p.is_dir())
+    if not run_dirs:
+        warnings.append("missing run-* directories")
+    for run_dir in run_dirs:
+        if not (run_dir / "combined_psi_gate_trace.jsonl").exists():
+            warnings.append(f"{run_dir.name}/combined_psi_gate_trace.jsonl missing")
+        for phase in ["quiet_pre", "pressure_active", "recovery"]:
+            for suffix in ["summary.csv", "agent_snapshot.txt", "gate_status.txt", "psi_gate_trace.jsonl"]:
+                file_path = run_dir / f"{phase}_{suffix}"
+                if not file_path.exists() or file_size(file_path) == 0:
+                    warnings.append(f"{run_dir.name}/{phase}_{suffix} missing or empty")
+        if not (run_dir / "rollback_after.log").exists():
+            warnings.append(f"{run_dir.name}/rollback_after.log missing")
+
+    summary["mixed_adaptive_validity"] = "pass" if not warnings else "warning"
+    summary["mixed_adaptive_runs"] = len(run_dirs)
+    return summary, warnings
+
+
+def validate_agent_overhead_dir(path: Path) -> tuple[dict[str, Any], list[str]]:
+    summary: dict[str, Any] = {}
+    warnings: list[str] = []
+    rows = {row.get("label", ""): row for row in csv_rows(path / "agent_overhead_summary_avg.csv")}
+    for label in ["observe_only_cgroup", "active_cgroup", "active_sched_ext"]:
+        row = rows.get(label)
+        if not row:
+            warnings.append(f"agent_overhead_summary_avg.csv missing label: {label}")
+            continue
+        if parse_int(row.get("runs_present")) <= 0:
+            warnings.append(f"{label} has no present runs")
+        if parse_int(row.get("skipped")) > 0:
+            warnings.append(f"{label} unexpectedly skipped")
+        if parse_float(row.get("cpu_percent_of_one_core_avg")) <= 0:
+            warnings.append(f"{label} missing CPU overhead metric")
+        if parse_float(row.get("rss_kb_avg")) <= 0:
+            warnings.append(f"{label} missing RSS metric")
+
+    run_dirs = sorted(p for p in path.glob("run-*") if p.is_dir())
+    if not run_dirs:
+        warnings.append("missing run-* directories")
+    for run_dir in run_dirs:
+        for label in ["observe_only_cgroup", "active_cgroup", "active_sched_ext"]:
+            for suffix in ["samples.csv", "agent_snapshot.txt", "rollback_after.log"]:
+                file_path = run_dir / f"{label}_{suffix}"
+                if not file_path.exists() or file_size(file_path) == 0:
+                    warnings.append(f"{run_dir.name}/{label}_{suffix} missing or empty")
+
+    summary["agent_overhead_validity"] = "pass" if not warnings else "warning"
+    summary["agent_overhead_runs"] = len(run_dirs)
+    return summary, warnings
+
+
 def summarize_result_dir(path: Path, entry: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
     summary: dict[str, Any] = {}
     warnings: list[str] = []
@@ -270,6 +412,18 @@ def summarize_result_dir(path: Path, entry: dict[str, Any]) -> tuple[dict[str, A
         static_summary, static_warnings = validate_static_vs_agent_dir(path)
         summary.update(static_summary)
         warnings.extend(static_warnings)
+    elif path.name.startswith("throughput-first-"):
+        throughput_summary, throughput_warnings = validate_throughput_first_dir(path)
+        summary.update(throughput_summary)
+        warnings.extend(throughput_warnings)
+    elif path.name.startswith("mixed-adaptive-"):
+        mixed_summary, mixed_warnings = validate_mixed_adaptive_dir(path)
+        summary.update(mixed_summary)
+        warnings.extend(mixed_warnings)
+    elif path.name.startswith("agent-overhead-"):
+        overhead_summary, overhead_warnings = validate_agent_overhead_dir(path)
+        summary.update(overhead_summary)
+        warnings.extend(overhead_warnings)
 
     return summary, warnings
 

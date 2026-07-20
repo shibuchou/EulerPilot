@@ -1,0 +1,10 @@
+run,label,workers,total_ops,ops_per_sec,agent_applied_count,throughput_profile_hits,class_hits_batch,enqueue_batch,dispatch_batch,running_batch
+run-1,default_batch,2,1663983616,207997952.000,0.0,0.0,0.0,0.0,0.0,0.0
+run-1,cgroup_throughput_first,2,2052440064,205244006.400,32.0,32.0,0.0,0.0,0.0,0.0
+run-1,scx_throughput_first,2,445169664,44516966.400,32.0,32.0,3.0,3.0,0.0,20.0
+run-2,default_batch,2,1605201920,200650240.000,0.0,0.0,0.0,0.0,0.0,0.0
+run-2,cgroup_throughput_first,2,2030153728,203015372.800,32.0,32.0,0.0,0.0,0.0,0.0
+run-2,scx_throughput_first,2,445448192,44544819.200,32.0,32.0,5.0,5.0,0.0,32.0
+run-3,default_batch,2,1643864064,205483008.000,0.0,0.0,0.0,0.0,0.0,0.0
+run-3,cgroup_throughput_first,2,2058862592,205886259.200,32.0,32.0,0.0,0.0,0.0,0.0
+run-3,scx_throughput_first,2,473890816,47389081.600,32.0,32.0,7.0,7.0,0.0,47.0

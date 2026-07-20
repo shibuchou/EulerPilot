@@ -1,0 +1,10 @@
+run,phase,get_rps,get_p99_ms,active_seen,cooldown_seen,recovery_seen,switch_latency_ms,trace_events,scheduler_update_evidence
+run-1,quiet_pre,36764.70,0.423,0,0,1,,16,1
+run-1,pressure_active,5712.65,3.247,1,0,0,912.742,16,1
+run-1,recovery,36764.70,0.391,0,0,1,,16,1
+run-2,quiet_pre,35971.22,0.415,0,0,1,,16,1
+run-2,pressure_active,7132.67,3.431,1,0,0,912.563,16,1
+run-2,recovery,33557.05,0.407,0,0,1,,16,1
+run-3,quiet_pre,37037.04,0.495,0,0,1,,16,1
+run-3,pressure_active,7072.14,3.615,1,0,0,1014.471,16,1
+run-3,recovery,36968.57,0.415,0,0,1,,16,1

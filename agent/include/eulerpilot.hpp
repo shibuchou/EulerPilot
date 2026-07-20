@@ -197,6 +197,7 @@ RuntimeThresholds calibrate_runtime_thresholds(const RuntimeThresholds &base,
                                                 const std::vector<double> &background_runtime_ns,
                                                 const std::vector<double> &cpu_psi_avg10);
 ControlMode derive_desired_mode(const TriggerContext &ctx);
+void assign_profiles(std::vector<WorkloadDecision> &decisions, ControlMode mode);
 ExecutionAction apply_cgroup_assignment(const RuntimeConfig &config, const WorkloadDecision &decision);
 ExecutionAction apply_scx_assignment(const RuntimeConfig &config, const WorkloadDecision &decision,
                                      bool scheduler_active, const std::string &scheduler_reason);

@@ -1,0 +1,4 @@
+label,runs_present,cpu_seconds_avg,cpu_percent_of_one_core_avg,rss_kb_avg,rss_kb_max,skipped
+observe_only_cgroup,3,0.030,0.375,7933.955,15776,0
+active_cgroup,3,0.030,0.375,8124.711,16208,0
+active_sched_ext,3,0.040,0.500,7855.111,14584,0

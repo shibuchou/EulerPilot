@@ -1,6 +1,6 @@
 # EulerPilot：面向 openEuler 的自适应资源管控 Agent
 
-更新时间：`2026-07-17`
+更新时间：`2026-07-20`
 
 ## 摘要
 
@@ -415,7 +415,7 @@ EulerPilot 的价值不在于证明某一组参数在所有场景下都优于默
 1. EulerPilot 已在 `SP3` 上完成 cgroup v2 主闭环，具备正式交付能力。
 2. EulerPilot 已在 `OLK-6.6` 上完成 Redis 与 Nginx 的 `sched_ext` 正式 compare，并在 `SP4` 自编译 sched_ext 内核上完成 Redis/Nginx `RUNS=5` 复核。
 3. EulerPilot 已实现 Skills 插件化框架与 YAML v2 驱动，并通过 `network_policy`、`network_qos`、`network_xdp` 和正式 `security_policy` 证明了 Agent 能力可扩展。
-4. 项目已通过最新 SP4 质量门禁（`reports/final_quality_gate_20260720-path-closeout.log`，22/22 P0、100 轮 smoke、5 轮 doctor）和安全审计，并形成 37 条 final evidence compact；新增 SP4 Redis pressure gradient 用于说明收益边界，static-vs-agent 对比已使用修复脚本 RUNS=5 重跑，用于说明 Agent 动态调控价值和边界。
+4. 项目已通过最新 SP4 质量门禁（`reports/final_quality_gate_20260720-stage3-performance.log`，22/22 P0、100 轮 smoke、5 轮 doctor）和安全审计，并形成 40 条 final evidence compact；新增 SP4 Redis pressure gradient 用于说明收益边界，static-vs-agent 对比已使用修复脚本 RUNS=5 重跑，用于说明 Agent 动态调控价值和边界。
 
 补充说明：
 

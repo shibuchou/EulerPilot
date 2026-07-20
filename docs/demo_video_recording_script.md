@@ -1,6 +1,6 @@
 # EulerPilot 最终演示视频录制脚本
 
-更新时间：`2026-07-17`
+更新时间：`2026-07-20`
 
 当前状态：正式演示视频尚未录制。本文是 8-10 分钟录制脚本和命令清单，不代表视频文件已经交付。录制完成后，需要在 `docs/submission_checklist.md`、`docs/final_submission_guide.md` 和提交包中补充视频路径或公开链接。
 
@@ -75,7 +75,7 @@ curl -s http://127.0.0.1:18080/api/system | jq '.kernel,.features,.path_roles'
 
 讲稿：
 
-> 这是最终 evidence 白名单。它不是递归扫描全部结果，而是按提交清单固定 37 条核心证据，覆盖质量门禁、Redis/Nginx、SP4 RUNS=5、Network、Security、Resource Control、Policy Engine、Web Console 和 K8s 旁路验证。strict 模式要求必需证据缺失为 0、警告为 0。
+> 这是最终 evidence 白名单。它不是递归扫描全部结果，而是按提交清单固定 40 条核心证据，覆盖质量门禁、Redis/Nginx、SP4 RUNS=5、Network、Security、Resource Control、Policy Engine、Web Console 和 K8s 旁路验证。strict 模式要求必需证据缺失为 0、警告为 0。
 
 展示命令：
 

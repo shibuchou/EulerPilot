@@ -68,6 +68,17 @@ int main() {
     assert(batch.managed_target);
     assert(!batch.gate_relevant);
 
+    std::vector<eulerpilot::WorkloadDecision> throughput_default{batch};
+    eulerpilot::assign_profiles(throughput_default, ControlMode::Normal);
+    assert(throughput_default[0].target_profile == "normal_profile");
+
+    setenv("EULERPILOT_THROUGHPUT_FIRST", "1", 1);
+    std::vector<eulerpilot::WorkloadDecision> throughput_enabled{batch};
+    eulerpilot::assign_profiles(throughput_enabled, ControlMode::Normal);
+    assert(throughput_enabled[0].target_profile == "throughput_profile");
+    assert(throughput_enabled[0].trigger_reason == "throughput-first-explicitly-enabled");
+    unsetenv("EULERPILOT_THROUGHPUT_FIRST");
+
     const auto unknown = eulerpilot::classify_sample(sample("python-worker", 100000, 0, 0));
     assert(unknown.klass == WorkloadClass::Unknown);
     assert(!unknown.managed_target);

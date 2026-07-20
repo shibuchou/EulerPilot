@@ -1,6 +1,6 @@
 # 项目概述
 
-更新时间：`2026-07-17`
+更新时间：`2026-07-20`
 
 ## 比赛目标
 
@@ -49,11 +49,11 @@ sched_ext/scx 路径基于 SP4 官方源码自编译启用 CONFIG_SCHED_CLASS_EX
 ## 当前证据状态
 
 - `scripts/final_quality_gate.sh` 在 SP4 主验证线通过 `22/22 P0`、`100` 轮 Agent smoke、`5` 轮 doctor。
-- `python3 scripts/collect_final_evidence.py --strict` 通过，覆盖 `37` 条核心证据，缺失 `0`、警告 `0`。
+- `python3 scripts/collect_final_evidence.py --strict` 通过，覆盖 `40` 条核心证据，缺失 `0`、警告 `0`。
 - SP4 Redis RUNS=5：`results/final/redis-scx-compare-20260708-150702`
 - SP4 Nginx RUNS=5：`results/final/nginx-scx-compare-20260708-152602`
 - SP4 Redis 压力梯度：`results/final/redis-pressure-gradient-20260708-153811`
-- SP4 Redis 静态 vs Agent 动态：`results/final/redis-static-vs-agent-20260720-114909`
+- SP4 Redis 静态 vs Agent 动态：`results/final/redis-static-vs-agent-20260720-150342`
 - SP4/K8s/Web Console 旁路验证：`results/k8s/sp4-validation-20260708-023552`
 
 ## 需要先理解的设计边界

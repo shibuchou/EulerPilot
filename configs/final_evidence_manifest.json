@@ -23,12 +23,12 @@
     },
     {
       "category": "quality_gate",
-      "name": "SP4 final quality gate after stage2 scx loader closeout",
+      "name": "SP4 final quality gate after stage3 performance evidence closeout",
       "host": "123",
-      "path": "reports/final_quality_gate_20260720-stage2-scx-loader.log",
+      "path": "reports/final_quality_gate_20260720-stage3-performance.log",
       "kind": "quality_gate",
       "required": true,
-      "notes": "SP4 core validation repository final gate after observer metric, warmup dry-run, sched_ext path, portability, static-vs-Agent validity and scx loader closeout: 22/22 P0, 100-round smoke and 5-round doctor evidence."
+      "notes": "SP4 core validation repository final gate after observer metric, warmup dry-run, sched_ext path, portability, static-vs-Agent validity, scx loader closeout and Stage3 performance evidence: 22/22 P0, 100-round smoke and 5-round doctor evidence."
     },
     {
       "category": "repo_status",
@@ -115,6 +115,39 @@
       "files": ["psi_gate_trace.jsonl", "agent_snapshot.txt", "gate_status.txt", "scx_stats.json"],
       "required": true,
       "notes": "SP4 sched_ext kernel PSI gate NORMAL to ARMED to ACTIVE transition evidence."
+    },
+    {
+      "category": "cpu_sched_ext",
+      "name": "SP4 throughput-first batch benchmark",
+      "host": "123",
+      "path": "results/final/throughput-first-20260720-165544",
+      "kind": "result_dir",
+      "summary": "summary.md",
+      "files": ["throughput_summary_avg.csv", "throughput_summary.csv", "run_manifest.json", "report.md"],
+      "required": true,
+      "notes": "RUNS=3 batch/throughput workload evidence with explicit EULERPILOT_THROUGHPUT_FIRST=1 switch, cgroup throughput profile hits, and sched_ext batch stats."
+    },
+    {
+      "category": "cpu_sched_ext",
+      "name": "SP4 mixed-adaptive closure benchmark",
+      "host": "123",
+      "path": "results/final/mixed-adaptive-20260720-170840",
+      "kind": "result_dir",
+      "summary": "summary.md",
+      "files": ["mixed_adaptive_summary.csv", "mixed_adaptive_timeline.csv", "run_manifest.json", "report.md"],
+      "required": true,
+      "notes": "RUNS=3 Redis mixed workload evidence for pressure appearance, PSI gate ACTIVE transition, scheduler update evidence, recovery and rollback."
+    },
+    {
+      "category": "quality_gate",
+      "name": "SP4 Agent control-plane overhead benchmark",
+      "host": "123",
+      "path": "results/final/agent-overhead-20260720-170415",
+      "kind": "result_dir",
+      "summary": "summary.md",
+      "files": ["agent_overhead_summary_avg.csv", "agent_overhead_summary.csv", "run_manifest.json", "report.md"],
+      "required": true,
+      "notes": "RUNS=3 Agent CPU/RSS overhead evidence from /proc/<pid>/stat and /proc/<pid>/status across observe-only, active cgroup and active sched_ext modes."
     },
     {
       "category": "network",

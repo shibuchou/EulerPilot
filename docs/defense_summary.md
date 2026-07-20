@@ -1,6 +1,6 @@
 # EulerPilot 答辩展示摘要
 
-更新时间：`2026-07-17`
+更新时间：`2026-07-20`
 
 ## 1. 一句话介绍
 
@@ -21,7 +21,8 @@ EulerPilot 是一个面向 openEuler 的自适应资源管控 Agent，通过 `eB
 - Nginx `RUNS=5` 正式候选结果
 - SP4 Redis/Nginx `RUNS=5` sched_ext 多轮复核
 - Redis pressure gradient；manual static vs agent dynamic 已用修复脚本 RUNS=5 重跑
-- Web Console v1 + 37 条 final evidence compact + 中文报告主稿
+- Throughput-first、Mixed-Adaptive、Agent overhead 三条 SP4 RUNS=3 争奖增强证据
+- Web Console v1 + 40 条 final evidence compact + 中文报告主稿
 
 ## 3. 核心架构
 
@@ -58,7 +59,7 @@ Observer -> Analyzer -> Policy Engine -> Skill Manager -> Executor -> Benchmark/
 - `noisy_cgroup_v2` 与 `noisy_scx_normal` 在部分操作呈现正向趋势
 - `sched_ext` 不应表述为对所有 workload 都稳定提升
 - SP4 追加复核：`results/final/redis-scx-compare-20260708-150702`，`RUNS=5`
-- 争奖增强证据：`results/final/redis-pressure-gradient-20260708-153811`、`results/final/redis-static-vs-agent-20260720-114909`
+- 争奖增强证据：`results/final/redis-pressure-gradient-20260708-153811`、`results/final/redis-static-vs-agent-20260720-150342`、`results/final/throughput-first-20260720-165544`、`results/final/mixed-adaptive-20260720-170840`、`results/final/agent-overhead-20260720-170415`
 
 ### Nginx（`nginx-scx-compare-20260612-194018`）
 - `cgroup_v2` 在 Nginx 场景下更稳
@@ -71,7 +72,7 @@ Observer -> Analyzer -> Policy Engine -> Skill Manager -> Executor -> Benchmark/
 
 ## 7. 可答辩口径
 
-> EulerPilot 已经完成从 SP3 + cgroup v2 历史主闭环到 SP4 发行环境适配、SP4 官方源码自编译 sched_ext 内核复核与 Kubernetes 旁路验证的完整工程收口，并实现了 Skills 框架、三方向 OS Agent 扩展和跨 Skill 联动。项目已形成 Redis/Nginx 双业务线多轮候选结果、37 条 final evidence compact、质量门禁和 Web Console 演示入口，具备真实可复现的系统调控能力。
+> EulerPilot 已经完成从 SP3 + cgroup v2 历史主闭环到 SP4 发行环境适配、SP4 官方源码自编译 sched_ext 内核复核与 Kubernetes 旁路验证的完整工程收口，并实现了 Skills 框架、三方向 OS Agent 扩展和跨 Skill 联动。项目已形成 Redis/Nginx 双业务线多轮候选结果、40 条 final evidence compact、质量门禁和 Web Console 演示入口，具备真实可复现的系统调控能力。
 
 项目代码：`https://github.com/shibuchou/EulerPilot`（私密仓库）
 

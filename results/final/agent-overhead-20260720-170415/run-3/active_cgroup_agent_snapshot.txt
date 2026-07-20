@@ -1,0 +1,58 @@
+
+  * EulerPilot Agent 
+  --------------------------------------------------
+  config:     /root/EulerPilot/configs/agent.yaml
+  interval:   500ms  duration:   8s  warmup: 0
+  mode:       active  backend:    cgroup_v2
+  scx binary: auto (auto)
+  gate:       always-active
+  env:         psi:ok  cg:ok  scx:ok
+  --------------------------------------------------
+
+  --- legend ---
+  mark: . UNKNOWN  L LATENCY_SENSITIVE  B BACKGROUND_NOISY  T THROUGHPUT_BATCH
+  act:  + applied  ~ managed  - none
+  --- observing ---
+  mark name             pid  class        act profile    w:weight reason
+  B sleep              75539 BACKGROUND_NOISY |- latency_profile w:100 cpu-weight-write-failed
+  B sleep              75539 BACKGROUND_NOISY |- latency_profile w:100 cpu-weight-write-failed
+  B sleep              75539 BACKGROUND_NOISY |- latency_profile w:100 cpu-weight-write-failed
+  B sleep              75545 BACKGROUND_NOISY |- latency_profile w:100 cpu-weight-write-failed
+  B sleep              75539 BACKGROUND_NOISY |- latency_profile w:100 cpu-weight-write-failed
+  B sleep              75545 BACKGROUND_NOISY |- latency_profile w:100 cpu-weight-write-failed
+  B sleep              75539 BACKGROUND_NOISY |- latency_profile w:100 cpu-weight-write-failed
+  B sleep              75545 BACKGROUND_NOISY |- latency_profile w:100 cpu-weight-write-failed
+  B sleep              75539 BACKGROUND_NOISY |- latency_profile w:100 cpu-weight-write-failed
+  B sleep              75551 BACKGROUND_NOISY |- latency_profile w:100 cpu-weight-write-failed
+  B sleep              75545 BACKGROUND_NOISY |- latency_profile w:100 cpu-weight-write-failed
+  B sleep              75539 BACKGROUND_NOISY |- latency_profile w:100 cpu-weight-write-failed
+  B sleep              75551 BACKGROUND_NOISY |- latency_profile w:100 cpu-weight-write-failed
+  B sleep              75545 BACKGROUND_NOISY |- latency_profile w:100 cpu-weight-write-failed
+  B sleep              75539 BACKGROUND_NOISY |- latency_profile w:100 cpu-weight-write-failed
+  B sleep              75551 BACKGROUND_NOISY |- latency_profile w:100 cpu-weight-write-failed
+  B sleep              75545 BACKGROUND_NOISY |- latency_profile w:100 cpu-weight-write-failed
+  B sleep              75539 BACKGROUND_NOISY |- latency_profile w:100 cpu-weight-write-failed
+  B sleep              75551 BACKGROUND_NOISY |- latency_profile w:100 cpu-weight-write-failed
+  B sleep              75545 BACKGROUND_NOISY |- latency_profile w:100 cpu-weight-write-failed
+  B sleep              75557 BACKGROUND_NOISY |- latency_profile w:100 cpu-weight-write-failed
+  B sleep              75539 BACKGROUND_NOISY |- latency_profile w:100 cpu-weight-write-failed
+  B sleep              75551 BACKGROUND_NOISY |- latency_profile w:100 cpu-weight-write-failed
+  B sleep              75545 BACKGROUND_NOISY |- latency_profile w:100 cpu-weight-write-failed
+  B sleep              75557 BACKGROUND_NOISY |- latency_profile w:100 cpu-weight-write-failed
+  B sleep              75539 BACKGROUND_NOISY |- latency_profile w:100 cpu-weight-write-failed
+  B sleep              75551 BACKGROUND_NOISY |- latency_profile w:100 cpu-weight-write-failed
+  B sleep              75545 BACKGROUND_NOISY |- latency_profile w:100 cpu-weight-write-failed
+  B sleep              75557 BACKGROUND_NOISY |- latency_profile w:100 cpu-weight-write-failed
+  B sleep              75539 BACKGROUND_NOISY |- latency_profile w:100 cpu-weight-write-failed
+  B sleep              75551 BACKGROUND_NOISY |- latency_profile w:100 cpu-weight-write-failed
+  B sleep              75545 BACKGROUND_NOISY |- latency_profile w:100 cpu-weight-write-failed
+  B sleep              75557 BACKGROUND_NOISY |- latency_profile w:100 cpu-weight-write-failed
+  B sleep              75539 BACKGROUND_NOISY |- latency_profile w:100 cpu-weight-write-failed
+  B sleep              75551 BACKGROUND_NOISY |- latency_profile w:100 cpu-weight-write-failed
+  B sleep              75545 BACKGROUND_NOISY |- latency_profile w:100 cpu-weight-write-failed
+  B sleep              75557 BACKGROUND_NOISY |- latency_profile w:100 cpu-weight-write-failed
+  B sleep              75539 BACKGROUND_NOISY |- latency_profile w:100 cpu-weight-write-failed
+  B sleep              75563 BACKGROUND_NOISY |- latency_profile w:100 cpu-weight-write-failed
+  --------------------------------------------------
+  DONE  total=434  applied=0  L=0  T=0  B=39  U=395
+
