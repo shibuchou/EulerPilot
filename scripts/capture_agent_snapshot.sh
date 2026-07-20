@@ -9,19 +9,23 @@ MODE="${3:-}"
 DURATION_S="${4:-1}"
 WARMUP_CYCLES="${5:-0}"
 BACKEND="${6:-${EULERPILOT_BACKEND:-cgroup_v2}}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="${PROJECT_ROOT:-$(cd "$SCRIPT_DIR/.." && pwd)}"
+AGENT_BIN="${AGENT_BIN:-$PROJECT_ROOT/build/eulerpilot-agent}"
+AGENT_CONFIG="${AGENT_CONFIG:-$PROJECT_ROOT/configs/agent.yaml}"
 
 mkdir -p "$(dirname "$OUTFILE")"
 if [ "$MODE" = "--active" ]; then
-    /root/EulerPilot/build/eulerpilot-agent \
-        --config /root/EulerPilot/configs/agent.yaml \
+    "$AGENT_BIN" \
+        --config "$AGENT_CONFIG" \
         --backend "$BACKEND" \
         --interval-ms "$INTERVAL_MS" \
         --duration-s "$DURATION_S" \
         --warmup-cycles "$WARMUP_CYCLES" \
         --active > "$OUTFILE"
 else
-    /root/EulerPilot/build/eulerpilot-agent \
-        --config /root/EulerPilot/configs/agent.yaml \
+    "$AGENT_BIN" \
+        --config "$AGENT_CONFIG" \
         --backend "$BACKEND" \
         --interval-ms "$INTERVAL_MS" \
         --duration-s "$DURATION_S" \

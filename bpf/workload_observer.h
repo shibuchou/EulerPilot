@@ -25,6 +25,7 @@ struct task_metrics {
     EP_U64 ctx_switch_count;
     EP_U64 migrate_count;
     EP_U64 last_enqueued_ns;
+    EP_U64 last_running_ns;
     EP_U32 last_cpu;
     char comm[EULERPILOT_COMM_LEN];
 };

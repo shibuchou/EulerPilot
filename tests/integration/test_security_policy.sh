@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
-EXPECTED_ROOT="/root/EulerPilot"
+EXPECTED_ROOT="${EXPECTED_ROOT:-$ROOT}"
 RESULT_DIR="$ROOT/results/security_policy/integration-$(date +%Y%m%d-%H%M%S)"
 AGENT_BIN="$ROOT/build/eulerpilot-agent"
 TARGET_FILE="$ROOT/demo/security_policy_demo/secret.txt"
@@ -306,7 +306,7 @@ exporter:
     enabled: false
 YAML
 
-cat > "$RESULT_DIR/skills.audit.yaml" <<'YAML'
+cat > "$RESULT_DIR/skills.audit.yaml" <<YAML
 schema_version: 2
 skills:
 - name: resource_control
@@ -325,8 +325,8 @@ skills:
     targets:
       demo_secret:
         type: path
-        path: /root/EulerPilot/demo/security_policy_demo/secret.txt
-        exec_path: /root/EulerPilot/demo/security_policy_demo/deny_exec.sh
+        path: $ROOT/demo/security_policy_demo/secret.txt
+        exec_path: $ROOT/demo/security_policy_demo/deny_exec.sh
     rules:
       - name: deny_demo_secret_open
         hook: lsm_file_open
@@ -447,7 +447,7 @@ exporter:
     enabled: false
 YAML
 
-cat > "$RESULT_DIR/skills.anomaly.yaml" <<'YAML'
+cat > "$RESULT_DIR/skills.anomaly.yaml" <<YAML
 schema_version: 2
 skills:
 - name: resource_control
@@ -466,8 +466,8 @@ skills:
     targets:
       demo_secret:
         type: path
-        path: /root/EulerPilot/demo/security_policy_demo/secret.txt
-        exec_path: /root/EulerPilot/demo/security_policy_demo/deny_exec.sh
+        path: $ROOT/demo/security_policy_demo/secret.txt
+        exec_path: $ROOT/demo/security_policy_demo/deny_exec.sh
     rules:
       - name: deny_demo_secret_open
         hook: lsm_file_open
@@ -550,7 +550,7 @@ exporter:
     enabled: false
 YAML
 
-cat > "$RESULT_DIR/skills.enforce.yaml" <<'YAML'
+cat > "$RESULT_DIR/skills.enforce.yaml" <<YAML
 schema_version: 2
 skills:
 - name: resource_control
@@ -569,8 +569,8 @@ skills:
     targets:
       demo_secret:
         type: path
-        path: /root/EulerPilot/demo/security_policy_demo/secret.txt
-        exec_path: /root/EulerPilot/demo/security_policy_demo/deny_exec.sh
+        path: $ROOT/demo/security_policy_demo/secret.txt
+        exec_path: $ROOT/demo/security_policy_demo/deny_exec.sh
     rules:
       - name: deny_demo_secret_open
         hook: lsm_file_open

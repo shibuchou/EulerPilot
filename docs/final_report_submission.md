@@ -4,7 +4,7 @@
 
 ## 摘要
 
-EulerPilot 是一个面向 openEuler 的自适应资源管控 Agent。项目通过 eBPF 进行低开销观测，在用户态完成 workload 分类、压力识别和策略决策，并通过 `cgroup v2` 与 `sched_ext/scx` 双执行后端实现资源调控。当前项目已经完成从系统观测、策略执行到正式实验、Web Console 展示和中文报告输出的完整工程闭环，并分别在 Redis 与 Nginx 两条业务线上形成 `RUNS=5` 的候选结果目录，在 SP4 自编译 sched_ext 内核上形成 `RUNS=5` 复核结果，同时补充 Redis pressure gradient 与 manual static vs agent dynamic 两组争奖增强证据。
+EulerPilot 是一个面向 openEuler 的自适应资源管控 Agent。项目通过 eBPF 进行低开销观测，在用户态完成 workload 分类、压力识别和策略决策，并通过 `cgroup v2` 与 `sched_ext/scx` 双执行后端实现资源调控。当前项目已经完成从系统观测、策略执行到正式实验、Web Console 展示和中文报告输出的完整工程闭环，并分别在 Redis 与 Nginx 两条业务线上形成 `RUNS=5` 的候选结果目录，在 SP4 自编译 sched_ext 内核上形成 `RUNS=5` 复核结果，同时补充 Redis pressure gradient 争奖增强证据。manual static vs agent dynamic 已用修复脚本在 SP4 RUNS=5 重跑，并纳入最终证据。
 
 EulerPilot 不追求无条件替代 Linux 默认调度器，而是面向混部干扰场景，通过 eBPF/PSI 感知 workload 状态，在延迟敏感服务与后台干扰共存时，选择 cgroup v2 或 sched_ext/scx 后端进行按需控制，并通过 Redis/Nginx 对照实验展示收益、边界与可回滚能力。
 
@@ -294,7 +294,7 @@ TC QoS 还完成了速率误差 Benchmark：在 2 Mbit/s 目标下，121 实测 
 
 - `noisy_cgroup_v2` 在 `GET` 上表现出明显的吞吐正向趋势
 - `noisy_scx_normal` 在 `GET / INCR / SET` 上表现出较明显的 RPS 改善趋势
-- `noisy_scx_psi` 在 `GET` 上具备一定吞吐改善趋势
+- `noisy_scx_psi` 保留为 PSI Gate ACTIVE 与 scx map 联动证据；该组会额外运行 PSI Redis probe，不与无 probe 组直接比较净性能收益
 - `noisy_scx_always_active` 并不稳定优于其他模式
 
 当前可配套引用图表：
@@ -342,6 +342,7 @@ TC QoS 还完成了速率误差 Benchmark：在 2 Mbit/s 目标下，121 实测 
 - `noisy_scx_psi` 吞吐接近 `noisy_default`
 - `noisy_scx_psi` 与 `noisy_scx_always_active` 当前仍存在显著尾延迟代价
 - `quiet_scx_normal` 的基础开销不可忽略
+- `cpu_per_10k_requests` 是同一脚本、同一采样窗口内的 CPU 效率辅助指标；不同 workload、不同 probe 负载之间不做跨窗口强比较
 
 ### 6.3 Nginx 场景下的策略适配边界
 
@@ -414,7 +415,7 @@ EulerPilot 的价值不在于证明某一组参数在所有场景下都优于默
 1. EulerPilot 已在 `SP3` 上完成 cgroup v2 主闭环，具备正式交付能力。
 2. EulerPilot 已在 `OLK-6.6` 上完成 Redis 与 Nginx 的 `sched_ext` 正式 compare，并在 `SP4` 自编译 sched_ext 内核上完成 Redis/Nginx `RUNS=5` 复核。
 3. EulerPilot 已实现 Skills 插件化框架与 YAML v2 驱动，并通过 `network_policy`、`network_qos`、`network_xdp` 和正式 `security_policy` 证明了 Agent 能力可扩展。
-4. 项目已通过最新 SP4 质量门禁（`results/k8s/sp4-validation-20260708-023552/final_quality_gate.log`，22/22 P0、100 轮 smoke、5 轮 doctor）和安全审计，并形成 37 条 final evidence compact；新增 SP4 Redis pressure gradient 与 static-vs-agent 对比用于说明收益边界和 Agent 动态调控价值。
+4. 项目已通过最新 SP4 质量门禁（`reports/final_quality_gate_20260720-path-closeout.log`，22/22 P0、100 轮 smoke、5 轮 doctor）和安全审计，并形成 37 条 final evidence compact；新增 SP4 Redis pressure gradient 用于说明收益边界，static-vs-agent 对比已使用修复脚本 RUNS=5 重跑，用于说明 Agent 动态调控价值和边界。
 
 补充说明：
 

@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="/root/EulerPilot"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="${ROOT:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
 OUTDIR="$ROOT/results/smoke/loader-wiring-$(date +%Y%m%d-%H%M%S)"
-SCX_BIN="${SCX_BIN:-/root/olk/kernel-OLK-6.6-atomgit/tools/sched_ext/build/bin/scx_eulerpilot}"
+SCX_BIN="${SCX_BIN:-$(command -v scx_eulerpilot 2>/dev/null || true)}"
+SCX_BIN="${SCX_BIN:-/usr/local/bin/scx_eulerpilot}"
+if [ ! -x "$SCX_BIN" ] && [ -x /root/olk/kernel-OLK-6.6-atomgit/tools/sched_ext/build/bin/scx_eulerpilot ]; then
+    SCX_BIN="/root/olk/kernel-OLK-6.6-atomgit/tools/sched_ext/build/bin/scx_eulerpilot"
+fi
 
 mkdir -p "$OUTDIR"
 

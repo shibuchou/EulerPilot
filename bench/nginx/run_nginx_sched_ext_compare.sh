@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="/root/EulerPilot"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="${ROOT:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
 STAMP="$(date +%Y%m%d-%H%M%S)"
 OUTDIR="${OUTDIR:-$ROOT/results/final/nginx-scx-compare-$STAMP}"
 NGINX_PORT="${NGINX_PORT:-18082}"
@@ -11,7 +12,11 @@ WRK_THREADS="${WRK_THREADS:-2}"
 WRK_CONNECTIONS="${WRK_CONNECTIONS:-32}"
 WRK_DURATION="${WRK_DURATION:-10s}"
 RUNS="${RUNS:-1}"
-SCX_BIN="${SCX_BIN:-/root/olk/kernel-OLK-6.6-atomgit/tools/sched_ext/build/bin/scx_eulerpilot}"
+SCX_BIN="${SCX_BIN:-$(command -v scx_eulerpilot 2>/dev/null || true)}"
+SCX_BIN="${SCX_BIN:-/usr/local/bin/scx_eulerpilot}"
+if [ ! -x "$SCX_BIN" ] && [ -x /root/olk/kernel-OLK-6.6-atomgit/tools/sched_ext/build/bin/scx_eulerpilot ]; then
+    SCX_BIN="/root/olk/kernel-OLK-6.6-atomgit/tools/sched_ext/build/bin/scx_eulerpilot"
+fi
 SNAPSHOT_DELAY="${SNAPSHOT_DELAY:-0.2}"
 
 LABELS=(

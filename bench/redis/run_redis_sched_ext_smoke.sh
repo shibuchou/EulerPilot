@@ -1,14 +1,19 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="/root/EulerPilot"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="${ROOT:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
 OUTDIR="$ROOT/results/reports/redis-scx-smoke-$(date +%Y%m%d-%H%M%S)"
 REDIS_PORT="${REDIS_PORT:-6384}"
 INTERVAL_MS="${INTERVAL_MS:-1000}"
 STRESS_WORKERS="${STRESS_WORKERS:-2}"
 BENCH_CLIENTS="${BENCH_CLIENTS:-16}"
 BENCH_REQUESTS="${BENCH_REQUESTS:-20000}"
-SCX_BIN="${SCX_BIN:-/root/olk/kernel-OLK-6.6-atomgit/tools/sched_ext/build/bin/scx_eulerpilot}"
+SCX_BIN="${SCX_BIN:-$(command -v scx_eulerpilot 2>/dev/null || true)}"
+SCX_BIN="${SCX_BIN:-/usr/local/bin/scx_eulerpilot}"
+if [ ! -x "$SCX_BIN" ] && [ -x /root/olk/kernel-OLK-6.6-atomgit/tools/sched_ext/build/bin/scx_eulerpilot ]; then
+    SCX_BIN="/root/olk/kernel-OLK-6.6-atomgit/tools/sched_ext/build/bin/scx_eulerpilot"
+fi
 
 mkdir -p "$OUTDIR"
 

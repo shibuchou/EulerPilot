@@ -24,7 +24,7 @@ Stage G 已进入完成状态。当前提交材料不再新增 Benchmark 主结�
 
 - 提交材料引用 `reports/final_evidence_compact.md` 作为总入口。
 - Redis/Nginx 主结论以 121/122 既有正式候选目录为主，SP4 RUNS=5 作为平台复核证据。
-- 新增现场演示日志只作为彩排记录，不自动扩展 final evidence compact 的 37 条冻结范围；SP4/K8s 旁路验证、Redis pressure gradient 与 Redis static-vs-agent 对比已作为最终收口证据纳入当前 manifest。
+- 新增现场演示日志只作为彩排记录，不自动扩展当前 final evidence compact 范围；SP4/K8s 旁路验证和 Redis pressure gradient 已作为最终收口证据纳入当前 manifest，Redis static-vs-agent 已用修复脚本 RUNS=5 重跑通过后再回补。
 - Benchmark 结论必须说明环境、目标 workload、对照组和边界，不能把单 workload profile 直接泛化到所有场景。
 
 ## 后续只允许的改动

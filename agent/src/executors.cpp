@@ -768,6 +768,12 @@ std::string default_scx_binary() {
     if (value && *value) {
         return value;
     }
+    if (file_exists("/usr/local/bin/scx_eulerpilot")) {
+        return "/usr/local/bin/scx_eulerpilot";
+    }
+    if (file_exists("/usr/bin/scx_eulerpilot")) {
+        return "/usr/bin/scx_eulerpilot";
+    }
     return "/root/olk/kernel-OLK-6.6-atomgit/tools/sched_ext/build/bin/scx_eulerpilot";
 }
 

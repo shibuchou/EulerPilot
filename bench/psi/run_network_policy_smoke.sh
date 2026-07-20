@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-AGENT_BIN="/root/EulerPilot/build/eulerpilot-agent"
-AGENT_YAML="/root/EulerPilot/configs/agent.yaml"
-SKILLS_YAML="/root/EulerPilot/configs/skills.yaml"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="${ROOT:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
+AGENT_BIN="$ROOT/build/eulerpilot-agent"
+AGENT_YAML="$ROOT/configs/agent.yaml"
+SKILLS_YAML="$ROOT/configs/skills.yaml"
 DEMO_CGROUP="/sys/fs/cgroup/eulerpilot/demo-net"
 PORT=18080
-RESULT_DIR="/root/EulerPilot/results/smoke/network-policy-$(date +%Y%m%d-%H%M%S)"
+RESULT_DIR="$ROOT/results/smoke/network-policy-$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$RESULT_DIR"
 
 echo "=== Network Policy Demo Smoke Test ===" | tee "$RESULT_DIR/smoke.log"
@@ -75,5 +77,5 @@ fi
 echo "Restoring skills.yaml..." | tee -a "$RESULT_DIR/smoke.log"
 cp "$RESULT_DIR/skills.yaml.bak" "$SKILLS_YAML"
 pkill -f "http.server $PORT" 2>/dev/null || true
-bash /root/EulerPilot/scripts/cleanup_network_policy_demo.sh 2>/dev/null || true
+bash "$ROOT/scripts/cleanup_network_policy_demo.sh" 2>/dev/null || true
 echo "=== Smoke test complete: $RESULT_DIR ===" | tee -a "$RESULT_DIR/smoke.log"

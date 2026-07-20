@@ -124,7 +124,8 @@ public:
             last_error_ = "iproute2-missing";
             return false;
         }
-        if (!file_exists("/root/EulerPilot/build/network_xdp.bpf.o")) {
+        const std::string object_path = eulerpilot_bpf_object_path("network_xdp.bpf.o");
+        if (!file_exists(object_path.c_str())) {
             last_error_ = "network-xdp-bpf-not-built";
             return false;
         }
@@ -135,7 +136,7 @@ public:
         }
         ifindex_ = static_cast<int>(ifindex);
 
-        bpf_object *obj = bpf_object__open_file("/root/EulerPilot/build/network_xdp.bpf.o", nullptr);
+        bpf_object *obj = bpf_object__open_file(object_path.c_str(), nullptr);
         if (!obj) {
             last_error_ = "probe-xdp-bpf-open-failed";
             return false;
@@ -181,7 +182,8 @@ public:
             return true;
         }
 
-        bpf_object_ = bpf_object__open_file("/root/EulerPilot/build/network_xdp.bpf.o", nullptr);
+        const std::string object_path = eulerpilot_bpf_object_path("network_xdp.bpf.o");
+        bpf_object_ = bpf_object__open_file(object_path.c_str(), nullptr);
         if (!bpf_object_) {
             last_error_ = "xdp-bpf-open-failed";
             return false;

@@ -61,6 +61,85 @@ bool file_exists(const char *path) {
     return file.good();
 }
 
+bool file_exists(const fs::path &path) {
+    std::ifstream file(path);
+    return file.good();
+}
+
+fs::path current_executable_path() {
+    char buffer[4096] = {};
+    const ssize_t length = readlink("/proc/self/exe", buffer, sizeof(buffer) - 1);
+    if (length <= 0) {
+        return {};
+    }
+    buffer[length] = '\0';
+    return fs::path(buffer);
+}
+
+bool looks_like_project_root(const fs::path &path) {
+    return file_exists(path / "configs" / "agent.yaml") &&
+           file_exists(path / "Makefile");
+}
+
+fs::path find_project_root_from(fs::path start) {
+    std::error_code ec;
+    start = fs::absolute(start, ec);
+    if (ec) {
+        return {};
+    }
+    for (fs::path current = start; !current.empty(); current = current.parent_path()) {
+        if (looks_like_project_root(current)) {
+            return current;
+        }
+        if (current == current.root_path()) {
+            break;
+        }
+    }
+    return {};
+}
+
+fs::path eulerpilot_project_root() {
+    const char *env_root = std::getenv("EULERPILOT_ROOT");
+    if (env_root && env_root[0] != '\0') {
+        return fs::absolute(fs::path(env_root));
+    }
+
+    std::error_code ec;
+    fs::path root = find_project_root_from(fs::current_path(ec));
+    if (!root.empty()) {
+        return root;
+    }
+
+    const fs::path exe_path = current_executable_path();
+    if (!exe_path.empty()) {
+        root = find_project_root_from(exe_path.parent_path());
+        if (!root.empty()) {
+            return root;
+        }
+    }
+
+    return ec ? fs::path(".") : fs::current_path(ec);
+}
+
+std::string expand_project_root_token(std::string value) {
+    const std::string token = "${EULERPILOT_ROOT}";
+    const std::string root = eulerpilot_project_root().string();
+    std::size_t pos = 0;
+    while ((pos = value.find(token, pos)) != std::string::npos) {
+        value.replace(pos, token.size(), root);
+        pos += root.size();
+    }
+    return value;
+}
+
+std::string eulerpilot_bpf_object_path(const std::string &object_name) {
+    return (eulerpilot_project_root() / "build" / object_name).string();
+}
+
+std::string eulerpilot_security_demo_path(const std::string &file_name) {
+    return (eulerpilot_project_root() / "demo" / "security_policy_demo" / file_name).string();
+}
+
 std::string now_event_timestamp() {
     return std::to_string(static_cast<long long>(time(nullptr)));
 }
@@ -250,7 +329,7 @@ std::string config_value_or(const SkillSpec &spec,
                             const std::string &key,
                             const std::string &fallback) {
     const auto *value = find_config_value(spec, key);
-    return value ? *value : fallback;
+    return expand_project_root_token(value ? *value : fallback);
 }
 
 int find_rule_by_hook(const SkillSpec &spec, const std::string &hook) {

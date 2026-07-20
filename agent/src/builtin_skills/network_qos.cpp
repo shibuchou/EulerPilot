@@ -109,7 +109,8 @@ public:
             last_error_ = "iproute2-missing";
             return false;
         }
-        if (!file_exists("/root/EulerPilot/build/network_qos_tc.bpf.o")) {
+        const std::string object_path = eulerpilot_bpf_object_path("network_qos_tc.bpf.o");
+        if (!file_exists(object_path.c_str())) {
             last_error_ = "network-qos-tc-not-built";
             return false;
         }
@@ -147,7 +148,8 @@ public:
             return false;
         }
 
-        bpf_object_ = bpf_object__open_file("/root/EulerPilot/build/network_qos_tc.bpf.o", nullptr);
+        const std::string object_path = eulerpilot_bpf_object_path("network_qos_tc.bpf.o");
+        bpf_object_ = bpf_object__open_file(object_path.c_str(), nullptr);
         if (!bpf_object_) {
             last_error_ = "tc-bpf-open-failed";
             return false;

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="/root/EulerPilot"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="${ROOT:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
 STAMP="$(date +%Y%m%d-%H%M%S)"
 OUTDIR="$ROOT/results/final/redis-scx-psi-probe-$STAMP"
 REDIS_PORT="${REDIS_PORT:-6390}"

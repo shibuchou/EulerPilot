@@ -662,7 +662,7 @@ std::vector<WorkloadDecision> run_cycles(const RuntimeConfig &config) {
             decision.calibrated_cpu_psi_threshold = thresholds.cpu_psi_threshold;
         }
 
-        skill_context.resource_ops->apply_in_cycle(cycle_decisions, gate_decision);
+        skill_context.resource_ops->apply_in_cycle(cycle_decisions, gate_decision, cycle_config);
 
         merged.insert(merged.end(), cycle_decisions.begin(), cycle_decisions.end());
 

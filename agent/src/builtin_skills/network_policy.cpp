@@ -87,7 +87,8 @@ public:
             last_error_ = "cgroup-root-not-writable";
             return false;
         }
-        if (!file_exists("/root/EulerPilot/build/network_policy.bpf.o")) {
+        const std::string object_path = eulerpilot_bpf_object_path("network_policy.bpf.o");
+        if (!file_exists(object_path.c_str())) {
             last_error_ = "network-policy-bpf-not-built";
             return false;
         }
@@ -105,7 +106,7 @@ public:
             return false;
         }
 
-        bpf_object *obj = bpf_object__open_file("/root/EulerPilot/build/network_policy.bpf.o", nullptr);
+        bpf_object *obj = bpf_object__open_file(object_path.c_str(), nullptr);
         if (!obj) {
             close(probe_fd);
             cleanup_cgroup(probe_path);
@@ -180,7 +181,8 @@ public:
             last_error_ = "network-policy-cgroup-open-failed";
             return false;
         }
-        bpf_object_ = bpf_object__open_file("/root/EulerPilot/build/network_policy.bpf.o", nullptr);
+        const std::string object_path = eulerpilot_bpf_object_path("network_policy.bpf.o");
+        bpf_object_ = bpf_object__open_file(object_path.c_str(), nullptr);
         if (!bpf_object_) {
             rollback();
             last_error_ = "network-policy-bpf-open-failed";

@@ -20,7 +20,7 @@ EulerPilot 是一个面向 openEuler 的自适应资源管控 Agent，通过 `eB
 - Redis `RUNS=5` 正式候选结果
 - Nginx `RUNS=5` 正式候选结果
 - SP4 Redis/Nginx `RUNS=5` sched_ext 多轮复核
-- Redis pressure gradient 与 manual static vs agent dynamic 对比
+- Redis pressure gradient；manual static vs agent dynamic 已用修复脚本 RUNS=5 重跑
 - Web Console v1 + 37 条 final evidence compact + 中文报告主稿
 
 ## 3. 核心架构
@@ -58,7 +58,7 @@ Observer -> Analyzer -> Policy Engine -> Skill Manager -> Executor -> Benchmark/
 - `noisy_cgroup_v2` 与 `noisy_scx_normal` 在部分操作呈现正向趋势
 - `sched_ext` 不应表述为对所有 workload 都稳定提升
 - SP4 追加复核：`results/final/redis-scx-compare-20260708-150702`，`RUNS=5`
-- 争奖增强证据：`results/final/redis-pressure-gradient-20260708-153811`、`results/final/redis-static-vs-agent-20260708-162543`
+- 争奖增强证据：`results/final/redis-pressure-gradient-20260708-153811`、`results/final/redis-static-vs-agent-20260720-114909`
 
 ### Nginx（`nginx-scx-compare-20260612-194018`）
 - `cgroup_v2` 在 Nginx 场景下更稳

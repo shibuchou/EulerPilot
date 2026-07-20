@@ -53,7 +53,7 @@ sched_ext/scx 路径基于 SP4 官方源码自编译启用 CONFIG_SCHED_CLASS_EX
 - SP4 Redis RUNS=5：`results/final/redis-scx-compare-20260708-150702`
 - SP4 Nginx RUNS=5：`results/final/nginx-scx-compare-20260708-152602`
 - SP4 Redis 压力梯度：`results/final/redis-pressure-gradient-20260708-153811`
-- SP4 Redis 静态 vs Agent 动态：`results/final/redis-static-vs-agent-20260708-162543`
+- SP4 Redis 静态 vs Agent 动态：`results/final/redis-static-vs-agent-20260720-114909`
 - SP4/K8s/Web Console 旁路验证：`results/k8s/sp4-validation-20260708-023552`
 
 ## 需要先理解的设计边界

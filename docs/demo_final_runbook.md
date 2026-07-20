@@ -51,7 +51,7 @@ SP4 / 123 sched_ext kernel
   -> Redis RUNS=5 sched_ext compare
   -> Nginx RUNS=5 sched_ext compare
   -> final_quality_gate.sh 22/22 P0 + 100 smoke + 5 doctor
-  -> final evidence compact 35 entries / missing 0 / warnings 0
+  -> final evidence compact 37 entries / missing 0 / warnings 0
 ```
 
 ## 演示视频状态

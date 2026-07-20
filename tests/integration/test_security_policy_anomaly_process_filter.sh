@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
-EXPECTED_ROOT="/root/EulerPilot"
+EXPECTED_ROOT="${EXPECTED_ROOT:-$ROOT}"
 RESULT_DIR="${RESULT_DIR:-$ROOT/results/security_policy/anomaly-process-filter-$(date +%Y%m%d-%H%M%S)}"
 AGENT_BIN="$ROOT/build/eulerpilot-agent"
 AGENT_PID=""

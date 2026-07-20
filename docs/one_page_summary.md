@@ -45,7 +45,7 @@ EulerPilot 是面向 openEuler 的自适应资源管控 Agent。它用 eBPF/PSI 
 - SP4 Redis RUNS=5：`results/final/redis-scx-compare-20260708-150702`
 - SP4 Nginx RUNS=5：`results/final/nginx-scx-compare-20260708-152602`
 - SP4 Redis 压力梯度：`results/final/redis-pressure-gradient-20260708-153811`
-- SP4 Redis 静态 vs Agent 动态：`results/final/redis-static-vs-agent-20260708-162543`
+- SP4 Redis 静态 vs Agent 动态：`results/final/redis-static-vs-agent-20260720-114909`
 - SP4/K8s/Web Console 旁路验证：`results/k8s/sp4-validation-20260708-023552`
 - Policy Engine SP4 repeat 10：`results/policy_engine/security-network-resource-20260705-211407`
 - Evidence：`reports/final_evidence_compact.md`

@@ -16,10 +16,10 @@ SP4 已接入为 EulerPilot 后续完整能力验证平台。本文件记录 SP4
 - cgroup v2：已挂载，controllers 包含 `cpu io memory`
 - PSI：`cpu/memory/io` 已可用
 - BTF / BPF LSM / TC / XDP / sched_ext：能力探测可用
-- Web Console：已通过 `npm ci/test/lint/build/audit`，Evidence 显示 37 条、必需缺失 0、警告 0
+- Web Console：已通过 `npm ci/test/lint/build/audit`；Evidence 显示 37 条、必需缺失 0、警告 0
 - 质量门禁：`scripts/final_quality_gate.sh` 已在 SP4 sched_ext 内核通过 22/22 P0、100 轮 smoke、5 轮 doctor；最新日志为 `results/k8s/sp4-validation-20260708-023552/final_quality_gate.log`
 - v3.1 主链路：`tests/integration/test_policy_engine_security_network_resource.sh --repeat 10` 已在 SP4 sched_ext 内核通过
-- sched_ext workload：Redis smoke、Redis PSI ACTIVE probe、Redis RUNS=5 sched_ext compare、Nginx RUNS=5 sched_ext compare、Redis pressure gradient 和 Redis static-vs-agent compare 已通过
+- sched_ext workload：Redis smoke、Redis PSI ACTIVE probe、Redis RUNS=5 sched_ext compare、Nginx RUNS=5 sched_ext compare、Redis pressure gradient 已通过；Redis static-vs-agent 已用修复脚本 RUNS=5 重跑
 - Kubernetes 旁路验证：已通过 `k8s-master` 只读盘点、独立 namespace 最小写入、Web Console 白名单动作、cleanup 复查；结果目录为 `results/k8s/sp4-validation-20260708-023552`
 
 已保存的 SP4 初始验证与 sched_ext 复核证据：

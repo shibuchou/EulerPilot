@@ -1,6 +1,6 @@
 # 实验设计
 
-> 当前最终实验口径已更新到 `2026-07-08`：SP4 主验证线完成 Redis/Nginx `RUNS=5` 复核、Redis pressure gradient 和 Redis manual static vs agent dynamic 对比。本文中早期 `RUNS=1/3` 内容保留为阶段实验记录；最终提交与答辩请以 `docs/final_evidence_index.md`、`docs/final_report_submission.md` 和 `reports/final_evidence_compact.md` 为准。
+> 当前最终实验口径已更新到 `2026-07-20`：SP4 主验证线完成 Redis/Nginx `RUNS=5` 复核、Redis pressure gradient，以及修复后的 Redis manual static vs agent dynamic `RUNS=5` 重跑。本文中早期 `RUNS=1/3` 内容保留为阶段实验记录；最终提交与答辩请以 `docs/final_evidence_index.md`、`docs/final_report_submission.md` 和 `reports/final_evidence_compact.md` 为准。
 
 ## Redis 抗干扰实验
 
@@ -91,6 +91,8 @@
 - `stress-ng` 进入 `/eulerpilot/background`
 - `redis-benchmark` 保持在默认根组，只作为压测客户端，不参与分类控制
 - `cpu.weight` 的解释作用域限定在同一父级 `/eulerpilot` 下的 sibling cgroup 之间
+- `noisy_scx_psi` 为了稳定触发 PSI Gate，会额外运行 Redis PSI probe；该组主要证明 ACTIVE 与 scx map 联动，不与无 probe 组直接声明净性能提升
+- `cpu_per_10k_requests` 只作为同一脚本同一采样窗口下的 CPU 效率辅助指标，不跨不同 probe 负载做强比较
 
 指标：
 

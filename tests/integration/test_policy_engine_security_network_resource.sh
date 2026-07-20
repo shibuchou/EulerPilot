@@ -326,8 +326,8 @@ skills:
     targets:
       demo_secret:
         type: path
-        path: /root/EulerPilot/demo/security_policy_demo/secret.txt
-        exec_path: /root/EulerPilot/demo/security_policy_demo/deny_exec.sh
+        path: $ROOT/demo/security_policy_demo/secret.txt
+        exec_path: $ROOT/demo/security_policy_demo/deny_exec.sh
       lab_connect:
         type: path
         dst_ip: 127.0.0.1

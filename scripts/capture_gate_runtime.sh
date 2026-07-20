@@ -5,7 +5,11 @@ set -euo pipefail
 
 OUTDIR="$1"
 PREFIX="$2"
-SCX_BIN="${SCX_BIN:-/root/olk/kernel-OLK-6.6-atomgit/tools/sched_ext/build/bin/scx_eulerpilot}"
+SCX_BIN="${SCX_BIN:-$(command -v scx_eulerpilot 2>/dev/null || true)}"
+SCX_BIN="${SCX_BIN:-/usr/local/bin/scx_eulerpilot}"
+if [ ! -x "$SCX_BIN" ] && [ -x /root/olk/kernel-OLK-6.6-atomgit/tools/sched_ext/build/bin/scx_eulerpilot ]; then
+    SCX_BIN="/root/olk/kernel-OLK-6.6-atomgit/tools/sched_ext/build/bin/scx_eulerpilot"
+fi
 
 mkdir -p "$OUTDIR"
 

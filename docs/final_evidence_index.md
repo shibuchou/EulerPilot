@@ -1,6 +1,6 @@
 # EulerPilot 最终证据索引
 
-更新时间：`2026-07-17`
+更新时间：`2026-07-20`
 
 本文作为答辩和最终提交前的证据入口，集中索引 EulerPilot 当前已经具备的设计文档、测试脚本、结果目录和演示材料。日期快照文档不反复覆盖；滚动进度以 `docs/progress_status.md` 为准。
 
@@ -30,7 +30,7 @@
 python3 scripts/collect_final_evidence.py --strict
 ```
 
-当前压缩报告覆盖 37 个核心条目：质量门禁、仓库快照、Redis/Nginx sched_ext、SP4 RUNS=5 workload、Redis pressure gradient、Redis static-vs-agent、Network QoS/XDP、Security anomaly/process filter/combo scope/deep hook、Resource Control CPU/Memory/IO/Pod target、Policy Engine 双机联动、真实 Pod 联动、Web Console 与 K8s 旁路验证。`--strict` 当前通过，必需证据缺失为 0、清单警告为 0。
+当前压缩报告覆盖 37 个核心条目：质量门禁、仓库快照、Redis/Nginx sched_ext、SP4 RUNS=5 workload、Redis pressure gradient、Network QoS/XDP、Security anomaly/process filter/combo scope/deep hook、Resource Control CPU/Memory/IO/Pod target、Policy Engine 双机联动、真实 Pod 联动、Web Console 与 K8s 旁路验证。`--strict` 当前通过，必需证据缺失为 0、清单警告为 0。
 
 ## Skill 证据
 
@@ -194,8 +194,9 @@ SP4 sched_ext 增强复核：
 - SP4 Redis RUNS=5 compare：`results/final/redis-scx-compare-20260708-150702`
 - SP4 Nginx RUNS=5 compare：`results/final/nginx-scx-compare-20260708-152602`
 - SP4 Redis pressure gradient：`results/final/redis-pressure-gradient-20260708-153811`
-- SP4 Redis static-vs-agent compare：`results/final/redis-static-vs-agent-20260708-162543`
-- SP4 final quality gate：`reports/sp4/final_quality_gate_scx_workload_20260706-1214.log`
+- SP4 Redis static-vs-agent compare：`results/final/redis-static-vs-agent-20260720-114909`
+- SP4 sched_ext workload quality gate：`reports/sp4/final_quality_gate_scx_workload_20260706-1214.log`
+- SP4 final quality gate after observer/path closeout：`reports/final_quality_gate_20260720-path-closeout.log`
 
 历史 blocked / iSulad 准备证据保留：
 
@@ -205,7 +206,7 @@ SP4 sched_ext 增强复核：
 - 122 isula real runtime blocked：`results/resource_control/real-runtime-target-20260630-isula-check-122`
 - 121 v3.1 回归：`results/policy_engine/security-network-resource-20260630-102629`
 
-121 在工程质量收口后再次通过 `scripts/final_quality_gate.sh`：22/22 P0、100 轮 smoke、5 轮 doctor 均通过。
+SP4 主验证仓库在 observer 指标、warmup dry-run、sched_ext 默认路径和工程路径收口后再次通过 `scripts/final_quality_gate.sh`：22/22 P0、100 轮 smoke、5 轮 doctor 均通过；121 工程质量收口门禁作为历史回归证据保留。
 ## 后置事项
 
 - SP4 sched_ext 自编译内核复核已完成，准备文档为 `docs/sp4_validation_plan.md`，检查脚本为 `scripts/check_sp4_env.sh`。

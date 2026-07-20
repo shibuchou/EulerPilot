@@ -46,7 +46,7 @@
 
 ## Redis 结果（30秒）
 
-最强候选：redis-scx-compare-20260612-191543，RUNS=5，平衡轮换，无 invalid_run。SP4 上追加了 redis-scx-compare-20260708-150702，RUNS=5，作为 SP4 发行环境适配与自编译 sched_ext 内核复核。我们还补充了 Redis pressure gradient 和 manual static vs agent dynamic 两组证据，用来解释干扰增强时的收益/代价变化，以及 Agent 动态调控接近人工静态调参效果的工程价值。noisy_cgroup_v2 和部分 sched_ext 模式在 Redis 场景呈现正向趋势，但结论限定在 latency-sensitive 混布场景，不对所有 workload 做绝对性能提升承诺。
+最强候选：redis-scx-compare-20260612-191543，RUNS=5，平衡轮换，无 invalid_run。SP4 上追加了 redis-scx-compare-20260708-150702，RUNS=5，作为 SP4 发行环境适配与自编译 sched_ext 内核复核。Redis pressure gradient 用来解释干扰增强时的收益/代价变化；manual static vs agent dynamic 已用修复脚本在 SP4 RUNS=5 重跑，manual_static 与 agent_dynamic 均控制同一类 background cgroup worker。noisy_cgroup_v2 和部分 sched_ext 模式在 Redis 场景呈现正向趋势，但结论限定在 latency-sensitive 混布场景，不对所有 workload 做绝对性能提升承诺。
 
 ## Nginx 结果（20秒）
 

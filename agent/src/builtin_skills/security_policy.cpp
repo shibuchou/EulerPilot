@@ -255,9 +255,9 @@ public:
             }
             hook_ = hook->second;
             mode_ = mode->second;
-            target_path_ = target_path->second;
+            target_path_ = expand_project_root_token(target_path->second);
             exec_target_path_ = config_value_or(spec, "target_exec_path",
-                                                "/root/EulerPilot/demo/security_policy_demo/deny_exec.sh");
+                                                eulerpilot_security_demo_path("deny_exec.sh"));
             action_ = config_value_or(spec, "action", "deny");
             target_ref_ = config_value_or(spec, "target_ref", "legacy_path");
             rule_id_ = config_value_or(spec, "rule_id", "deny-demo-secret-open");
@@ -423,12 +423,13 @@ public:
             return false;
         }
         // Check BPF object built
-        if (!file_exists("/root/EulerPilot/build/security_policy.bpf.o")) {
+        const std::string object_path = eulerpilot_bpf_object_path("security_policy.bpf.o");
+        if (!file_exists(object_path.c_str())) {
             last_error_ = "security-policy-bpf-not-built";
             return false;
         }
         // Probe: load, attach, detach (no side effects)
-        bpf_object *obj = bpf_object__open_file("/root/EulerPilot/build/security_policy.bpf.o", nullptr);
+        bpf_object *obj = bpf_object__open_file(object_path.c_str(), nullptr);
         if (!obj) {
             last_error_ = "probe-bpf-open-failed";
             return false;
@@ -462,7 +463,8 @@ public:
     }
 
     bool start() override {
-        bpf_object_ = bpf_object__open_file("/root/EulerPilot/build/security_policy.bpf.o", nullptr);
+        const std::string object_path = eulerpilot_bpf_object_path("security_policy.bpf.o");
+        bpf_object_ = bpf_object__open_file(object_path.c_str(), nullptr);
         if (!bpf_object_) {
             rollback();
             last_error_ = "security-policy-bpf-open-failed";
@@ -1565,8 +1567,8 @@ private:
     std::string state_ = "created";
     std::string last_error_;
     std::string hook_ = "lsm_file_open";
-    std::string target_path_ = "/root/EulerPilot/demo/security_policy_demo/secret.txt";
-    std::string exec_target_path_ = "/root/EulerPilot/demo/security_policy_demo/deny_exec.sh";
+    std::string target_path_ = eulerpilot_security_demo_path("secret.txt");
+    std::string exec_target_path_ = eulerpilot_security_demo_path("deny_exec.sh");
     std::string exec_prefix_;
     std::string file_prefix_;
     std::string file_access_ = "any";

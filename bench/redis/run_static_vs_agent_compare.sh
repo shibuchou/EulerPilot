@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="/root/EulerPilot"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="${ROOT:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
 STAMP="$(date +%Y%m%d-%H%M%S)"
 OUTDIR="${OUTDIR:-$ROOT/results/final/redis-static-vs-agent-$STAMP}"
 REDIS_PORT="${REDIS_PORT:-6387}"
@@ -70,14 +71,38 @@ write_cpu_usage() {
 start_stress() {
     local rundir="$1"
     local label="$2"
-    stress-ng --cpu "$STRESS_WORKERS" --timeout 20s > "$rundir/${label}_stress.log" 2>&1 &
+    local cgroup_path="${3:-}"
+    if [ -n "$cgroup_path" ]; then
+        (
+            if ! echo "$BASHPID" > "$cgroup_path/cgroup.procs" 2>> "$rundir/${label}_stress.log"; then
+                printf 'failed_to_enter_cgroup=%s\n' "$cgroup_path" >> "$rundir/${label}_stress.log"
+                exit 1
+            fi
+            exec stress-ng --cpu "$STRESS_WORKERS" --timeout 20s
+        ) > "$rundir/${label}_stress.log" 2>&1 &
+    else
+        stress-ng --cpu "$STRESS_WORKERS" --timeout 20s > "$rundir/${label}_stress.log" 2>&1 &
+    fi
     STRESS_PID=$!
     sleep 1
+    snapshot_stress_pids "$STRESS_PID" "$rundir/${label}_controlled_pids.txt"
+    cat "$BACKGROUND_CGROUP/cgroup.procs" > "$rundir/${label}_background_cgroup_procs.txt" 2>/dev/null || true
 }
 
 stop_stress() {
     [ -n "${STRESS_PID:-}" ] && wait "$STRESS_PID" 2>/dev/null || true
     unset STRESS_PID
+}
+
+snapshot_stress_pids() {
+    local root_pid="$1"
+    local out="$2"
+    : > "$out"
+    [ -n "$root_pid" ] || return 0
+    {
+        printf '%s\n' "$root_pid"
+        pgrep -P "$root_pid" 2>/dev/null || true
+    } | awk 'NF && !seen[$1]++ { print }' > "$out"
 }
 
 run_redis_benchmark() {
@@ -128,15 +153,14 @@ run_case() {
         manual_static)
             "$ROOT/scripts/setup_cgroup_v2.sh" > "$rundir/${label}_setup.log" 2>&1
             echo "10000 100000" > "$BACKGROUND_CGROUP/cpu.max"
-            start_stress "$rundir" "$label"
-            echo "$STRESS_PID" > "$BACKGROUND_CGROUP/cgroup.procs" 2>/dev/null || true
+            start_stress "$rundir" "$label" "$BACKGROUND_CGROUP"
             cat "$BACKGROUND_CGROUP/cpu.max" > "$rundir/${label}_cpu_max.txt"
             run_redis_benchmark "$rundir" "$label"
             stop_stress
             ;;
         agent_dynamic)
             "$ROOT/scripts/setup_cgroup_v2.sh" > "$rundir/${label}_setup.log" 2>&1
-            start_stress "$rundir" "$label"
+            start_stress "$rundir" "$label" "$BACKGROUND_CGROUP"
             run_agent_benchmark "$rundir" "$label"
             stop_stress
             ;;
@@ -274,8 +298,8 @@ lines = [
     "## 组别",
     "",
     "- `default_noisy`：Redis + stress-ng，无控制。",
-    "- `manual_static`：手动把后台 cgroup 写入 `cpu.max=10000 100000`，不启动 Agent。",
-    "- `agent_dynamic`：启动 EulerPilot cgroup_v2 active，由 Agent 自动观测、决策和回滚。",
+    "- `manual_static`：在后台 cgroup 内启动 stress-ng 及其 worker，手动写入 `cpu.max=10000 100000`，不启动 Agent。",
+    "- `agent_dynamic`：在同一后台 cgroup 内启动 stress-ng 及其 worker，启动 EulerPilot cgroup_v2 active，由 Agent 自动观测、决策和回滚。",
     "",
     "## GET 视角核心表",
     "",
@@ -301,7 +325,7 @@ lines.extend([
     "",
     "## 结论边界",
     "",
-    "本实验用于证明 Agent 动态策略能接近人工静态调参效果，并提供自动观测、审计和 rollback。结果不用于声明 Agent 永远超过人工最优参数。",
+    "本实验用于比较同一批后台干扰线程在人工静态控制与 Agent 动态控制下的表现，并提供自动观测、审计和 rollback 证据。结果不用于声明 Agent 永远超过人工最优参数；旧版只移动 stress-ng 父 PID 的结果已撤下，必须以本脚本重跑后的输出作为有效证据。",
 ])
 report_md.write_text("\n".join(lines) + "\n", encoding="utf-8")
 PY

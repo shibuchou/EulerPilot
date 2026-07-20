@@ -5,7 +5,7 @@
 ## 推荐阅读顺序
 
 1. `one_page_summary.md`：一页式项目简介。
-2. `progress_status.md`：当前滚动进度状态，包含 SP4/123、Kubernetes、Web Console、37 条 evidence 和 22/22 质量门禁。
+2. `progress_status.md`：当前滚动进度状态，包含 SP4/123、Kubernetes、Web Console、37 条 evidence和 22/22 质量门禁。
 3. `final_evidence_index.md`：最终证据索引和 `collect_final_evidence.py --strict` 入口。
 4. `final_report_submission.md`：最终报告主稿。
 5. `architecture.md`：系统架构、模块边界和双执行后端说明。

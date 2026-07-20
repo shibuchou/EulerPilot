@@ -31,7 +31,9 @@ public:
         }
         auto &ctx = global_skill_runtime_context();
         std::string reason = "backend-not-sched-ext";
-        ctx.scx_ready = reconcile_scx_session(runtime_config_, ControlMode::Normal, ctx.scx_session, reason);
+        RuntimeConfig start_config = runtime_config_;
+        start_config.dry_run = true;
+        ctx.scx_ready = reconcile_scx_session(start_config, ControlMode::Normal, ctx.scx_session, reason);
         ctx.scx_reason = reason;
         global_skill_runtime_context().resource_ops = this;
         running_ = true;
@@ -40,12 +42,20 @@ public:
     }
 
     void apply_in_cycle(std::vector<WorkloadDecision> &decisions,
-                        const GateDecision &gate) override {
+                        const GateDecision &gate,
+                        const RuntimeConfig &cycle_config) override {
         auto &ctx = global_skill_runtime_context();
         bool scx_active = ctx.scx_ready;
         std::string scx_reason = ctx.scx_reason;
 
         if (backend_ == ExecutorBackend::SchedExt) {
+            const ControlMode scx_mode = (gate.next_state == GateState::Active ||
+                                          gate.next_state == GateState::Cooldown)
+                                             ? ControlMode::Latency
+                                             : ControlMode::Normal;
+            scx_active = reconcile_scx_session(cycle_config, scx_mode, ctx.scx_session, scx_reason);
+            ctx.scx_ready = scx_active;
+            ctx.scx_reason = scx_reason;
             if (scx_active) {
                 if (update_scx_gate_state(ctx.scx_session, gate.next_state, gate.generation,
                                           gate.updated_at_ns, gate.evidence_mask, scx_reason)) {
@@ -57,14 +67,14 @@ public:
                 }
             }
             for (auto &d : decisions) {
-                d.action = apply_scx_assignment(runtime_config_, d, scx_active, scx_reason);
+                d.action = apply_scx_assignment(cycle_config, d, scx_active, scx_reason);
             }
         } else {
             const bool gate_pressure = gate.next_state == GateState::Active ||
                                        gate.next_state == GateState::Cooldown;
             for (auto &d : decisions) {
                 const bool pressure_mode = gate_pressure || d.target_profile != "normal_profile";
-                d.action = apply_cgroup_assignment(runtime_config_, d, policy_, pressure_mode);
+                d.action = apply_cgroup_assignment(cycle_config, d, policy_, pressure_mode);
             }
         }
     }

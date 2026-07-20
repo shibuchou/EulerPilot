@@ -23,12 +23,12 @@
     },
     {
       "category": "quality_gate",
-      "name": "SP4 final quality gate after Kubernetes/Web Console validation",
+      "name": "SP4 final quality gate after observer/path closeout",
       "host": "123",
-      "path": "results/k8s/sp4-validation-20260708-023552/final_quality_gate.log",
+      "path": "reports/final_quality_gate_20260720-path-closeout.log",
       "kind": "quality_gate",
       "required": true,
-      "notes": "SP4 core validation repository final gate: 22/22 P0, 100-round smoke and 5-round doctor evidence."
+      "notes": "SP4 core validation repository final gate after observer metric, warmup dry-run, sched_ext path and portability closeout: 22/22 P0, 100-round smoke and 5-round doctor evidence."
     },
     {
       "category": "repo_status",
@@ -98,12 +98,12 @@
       "category": "cpu_sched_ext",
       "name": "SP4 Redis manual static vs agent dynamic comparison",
       "host": "123",
-      "path": "results/final/redis-static-vs-agent-20260708-162543",
+      "path": "results/final/redis-static-vs-agent-20260720-114909",
       "kind": "result_dir",
       "summary": "summary.md",
       "files": ["compare_summary_avg.csv", "report.md", "summary.md"],
       "required": true,
-      "notes": "Redis noisy workload comparison among default, manual static cgroup control and EulerPilot dynamic Agent control."
+      "notes": "Fixed RUNS=5 Redis noisy workload comparison among default, manual static cgroup control and EulerPilot dynamic Agent control. stress-ng root and worker PIDs are started inside the same background cgroup for manual_static and agent_dynamic."
     },
     {
       "category": "cpu_sched_ext",

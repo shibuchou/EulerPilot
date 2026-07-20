@@ -12,8 +12,8 @@ EulerPilot 不是单一调度器 demo，而是一套围绕“观测 -> 决策 ->
 | 历史对照线 | `192.168.1.121` 保留为 SP3 历史验证和回归对照；`192.168.1.122` 保留为 SP3/OLK 对照验证 |
 | SP4 / sched_ext | SP4 发行环境已完成适配；`sched_ext/scx` 基于 SP4 官方源码自编译启用 `CONFIG_SCHED_CLASS_EXT` 的内核完成复核，不声称发行默认内核直接支持 |
 | 质量门禁 | SP4 最终质量门禁通过：`22/22 P0`、`100` 轮 Agent smoke、`5` 轮 doctor |
-| 最终证据 | `python3 scripts/collect_final_evidence.py --strict` 通过，覆盖 `37` 条核心证据，缺失 `0`、警告 `0` |
-| 性能复核 | SP4 Redis/Nginx `RUNS=5`，Redis pressure gradient，Redis manual static vs agent dynamic |
+| 最终证据 | `python3 scripts/collect_final_evidence.py --strict` 覆盖 `37` 条核心证据，缺失 `0`、警告 `0` |
+| 性能复核 | SP4 Redis/Nginx `RUNS=5`，Redis pressure gradient；Redis manual static vs agent dynamic 已用修复脚本在 SP4 RUNS=5 重跑 |
 | Kubernetes | 已在真实 k3s Pod 环境完成隔离验证，使用独立 namespace、独立 label、有限 resources，验证后无 EulerPilot 残留 |
 | Web Console | `web_console/` 旁路展示控制台已落地，Evidence-first + 白名单 Demo + SSE 日志 + 单任务锁 |
 
@@ -94,18 +94,18 @@ npm run build
 | SP4 Redis RUNS=5 | `results/final/redis-scx-compare-20260708-150702` |
 | SP4 Nginx RUNS=5 | `results/final/nginx-scx-compare-20260708-152602` |
 | SP4 Redis 压力梯度 | `results/final/redis-pressure-gradient-20260708-153811` |
-| SP4 Redis 静态 vs Agent 动态 | `results/final/redis-static-vs-agent-20260708-162543` |
+| SP4 Redis 静态 vs Agent 动态 | `results/final/redis-static-vs-agent-20260720-114909`（修复后 RUNS=5 重跑） |
 | SP4/K8s/Web Console 旁路验证 | `results/k8s/sp4-validation-20260708-023552` |
 | Policy Engine SP4 repeat 10 | `results/policy_engine/security-network-resource-20260705-211407` |
 | 最终 evidence compact | `reports/final_evidence_compact.md`、`reports/final_evidence_compact.json` |
-| 最终质量门禁日志 | `results/k8s/sp4-validation-20260708-023552/final_quality_gate.log` |
+| 最终质量门禁日志 | `reports/final_quality_gate_20260720-path-closeout.log` |
 
 ## 文档导航
 
 建议按下面顺序阅读：
 
 1. `docs/one_page_summary.md`：一页式项目简介。
-2. `docs/progress_status.md`：滚动进度状态，以 SP4/123 和 37 条 evidence 为当前口径。
+2. `docs/progress_status.md`：滚动进度状态，以 SP4/123 和37 条 evidence为当前口径。
 3. `docs/final_evidence_index.md`：最终证据索引。
 4. `docs/final_report_submission.md`：最终报告主稿。
 5. `docs/architecture.md`：系统架构和模块边界。

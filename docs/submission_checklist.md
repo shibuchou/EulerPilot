@@ -56,8 +56,8 @@
 - [x] `security_policy_demo` BPF LSM file_open 最小闭环
 - [x] `security_policy_demo` BPF LSM attach/deny/rollback 集成测试 121/122 均通过
 - [x] Runtime 生命周期收拢与 ActionJournal/AuditBus 最小接入；SIGINT/SIGTERM 通过 graceful shutdown 标志触发主循环提前退出，仍走 `stop_all()` 清理路径
-- [x] 121 SP3 编译、集成测试和 22 项质量门禁通过，作为历史验证和回归对照保留；当前最终质量门禁以 SP4 `results/k8s/sp4-validation-20260708-023552/final_quality_gate.log` 为准
-- [x] SP4 sched_ext 自编译内核复核通过：Redis/Nginx `RUNS=5` 多轮对照、Redis PSI ACTIVE probe、Redis pressure gradient、Redis static-vs-agent、最终质量门禁 `results/k8s/sp4-validation-20260708-023552/final_quality_gate.log`
+- [x] 121 SP3 编译、集成测试和 22 项质量门禁通过，作为历史验证和回归对照保留；当前最终质量门禁以 SP4 `reports/final_quality_gate_20260720-path-closeout.log` 为准
+- [x] SP4 sched_ext 自编译内核复核通过：Redis/Nginx `RUNS=5` 多轮对照、Redis PSI ACTIVE probe、Redis pressure gradient、最终质量门禁 `reports/final_quality_gate_20260720-path-closeout.log`
 - [x] 静态 Dashboard：`reports/dashboard/index.html`
 - [x] Prometheus `/metrics` 端点：默认关闭，监听 `127.0.0.1:9108`
 - [x] 中文最终报告主稿与答辩材料
@@ -172,7 +172,7 @@
 ## 质量与安全审计
 
 - `scripts/final_quality_gate.sh`：TAP 风格 22 项 P0 质量门禁脚本，新增 `make unit-tests`
-- `results/k8s/sp4-validation-20260708-023552/final_quality_gate.log`：SP4 最终门禁通过记录，22/22 P0 通过，100 轮 smoke 与 5 轮 doctor 通过
+- `reports/final_quality_gate_20260720-path-closeout.log`：SP4 最终门禁通过记录，22/22 P0 通过，100 轮 smoke 与 5 轮 doctor 通过
 - `reports/final_quality_gate_20260706-quality-121.log`：121 历史门禁通过记录，22/22 P0 通过，100 轮 smoke 与 5 轮 doctor 通过
 - `configs/final_evidence_manifest.json`：最终证据压缩白名单清单
 - `scripts/collect_final_evidence.py`：最终证据压缩报告生成脚本
@@ -216,6 +216,6 @@
 - [x] Network XDP real Pod host veth tuple 字段演示 121/122 通过。
 - [x] `python3 scripts/collect_final_evidence.py --strict` 通过，最终证据压缩报告覆盖 37 个核心条目，必需缺失 0、警告 0。
 - [ ] 正式演示视频录制与链接填写。当前已准备 `docs/demo_video_recording_script.md`，但仓库内未包含正式视频文件。
-- [x] SP4 Redis/Nginx `RUNS=5` sched_ext workload 复核通过，Redis pressure gradient 与 Redis static-vs-agent 对比已纳入 `configs/final_evidence_manifest.json` 和 `reports/final_evidence_compact.*`。
+- [x] SP4 Redis/Nginx `RUNS=5` sched_ext workload 复核通过，Redis pressure gradient 已纳入 `configs/final_evidence_manifest.json` 和 `reports/final_evidence_compact.*`；Redis static-vs-agent 已用修复脚本 RUNS=5 重跑后再回补。
 - [x] Stage G Benchmark 与冻结材料已完成：主 Benchmark 结论冻结，现场演示日志仅作为追加彩排记录。
 

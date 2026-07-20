@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="/root/EulerPilot"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="${ROOT:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
 
 LATENCY_WEIGHT="${LATENCY_WEIGHT:-1000}"
 BACKGROUND_WEIGHT="${BACKGROUND_WEIGHT:-5}"

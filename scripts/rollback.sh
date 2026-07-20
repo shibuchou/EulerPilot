@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SCX_BIN="${EULERPILOT_SCX_BINARY:-/root/olk/kernel-OLK-6.6-atomgit/tools/sched_ext/build/bin/scx_eulerpilot}"
+SCX_BIN="${EULERPILOT_SCX_BINARY:-$(command -v scx_eulerpilot 2>/dev/null || true)}"
+SCX_BIN="${SCX_BIN:-/usr/local/bin/scx_eulerpilot}"
+if [ ! -x "$SCX_BIN" ] && [ -x /root/olk/kernel-OLK-6.6-atomgit/tools/sched_ext/build/bin/scx_eulerpilot ]; then
+    SCX_BIN="/root/olk/kernel-OLK-6.6-atomgit/tools/sched_ext/build/bin/scx_eulerpilot"
+fi
 SCX_NAME="$(basename "$SCX_BIN")"
 echo "[rollback] scx binary: $SCX_BIN" >&2
 
@@ -17,7 +21,7 @@ printf '[Rollback] restore cgroup parameters and stop active sched_ext scheduler
 pkill -x "$SCX_NAME" 2>/dev/null || true
 
 # legacy path fallback
-pkill -f '^/root/olk/kernel-OLK-6.6-atomgit/tools/sched_ext/build/bin/scx_' 2>/dev/null || true
+pkill -f '(^|/)scx_' 2>/dev/null || true
 
 rm -f /sys/fs/bpf/eulerpilot/scx_eulerpilot/v1/class_map 2>/dev/null || true
 rm -f /sys/fs/bpf/eulerpilot/scx_eulerpilot/v1/gate_state_map 2>/dev/null || true

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="/root/EulerPilot"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="${ROOT:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
 STAMP="$(date +%Y%m%d-%H%M%S)"
 OUTDIR="${OUTDIR:-$ROOT/results/final/redis-pressure-gradient-$STAMP}"
 RUNS="${RUNS:-3}"

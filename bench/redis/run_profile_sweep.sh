@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="/root/EulerPilot"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="${ROOT:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
 OUTROOT="$ROOT/results/reports/profile-sweep-$(date +%Y%m%d-%H%M%S)"
 RUNS="${RUNS:-2}"
 BENCH_CLIENTS="${BENCH_CLIENTS:-8}"

@@ -36,6 +36,15 @@ static __always_inline struct task_metrics *get_or_init_task(u32 pid, u32 tgid, 
     return metrics;
 }
 
+static __always_inline u64 task_default_cgroup_id(struct task_struct *task)
+{
+    /* The wakeup tracepoint runs in the waker context, so
+     * bpf_get_current_cgroup_id() would attribute the event to the wrong task.
+     * Read the target task's default cgroup id through task->cgroups instead.
+     */
+    return BPF_CORE_READ(task, cgroups, dfl_cgrp, kn, id);
+}
+
 SEC("tp_btf/sched_wakeup")
 int BPF_PROG(handle_sched_wakeup, struct task_struct *p)
 {
@@ -43,7 +52,7 @@ int BPF_PROG(handle_sched_wakeup, struct task_struct *p)
     u32 pid = BPF_CORE_READ(p, pid);
     u32 tgid = BPF_CORE_READ(p, tgid);
     u64 now = bpf_ktime_get_ns();
-    u64 cgroup_id = bpf_get_current_cgroup_id();
+    u64 cgroup_id = task_default_cgroup_id(p);
     char comm[EULERPILOT_COMM_LEN];
 
     BPF_CORE_READ_STR_INTO(&comm, p, comm);
@@ -79,15 +88,21 @@ int BPF_PROG(handle_sched_switch, bool preempt, struct task_struct *prev,
     if (prev_metrics) {
         prev_metrics->ctx_switch_count += 1;
         prev_metrics->last_cpu = bpf_get_smp_processor_id();
+        prev_metrics->cgroup_id = task_default_cgroup_id(prev);
+        if (prev_metrics->last_running_ns && now > prev_metrics->last_running_ns)
+            prev_metrics->runtime_ns += now - prev_metrics->last_running_ns;
+        prev_metrics->last_running_ns = 0;
     }
 
     next_metrics = get_or_init_task(next_pid, next_tgid, next_comm);
     if (next_metrics) {
         next_metrics->ctx_switch_count += 1;
         next_metrics->last_cpu = bpf_get_smp_processor_id();
+        next_metrics->cgroup_id = task_default_cgroup_id(next);
         if (next_metrics->last_enqueued_ns && now > next_metrics->last_enqueued_ns)
             next_metrics->total_wait_ns += now - next_metrics->last_enqueued_ns;
-        next_metrics->runtime_ns += 1000000;
+        next_metrics->last_enqueued_ns = 0;
+        next_metrics->last_running_ns = now;
     }
 
     return 0;

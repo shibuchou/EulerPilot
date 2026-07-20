@@ -17,7 +17,8 @@ struct PsiGateRuntimeOps {
 struct ResourceControlRuntimeOps {
     virtual ~ResourceControlRuntimeOps() = default;
     virtual void apply_in_cycle(std::vector<WorkloadDecision> &decisions,
-                                const GateDecision &gate) = 0;
+                                const GateDecision &gate,
+                                const RuntimeConfig &cycle_config) = 0;
 };
 
 struct SkillRuntimeContext {

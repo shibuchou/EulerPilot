@@ -24,6 +24,13 @@ def cmd_output(cmd: list[str]) -> str:
         return ""
 
 
+def project_root() -> Path:
+    env_root = os.environ.get("EULERPILOT_ROOT")
+    if env_root:
+        return Path(env_root).expanduser().resolve()
+    return Path(__file__).resolve().parents[1]
+
+
 def main() -> int:
     if len(sys.argv) != 3:
         print("usage: write_run_manifest.py <output.json> <benchmark>", file=sys.stderr)
@@ -31,6 +38,7 @@ def main() -> int:
 
     output = Path(sys.argv[1])
     benchmark = sys.argv[2]
+    root = project_root()
 
     manifest = {
         "run_id": output.parent.name,
@@ -38,17 +46,17 @@ def main() -> int:
         "host": cmd_output(["hostname"]),
         "kernel_release": cmd_output(["uname", "-r"]),
         "kernel_config_hash": "",
-        "git_commit": cmd_output(["git", "-C", "/root/EulerPilot", "rev-parse", "HEAD"]),
-        "git_tag": cmd_output(["git", "-C", "/root/EulerPilot", "describe", "--tags", "--always"]),
+        "git_commit": cmd_output(["git", "-C", str(root), "rev-parse", "HEAD"]),
+        "git_tag": cmd_output(["git", "-C", str(root), "describe", "--tags", "--always"]),
         "backend": os.environ.get("BACKEND", ""),
         "gate_mode": os.environ.get("EULERPILOT_GATE_MODE", ""),
         "sched_ext_switch_mode": "full",
         "benchmark": benchmark,
         "benchmark_command": os.environ.get("BENCHMARK_COMMAND", ""),
         "stress_ng_command": os.environ.get("STRESS_COMMAND", ""),
-        "agent_config_hash": sha256_file("/root/EulerPilot/configs/agent.yaml"),
-        "psi_gate_config_hash": sha256_file("/root/EulerPilot/configs/psi_gate.yaml"),
-        "scheduler_config_hash": sha256_file("/root/EulerPilot/sched/scx_eulerpilot.bpf.c"),
+        "agent_config_hash": sha256_file(str(root / "configs" / "agent.yaml")),
+        "psi_gate_config_hash": sha256_file(str(root / "configs" / "psi_gate.yaml")),
+        "scheduler_config_hash": sha256_file(str(root / "sched" / "scx_eulerpilot.bpf.c")),
         "cpu_topology": cmd_output(["bash", "-lc", "lscpu | sed -n '1,20p'"]),
         "cpu_governor": cmd_output(["bash", "-lc", "cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null || true"]),
         "numa_info": cmd_output(["bash", "-lc", "numactl --hardware 2>/dev/null || true"]),

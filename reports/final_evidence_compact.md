@@ -1,6 +1,6 @@
 # EulerPilot 最终证据压缩报告
 
-生成时间：`2026-07-08T16:51:36+08:00`
+生成时间：`2026-07-20T14:32:27+08:00`
 清单：`configs/final_evidence_manifest.json`
 
 本报告由 `scripts/collect_final_evidence.py` 根据白名单清单生成，用于把分散的双机结果压缩成答辩入口。它不会递归扫描全部 `results/`，缺失项会显式列出。
@@ -12,7 +12,7 @@
 | 清单条目 | 37 |
 | 必需缺失 | 0 |
 | 带警告条目 | 0 |
-| Git 工作区额外状态 | 66 |
+| Git 工作区额外状态 | 69 |
 
 ## quality_gate
 
@@ -20,7 +20,7 @@
 | --- | --- | --- | --- | --- |
 | pass | 121 | 121 final quality gate after engineering quality closeout | `reports/final_quality_gate_20260706-quality-121.log` | result=pass |
 | pass | 123 | SP4 final quality gate after sched_ext workload validation | `reports/sp4/final_quality_gate_scx_workload_20260706-1214.log` | result=pass |
-| pass | 123 | SP4 final quality gate after Kubernetes/Web Console validation | `results/k8s/sp4-validation-20260708-023552/final_quality_gate.log` | result=pass |
+| pass | 123 | SP4 final quality gate after observer/path closeout | `reports/final_quality_gate_20260720-path-closeout.log` | result=pass |
 
 ## repo_status
 
@@ -37,7 +37,7 @@
 | present | 123 | SP4 Redis sched_ext comparison RUNS=5 | `results/final/redis-scx-compare-20260708-150702` | # Redis sched_ext 正式对照 / - timestamp: 2026-07-08T15:25:52+08:00 / - runs: 5 |
 | present | 123 | SP4 Nginx sched_ext comparison RUNS=5 | `results/final/nginx-scx-compare-20260708-152602` | # Nginx sched_ext 正式对照 / - timestamp: 2026-07-08T15:38:01+08:00 / - runs: 5 |
 | present | 123 | SP4 Redis pressure gradient comparison | `results/final/redis-pressure-gradient-20260708-153811` | # Redis 压力递增梯度实验 / - 结果目录：`/root/EulerPilot/results/final/redis-pressure-gradient-20260708-153811` / - worker 档位：0 / 1 / 2 / 4 / 8 |
-| present | 123 | SP4 Redis manual static vs agent dynamic comparison | `results/final/redis-static-vs-agent-20260708-162543` | # Redis static vs Agent dynamic compare / - timestamp: 2026-07-08T16:33:19+08:00 / - runs: 5 |
+| present | 123 | SP4 Redis manual static vs agent dynamic comparison | `results/final/redis-static-vs-agent-20260720-114909` | # Redis static vs Agent dynamic compare / - timestamp: 2026-07-20T11:56:11+08:00 / - runs: 5 |
 | present | 123 | SP4 Redis PSI gate ACTIVE probe | `results/final/redis-scx-psi-probe-20260706-100857` | ﻿# Redis sched_ext PSI ACTIVE Probe / - timestamp: 2026-07-06T10:09:21+08:00 / - redis port: 6390 |
 
 ## network
@@ -98,72 +98,75 @@
 
 ## 生成时 Git 工作区状态
 
-- ` M Makefile`
 - ` M README.md`
-- ` M agent/include/eulerpilot.hpp`
+- ` M agent/include/skill_runtime_context.hpp`
 - ` M agent/src/builtin_skills/common.hpp`
-- ` M agent/src/builtin_skills/psi_gate.cpp`
-- ` M agent/src/main.cpp`
+- ` M agent/src/builtin_skills/network_policy.cpp`
+- ` M agent/src/builtin_skills/network_qos.cpp`
+- ` M agent/src/builtin_skills/network_xdp.cpp`
+- ` M agent/src/builtin_skills/resource_control.cpp`
+- ` M agent/src/builtin_skills/security_policy.cpp`
+- ` M agent/src/executors.cpp`
 - ` M agent/src/runtime.cpp`
+- ` M bench/mixed/run_placeholder_benchmark.sh`
+- ` M bench/nginx/run_nginx_main_experiment.sh`
 - ` M bench/nginx/run_nginx_sched_ext_compare.sh`
+- ` M bench/nginx/run_nginx_sched_ext_smoke.sh`
+- ` M bench/nginx/run_nginx_stress_benchmark.sh`
+- ` M bench/psi/run_gate_mode_smoke.sh`
+- ` M bench/psi/run_loader_wiring_smoke.sh`
+- ` M bench/psi/run_network_policy_smoke.sh`
+- ` M bench/psi/run_psi_agent_smoke.sh`
+- ` M bench/redis/run_background_weight_refine.sh`
+- ` M bench/redis/run_profile_sweep.sh`
+- ` M bench/redis/run_psi_threshold_sweep.sh`
+- ` M bench/redis/run_redis_final_experiment.sh`
+- ` M bench/redis/run_redis_main_experiment.sh`
+- ` M bench/redis/run_redis_pressure_gradient.sh`
 - ` M bench/redis/run_redis_sched_ext_compare.sh`
-- ` M bpf/network_xdp.bpf.c`
-- ` M bpf/security_policy.bpf.c`
+- ` M bench/redis/run_redis_sched_ext_psi_probe.sh`
+- ` M bench/redis/run_redis_sched_ext_smoke.sh`
+- ` M bench/redis/run_redis_stress_benchmark.sh`
+- ` M bench/redis/run_static_vs_agent_compare.sh`
+- ` M bench/redis/run_trigger_sweep.sh`
+- ` M bench/redis/run_trigger_sweep_incr_refine.sh`
+- ` M bench/redis/run_trigger_sweep_local_refine.sh`
+- ` M bpf/workload_observer.bpf.c`
 - ` M bpf/workload_observer.h`
 - ` M configs/final_evidence_manifest.json`
+- ` M configs/policy_engine_security_network_resource.skills.yaml`
+- ` M configs/skills.yaml`
+- ` M docs/README.md`
 - ` M docs/defense_final.md`
-- ` M docs/defense_qa.md`
-- ` M docs/defense_slides_outline.md`
 - ` M docs/defense_summary.md`
 - ` M docs/demo_final_runbook.md`
-- ` M docs/demo_runbook.md`
-- ` M docs/evaluation_report.md`
+- ` M docs/experiments.md`
 - ` M docs/final_evidence_index.md`
-- ` M docs/final_report_draft.md`
-- ` M docs/final_report_outline.md`
-- ` M docs/final_report_release_candidate.md`
 - ` M docs/final_report_submission.md`
-- ` M docs/final_report_v1.md`
-- ` M docs/final_report_v2.md`
-- ` M docs/final_submission_guide.md`
-- ` M docs/final_submission_packet.md`
 - ` M docs/final_talk_script.md`
-- ` M docs/handover_manual.md`
 - ` M docs/one_page_summary.md`
 - ` M docs/progress_status.md`
+- ` M docs/project_brief.md`
 - ` M docs/project_status_overview.md`
 - ` M docs/sp4_validation_plan.md`
-- ` M docs/stage_delivery_summary.md`
 - ` M docs/stage_g_benchmark_freeze.md`
 - ` M docs/submission_checklist.md`
 - ` M docs/web_console_design.md`
-- ` M scripts/extract_wrk_metrics.py`
-- ` M scripts/nginx_compare_summary.py`
-- ` M scripts/redis_compare_summary.py`
-- ` M scripts/render_nginx_backend_compare_report.py`
-- ` M scripts/render_redis_backend_compare_report.py`
-- ` M submission/build_and_run.md`
-- ` M submission/evidence_summary.md`
-- ` M submission/known_limits.md`
-- ` M web_console/README.md`
-- ` M web_console/backend/src/data.js`
-- ` M web_console/docs/security.md`
-- ` M web_console/frontend/src/App.tsx`
-- `?? bench/redis/run_redis_pressure_gradient.sh`
-- `?? bench/redis/run_static_vs_agent_compare.sh`
-- `?? docs/demo_video_recording_script.md`
-- `?? reports/final_quality_gate_20260708-closeout-sp4.log`
-- `?? reports/sp4/final_quality_gate_20260708-90to93.log`
-- `?? reports/sp4/nginx_runs5_20260708-152602.log`
-- `?? reports/sp4/redis_pressure_gradient_20260708-153811.log`
-- `?? reports/sp4/redis_runs5_20260708-150702.log`
-- `?? reports/sp4/redis_static_vs_agent_20260708-162543.log`
-- `?? results/final/nginx-scx-compare-20260708-152602/`
-- `?? results/final/redis-pressure-gradient-20260708-153811/`
-- `?? results/final/redis-scx-compare-20260708-150702/`
-- `?? results/final/redis-static-vs-agent-20260708-162543/`
-- `?? results/policy_engine/security-network-resource-20260708-115001/`
-- `?? tests/unit/test_runtime_policy.cpp`
+- ` M scripts/assign_cgroup.sh`
+- ` M scripts/capture_agent_snapshot.sh`
+- ` M scripts/capture_gate_runtime.sh`
+- ` M scripts/rollback.sh`
+- ` M scripts/write_run_manifest.py`
+- ` M tests/integration/test_policy_engine_security_network_resource.sh`
+- ` M tests/integration/test_policy_engine_security_resource.sh`
+- ` M tests/integration/test_security_policy.sh`
+- ` M tests/integration/test_security_policy_anomaly_combo_scope.sh`
+- ` M tests/integration/test_security_policy_anomaly_process_filter.sh`
+- ` M tests/integration/test_security_policy_anomaly_rules.sh`
+- ` M tests/integration/test_security_policy_credential_anomaly.sh`
+- ` M tests/integration/test_security_policy_credential_deep_hooks.sh`
+- `?? reports/final_quality_gate_20260720-path-closeout.log`
+- `?? results/final/redis-static-vs-agent-20260720-114909/`
 
 ## 使用方式
 

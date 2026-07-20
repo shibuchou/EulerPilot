@@ -90,6 +90,8 @@ Observer (eBPF + PSI)
 | 观察 | noisy_cgroup_v2 在 GET 上吞吐明显提升；noisy_scx_normal 在 GET/INCR/SET 上 RPS 改善 |
 | 图表 | redis_sched_ext_rps.svg / redis_sched_ext_p99.svg / redis_quiet_overhead.svg |
 
+说明：`noisy_scx_psi` 组用于展示 PSI Gate ACTIVE 与 scx map 联动，会额外运行 PSI Redis probe，不作为无 probe 条件下的净性能提升结论。
+
 ### Nginx + stress-ng
 
 | 项目 | 内容 |
@@ -194,7 +196,7 @@ cat demo/security_policy_demo/secret.txt  # -> Operation not permitted
 **可以说的：**
 - 系统实现完成，双后端均可真实运行
 - Redis/Nginx 双业务线均有 RUNS=5 正式候选结果，SP4 上有 RUNS=5 复核结果
-- SP4 上补充 Redis pressure gradient 与 manual static vs agent dynamic 对比，用于解释干扰强度变化、CPU 效率和动态调控价值
+- SP4 上补充 Redis pressure gradient 与修复后的 manual static vs agent dynamic RUNS=5 重跑，用于解释干扰强度变化、CPU 效率和动态调控价值边界
 - Skills 框架可扩展，Network/Security/Resource/Policy Engine 证明 eBPF hook 与系统控制器可统一编排
 - 正式 compare 框架具备可复现性
 
@@ -209,5 +211,5 @@ cat demo/security_policy_demo/secret.txt  # -> Operation not permitted
 
 > EulerPilot 已完成为一个面向 openEuler 的、可运行、可实验、可解释、可复现、可扩展的系统资源管控 Agent 工程闭环。项目同时覆盖了 resource control、network policy、security policy 三个 OS Agent 扩展方向，并通过 Policy Engine 跨 Skill 联动、SP4 发行环境适配、SP4 官方源码自编译 sched_ext 内核复核、Kubernetes 旁路验证、Web Console 和 37 条 final evidence compact 证明了新增 eBPF hook 与系统控制器可以在统一 Agent 框架下安全编排和回滚。
 
-**当前状态：代码冻结，已进入提交准备阶段。**
+**当前状态：最终收口修复中；static-vs-Agent 证据已用修复脚本 RUNS=5 重跑并恢复到最终提交清单。**
 
