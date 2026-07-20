@@ -9,10 +9,10 @@
 ## 运行命令
 
 ```bash
-# 121 全部门禁
-./scripts/final_quality_gate.sh | tee reports/final_quality_gate_121.tap
+# SP4 主验证仓库全量门禁
+./scripts/final_quality_gate.sh | tee reports/final_quality_gate_sp4.tap
 
-# 122 最小门禁
+# 122 / OLK 对照线最小门禁
 cd /root/EulerPilot
 make agent
 ./build/eulerpilot-agent --list-skills
@@ -61,7 +61,7 @@ make agent
 - 121 上无 git 配置
 - 第三方库 `still reachable` 不视为泄漏
 
-## 122 最小门禁
+## 122 / OLK 对照线最小门禁
 
 ```bash
 cd /root/EulerPilot
@@ -78,5 +78,6 @@ make agent
 
 ## 最新记录
 
-- 121 最新完整门禁：`reports/final_quality_gate_20260706-quality-121.log`
+- SP4 最新完整门禁：`reports/final_quality_gate_20260720-stage3-performance.log`
 - 结果：22/22 P0 通过，P1 `agent 100-round stress smoke` 和 `doctor 5-round stable` 通过。
+- 121/SP3 与 122/OLK 既有门禁和回归记录保留为历史对照，不再作为最终主验证线。

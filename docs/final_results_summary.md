@@ -1,45 +1,61 @@
 # EulerPilot 最终结果摘要
 
-更新时间：\2026-06-15\
+更新时间：`2026-07-20`
 
-## 当前最终主结果
+本文只保留最终提交口径。早期 RUNS=1/3、SP3/OLK 候选结果作为阶段记录保留在对应结果目录和历史文档中；答辩正文以 `docs/final_evidence_index.md`、`docs/final_report_submission.md` 和 `reports/final_evidence_compact.md` 为准。
 
-- Redis 主结果：\esults/final/redis-scx-compare-20260615-193730\
-  - RUNS=15，4 operations x 7 scenarios，0 invalid files
-- Redis 历史参考：\esults/final/redis-scx-compare-20260612-191543\
-  - RUNS=5，不再作为正文主结论
-- Nginx：\esults/final/nginx-scx-compare-20260612-194018\
-  - 用于策略适配边界分析
+## 1. 当前主结果
 
-## Redis RUNS=15 结果摘要
+| 类别 | 结果目录 | 口径 |
+|------|----------|------|
+| SP4 Redis sched_ext compare | `results/final/redis-scx-compare-20260708-150702` | RUNS=5，SP4 发行环境适配 + 自编译 sched_ext 内核复核 |
+| SP4 Nginx sched_ext compare | `results/final/nginx-scx-compare-20260708-152602` | RUNS=5，第二业务线复核 |
+| Redis pressure gradient | `results/final/redis-pressure-gradient-20260708-153811` | workers=0/1/2/4/8，展示干扰强度变化下的收益与代价 |
+| Redis static vs Agent dynamic | `results/final/redis-static-vs-agent-20260720-150342` | 修复脚本后 RUNS=5，证明 Agent 动态调控接近人工静态调参并具备审计/rollback |
+| Throughput-first | `results/final/throughput-first-20260720-165544` | RUNS=3，批处理优先模式争奖增强证据 |
+| Mixed-Adaptive | `results/final/mixed-adaptive-20260720-170840` | RUNS=3，多场景自动切换和闭环证据 |
+| Agent overhead | `results/final/agent-overhead-20260720-170415` | RUNS=3，控制面开销证据 |
 
-正式矩阵：quiet_default / quiet_scx_normal / noisy_default / noisy_cgroup_v2 / noisy_scx_normal / noisy_scx_always_active / noisy_scx_psi
+## 2. Redis 观察
 
-观察：
-- noisy_cgroup_v2 在 GET 上吞吐正向趋势保持，标准差相比 RUNS=5 下降 63%
-- noisy_scx_normal 在 GET/INCR/SET 上 RPS 改善趋势保持
-- noisy_scx_psi 在部分操作上有一定正向效果
-- noisy_scx_always_active 不稳定优于其他模式
+- Redis / latency-sensitive 混布场景收益更明确。
+- `cgroup v2` 和部分 `sched_ext/scx` 模式在干扰场景下能保护前台业务或抑制后台干扰。
+- `noisy_scx_psi` 额外运行 PSI probe，报告中只作为带观测负载的自适应路径分析，不与无额外 probe 的模式做无条件性能优劣断言。
+- `static-vs-Agent` 旧无效结果已撤下；当前最终目录为修复脚本后的 RUNS=5 结果，验证目标 worker 归属和 throttling 证据。
 
-## Nginx 结果摘要
+## 3. Nginx 观察
 
-- noisy_cgroup_v2 表现更稳
-- sched_ext 部分模式存在明显 P99 代价
-- 详见报告中策略适配边界分析
+- Nginx 复核证明 EulerPilot 可以迁移到第二业务线，但收益边界更依赖 workload。
+- `cgroup_v2` 在 Nginx 场景下更稳；部分 `sched_ext` 模式存在尾延迟代价。
+- 最终报告不写成“所有 workload 稳定优于默认调度器”，而是强调可观测、可决策、可执行、可回滚和可解释。
 
-## 关键证据链
+## 4. 质量门禁
 
-1. latency + background 场景前提成立
-2. PsiGate 进入 ACTIVE
-3. cgroup_v2 存在 applied=yes / sched_ext 存在 executor=sched_ext
-4. 业务结果写入正式候选目录
+最新 SP4 质量门禁：
 
-## 图表（7 张 SVG）
+- 记录：`reports/final_quality_gate_20260720-stage3-performance.log`
+- 结果：`22/22 P0` 通过
+- 可选项：`100` 轮 Agent smoke 通过，`5` 轮 doctor 通过
 
-redis/nginx sched_ext rps/p99/quiet_overhead + psigate_timeline
+最终 evidence：
 
-## 可提交边界
+```text
+entries=40
+missing_required=0
+warnings=0
+```
 
-已支撑：统一 Agent 架构、双执行后端、Redis 15 轮正式结果、Nginx 边界分析、Skills 框架、network/security demo、中文报告、图表材料
+## 5. 可提交边界
 
-项目代码：\https://github.com/shibuchou/EulerPilot\
+已支撑：
+
+- 统一 Agent / Skills / Policy Engine 架构
+- `cgroup v2` 稳定后端与 `sched_ext/scx` 增强后端
+- Resource / Network / Security 三方向 OS Agent 扩展
+- Kubernetes 旁路隔离验证
+- Web Console 可视化演示
+- 40 条 final evidence compact
+
+仍需人工补充：
+
+- 正式 8-10 分钟演示视频文件或公开链接。

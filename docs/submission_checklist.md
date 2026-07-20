@@ -64,8 +64,10 @@
 
 ## 当前核心结果目录
 
-- Redis：`results/final/redis-scx-compare-20260612-191543`
-- Nginx：`results/final/nginx-scx-compare-20260612-194018`
+- Redis SP4 主验证：`results/final/redis-scx-compare-20260708-150702`
+- Nginx SP4 主验证：`results/final/nginx-scx-compare-20260708-152602`
+- Redis pressure gradient：`results/final/redis-pressure-gradient-20260708-153811`
+- Redis static vs Agent dynamic：`results/final/redis-static-vs-agent-20260720-150342`
 - Network connect4：`results/network_policy/integration-20260619-142347`
 - Network TC QoS：`results/network_policy/qos-tc-20260619-142357`
 - Network TC QoS Benchmark 121：`results/network_policy/qos-rate-20260620-181708`
@@ -182,7 +184,7 @@
 
 ## 当前结论
 
-项目已进入争奖证据收口阶段。当前已完成 Security anomaly -> Policy Engine -> Resource Control 降级、Security anomaly -> Policy Engine -> Network+Resource 联动，以及真实 Pod 版 Network+Resource 联动。121/122 的真实 Podman container target、k3s Pod target、Network QoS Pod host veth、Network XDP Pod host veth、真实 Pod Policy Engine 跨 Skill 联动、服务联动 Security anomaly 规则、anomaly 进程过滤、anomaly 组合 scope 过滤、credential 生命周期 anomaly、credential deep hook scoped attach 评估、isolated-veth XDP ICMP/TCP/UDP + UDP tuple 四规则、real Pod host veth XDP ICMP/TCP/UDP + UDP tuple 四规则均已转为 pass；SP4/123 的 sched_ext 自编译内核、Redis/Nginx RUNS=5 workload 对照和最终质量门禁也已转为 pass。下一步重点是答辩材料冻结、现场演示压测和最终演示脚本彩排。
+项目已进入最终 release/tag 前收口阶段。当前已完成 Security anomaly -> Policy Engine -> Resource Control 降级、Security anomaly -> Policy Engine -> Network+Resource 联动，以及真实 Pod 版 Network+Resource 联动。121/122 的真实 Podman container target、k3s Pod target、Network QoS Pod host veth、Network XDP Pod host veth、真实 Pod Policy Engine 跨 Skill 联动、服务联动 Security anomaly 规则、anomaly 进程过滤、anomaly 组合 scope 过滤、credential 生命周期 anomaly、credential deep hook scoped attach 评估、isolated-veth XDP ICMP/TCP/UDP + UDP tuple 四规则、real Pod host veth XDP ICMP/TCP/UDP + UDP tuple 四规则均已转为 pass；SP4/123 的 sched_ext 自编译内核、Redis/Nginx RUNS=5 workload 对照、Redis pressure gradient、修复后的 static-vs-Agent RUNS=5、throughput-first、mixed-adaptive、Agent overhead、Web Console、K8s 旁路验证和最终质量门禁也已转为 pass。当前唯一仍未完成的提交材料是正式演示视频文件或公开链接；代码、文档和 evidence 已具备 release/tag 前复核条件。
 
 ## v3.1 提交前新增检查
 
@@ -197,7 +199,7 @@
 - [x] `transaction_id` 可串起 security、policy_engine、resource_control、network_qos 和 ActionJournal。
 - [x] `demo/demo_all_final.sh --mode live|offline|cleanup` 已完成脚本语法检查；live 依赖 root 环境。
 - [x] `scripts/check_sp4_env.sh` 已完成脚本语法检查；SP4/123 已完成 sched_ext 自编译内核增强复核。
-- [x] 121/122/本地/GitHub 同步后生成最终一致性日志。
+- [x] SP4/本地/GitHub/GitLink 已完成最新主线同步；121/122 作为历史和对照仓库保留。
 
 ## v3.2 iSulad/isula 与真实 target 检查
 

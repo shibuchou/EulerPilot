@@ -1,36 +1,66 @@
 # EulerPilot 最终交付包索引
 
-更新时间：`2026-06-14`
+更新时间：`2026-07-20`
 
 ## 1. 项目定位
 
-面向 openEuler 的自适应资源管控 Agent。已形成两条可交付主线：
-- SP3 + cgroup v2 主闭环
-- OLK-6.6 + sched_ext 正式对照线
+EulerPilot 是面向 openEuler 的自适应资源管控 Agent，围绕“观测 -> 决策 -> 执行 -> 反馈 -> 证据”形成系统级闭环。当前交付材料以 SP4 主验证仓库为核心，SP3/121 和 OLK-6.6/122 作为历史验证与 sched_ext 对照线。
+
+三条验证线：
+
+- SP3 / 121：`cgroup v2` 稳定主闭环和历史回归对照。
+- OLK-6.6 / 122：`sched_ext/scx` 提前验证和对照线。
+- SP4 / 123：当前核心验证线，完成发行环境适配、SP4 官方源码自编译 sched_ext 内核复核、RUNS=5、K8s/Web Console 和最终 quality gate。
 
 ## 2. 核心代码
 
-- `agent/src/` — Agent 主体（main/runtime/executors/psi_gate/builtin_skills）
-- `bpf/` — eBPF 程序（observer/network_policy_demo/security_policy_demo）
-- `sched/` — sched_ext 调度器
-- `configs/` — YAML 配置（agent/policy/psi_gate/skills）
+- `agent/`：Agent Runtime、Skill Manager、Policy Engine、Executor、Metrics。
+- `bpf/`：workload observer、Network Policy、TC QoS、XDP、Security Policy。
+- `sched/`：`scx_eulerpilot` 调度器和 sched_ext map/DSQ 分流。
+- `configs/`：Agent、Skills、Policy、PSI Gate、final evidence manifest。
+- `scripts/`：环境检查、构建、回滚、证据收集、质量门禁和报告生成。
+- `tests/`：C++ 单元测试、集成测试和 benchmark。
+- `web_console/`：Evidence-first 旁路展示控制台。
 
-## 3. 最终候选结果
-- Redis：`results/final/redis-scx-compare-20260612-191543`（RUNS=5）
-- Nginx：`results/final/nginx-scx-compare-20260612-194018`（RUNS=5）
+## 3. 最终证据
 
-## 4. 图表材料
-`reports/final_figures/` — 7 张 SVG
+- strict evidence：`reports/final_evidence_compact.md`、`reports/final_evidence_compact.json`
+- 当前口径：`entries=40`、`missing_required=0`、`warnings=0`
+- 质量门禁：`reports/final_quality_gate_20260720-stage3-performance.log`
+- 图表材料：`reports/final_figures/`
+- Dashboard：`reports/dashboard/index.html`
+
+## 4. 关键结果目录
+
+| 证据 | 路径 |
+|------|------|
+| SP4 Redis RUNS=5 | `results/final/redis-scx-compare-20260708-150702` |
+| SP4 Nginx RUNS=5 | `results/final/nginx-scx-compare-20260708-152602` |
+| Redis 压力递增梯度 | `results/final/redis-pressure-gradient-20260708-153811` |
+| Redis 静态 vs Agent 动态 | `results/final/redis-static-vs-agent-20260720-150342` |
+| Throughput-first | `results/final/throughput-first-20260720-165544` |
+| Mixed-Adaptive | `results/final/mixed-adaptive-20260720-170840` |
+| Agent overhead | `results/final/agent-overhead-20260720-170415` |
+| K8s / Web Console 旁路验证 | `results/k8s/sp4-validation-20260708-023552` |
 
 ## 5. 文档主链
-- `docs/final_report_submission.md` — 最终报告主稿
-- `docs/final_results_summary.md` — 结果摘要
-- `docs/defense_summary.md` — 答辩摘要
-- `docs/handover_manual.md` — 项目交接手册
-- `docs/submission_checklist.md` — 提交清单
+
+- `README.md`：项目首页。
+- `docs/final_submission_guide.md`：最终提交指南。
+- `docs/final_report_submission.md`：最终报告主稿。
+- `docs/final_evidence_index.md`：最终证据索引。
+- `docs/architecture.md`：系统架构。
+- `docs/defense_final.md`：答辩主文档。
+- `docs/defense_qa.md`：答辩问答。
+- `docs/demo_final_runbook.md`：现场演示流程。
+- `docs/demo_video_recording_script.md`：8-10 分钟视频录制脚本。
+- `submission/README.md`：提交包入口。
 
 ## 6. 代码仓库
-`https://github.com/shibuchou/EulerPilot`（私密仓库）
+
+- GitHub：`https://github.com/shibuchou/EulerPilot`
+- GitLink：`https://gitlink.org.cn/HxQj0tp0pG/mxoedzsyzygka`
 
 ## 7. 当前结论
-项目已完成系统实现、双后端实验、三方向 OS Agent 扩展、图表材料和中文主稿。已进入提交冻结阶段。
+
+项目已经完成系统实现、SP4 主验证线、sched_ext/scx 自编译内核复核、三方向 OS Agent 扩展、Policy Engine 跨 Skill 联动、Web Console 展示、40 条 final evidence 和最终质量门禁。当前唯一仍需人工补齐的 P0 交付物是正式演示视频文件或公开链接。

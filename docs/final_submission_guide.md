@@ -109,15 +109,19 @@ http://127.0.0.1:18080
 环境检查 -> 查看 Skills -> Agent 状态 JSON -> Skill 诊断 -> 离线证据演示 -> 跨 Skill 联动实验 -> 清理现场资源
 ```
 
-## 6. 当前同步状态
+## 6. 当前仓库状态
 
-最新代码已同步到：
+最新提交主线已同步到：
 
 - 本地：`D:\code\Ubuntu\EulerPilot`
 - SP4 主验证仓库：`192.168.1.123:/root/EulerPilot`
-- 121/SP3 历史仓库：`192.168.1.121:/root/EulerPilot`
-- 122：`192.168.1.122:/root/EulerPilot`
 - GitHub：`https://github.com/shibuchou/EulerPilot`
+- GitLink：`https://gitlink.org.cn/HxQj0tp0pG/mxoedzsyzygka`
+
+历史与对照仓库：
+
+- 121/SP3 历史仓库：`192.168.1.121:/root/EulerPilot`
+- 122/OLK-6.6 对照仓库：`192.168.1.122:/root/EulerPilot`
 
 最终提交前再次生成：
 

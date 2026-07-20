@@ -16,6 +16,8 @@ EulerPilot 不是单一调度器 demo，而是一套围绕“观测 -> 决策 ->
 | 性能复核 | SP4 Redis/Nginx `RUNS=5`，Redis pressure gradient；Redis manual static vs agent dynamic 已用修复脚本在 SP4 RUNS=5 重跑；新增 throughput-first、mixed-adaptive 和 Agent overhead RUNS=3 证据 |
 | Kubernetes | 已在真实 k3s Pod 环境完成隔离验证，使用独立 namespace、独立 label、有限 resources，验证后无 EulerPilot 残留 |
 | Web Console | `web_console/` 旁路展示控制台已落地，Evidence-first + 白名单 Demo + SSE 日志 + 单任务锁 |
+| 仓库入口 | GitHub：`https://github.com/shibuchou/EulerPilot`；GitLink：`https://gitlink.org.cn/HxQj0tp0pG/mxoedzsyzygka` |
+| 演示视频 | 仓库已准备 `docs/demo_video_recording_script.md`，正式视频文件/链接仍需提交前人工补齐 |
 
 ## 架构总览
 
@@ -108,7 +110,7 @@ npm run build
 建议按下面顺序阅读：
 
 1. `docs/one_page_summary.md`：一页式项目简介。
-2. `docs/progress_status.md`：滚动进度状态，以 SP4/123 和40 条 evidence为当前口径。
+2. `docs/progress_status.md`：滚动进度状态，以 SP4/123 和 40 条 evidence 为当前口径。
 3. `docs/final_evidence_index.md`：最终证据索引。
 4. `docs/final_report_submission.md`：最终报告主稿。
 5. `docs/architecture.md`：系统架构和模块边界。
