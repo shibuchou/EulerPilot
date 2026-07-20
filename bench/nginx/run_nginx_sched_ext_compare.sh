@@ -50,6 +50,7 @@ RUN_ORDERS=(
 )
 
 mkdir -p "$OUTDIR"
+OUTDIR="$(cd "$OUTDIR" && pwd)"
 
 cleanup() {
     [ -n "${STRESS_PID:-}" ] && kill "$STRESS_PID" 2>/dev/null || true
@@ -83,6 +84,8 @@ write_cpu_usage() {
             printf("cpu_busy_delta=%d\n", busy);
             printf("cpu_busy_ratio=%.6f\n", ratio);
             printf("cpu_per_10k_requests=%.6f\n", per10k);
+            printf("cpu_metric_scope=system_proc_stat\n");
+            printf("cpu_metric_warning=auxiliary_only_not_target_cgroup\n");
             printf("requests_total=%d\n", requests);
         }' > "$rundir/${label}_cpu_usage.env"
 }
@@ -377,6 +380,11 @@ cat > "$OUTDIR/summary.md" <<EOF
 - \`run-*/<label>_gate_status.txt\`
 - \`run-*/run_order.txt\`
 - \`run-*/<label>_invalid_reason.txt\`（仅在该组失效时出现）
+
+口径说明：
+
+- \`cpu_per_10k_requests\` 来自同窗口全系统 \`/proc/stat\`，对应 env 字段为 \`cpu_metric_scope=system_proc_stat\`，只作为辅助效率指标，不作为目标 cgroup CPU 消耗结论。
+- \`noisy_scx_psi\` 主要用于证明 PSI gate 与 sched_ext 后端可被触发并完成状态切换；Nginx 性能结论按 workload 边界解释，不声明所有场景稳定优于默认调度器。
 EOF
 
 printf '[INFO] Nginx sched_ext compare complete: %s\n' "$OUTDIR"

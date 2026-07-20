@@ -25,9 +25,9 @@ SCENARIO_LABELS = {
     "noisy_scx_psi":         "noisy (scx psi)",
 }
 BEST_NOTES = {
-    "noisy_cgroup_v2":       "cgroup v2 GET/INCR/SET RPS clearly improved",
-    "noisy_scx_normal":      "scx normal GET/INCR/SET RPS improved; SET P99 improved",
-    "noisy_scx_psi":         "scx psi GET throughput improved; P99 not consistent",
+    "noisy_cgroup_v2":       "cgroup v2 shows the clearest Redis mixed-load gain",
+    "noisy_scx_normal":      "scx normal is a compatibility path; gains are workload dependent",
+    "noisy_scx_psi":         "scx psi is gate-trigger evidence; extra probe load is not a net performance claim",
     "noisy_default":         "baseline",
     "quiet_default":         "quiet baseline (overhead reference)",
     "quiet_scx_normal":      "quiet scx normal (measurable overhead)",

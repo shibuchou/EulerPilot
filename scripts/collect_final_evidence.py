@@ -42,7 +42,28 @@ KEY_FIELDS = [
     "lsm_cred_transfer_attach",
     "lsm_cred_prepare_hits",
     "lsm_task_fix_setuid_hits",
+    "static_vs_agent_validity",
+    "static_vs_agent_groups",
 ]
+
+
+STATIC_VS_AGENT_LABELS = [
+    "default_noisy",
+    "agent_observe_only",
+    "manual_static",
+    "agent_dynamic",
+]
+
+STATIC_VS_AGENT_RUN_FILES = [
+    "summary.csv",
+    "cpu_usage.env",
+    "throttle.env",
+    "controlled_pids.txt",
+    "controlled_pid_cgroups.txt",
+    "background_cgroup_procs.txt",
+]
+
+BACKGROUND_CGROUP_SUFFIX = "/eulerpilot/background"
 
 
 def repo_root() -> Path:
@@ -120,6 +141,108 @@ def parse_csv_headline(path: Path) -> dict[str, Any]:
     return headline
 
 
+def csv_fieldnames(path: Path) -> list[str]:
+    if not path.exists():
+        return []
+    try:
+        with path.open("r", encoding="utf-8", newline="") as f:
+            reader = csv.DictReader(f)
+            return list(reader.fieldnames or [])
+    except (OSError, csv.Error):
+        return []
+
+
+def parse_int(value: str | None) -> int:
+    if value is None or value == "":
+        return 0
+    try:
+        return int(float(value))
+    except ValueError:
+        return 0
+
+
+def cgroup_path_from_snapshot_line(line: str) -> str:
+    parts = line.strip().split(maxsplit=1)
+    if len(parts) != 2:
+        return ""
+    if parts[1] == "missing-proc-cgroup":
+        return "missing-proc-cgroup"
+    fields = parts[1].split(":")
+    return fields[-1] if fields else ""
+
+
+def validate_static_vs_agent_dir(path: Path) -> tuple[dict[str, Any], list[str]]:
+    """Check that static-vs-Agent evidence controls the same stress workload."""
+    summary: dict[str, Any] = {
+        "static_vs_agent_groups": ",".join(STATIC_VS_AGENT_LABELS),
+        "cpu_metric_scope": "system_proc_stat",
+    }
+    warnings: list[str] = []
+
+    invalid_files = sorted(path.glob("run-*/*_invalid_reason.txt"))
+    for invalid in invalid_files:
+        rel = invalid.relative_to(path)
+        reason = compact_excerpt(read_text(invalid, limit=10_000))
+        warnings.append(f"invalid marker present: {rel}: {reason}")
+
+    fields = csv_fieldnames(path / "compare_summary_avg.csv")
+    if fields:
+        for label in STATIC_VS_AGENT_LABELS:
+            for suffix in ["rps_avg", "p99_ms_avg", "cpu_per_10k_requests_avg", "nr_throttled_delta_avg"]:
+                key = f"{label}_{suffix}"
+                if key not in fields:
+                    warnings.append(f"compare_summary_avg.csv missing column: {key}")
+    else:
+        warnings.append("missing or unreadable compare_summary_avg.csv")
+
+    run_dirs = sorted(p for p in path.glob("run-*") if p.is_dir())
+    if not run_dirs:
+        warnings.append("missing run-* directories")
+
+    for run_dir in run_dirs:
+        run_name = run_dir.name
+        for label in STATIC_VS_AGENT_LABELS:
+            for suffix in STATIC_VS_AGENT_RUN_FILES:
+                file_path = run_dir / f"{label}_{suffix}"
+                if not file_path.exists():
+                    warnings.append(f"{run_name}/{label}_{suffix} missing")
+
+            cpu_env = parse_key_value(read_text(run_dir / f"{label}_cpu_usage.env"))
+            if cpu_env:
+                if cpu_env.get("cpu_metric_scope") != "system_proc_stat":
+                    warnings.append(f"{run_name}/{label}_cpu_usage.env missing cpu_metric_scope=system_proc_stat")
+                if cpu_env.get("cpu_metric_warning") != "auxiliary_only_not_target_cgroup":
+                    warnings.append(
+                        f"{run_name}/{label}_cpu_usage.env missing cpu_metric_warning=auxiliary_only_not_target_cgroup"
+                    )
+
+            cgroup_file = run_dir / f"{label}_controlled_pid_cgroups.txt"
+            if cgroup_file.exists():
+                cgroup_lines = [line for line in read_text(cgroup_file).splitlines() if line.strip()]
+                if not cgroup_lines:
+                    warnings.append(f"{run_name}/{label}_controlled_pid_cgroups.txt empty")
+                for line in cgroup_lines:
+                    cgroup_path = cgroup_path_from_snapshot_line(line)
+                    if cgroup_path == "missing-proc-cgroup":
+                        warnings.append(f"{run_name}/{label} has missing /proc/<pid>/cgroup snapshot")
+                    elif cgroup_path != BACKGROUND_CGROUP_SUFFIX:
+                        warnings.append(f"{run_name}/{label} controlled pid outside background cgroup: {cgroup_path}")
+
+            if label == "manual_static":
+                throttle = parse_key_value(read_text(run_dir / f"{label}_throttle.env"))
+                if parse_int(throttle.get("nr_throttled_delta")) <= 0:
+                    warnings.append(f"{run_name}/manual_static did not record nr_throttled_delta > 0")
+
+            if label in {"agent_observe_only", "agent_dynamic"}:
+                snapshot = run_dir / f"{label}_agent_snapshot.txt"
+                if not snapshot.exists() or file_size(snapshot) == 0:
+                    warnings.append(f"{run_name}/{label}_agent_snapshot.txt missing or empty")
+
+    summary["static_vs_agent_validity"] = "pass" if not warnings else "warning"
+    summary["static_vs_agent_runs"] = len(run_dirs)
+    return summary, warnings
+
+
 def summarize_result_dir(path: Path, entry: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
     summary: dict[str, Any] = {}
     warnings: list[str] = []
@@ -142,6 +265,11 @@ def summarize_result_dir(path: Path, entry: dict[str, Any]) -> tuple[dict[str, A
     csv_summary = parse_csv_headline(path / "compare_summary_avg.csv")
     if csv_summary:
         summary.update(csv_summary)
+
+    if path.name.startswith("redis-static-vs-agent-"):
+        static_summary, static_warnings = validate_static_vs_agent_dir(path)
+        summary.update(static_summary)
+        warnings.extend(static_warnings)
 
     return summary, warnings
 
