@@ -1,6 +1,6 @@
 # EulerPilot 最终证据压缩报告
 
-生成时间：`2026-07-20T17:36:15+08:00`
+生成时间：`2026-07-20T18:10:12+08:00`
 清单：`configs/final_evidence_manifest.json`
 
 本报告由 `scripts/collect_final_evidence.py` 根据白名单清单生成，用于把分散的双机结果压缩成答辩入口。它不会递归扫描全部 `results/`，缺失项会显式列出。
@@ -12,7 +12,7 @@
 | 清单条目 | 40 |
 | 必需缺失 | 0 |
 | 带警告条目 | 0 |
-| Git 工作区额外状态 | 40 |
+| Git 工作区额外状态 | 0 |
 
 ## quality_gate
 
@@ -98,49 +98,6 @@
 | 状态 | 主机 | 名称 | 路径 | 摘要 |
 | --- | --- | --- | --- | --- |
 | present | 123 | SP4 Web Console whitelist actions | `results/k8s/sp4-validation-20260708-023552/web_console` | [ / { / "action": "status_json", |
-
-## 生成时 Git 工作区状态
-
-- ` M README.md`
-- ` M agent/include/eulerpilot.hpp`
-- ` M agent/src/runtime.cpp`
-- ` M bench/redis/run_redis_sched_ext_compare.sh`
-- ` M configs/final_evidence_manifest.json`
-- ` M docs/README.md`
-- ` M docs/architecture.md`
-- ` M docs/defense_final.md`
-- ` M docs/defense_qa.md`
-- ` M docs/defense_slides_outline.md`
-- ` M docs/defense_summary.md`
-- ` M docs/demo_final_runbook.md`
-- ` M docs/demo_video_recording_script.md`
-- ` M docs/final_evidence_index.md`
-- ` M docs/final_quality_gate.md`
-- ` M docs/final_report_submission.md`
-- ` M docs/final_security_audit.md`
-- ` M docs/final_submission_guide.md`
-- ` M docs/final_talk_script.md`
-- ` M docs/network_policy_skill.md`
-- ` M docs/one_page_summary.md`
-- ` M docs/progress_status.md`
-- ` M docs/project_brief.md`
-- ` M docs/project_status_overview.md`
-- ` M docs/skills_yaml_plan.md`
-- ` M docs/sp4_k8s_validation_plan.md`
-- ` M docs/sp4_validation_plan.md`
-- ` M docs/stage_delivery_summary.md`
-- ` M docs/stage_g_benchmark_freeze.md`
-- ` M docs/submission_checklist.md`
-- ` M docs/web_console_design.md`
-- ` M scripts/collect_final_evidence.py`
-- ` M tests/unit/test_runtime_policy.cpp`
-- `?? bench/mixed/run_mixed_adaptive_closure.sh`
-- `?? bench/overhead/`
-- `?? bench/throughput/`
-- `?? reports/final_quality_gate_20260720-stage3-performance.log`
-- `?? results/final/agent-overhead-20260720-170415/`
-- `?? results/final/mixed-adaptive-20260720-170840/`
-- `?? results/final/throughput-first-20260720-165544/`
 
 ## 使用方式
 
