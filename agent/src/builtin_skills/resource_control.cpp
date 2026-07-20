@@ -87,6 +87,10 @@ public:
         snapshot.state = state_;
         snapshot.evidence["backend"] = "resource_control_adapter";
         snapshot.evidence["scheduler_backend"] = backend_ == ExecutorBackend::SchedExt ? "sched_ext" : "cgroup_v2";
+        const auto scx_binary = resolve_scx_binary(runtime_config_);
+        snapshot.evidence["scx_binary"] = scx_binary.path;
+        snapshot.evidence["scx_binary_source"] = scx_binary.source;
+        snapshot.evidence["scx_binary_executable"] = scx_binary.executable ? "true" : "false";
         snapshot.evidence["mode"] = policy_.mode;
         snapshot.evidence["memory"] = policy_.memory_enabled ? "enabled" : "disabled";
         snapshot.evidence["cpu_max"] = policy_.cpu_max_enabled ? "enabled" : "disabled";

@@ -1,6 +1,6 @@
 # EulerPilot 最终证据压缩报告
 
-生成时间：`2026-07-20T15:26:27+08:00`
+生成时间：`2026-07-20T16:07:56+08:00`
 清单：`configs/final_evidence_manifest.json`
 
 本报告由 `scripts/collect_final_evidence.py` 根据白名单清单生成，用于把分散的双机结果压缩成答辩入口。它不会递归扫描全部 `results/`，缺失项会显式列出。
@@ -12,7 +12,7 @@
 | 清单条目 | 37 |
 | 必需缺失 | 0 |
 | 带警告条目 | 0 |
-| Git 工作区额外状态 | 0 |
+| Git 工作区额外状态 | 13 |
 
 ## quality_gate
 
@@ -20,7 +20,7 @@
 | --- | --- | --- | --- | --- |
 | pass | 121 | 121 final quality gate after engineering quality closeout | `reports/final_quality_gate_20260706-quality-121.log` | result=pass |
 | pass | 123 | SP4 final quality gate after sched_ext workload validation | `reports/sp4/final_quality_gate_scx_workload_20260706-1214.log` | result=pass |
-| pass | 123 | SP4 final quality gate after stage1 validity closeout | `reports/final_quality_gate_20260720-stage1-validity.log` | result=pass |
+| pass | 123 | SP4 final quality gate after stage2 scx loader closeout | `reports/final_quality_gate_20260720-stage2-scx-loader.log` | result=pass |
 
 ## repo_status
 
@@ -95,6 +95,22 @@
 | 状态 | 主机 | 名称 | 路径 | 摘要 |
 | --- | --- | --- | --- | --- |
 | present | 123 | SP4 Web Console whitelist actions | `results/k8s/sp4-validation-20260708-023552/web_console` | [ / { / "action": "status_json", |
+
+## 生成时 Git 工作区状态
+
+- ` M agent/include/eulerpilot.hpp`
+- ` M agent/include/executors.hpp`
+- ` M agent/src/builtin_skills/resource_control.cpp`
+- ` M agent/src/executors.cpp`
+- ` M agent/src/main.cpp`
+- ` M agent/src/runtime.cpp`
+- ` M configs/agent.yaml`
+- ` M configs/final_evidence_manifest.json`
+- ` M sched/scx_eulerpilot.c`
+- ` M scripts/capture_gate_runtime.sh`
+- ` M scripts/rollback.sh`
+- ` M tests/unit/test_runtime_policy.cpp`
+- `?? reports/final_quality_gate_20260720-stage2-scx-loader.log`
 
 ## 使用方式
 

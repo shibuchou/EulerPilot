@@ -23,12 +23,12 @@
     },
     {
       "category": "quality_gate",
-      "name": "SP4 final quality gate after stage1 validity closeout",
+      "name": "SP4 final quality gate after stage2 scx loader closeout",
       "host": "123",
-      "path": "reports/final_quality_gate_20260720-stage1-validity.log",
+      "path": "reports/final_quality_gate_20260720-stage2-scx-loader.log",
       "kind": "quality_gate",
       "required": true,
-      "notes": "SP4 core validation repository final gate after observer metric, warmup dry-run, sched_ext path, portability and static-vs-Agent validity closeout: 22/22 P0, 100-round smoke and 5-round doctor evidence."
+      "notes": "SP4 core validation repository final gate after observer metric, warmup dry-run, sched_ext path, portability, static-vs-Agent validity and scx loader closeout: 22/22 P0, 100-round smoke and 5-round doctor evidence."
     },
     {
       "category": "repo_status",

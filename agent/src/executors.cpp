@@ -82,6 +82,10 @@ bool file_exists(const char *path) {
     return file.good();
 }
 
+bool executable_file(const std::string &path) {
+    return !path.empty() && access(path.c_str(), X_OK) == 0;
+}
+
 std::string read_file_trimmed(const char *path) {
     std::ifstream file(path);
     if (!file.good()) {
@@ -763,18 +767,31 @@ ResourceApplyTarget select_resource_apply_target(const ResourceControlPolicy &po
     return target;
 }
 
-std::string default_scx_binary() {
-    const char *value = std::getenv("EULERPILOT_SCX_BINARY");
-    if (value && *value) {
-        return value;
+std::string find_in_path(const std::string &name) {
+    const char *path_env = std::getenv("PATH");
+    if (!path_env || !*path_env) {
+        return "";
     }
-    if (file_exists("/usr/local/bin/scx_eulerpilot")) {
-        return "/usr/local/bin/scx_eulerpilot";
+    std::stringstream stream(path_env);
+    std::string dir;
+    while (std::getline(stream, dir, ':')) {
+        if (dir.empty()) {
+            continue;
+        }
+        fs::path candidate = fs::path(dir) / name;
+        if (executable_file(candidate.string())) {
+            return candidate.string();
+        }
     }
-    if (file_exists("/usr/bin/scx_eulerpilot")) {
-        return "/usr/bin/scx_eulerpilot";
-    }
-    return "/root/olk/kernel-OLK-6.6-atomgit/tools/sched_ext/build/bin/scx_eulerpilot";
+    return "";
+}
+
+ScxBinaryChoice make_scx_choice(std::string path, std::string source) {
+    ScxBinaryChoice choice;
+    choice.path = std::move(path);
+    choice.source = std::move(source);
+    choice.executable = executable_file(choice.path);
+    return choice;
 }
 
 bool use_scx_fifo_mode() {
@@ -847,14 +864,17 @@ bool is_process_alive(pid_t pid) {
     return kill(pid, 0) == 0;
 }
 
-bool start_scx_session(ScxSession &session, bool fifo_mode, std::string &reason) {
-    session.binary_path = default_scx_binary();
+bool start_scx_session(const RuntimeConfig &config, ScxSession &session, bool fifo_mode, std::string &reason) {
+    const ScxBinaryChoice binary = resolve_scx_binary(config);
+    session.binary_path = binary.path;
+    session.binary_source = binary.source;
     session.fifo_mode = fifo_mode;
-    append_scx_session_log("start_scx_session: enter binary=" + session.binary_path);
+    append_scx_session_log("start_scx_session: enter binary=" + session.binary_path +
+                           " source=" + session.binary_source);
 
-    if (!file_exists(session.binary_path.c_str())) {
-        reason = "scx-binary-missing";
-        append_scx_session_log("start_scx_session: scx-binary-missing");
+    if (!binary.executable) {
+        reason = "scx-binary-not-executable:" + session.binary_source;
+        append_scx_session_log("start_scx_session: " + reason);
         return false;
     }
 
@@ -951,6 +971,37 @@ bool tg_id_alive(pid_t tgid)
 }
 
 } // namespace
+
+ScxBinaryChoice resolve_scx_binary(const RuntimeConfig &config) {
+    if (!config.scheduler_binary_path.empty()) {
+        return make_scx_choice(config.scheduler_binary_path, config.scheduler_binary_source.empty()
+                                                         ? "yaml:scheduler.binary"
+                                                         : config.scheduler_binary_source);
+    }
+
+    const char *env_binary = std::getenv("EULERPILOT_SCX_BINARY");
+    if (env_binary && *env_binary) {
+        return make_scx_choice(env_binary, "env:EULERPILOT_SCX_BINARY");
+    }
+
+    const std::string path_binary = find_in_path("scx_eulerpilot");
+    if (!path_binary.empty()) {
+        return make_scx_choice(path_binary, "PATH");
+    }
+
+    for (const auto &candidate : {
+             std::string("/usr/local/bin/scx_eulerpilot"),
+             std::string("/usr/bin/scx_eulerpilot"),
+             (std::filesystem::current_path() / "build" / "scx_eulerpilot").string(),
+             (std::filesystem::current_path() / "tools" / "sched_ext" / "build" / "bin" / "scx_eulerpilot").string(),
+         }) {
+        if (executable_file(candidate)) {
+            return make_scx_choice(candidate, "auto");
+        }
+    }
+
+    return make_scx_choice("scx_eulerpilot", "unresolved");
+}
 
 bool should_manage_sample(const WorkloadSample &sample) {
     if (is_benchmark_client(sample)) {
@@ -1058,7 +1109,7 @@ bool reconcile_scx_session(const RuntimeConfig &config, ControlMode mode, ScxSes
         return true;
     }
 
-    if (!start_scx_session(session, use_scx_fifo_mode(), reason)) {
+    if (!start_scx_session(config, session, use_scx_fifo_mode(), reason)) {
         append_scx_session_log("reconcile_scx_session: start failed reason=" + reason);
         return false;
     }

@@ -40,14 +40,18 @@ struct RuntimeConfig {
     bool dry_run = true;
     ExecutorBackend preferred_backend = ExecutorBackend::CgroupV2;
     GateMode gate_mode = GateMode::AlwaysActive;
+    bool backend_cli_set = false;
     bool list_skills_only = false;
     bool doctor_skills_only = false;
     bool validate_config_only = false;
     bool status_only = false;
+    bool strict = false;
     bool verbose = false;
     bool jsonl = false;
     bool metrics_enabled = false;
     std::string metrics_listen = "127.0.0.1:9108";
+    std::string scheduler_binary_path;
+    std::string scheduler_binary_source = "auto";
 };
 
 struct EnvironmentStatus {

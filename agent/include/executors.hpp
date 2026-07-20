@@ -13,10 +13,17 @@ namespace eulerpilot {
 struct ScxSession {
     pid_t pid = -1;
     std::string binary_path;
+    std::string binary_source = "unresolved";
     bool fifo_mode = false;
     int class_map_fd = -1;
     int gate_state_map_fd = -1;
     int stats_map_fd = -1;
+};
+
+struct ScxBinaryChoice {
+    std::string path;
+    std::string source;
+    bool executable = false;
 };
 
 struct TriggerContext;
@@ -94,6 +101,7 @@ ExecutionAction apply_cgroup_assignment(const RuntimeConfig &config, const Workl
 ExecutionAction apply_cgroup_assignment(const RuntimeConfig &config, const WorkloadDecision &decision,
                                         const ResourceControlPolicy &policy, bool pressure_mode);
 bool rollback_resource_control_state();
+ScxBinaryChoice resolve_scx_binary(const RuntimeConfig &config);
 ExecutionAction apply_scx_assignment(const RuntimeConfig &config, const WorkloadDecision &decision,
                                      bool scheduler_active, const std::string &scheduler_reason);
 bool reconcile_scx_session(const RuntimeConfig &config, ControlMode mode, ScxSession &session, std::string &reason);

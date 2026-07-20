@@ -224,6 +224,7 @@ RuntimeConfig parse_args(int argc, char **argv) {
             } else {
                 throw std::runtime_error(std::string("unknown backend: ") + backend);
             }
+            config.backend_cli_set = true;
         } else if (std::strcmp(argv[i], "--gate-mode") == 0) {
             if (i + 1 >= argc) {
                 throw std::runtime_error("--gate-mode requires a value");
@@ -254,13 +255,15 @@ RuntimeConfig parse_args(int argc, char **argv) {
             }
             config.warmup_cycles = static_cast<std::uint32_t>(std::strtoul(argv[++i], nullptr, 10));
         } else if (std::strcmp(argv[i], "--help") == 0) {
-            throw std::runtime_error("usage: eulerpilot-agent [--config PATH] [--interval-ms N] [--duration-s N] [--warmup-cycles N] [--backend cgroup_v2|sched_ext] [--gate-mode always-active|psi|normal] [--active] [--verbose] [--jsonl] [--list-skills] [--doctor-skills] [--validate-config PATH] [--status --json]");
+            throw std::runtime_error("usage: eulerpilot-agent [--config PATH] [--interval-ms N] [--duration-s N] [--warmup-cycles N] [--backend cgroup_v2|sched_ext] [--gate-mode always-active|psi|normal] [--active] [--strict] [--verbose] [--jsonl] [--list-skills] [--doctor-skills] [--validate-config PATH] [--status --json]");
         } else if (std::strcmp(argv[i], "--verbose") == 0) {
             config.verbose = true;
         } else if (std::strcmp(argv[i], "--jsonl") == 0) {
             config.jsonl = true;
         } else if (std::strcmp(argv[i], "--json") == 0) {
             config.jsonl = true;
+        } else if (std::strcmp(argv[i], "--strict") == 0) {
+            config.strict = true;
         } else if (std::strcmp(argv[i], "--list-skills") == 0) {
             config.list_skills_only = true;
         } else if (std::strcmp(argv[i], "--doctor-skills") == 0) {

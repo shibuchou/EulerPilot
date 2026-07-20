@@ -120,6 +120,16 @@ static int open_gate_state_map(void)
 	return bpf_obj_get("/sys/fs/bpf/gate_state_map");
 }
 
+static int open_stats_map(void)
+{
+	int fd;
+
+	fd = bpf_obj_get("/sys/fs/bpf/eulerpilot/scx_eulerpilot/v1/stats");
+	if (fd >= 0)
+		return fd;
+	return bpf_obj_get("/sys/fs/bpf/stats");
+}
+
 static void print_gate_state(void)
 {
 	int fd = open_gate_state_map();
@@ -138,7 +148,7 @@ static void print_gate_state(void)
 	close(fd);
 }
 
-static void read_stats(struct scx_eulerpilot *skel, __u64 *stats)
+static void read_stats_fd(int fd, __u64 *stats)
 {
 	int nr_cpus = libbpf_num_possible_cpus();
 	__u64 cnts[23][nr_cpus];
@@ -149,7 +159,7 @@ static void read_stats(struct scx_eulerpilot *skel, __u64 *stats)
 	for (idx = 0; idx < 23; idx++) {
 		int ret, cpu;
 
-		ret = bpf_map_lookup_elem(bpf_map__fd(skel->maps.stats), &idx, cnts[idx]);
+		ret = bpf_map_lookup_elem(fd, &idx, cnts[idx]);
 		if (ret < 0)
 			continue;
 		for (cpu = 0; cpu < nr_cpus; cpu++)
@@ -157,11 +167,11 @@ static void read_stats(struct scx_eulerpilot *skel, __u64 *stats)
 	}
 }
 
-static void print_stats(struct scx_eulerpilot *skel)
+static void print_stats_fd(int fd)
 {
 	__u64 stats[23];
 
-	read_stats(skel, stats);
+	read_stats_fd(fd, stats);
 	printf("class_hits normal=%llu latency=%llu batch=%llu background=%llu ",
 	       stats[0], stats[1], stats[2], stats[3]);
 	printf("class_map hit=%llu miss=%llu invalid=%llu ",
@@ -176,11 +186,30 @@ static void print_stats(struct scx_eulerpilot *skel)
 	       stats[19], stats[20], stats[21], stats[22]);
 }
 
+static void print_stats(struct scx_eulerpilot *skel)
+{
+	print_stats_fd(bpf_map__fd(skel->maps.stats));
+}
+
+static int print_pinned_stats(void)
+{
+	int fd = open_stats_map();
+
+	print_sched_ext_state();
+	if (fd < 0) {
+		printf("stats_map=missing\n");
+		return 1;
+	}
+	print_stats_fd(fd);
+	close(fd);
+	return 0;
+}
+
 static int detach_running_scheduler(void)
 {
 	int ret;
 
-	ret = system("pkill -f '/root/olk/kernel-OLK-6.6-atomgit/tools/sched_ext/build/bin/scx_eulerpilot' >/dev/null 2>&1 || true");
+	ret = system("pkill -x scx_eulerpilot >/dev/null 2>&1 || true");
 	(void)ret;
 	print_sched_ext_state();
 	return 0;
@@ -247,6 +276,8 @@ int main(int argc, char **argv)
 	signal(SIGTERM, sigint_handler);
 
 restart:
+	filtered_argc = 1;
+	fifo_mode = false;
 	filtered_argv[0] = argv[0];
 
 	for (int i = 1; i < argc; ++i) {
@@ -305,6 +336,9 @@ restart:
 		return 0;
 	}
 
+	if (stats_only)
+		return print_pinned_stats();
+
 	skel = SCX_OPS_OPEN(eulerpilot_ops, scx_eulerpilot);
 	if (fifo_mode)
 		skel->rodata->fifo_sched = true;
@@ -313,14 +347,6 @@ restart:
 	link = SCX_OPS_ATTACH(skel, eulerpilot_ops, scx_eulerpilot);
 	pin_eulerpilot_maps(skel);
 	init_gate_state_defaults();
-
-	if (stats_only) {
-		print_sched_ext_state();
-		print_stats(skel);
-		bpf_link__destroy(link);
-		scx_eulerpilot__destroy(skel);
-		return 0;
-	}
 
 	while (!exit_req && !UEI_EXITED(skel, uei)) {
 		print_stats(skel);

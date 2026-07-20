@@ -63,6 +63,35 @@ std::string escape_json(const std::string &value) {
     return out;
 }
 
+void apply_backend_from_yaml(eulerpilot::RuntimeConfig &config, const std::string &backend) {
+    if (backend == "cgroup_v2") {
+        config.preferred_backend = eulerpilot::ExecutorBackend::CgroupV2;
+    } else if (backend == "sched_ext") {
+        config.preferred_backend = eulerpilot::ExecutorBackend::SchedExt;
+    } else {
+        throw std::runtime_error("unknown scheduler.type in config: " + backend);
+    }
+}
+
+void apply_agent_yaml_config(eulerpilot::RuntimeConfig &config) {
+    YAML::Node root = YAML::LoadFile(config.config_path);
+    if (root["scheduler"]) {
+        const auto scheduler = root["scheduler"];
+        if (scheduler["type"] && !config.backend_cli_set) {
+            apply_backend_from_yaml(config, scheduler["type"].as<std::string>());
+        }
+        if (scheduler["binary"]) {
+            config.scheduler_binary_path = scheduler["binary"].as<std::string>();
+            config.scheduler_binary_source = "yaml:scheduler.binary";
+        }
+    }
+    if (root["exporter"] && root["exporter"]["prometheus"]) {
+        const auto pm = root["exporter"]["prometheus"];
+        if (pm["enabled"]) config.metrics_enabled = pm["enabled"].as<bool>();
+        if (pm["listen"]) config.metrics_listen = pm["listen"].as<std::string>();
+    }
+}
+
 void print_status_json(const std::vector<eulerpilot::SkillSnapshot> &snapshots) {
     std::cout << "{\"skills\":[";
     for (std::size_t i = 0; i < snapshots.size(); ++i) {
@@ -81,6 +110,49 @@ void print_status_json(const std::vector<eulerpilot::SkillSnapshot> &snapshots) 
                 std::cout << ",";
             }
             first = false;
+            std::cout << "\"" << escape_json(item.first) << "\":\""
+                      << escape_json(item.second) << "\"";
+        }
+        std::cout << "}}";
+    }
+    std::cout << "]}\n";
+}
+
+void print_doctor_json(const eulerpilot::RuntimeConfig &config,
+                       const eulerpilot::CapabilitySnapshot &capabilities,
+                       const std::vector<eulerpilot::SkillSnapshot> &snapshots,
+                       int exit_code) {
+    std::cout << "{\"strict\":" << (config.strict ? "true" : "false")
+              << ",\"exit_code\":" << exit_code
+              << ",\"backend\":\"" << escape_json(eulerpilot::to_string(config.preferred_backend)) << "\""
+              << ",\"capabilities\":{";
+    bool first = true;
+    for (const auto &probe : capabilities.probes) {
+        if (!first) {
+            std::cout << ",";
+        }
+        first = false;
+        std::cout << "\"" << escape_json(probe.first) << "\":{"
+                  << "\"available\":" << (probe.second.available ? "true" : "false") << ","
+                  << "\"evidence\":\"" << escape_json(probe.second.evidence) << "\"}";
+    }
+    std::cout << "},\"skills\":[";
+    for (std::size_t i = 0; i < snapshots.size(); ++i) {
+        const auto &snapshot = snapshots[i];
+        if (i > 0) {
+            std::cout << ",";
+        }
+        std::cout << "{\"name\":\"" << escape_json(snapshot.skill_name) << "\","
+                  << "\"available\":" << (snapshot.available ? "true" : "false") << ","
+                  << "\"running\":" << (snapshot.running ? "true" : "false") << ","
+                  << "\"state\":\"" << escape_json(snapshot.state) << "\","
+                  << "\"evidence\":{";
+        bool first_evidence = true;
+        for (const auto &item : snapshot.evidence) {
+            if (!first_evidence) {
+                std::cout << ",";
+            }
+            first_evidence = false;
             std::cout << "\"" << escape_json(item.first) << "\":\""
                       << escape_json(item.second) << "\"";
         }
@@ -119,6 +191,9 @@ void print_banner(const eulerpilot::RuntimeConfig &config, const eulerpilot::Env
               << clr::dim_() << "backend:    " << clr::r()
               << (config.preferred_backend == eulerpilot::ExecutorBackend::SchedExt ? clr::magenta_() : clr::blue_())
               << eulerpilot::to_string(config.preferred_backend) << clr::r() << "\n"
+              << "  " << clr::dim_() << "scx binary: " << clr::r()
+              << (config.scheduler_binary_path.empty() ? "auto" : config.scheduler_binary_path)
+              << clr::dim_() << " (" << config.scheduler_binary_source << ")" << clr::r() << "\n"
               << "  " << clr::dim_() << "gate:       " << clr::r()
               << eulerpilot::to_string(config.gate_mode) << "\n"
               << "  " << clr::dim_() << "env:        " << clr::r()
@@ -262,6 +337,8 @@ int main(int argc, char **argv) {
             return 0;
         }
 
+        apply_agent_yaml_config(config);
+
         if (config.validate_config_only) {
             if (!manager.load_from_yaml(config, registry)) {
                 std::cerr << "EulerPilot config invalid: " << manager.last_error() << "\n";
@@ -297,6 +374,10 @@ int main(int argc, char **argv) {
             }
             auto capabilities = eulerpilot::detect_capabilities();
             int exit_code = manager.doctor_enabled_skills();
+            if (config.jsonl) {
+                print_doctor_json(config, capabilities, manager.snapshots(), exit_code);
+                return exit_code;
+            }
             std::cout << "\n" << clr::cyan_() << clr::b() << "  Capability Detector" << clr::r() << "\n"
                       << clr::dim_() << "  " << bar() << clr::r() << "\n";
             for (const auto &probe : capabilities.probes) {

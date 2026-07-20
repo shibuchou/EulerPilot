@@ -1,4 +1,5 @@
 #include "eulerpilot.hpp"
+#include "executors.hpp"
 
 #include <cassert>
 #include <cstdlib>
@@ -135,6 +136,29 @@ int main() {
            ControlMode::Mixed);
     assert(eulerpilot::derive_desired_mode(context(true, true, true, false, true)) ==
            ControlMode::Mixed);
+
+    setenv("EULERPILOT_SCX_BINARY", "/bin/false", 1);
+    eulerpilot::RuntimeConfig scx_cfg;
+    scx_cfg.scheduler_binary_path = "/bin/true";
+    scx_cfg.scheduler_binary_source = "yaml:scheduler.binary";
+    auto yaml_binary = eulerpilot::resolve_scx_binary(scx_cfg);
+    assert(yaml_binary.path == "/bin/true");
+    assert(yaml_binary.source == "yaml:scheduler.binary");
+    assert(yaml_binary.executable);
+
+    scx_cfg.scheduler_binary_path.clear();
+    auto env_binary = eulerpilot::resolve_scx_binary(scx_cfg);
+    assert(env_binary.path == "/bin/false");
+    assert(env_binary.source == "env:EULERPILOT_SCX_BINARY");
+    assert(env_binary.executable);
+
+    scx_cfg.scheduler_binary_path = "/no/such/scx_eulerpilot";
+    scx_cfg.scheduler_binary_source = "yaml:scheduler.binary";
+    auto missing_binary = eulerpilot::resolve_scx_binary(scx_cfg);
+    assert(missing_binary.path == "/no/such/scx_eulerpilot");
+    assert(missing_binary.source == "yaml:scheduler.binary");
+    assert(!missing_binary.executable);
+    unsetenv("EULERPILOT_SCX_BINARY");
 
     return 0;
 }

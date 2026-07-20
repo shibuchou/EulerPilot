@@ -1,8 +1,22 @@
 {
-  "generated_at": "2026-07-20T15:26:27+08:00",
+  "generated_at": "2026-07-20T16:07:56+08:00",
   "manifest_path": "configs/final_evidence_manifest.json",
   "manifest_title": "EulerPilot final evidence manifest",
-  "git_status_short": [],
+  "git_status_short": [
+    " M agent/include/eulerpilot.hpp",
+    " M agent/include/executors.hpp",
+    " M agent/src/builtin_skills/resource_control.cpp",
+    " M agent/src/executors.cpp",
+    " M agent/src/main.cpp",
+    " M agent/src/runtime.cpp",
+    " M configs/agent.yaml",
+    " M configs/final_evidence_manifest.json",
+    " M sched/scx_eulerpilot.c",
+    " M scripts/capture_gate_runtime.sh",
+    " M scripts/rollback.sh",
+    " M tests/unit/test_runtime_policy.cpp",
+    "?? reports/final_quality_gate_20260720-stage2-scx-loader.log"
+  ],
   "entries": [
     {
       "category": "quality_gate",
@@ -48,14 +62,14 @@
     },
     {
       "category": "quality_gate",
-      "name": "SP4 final quality gate after stage1 validity closeout",
+      "name": "SP4 final quality gate after stage2 scx loader closeout",
       "host": "123",
-      "path": "reports/final_quality_gate_20260720-stage1-validity.log",
+      "path": "reports/final_quality_gate_20260720-stage2-scx-loader.log",
       "kind": "quality_gate",
       "required": true,
       "exists": true,
       "status": "pass",
-      "notes": "SP4 core validation repository final gate after observer metric, warmup dry-run, sched_ext path, portability and static-vs-Agent validity closeout: 22/22 P0, 100-round smoke and 5-round doctor evidence.",
+      "notes": "SP4 core validation repository final gate after observer metric, warmup dry-run, sched_ext path, portability, static-vs-Agent validity and scx loader closeout: 22/22 P0, 100-round smoke and 5-round doctor evidence.",
       "summary": {
         "result": "pass",
         "planned": 22,
