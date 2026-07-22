@@ -33,5 +33,43 @@ jobs:
       - name: Build agent
         run: make agent
 
+      - name: Build eBPF extension objects
+        run: make network-policy network-qos-tc network-xdp security-policy
+
       - name: Validate default config
         run: ./build/eulerpilot-agent --validate-config configs/agent.yaml
+
+      - name: Validate policy engine config
+        run: ./build/eulerpilot-agent --validate-config configs/policy_engine_security_network_resource.yaml
+
+      - name: Check shell script syntax
+        run: find scripts tests bench demo -type f -name '*.sh' -print0 | xargs -0 -r bash -n
+
+  web-console:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: web_console/package-lock.json
+
+      - name: Install Web Console dependencies
+        working-directory: web_console
+        run: npm ci
+
+      - name: Lint Web Console
+        working-directory: web_console
+        run: npm run lint
+
+      - name: Test Web Console
+        working-directory: web_console
+        run: npm run test
+
+      - name: Build Web Console
+        working-directory: web_console
+        run: npm run build

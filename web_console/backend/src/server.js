@@ -8,6 +8,7 @@ import { JobManager } from './jobs.js';
 import { resolveConsoleConfig } from './paths.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
+const BODY_LIMIT = 4096;
 
 function json(res, statusCode, payload) {
   const body = JSON.stringify(payload);
@@ -31,6 +32,41 @@ function isAuthorized(req, config) {
   if (!config.requiresToken) return true;
   const header = req.headers.authorization || '';
   return header === `Bearer ${config.token}`;
+}
+
+function readJsonBody(req) {
+  return new Promise((resolve, reject) => {
+    let body = '';
+    req.on('data', (chunk) => {
+      body += chunk.toString('utf8');
+      if (Buffer.byteLength(body, 'utf8') > BODY_LIMIT) {
+        const error = new Error('request_body_too_large');
+        error.statusCode = 413;
+        reject(error);
+        req.destroy();
+      }
+    });
+    req.on('end', () => {
+      if (!body.trim()) {
+        resolve({});
+        return;
+      }
+      try {
+        resolve(JSON.parse(body));
+      } catch {
+        const error = new Error('invalid_json_body');
+        error.statusCode = 400;
+        reject(error);
+      }
+    });
+    req.on('error', reject);
+  });
+}
+
+function hasActionConfirmation(req, action, body) {
+  if (!action.requires_confirm) return true;
+  const header = req.headers['x-eulerpilot-confirm-action'] || req.headers['x-eulerpilot-confirm'];
+  return header === action.id || body.confirm_action_id === action.id;
 }
 
 function serveFile(res, filePath, contentType) {
@@ -128,7 +164,22 @@ async function routeApi(req, res, config, actions, jobs, url) {
 
     const actionStart = url.pathname.match(/^\/api\/actions\/([a-z0-9_]+)\/start$/);
     if (req.method === 'POST' && actionStart) {
-      json(res, 202, { job: jobs.start(actionStart[1]) });
+      const action = actions.get(actionStart[1]);
+      if (!action) {
+        notFound(res);
+        return;
+      }
+      const body = await readJsonBody(req);
+      if (!hasActionConfirmation(req, action, body)) {
+        json(res, 428, {
+          error: 'confirmation_required',
+          action_id: action.id,
+          safe_description: action.safe_description,
+          risk_description: action.risk_description
+        });
+        return;
+      }
+      json(res, 202, { job: jobs.start(action.id) });
       return;
     }
 

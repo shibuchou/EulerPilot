@@ -8,6 +8,7 @@ BUILD_DIR := build
 AGENT_BIN := $(BUILD_DIR)/eulerpilot-agent
 UNIT_SKILL_REGISTRY_BIN := $(BUILD_DIR)/test_skill_registry
 UNIT_RUNTIME_POLICY_BIN := $(BUILD_DIR)/test_runtime_policy
+FORMAT_FILES := $(shell find agent bpf sched tests tools -type f \( -name '*.cpp' -o -name '*.hpp' -o -name '*.c' -o -name '*.h' \) 2>/dev/null)
 AGENT_LIB_SRCS := agent/src/runtime.cpp agent/src/executors.cpp agent/src/psi_gate.cpp agent/src/skill_registry.cpp agent/src/skill_manager.cpp agent/src/builtin_skills.cpp agent/src/builtin_skills/resource_control.cpp agent/src/builtin_skills/psi_gate.cpp agent/src/builtin_skills/network_policy.cpp agent/src/builtin_skills/network_qos.cpp agent/src/builtin_skills/network_xdp.cpp agent/src/builtin_skills/security_policy.cpp agent/src/builtin_skills/policy_engine.cpp agent/src/skill_runtime_context.cpp agent/src/metrics_exporter.cpp agent/src/metrics_state.cpp agent/src/capability_detector.cpp agent/src/target_resolver.cpp agent/src/audit_bus.cpp agent/src/action_journal.cpp agent/observer/psi_reader.cpp
 AGENT_SRCS := agent/src/main.cpp $(AGENT_LIB_SRCS)
 AGENT_CPPFLAGS := $(CPPFLAGS) -I./bpf -I$(BUILD_DIR) -I./agent/observer
@@ -26,7 +27,7 @@ NETWORK_XDP_BPF := $(BUILD_DIR)/network_xdp.bpf.o
 SECURITY_POLICY_BPF := $(BUILD_DIR)/security_policy.bpf.o
 SECURITY_POLICY_SKEL := $(BUILD_DIR)/security_policy.skel.h
 
-.PHONY: all agent observer unit-tests network-policy network-policy-demo network-qos-tc network-xdp network-xdp-demo security-policy security-policy-demo clean check-env format
+.PHONY: all agent observer unit-tests network-policy network-policy-demo network-qos-tc network-xdp network-xdp-demo security-policy security-policy-demo clean check-env format format-check
 
 all: agent observer
 
@@ -100,7 +101,37 @@ check-env:
 	./scripts/check_env.sh
 
 format:
-	@echo "format target reserved for clang-format"
+	@if ! command -v clang-format >/dev/null 2>&1; then \
+		echo "clang-format not found; install clang-format before running make format"; \
+		exit 1; \
+	fi
+	@if [ -z "$(FORMAT_FILES)" ]; then \
+		echo "no C/C++ files found for clang-format"; \
+	else \
+		clang-format -i $(FORMAT_FILES); \
+	fi
+
+format-check:
+	@if ! command -v clang-format >/dev/null 2>&1; then \
+		echo "clang-format not found; install clang-format before running make format-check"; \
+		exit 1; \
+	fi
+	@if [ -z "$(FORMAT_FILES)" ]; then \
+		echo "no C/C++ files found for clang-format"; \
+	else \
+		status=0; \
+		for f in $(FORMAT_FILES); do \
+			tmp=$$(mktemp); \
+			clang-format "$$f" > "$$tmp"; \
+			if ! diff -u "$$f" "$$tmp" >/dev/null; then \
+				echo "format differs: $$f"; \
+				diff -u "$$f" "$$tmp" | sed -n '1,80p'; \
+				status=1; \
+			fi; \
+			rm -f "$$tmp"; \
+			if [ "$$status" -ne 0 ]; then exit "$$status"; fi; \
+		done; \
+	fi
 
 clean:
 	rm -rf $(BUILD_DIR) $(VMLINUX)

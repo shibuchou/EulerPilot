@@ -1,6 +1,6 @@
 # kata-lsm-ebpf Reference Snapshot
 
-来源仓库：`D:\code\Ubuntu\Kata-LSM-eBPF`
+来源仓库：`<reference-source>/Kata-LSM-eBPF`
 
 本目录只摘出与 `BPF LSM` 和策略装载最相关的 eBPF 程序与最小用户态参考，不复制 Kubernetes、控制面和历史备份垃圾。
 

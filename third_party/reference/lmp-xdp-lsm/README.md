@@ -1,6 +1,6 @@
 # lmp-xdp-lsm Reference Snapshot
 
-来源仓库：`D:\code\Ubuntu\lmp`
+来源仓库：`<reference-source>/lmp`
 
 本目录只保留与 EulerPilot 后续 `network policy` / `security policy` 扩展最相关的最小参考代码，不复制整个 `lmp` 仓库。
 

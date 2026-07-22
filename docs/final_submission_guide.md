@@ -113,7 +113,7 @@ http://127.0.0.1:18080
 
 最新提交主线已同步到：
 
-- 本地：`D:\code\Ubuntu\EulerPilot`
+- 本地镜像：按评审或开发环境 clone 后的 EulerPilot 工作树
 - SP4 主验证仓库：`192.168.1.123:/root/EulerPilot`
 - GitHub：`https://github.com/shibuchou/EulerPilot`
 - GitLink：`https://gitlink.org.cn/HxQj0tp0pG/mxoedzsyzygka`

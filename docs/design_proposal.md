@@ -12,7 +12,7 @@
 
 ### 2.1 lmp
 
-`D:\code\Ubuntu\lmp` 的价值主要在 eBPF 工具组织、观测组件和可视化方向：
+`lmp` 参考仓库的价值主要在 eBPF 工具组织、观测组件和可视化方向：
 
 - `eBPF_Supermarket` 可参考 CPU、Network、Memory、Filesystem 子系统的工具组织方式。
 - `eBPF_Visualization` 可参考“eBPF 插件 + 数据展示 + Web/CLI 双入口”的思路。
@@ -23,7 +23,7 @@
 
 ### 2.2 libbpf-bootstrap
 
-`D:\code\Ubuntu\libbpf-bootstrap` 应作为本项目 eBPF Observer 的主要工程底座：
+`libbpf-bootstrap` 应作为本项目 eBPF Observer 的主要工程底座参考：
 
 - 复用 `examples/c/Makefile` 的 libbpf 静态构建、bpftool skeleton 生成、CO-RE 编译流程。
 - 参考 `bootstrap` 的 ringbuf、进程生命周期、命令行处理和 graceful exit。
@@ -33,7 +33,7 @@
 
 ### 2.3 sched_ext/scx 风险
 
-当前本地 `D:\code\Ubuntu` 没有可直接复用的 `sched_ext/scx` 调度器实现。因此 scx 部分必须作为目标 openEuler/赛题环境的关键验证项：
+当前参考仓库中没有可直接复用的 `sched_ext/scx` 调度器实现。因此 scx 部分必须作为目标 openEuler/赛题环境的关键验证项：
 
 - 第一阶段必须检查 openEuler 24.03-LTS-SP3 是否启用 `CONFIG_SCHED_CLASS_EXT`。
 - 如果系统内核不支持 sched_ext，需要尽早确认赛题推荐内核、社区补丁或可用 scx 仓库。

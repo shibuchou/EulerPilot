@@ -1,6 +1,6 @@
 # EulerPilot 最终证据压缩报告
 
-生成时间：`2026-07-20T18:10:12+08:00`
+生成时间：`2026-07-22T10:39:37+08:00`
 清单：`configs/final_evidence_manifest.json`
 
 本报告由 `scripts/collect_final_evidence.py` 根据白名单清单生成，用于把分散的双机结果压缩成答辩入口。它不会递归扫描全部 `results/`，缺失项会显式列出。
@@ -12,7 +12,7 @@
 | 清单条目 | 40 |
 | 必需缺失 | 0 |
 | 带警告条目 | 0 |
-| Git 工作区额外状态 | 0 |
+| Git 工作区额外状态 | 46 |
 
 ## quality_gate
 
@@ -98,6 +98,55 @@
 | 状态 | 主机 | 名称 | 路径 | 摘要 |
 | --- | --- | --- | --- | --- |
 | present | 123 | SP4 Web Console whitelist actions | `results/k8s/sp4-validation-20260708-023552/web_console` | [ / { / "action": "status_json", |
+
+## 生成时 Git 工作区状态
+
+- ` M .github/workflows/ci.yml`
+- ` M AGENTS.md`
+- ` M Makefile`
+- ` M docs/design_proposal.md`
+- ` M docs/development.md`
+- ` M docs/final_submission_guide.md`
+- ` M docs/reference_repos.md`
+- ` M docs/v3_1_start_status_20260629.md`
+- ` M reports/final_figures/nginx_sched_ext_p99.svg`
+- ` M reports/final_figures/nginx_sched_ext_rps.svg`
+- ` M reports/final_figures/redis_sched_ext_p99.svg`
+- ` M reports/final_figures/redis_sched_ext_rps.svg`
+- ` M reports/final_repo_consistency_20260706-1504.log`
+- ` M reports/final_repo_consistency_20260706-1550.log`
+- ` M scripts/render_sched_ext_figures.py`
+- ` M third_party/reference/kata-lsm-ebpf/README.md`
+- ` D third_party/reference/libbpf-bootstrap/examples/c/Packetloss`
+- ` D third_party/reference/libbpf-bootstrap/examples/c/Transmission`
+- ` D third_party/reference/libbpf-bootstrap/examples/c/buddystat`
+- ` D third_party/reference/libbpf-bootstrap/examples/c/cpu_usage`
+- ` D third_party/reference/libbpf-bootstrap/examples/c/fileinfo`
+- ` D third_party/reference/libbpf-bootstrap/examples/c/iolatency`
+- ` D third_party/reference/libbpf-bootstrap/examples/c/latency_5`
+- ` D third_party/reference/libbpf-bootstrap/examples/c/merge_latency`
+- ` D third_party/reference/libbpf-bootstrap/examples/c/merge_occupancy`
+- ` D third_party/reference/libbpf-bootstrap/examples/c/myringbuffer`
+- ` D third_party/reference/libbpf-bootstrap/examples/c/nf_hook`
+- ` D third_party/reference/libbpf-bootstrap/examples/c/pidmm`
+- ` D third_party/reference/libbpf-bootstrap/examples/c/pidmm1`
+- ` D third_party/reference/libbpf-bootstrap/examples/c/pidmm2`
+- ` D third_party/reference/libbpf-bootstrap/examples/c/psi_pf`
+- ` D third_party/reference/libbpf-bootstrap/examples/c/psidata`
+- ` D third_party/reference/libbpf-bootstrap/examples/c/test`
+- ` D third_party/reference/libbpf-bootstrap/examples/c/tpruntime`
+- ` D third_party/reference/libbpf-bootstrap/examples/c/tptest`
+- ` D third_party/reference/libbpf-bootstrap/examples/c/usage`
+- ` D third_party/reference/libbpf-bootstrap/examples/c/usage2`
+- ` M third_party/reference/lmp-xdp-lsm/README.md`
+- ` M web_console/backend/src/server.js`
+- ` M web_console/frontend/src/App.tsx`
+- ` M web_console/frontend/src/api.ts`
+- `?? CONTRIBUTING.md`
+- `?? LICENSE`
+- `?? NOTICE`
+- `?? SECURITY.md`
+- `?? web_console/backend/test/server.test.js`
 
 ## 使用方式
 

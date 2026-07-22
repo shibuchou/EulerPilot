@@ -39,7 +39,7 @@ reports/v3_1_start_repo_status_20260629-1859.log
 开始快照前发现本地存在 0 字节陈旧文件：
 
 ```text
-D:\code\Ubuntu\EulerPilot\.git\index.lock
+<local-mirror>\EulerPilot\.git\index.lock
 ```
 
 已确认没有需要保留的正在执行 Git 写操作后清理。清理后 `git status --short` 可正常执行。

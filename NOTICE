@@ -1,0 +1,16 @@
+EulerPilot
+==========
+
+EulerPilot is an openEuler-oriented adaptive resource-control Agent project
+for the China Graduate Operating System Open Source Innovation Competition.
+
+Copyright (c) 2026 EulerPilot contributors.
+
+This repository contains original EulerPilot source code, experiment scripts,
+documentation, Web Console code, and competition evidence. Third-party
+reference material, when present under third_party/reference/, is kept for
+engineering comparison and citation only. Such material remains governed by
+its original upstream license and notice files.
+
+See docs/reference_repos.md for the reference-source boundary used by this
+project.

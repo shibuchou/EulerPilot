@@ -8,7 +8,7 @@
 
 来源：
 
-- `D:\code\Ubuntu\libbpf-bootstrap`
+- `<reference-source>/libbpf-bootstrap`
 
 当前用途：
 
@@ -30,7 +30,7 @@
 
 来源：
 
-- `D:\code\Ubuntu\lmp`
+- `<reference-source>/lmp`
 - 项目快照位置：`third_party/reference/lmp-xdp-lsm`
 
 当前用途：
@@ -49,7 +49,7 @@
 
 来源：
 
-- `D:\code\Ubuntu\Kata-LSM-eBPF`
+- `<reference-source>/Kata-LSM-eBPF`
 - 项目快照位置：`third_party/reference/kata-lsm-ebpf`
 
 当前用途：
@@ -79,6 +79,7 @@
 
 - 参考仓库只解决“怎么设计、怎么拆模块、怎么适配 hook”。
 - EulerPilot 生产代码必须按 openEuler 目标环境重新整理目录、构建脚本和接口。
+- `third_party/reference/` 只保留源码、头文件、最小构建说明和必要许可证；不保留参考仓库中的本地编译二进制、对象文件、临时日志或带个人路径的调试产物。
 - 当前阶段已完成 `network_policy` connect4、`network_qos` TC egress + 速率 Benchmark 和 `network_xdp` isolated-veth XDP 多规则闭环；后续再进入 Security Agent 正式化。
 - 下一阶段优先事项是补强：
   - TC QoS 多规则验证

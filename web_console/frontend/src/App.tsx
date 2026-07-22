@@ -208,7 +208,7 @@ export function App() {
     setError('');
     setJobLog('');
     try {
-      const { job } = await api.startAction(action.id);
+      const { job } = await api.startAction(action.id, action.requires_confirm);
       setActiveJob(job);
       setJobs((current) => [job, ...current.filter((item) => item.job_id !== job.job_id)].slice(0, 50));
       const source = new EventSource(`/api/jobs/${job.job_id}/stream`);

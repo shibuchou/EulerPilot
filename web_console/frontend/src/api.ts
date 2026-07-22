@@ -125,8 +125,15 @@ async function getJson<T>(path: string): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-async function postJson<T>(path: string): Promise<T> {
-  const response = await fetch(path, { method: 'POST' });
+async function postJson<T>(path: string, body?: Record<string, unknown>, headers?: Record<string, string>): Promise<T> {
+  const response = await fetch(path, {
+    method: 'POST',
+    headers: {
+      ...(body ? { 'Content-Type': 'application/json' } : {}),
+      ...(headers || {})
+    },
+    body: body ? JSON.stringify(body) : undefined
+  });
   if (!response.ok) {
     const body = await response.json().catch(() => ({ error: response.statusText }));
     throw new Error(String(body.error || response.statusText));
@@ -144,6 +151,10 @@ export const api = {
   doctor: () => getJson<{ ok: boolean; raw: string }>('/api/agent/doctor'),
   evidence: () => getJson<EvidenceSummary>('/api/evidence/summary'),
   events: (skill: string, tail = 100) => getJson<{ skill: string; path: string; events: Record<string, unknown>[] }>(`/api/events?skill=${encodeURIComponent(skill)}&tail=${tail}`),
-  startAction: (id: string) => postJson<{ job: Job }>(`/api/actions/${id}/start`),
+  startAction: (id: string, confirmed = false) => postJson<{ job: Job }>(
+    `/api/actions/${id}/start`,
+    confirmed ? { confirm_action_id: id } : undefined,
+    confirmed ? { 'X-EulerPilot-Confirm-Action': id } : undefined
+  ),
   cancelJob: (id: string) => postJson<{ job: Job }>(`/api/jobs/${id}/cancel`)
 };

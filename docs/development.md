@@ -8,7 +8,7 @@
 cd /root/EulerPilot
 ```
 
-本地 `D:\code\Ubuntu\EulerPilot` 仅作为同步镜像，未经用户要求不主动同步。
+本地镜像仅作为同步落点，未经用户要求不主动同步。
 
 ## 构建
 

@@ -6,12 +6,12 @@
 - 本项目当前核心验证与最终交付验证仓库为 openEuler 服务器 `openEuler-2403-LTS-SP4`，主机 `192.168.1.123`，用户 `root`，系统为 openEuler 24.03 LTS SP4。
 - SP4 服务器上的项目目录固定为 `/root/EulerPilot`；新增功能、Web Console、Kubernetes 验证和最终 evidence 收口优先在该目录完成。
 - `EulerPilot-openEuler` / `192.168.1.121:/root/EulerPilot` 已降级为初代迭代仓库和 SP3 历史验证仓库，只作为旧版本参考、兼容性回归和对照证据，不再作为最终主验证线。
-- 本地目录 `D:\code\Ubuntu\EulerPilot` 作为项目镜像和同步落点；只有在用户要求同步时，才从服务器同步到本地，再按用户要求同步到 GitHub。
+- 本地镜像目录作为项目同步落点；只有在用户要求同步时，才从服务器同步到本地，再按用户要求同步到 GitHub 或比赛仓库。
 - 在用户明确要求同步或推送之前，不要主动把服务器代码同步到本地或 GitHub，也不要主动 push。
 - 项目主要开发语言为 C 和 C++；eBPF 内核侧程序优先使用 C，用户态 Agent/工具优先使用 C/C++，除非某个辅助脚本或工具链明显更适合用 Shell/Python。
-- 需要 Linux 侧操作时，优先使用本机默认 WSL Ubuntu 22.04；对应 WSL 路径通常为 `/mnt/d/code/Ubuntu/EulerPilot`。
+- 需要 Linux 侧操作时，优先使用本机默认 WSL Ubuntu 22.04；进入本地镜像时使用当前机器实际挂载路径，不在脚本和文档中固定个人目录。
 - 如需 sudo 密码，用户已在会话中提供；不要把明文密码写入配置文件、脚本、文档或日志。
-- 交付物、中间实验数据、脚本和说明文档应集中放在本项目目录下，避免混入 `D:\code\Ubuntu\competition` 等其他已有项目目录。
+- 交付物、中间实验数据、脚本和说明文档应集中放在本项目目录下，避免混入其他无关项目目录。
 - 如果本项目任务需要上网查询、搜索资料、打开网页或核验在线文档，应优先使用项目内 `skills/playwright` skill；读取该 skill 的 `SKILL.md` 后，使用 Playwright MCP 浏览器能力进行搜索、网页读取、快照和必要截图。
 - 可按任务需要合理使用 MCP 能力：`context7` 用于查询库/框架官方文档和示例，`filesystem` 用于项目文件读写与目录管理，`githubmcp` 用于 GitHub 仓库、issue、PR 等协作操作，`playwright` 用于浏览器上网查询和网页交互，`sequential-thinking` 用于复杂方案设计、风险分析和多步骤推理。
 
@@ -101,7 +101,7 @@
 ## 参考仓库与复用边界
 
 - 远端主交付仓库中的参考代码统一放在 `/root/EulerPilot/third_party/reference/`。
-- 本地镜像中的参考代码统一放在 `D:\code\Ubuntu\EulerPilot\third_party\reference\`。
+- 本地镜像中的参考代码也统一放在项目内 `third_party/reference/`，不要依赖个人机器上的绝对路径。
 - 当前已确认可直接作为后续 network/security 扩展参考的目录包括：
   - `third_party/reference/lmp-xdp-lsm`
   - `third_party/reference/kata-lsm-ebpf`
