@@ -13,6 +13,7 @@
 #include <csignal>
 #include <iomanip>
 #include <iostream>
+#include <set>
 
 namespace clr = eulerpilot::color;
 
@@ -73,10 +74,103 @@ void apply_backend_from_yaml(eulerpilot::RuntimeConfig &config, const std::strin
     }
 }
 
+void require_map_keys(const YAML::Node &node,
+                      const std::set<std::string> &allowed,
+                      const std::string &path) {
+    if (!node || !node.IsMap()) {
+        return;
+    }
+    for (const auto &item : node) {
+        const std::string key = item.first.as<std::string>();
+        if (!allowed.count(key)) {
+            throw std::runtime_error("unknown config field: " + path + "." + key);
+        }
+    }
+}
+
+std::uint32_t yaml_u32_range(const YAML::Node &node,
+                             const std::string &path,
+                             std::uint32_t min_value,
+                             std::uint32_t max_value) {
+    if (!node || !node.IsScalar()) {
+        throw std::runtime_error("config field must be scalar: " + path);
+    }
+    const auto value = node.as<unsigned long long>();
+    if (value < min_value || value > max_value) {
+        throw std::runtime_error("config field out of range: " + path);
+    }
+    return static_cast<std::uint32_t>(value);
+}
+
+bool yaml_bool_value(const YAML::Node &node, const std::string &path) {
+    if (!node || !node.IsScalar()) {
+        throw std::runtime_error("config field must be boolean: " + path);
+    }
+    return node.as<bool>();
+}
+
 void apply_agent_yaml_config(eulerpilot::RuntimeConfig &config) {
     YAML::Node root = YAML::LoadFile(config.config_path);
+    require_map_keys(root,
+                     {"schema_version", "agent", "skills_config_path",
+                      "observer", "scheduler", "exporter"},
+                     "root");
+    if (root["schema_version"]) {
+        const auto version = yaml_u32_range(root["schema_version"],
+                                            "root.schema_version", 1, 2);
+        if (version != 1 && version != 2) {
+            throw std::runtime_error("unsupported agent.yaml schema_version");
+        }
+    }
+    if (root["agent"]) {
+        const auto agent = root["agent"];
+        require_map_keys(agent, {"name", "mode", "interval_ms", "fallback_enabled"},
+                         "agent");
+        if (agent["mode"]) {
+            const auto mode = agent["mode"].as<std::string>();
+            if (mode == "dry-run") {
+                if (!config.mode_cli_set) config.dry_run = true;
+            } else if (mode == "active") {
+                if (!config.mode_cli_set) config.dry_run = false;
+            } else {
+                throw std::runtime_error("unknown agent.mode in config: " + mode);
+            }
+        }
+        if (agent["interval_ms"]) {
+            const auto interval_ms =
+                yaml_u32_range(agent["interval_ms"], "agent.interval_ms", 10, 600000);
+            if (!config.interval_cli_set) {
+                config.interval_ms = interval_ms;
+            }
+        }
+        if (agent["fallback_enabled"]) {
+            (void)yaml_bool_value(agent["fallback_enabled"], "agent.fallback_enabled");
+        }
+    }
+    if (root["observer"]) {
+        const auto observer = root["observer"];
+        require_map_keys(observer, {"ebpf"}, "observer");
+        if (observer["ebpf"]) {
+            const auto ebpf = observer["ebpf"];
+            require_map_keys(ebpf,
+                             {"enabled", "collect_sched", "collect_cgroup",
+                              "collect_migration", "collect_psi"},
+                             "observer.ebpf");
+            for (const auto &key : {"enabled", "collect_sched", "collect_cgroup",
+                                    "collect_migration", "collect_psi"}) {
+                if (ebpf[key]) {
+                    (void)yaml_bool_value(ebpf[key],
+                                          std::string("observer.ebpf.") + key);
+                }
+            }
+        }
+    }
     if (root["scheduler"]) {
         const auto scheduler = root["scheduler"];
+        require_map_keys(scheduler,
+                         {"type", "name", "binary", "default_profile",
+                          "enable_rollback"},
+                         "scheduler");
         if (scheduler["type"] && !config.backend_cli_set) {
             apply_backend_from_yaml(config, scheduler["type"].as<std::string>());
         }
@@ -84,11 +178,22 @@ void apply_agent_yaml_config(eulerpilot::RuntimeConfig &config) {
             config.scheduler_binary_path = scheduler["binary"].as<std::string>();
             config.scheduler_binary_source = "yaml:scheduler.binary";
         }
+        if (scheduler["enable_rollback"]) {
+            (void)yaml_bool_value(scheduler["enable_rollback"],
+                                  "scheduler.enable_rollback");
+        }
     }
-    if (root["exporter"] && root["exporter"]["prometheus"]) {
-        const auto pm = root["exporter"]["prometheus"];
-        if (pm["enabled"]) config.metrics_enabled = pm["enabled"].as<bool>();
-        if (pm["listen"]) config.metrics_listen = pm["listen"].as<std::string>();
+    if (root["exporter"]) {
+        require_map_keys(root["exporter"], {"prometheus"}, "exporter");
+        if (root["exporter"]["prometheus"]) {
+            const auto pm = root["exporter"]["prometheus"];
+            require_map_keys(pm, {"enabled", "listen"}, "exporter.prometheus");
+            if (pm["enabled"]) {
+                config.metrics_enabled =
+                    yaml_bool_value(pm["enabled"], "exporter.prometheus.enabled");
+            }
+            if (pm["listen"]) config.metrics_listen = pm["listen"].as<std::string>();
+        }
     }
 }
 

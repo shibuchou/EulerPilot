@@ -41,6 +41,8 @@ struct RuntimeConfig {
     ExecutorBackend preferred_backend = ExecutorBackend::CgroupV2;
     GateMode gate_mode = GateMode::AlwaysActive;
     bool backend_cli_set = false;
+    bool mode_cli_set = false;
+    bool interval_cli_set = false;
     bool list_skills_only = false;
     bool doctor_skills_only = false;
     bool doctor_safe_only = false;

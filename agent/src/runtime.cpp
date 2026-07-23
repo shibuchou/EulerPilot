@@ -385,6 +385,7 @@ RuntimeConfig parse_args(int argc, char **argv) {
             config.config_path = argv[++i];
         } else if (std::strcmp(argv[i], "--active") == 0) {
             config.dry_run = false;
+            config.mode_cli_set = true;
         } else if (std::strcmp(argv[i], "--backend") == 0) {
             if (i + 1 >= argc) {
                 throw std::runtime_error("--backend requires a value");
@@ -417,6 +418,7 @@ RuntimeConfig parse_args(int argc, char **argv) {
                 throw std::runtime_error("--interval-ms requires a value");
             }
             config.interval_ms = static_cast<std::uint32_t>(std::strtoul(argv[++i], nullptr, 10));
+            config.interval_cli_set = true;
         } else if (std::strcmp(argv[i], "--duration-s") == 0) {
             if (i + 1 >= argc) {
                 throw std::runtime_error("--duration-s requires a value");
