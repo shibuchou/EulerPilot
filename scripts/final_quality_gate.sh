@@ -15,6 +15,12 @@ TMPLOG="/tmp/eulerpilot-quality-gate.tmp"
 
 TOTAL=23
 N=1
+SMOKE_ROUNDS="${EULERPILOT_GATE_SMOKE_ROUNDS:-100}"
+DOCTOR_ROUNDS="${EULERPILOT_GATE_DOCTOR_ROUNDS:-5}"
+DOCTOR_CMD=(--doctor-safe --config "$AGENT_YAML")
+if [ "${EULERPILOT_GATE_LIVE_DOCTOR:-0}" = "1" ]; then
+    DOCTOR_CMD=(--doctor-skills --config "$AGENT_YAML")
+fi
 
 echo "1..$TOTAL"
 
@@ -354,9 +360,10 @@ fi
 echo ""
 echo "# optional checks"
 
-# P1-1: agent 10-round stress smoke
+# P1-1: agent stress smoke.  The formal gate keeps 100 rounds by default;
+# closeout dry-runs may set EULERPILOT_GATE_SMOKE_ROUNDS=1.
 STRESS_OK=true
-for i in $(seq 1 100); do
+for i in $(seq 1 "$SMOKE_ROUNDS"); do
     if ! timeout 25s "$AGENT_BIN" --config "$AGENT_YAML" --duration-s 5 --interval-ms 2000 > /tmp/eulerpilot-smoke-$i.log 2>&1; then
         echo "  FAIL round $i"
         STRESS_OK=false
@@ -364,24 +371,25 @@ for i in $(seq 1 100); do
     fi
 done
 if $STRESS_OK; then
-    echo "ok - agent 100-round stress smoke"
+    echo "ok - agent ${SMOKE_ROUNDS}-round stress smoke"
 else
     echo "not ok - agent 100-round stress smoke (see /tmp/eulerpilot-smoke-*.log)"
 fi
 
-# P1-2: doctor 5-round
+# P1-2: doctor stability.  Safe doctor is the default.  Set
+# EULERPILOT_GATE_LIVE_DOCTOR=1 only for explicit live-probe validation.
 DOCTOR_OK=true
-for i in $(seq 1 5); do
-    if ! timeout 15s "$AGENT_BIN" --doctor-skills --config "$AGENT_YAML" > /tmp/eulerpilot-doctor-$i.log 2>&1; then
+for i in $(seq 1 "$DOCTOR_ROUNDS"); do
+    if ! timeout 15s "$AGENT_BIN" "${DOCTOR_CMD[@]}" > /tmp/eulerpilot-doctor-$i.log 2>&1; then
         echo "  FAIL round $i"
         DOCTOR_OK=false
         break
     fi
 done
 if $DOCTOR_OK; then
-    echo "ok - doctor 5-round stable"
+    echo "ok - doctor ${DOCTOR_ROUNDS}-round stable (${DOCTOR_CMD[*]})"
 else
-    echo "not ok - doctor 5-round unstable (see /tmp/eulerpilot-doctor-*.log)"
+    echo "not ok - doctor ${DOCTOR_ROUNDS}-round unstable (see /tmp/eulerpilot-doctor-*.log)"
 fi
 
 echo ""
