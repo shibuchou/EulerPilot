@@ -72,6 +72,7 @@ struct security_policy_target {
     __u32 file_access;
     __s32 capability;
     __u32 hook_type;
+    __u32 enforce;
 };
 
 struct security_policy_event {
@@ -317,6 +318,19 @@ static __always_inline int capability_match_index(int cap,
     return -1;
 }
 
+static __always_inline __u32 target_enforce(__s32 target_index,
+                                            const struct security_policy_config *config)
+{
+    if (target_index >= 0 && target_index < MAX_SECURITY_TARGETS) {
+        __u32 key = (__u32)target_index;
+        struct security_policy_target *target =
+            bpf_map_lookup_elem(&target_map, &key);
+        if (target)
+            return target->enforce ? 1 : 0;
+    }
+    return config ? config->enforce : 1;
+}
+
 static __always_inline int is_self_agent(void)
 {
     const char self_comm[] = "eulerpilot-agen";
@@ -353,7 +367,7 @@ int BPF_PROG(security_policy_file_open, struct file *file, int ret)
     if (target_index < 0)
         return 0;
 
-    __u32 enforce = config ? config->enforce : 1;
+    __u32 enforce = target_enforce(target_index, config);
     __s32 decision = enforce ? -EPERM : 0;
 
     struct security_policy_event *event =
@@ -411,7 +425,7 @@ int BPF_PROG(security_policy_bprm, struct linux_binprm *bprm, int ret)
 
 matched:;
 
-    __u32 enforce = config ? config->enforce : 1;
+    __u32 enforce = target_enforce(target_index, config);
     __s32 decision = enforce ? -EPERM : 0;
 
     struct security_policy_event *event =
@@ -452,7 +466,7 @@ int BPF_PROG(security_policy_socket_connect, struct socket *sock,
     if (target_index < 0)
         return 0;
 
-    __u32 enforce = config ? config->enforce : 1;
+    __u32 enforce = target_enforce(target_index, config);
     __s32 decision = enforce ? -EPERM : 0;
 
     struct security_policy_event *event =
@@ -485,7 +499,7 @@ int BPF_PROG(security_policy_ptrace_traceme, struct task_struct *parent, int ret
     if (target_index < 0)
         return 0;
 
-    __u32 enforce = config ? config->enforce : 1;
+    __u32 enforce = target_enforce(target_index, config);
     __s32 decision = enforce ? -EPERM : 0;
 
     struct security_policy_event *event =
@@ -518,7 +532,7 @@ int BPF_PROG(security_policy_capable, const struct cred *cred,
     if (target_index < 0)
         return 0;
 
-    __u32 enforce = config ? config->enforce : 1;
+    __u32 enforce = target_enforce(target_index, config);
     __s32 decision = enforce ? -EPERM : 0;
 
     struct security_policy_event *event =
@@ -549,7 +563,7 @@ int BPF_PROG(security_policy_task_fix_setuid, struct cred *new,
     if (target_index < 0)
         return 0;
 
-    __u32 enforce = config ? config->enforce : 1;
+    __u32 enforce = target_enforce(target_index, config);
     __s32 decision = enforce ? -EPERM : 0;
 
     struct security_policy_event *event =
@@ -582,7 +596,7 @@ int BPF_PROG(security_policy_task_fix_setgid, struct cred *new,
     if (target_index < 0)
         return 0;
 
-    __u32 enforce = config ? config->enforce : 1;
+    __u32 enforce = target_enforce(target_index, config);
     __s32 decision = enforce ? -EPERM : 0;
 
     struct security_policy_event *event =
@@ -614,7 +628,7 @@ int BPF_PROG(security_policy_task_fix_setgroups, struct cred *new,
     if (target_index < 0)
         return 0;
 
-    __u32 enforce = config ? config->enforce : 1;
+    __u32 enforce = target_enforce(target_index, config);
     __s32 decision = enforce ? -EPERM : 0;
 
     struct security_policy_event *event =
@@ -644,7 +658,7 @@ int BPF_PROG(security_policy_cred_prepare, struct cred *new,
     if (target_index < 0)
         return 0;
 
-    __u32 enforce = config ? config->enforce : 1;
+    __u32 enforce = target_enforce(target_index, config);
     __s32 decision = enforce ? -EPERM : 0;
 
     struct security_policy_event *event =
@@ -680,7 +694,7 @@ int BPF_PROG(security_policy_cred_alloc_blank, struct cred *cred, gfp_t gfp)
     if (target_index < 0)
         return 0;
 
-    __u32 enforce = config ? config->enforce : 1;
+    __u32 enforce = target_enforce(target_index, config);
     __s32 decision = enforce ? -EPERM : 0;
 
     struct security_policy_event *event =
@@ -718,7 +732,7 @@ int BPF_PROG(security_policy_cred_transfer, struct cred *new,
     if (target_index < 0)
         return 0;
 
-    __u32 enforce = config ? config->enforce : 1;
+    __u32 enforce = target_enforce(target_index, config);
 
     struct security_policy_event *event =
         bpf_ringbuf_reserve(&events, sizeof(*event), 0);

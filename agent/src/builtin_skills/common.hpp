@@ -724,11 +724,13 @@ struct SecurityPolicyTarget {
     std::uint32_t file_access = 0;
     std::int32_t capability = -1;
     std::uint32_t hook_type = 0;
+    std::uint32_t enforce = 0;
 };
 
 struct SecurityPolicyRule {
     std::string rule_id;
     std::string hook;
+    std::string mode = "audit";
     std::string target_ref;
     std::string file_path;
     std::string file_prefix;

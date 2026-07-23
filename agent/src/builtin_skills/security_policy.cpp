@@ -19,7 +19,8 @@ public:
         file_access_ = "any";
         const int rule_index = find_first_rule(spec);
         if (rule_index >= 0) {
-            mode_ = config_value_or(spec, "mode", "audit");
+            const std::string default_mode = config_value_or(spec, "mode", "audit");
+            mode_ = default_mode;
             hook_ = config_value_or(spec, "rules." + std::to_string(rule_index) + ".hook",
                                     "lsm_file_open");
             action_ = "deny";
@@ -39,10 +40,16 @@ public:
                     last_error_ = "unsupported-action";
                     return false;
                 }
-                mode_ = config_value_or(spec, rule_prefix + "mode", mode_);
+                const std::string rule_mode =
+                    config_value_or(spec, rule_prefix + "mode", default_mode);
+                if (rule_mode != "audit" && rule_mode != "enforce") {
+                    last_error_ = "unsupported-rule-mode";
+                    return false;
+                }
 
                 SecurityPolicyRule rule;
                 rule.hook = hook;
+                rule.mode = rule_mode;
                 rule.rule_id = config_value_or(spec, rule_prefix + "name",
                                                "deny-security-target-" + std::to_string(i));
                 rule.target_ref = config_value_or(spec, rule_prefix + "target_ref", "");
@@ -263,6 +270,7 @@ public:
             rule_id_ = config_value_or(spec, "rule_id", "deny-demo-secret-open");
             SecurityPolicyRule rule;
             rule.hook = hook_;
+            rule.mode = mode_;
             rule.rule_id = rule_id_;
             rule.target_ref = target_ref_;
             rule.file_path = target_path_;
@@ -300,6 +308,10 @@ public:
             return false;
         }
         for (const auto &rule : rules_) {
+            if (rule.mode != "audit" && rule.mode != "enforce") {
+                last_error_ = "unsupported-rule-mode";
+                return false;
+            }
             if (!is_supported_security_hook(rule.hook)) {
                 last_error_ = "unsupported-hook";
                 return false;
@@ -1074,6 +1086,7 @@ private:
                                         ? rules_[i].capability
                                         : -1;
                 target.hook_type = security_hook_event_type(rules_[i].hook);
+                target.enforce = rules_[i].mode == "enforce" ? 1 : 0;
             }
             std::uint32_t target_key = static_cast<std::uint32_t>(i);
             if (bpf_map_update_elem(target_fd, &target_key, &target, BPF_ANY) != 0) {
@@ -1227,7 +1240,8 @@ private:
         event.skill = skill_name_;
         event.policy_id = "security_policy";
         event.rule_id = matched_rule ? matched_rule->rule_id : rule_id_;
-        event.mode = mode_;
+        event.mode = matched_rule ? matched_rule->mode
+                                  : (hit.enforce ? "enforce" : "audit");
         event.target = {
             {"target_ref", matched_rule ? matched_rule->target_ref : target_ref_},
             {"path", bounded_string(hit.path, sizeof(hit.path))},
@@ -1324,7 +1338,7 @@ private:
         }
         event.action = hit.decision < 0 ? "deny" : "audit-hit";
         event.result = hit.decision < 0 ? "blocked" : "observed";
-        event.severity = hit.decision < 0 ? "warning" : "info";
+        event.severity = hit.enforce ? "warning" : "info";
         std::string error;
         append_audit_event(audit_path.string(), event, &error);
         maybe_write_anomaly_event(hit, hook_name, audit_path);
@@ -1400,7 +1414,7 @@ private:
             event.skill = skill_name_;
             event.policy_id = "security_policy";
             event.rule_id = rule.rule_id;
-            event.mode = mode_;
+            event.mode = matched_rule ? matched_rule->mode : mode_;
             event.target = {
                 {"target_ref", matched_rule ? matched_rule->target_ref : "syscall_trace"},
                 {"syscall", rule.syscall},
