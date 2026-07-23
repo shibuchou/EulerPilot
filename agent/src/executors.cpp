@@ -17,6 +17,7 @@
 #include <signal.h>
 #include <sstream>
 #include <unordered_set>
+#include <vector>
 #include <cerrno>
 #include <sys/stat.h>
 #include <sys/sysmacros.h>
@@ -864,6 +865,135 @@ bool is_process_alive(pid_t pid) {
     return kill(pid, 0) == 0;
 }
 
+std::string proc_path(pid_t pid, const char *name) {
+    return "/proc/" + std::to_string(pid) + "/" + name;
+}
+
+bool read_proc_start_time_ticks(pid_t pid, std::uint64_t &start_time_ticks) {
+    std::ifstream in(proc_path(pid, "stat"));
+    std::string stat_line;
+    if (!std::getline(in, stat_line)) {
+        return false;
+    }
+
+    const std::size_t close = stat_line.rfind(')');
+    if (close == std::string::npos || close + 2 >= stat_line.size()) {
+        return false;
+    }
+
+    std::istringstream fields(stat_line.substr(close + 2));
+    std::vector<std::string> tokens;
+    std::string token;
+    while (fields >> token) {
+        tokens.push_back(token);
+    }
+
+    // tokens[0] is field 3 (state), so field 22 (starttime) is index 19.
+    if (tokens.size() <= 19) {
+        return false;
+    }
+
+    try {
+        start_time_ticks = std::stoull(tokens[19]);
+        return true;
+    } catch (...) {
+        return false;
+    }
+}
+
+std::string read_proc_cmdline_summary(pid_t pid) {
+    std::ifstream in(proc_path(pid, "cmdline"), std::ios::binary);
+    std::string data((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+    for (char &ch : data) {
+        if (ch == '\0') {
+            ch = ' ';
+        }
+    }
+    while (!data.empty() && data.back() == ' ') {
+        data.pop_back();
+    }
+    if (data.size() > 160) {
+        data.resize(160);
+    }
+    return data;
+}
+
+bool stat_proc_executable(pid_t pid, std::uint64_t &dev, std::uint64_t &ino) {
+    struct stat st {};
+    if (stat(proc_path(pid, "exe").c_str(), &st) != 0) {
+        return false;
+    }
+    dev = static_cast<std::uint64_t>(st.st_dev);
+    ino = static_cast<std::uint64_t>(st.st_ino);
+    return true;
+}
+
+void clear_scx_session_identity(ScxSession &session) {
+    session.pid = -1;
+    session.pid_start_time_ticks = 0;
+    session.executable_dev = 0;
+    session.executable_ino = 0;
+    session.command_line_summary.clear();
+    session.instance_id.clear();
+}
+
+void refresh_scx_session_identity(ScxSession &session) {
+    if (session.pid <= 0) {
+        return;
+    }
+
+    std::uint64_t start_time = 0;
+    if (session.pid_start_time_ticks == 0 && read_proc_start_time_ticks(session.pid, start_time)) {
+        session.pid_start_time_ticks = start_time;
+    }
+
+    std::uint64_t dev = 0;
+    std::uint64_t ino = 0;
+    if (stat_proc_executable(session.pid, dev, ino)) {
+        session.executable_dev = dev;
+        session.executable_ino = ino;
+    }
+
+    session.command_line_summary = read_proc_cmdline_summary(session.pid);
+    session.instance_id = std::to_string(session.pid) + ":" +
+                          std::to_string(session.pid_start_time_ticks) + ":" +
+                          std::to_string(session.executable_dev) + ":" +
+                          std::to_string(session.executable_ino);
+}
+
+bool scx_session_identity_matches(const ScxSession &session, std::string &reason) {
+    if (session.pid <= 0) {
+        reason = "scx-no-owned-pid";
+        return false;
+    }
+
+    std::uint64_t start_time = 0;
+    if (!read_proc_start_time_ticks(session.pid, start_time)) {
+        reason = "scx-pid-not-readable";
+        return false;
+    }
+    if (session.pid_start_time_ticks != 0 && start_time != session.pid_start_time_ticks) {
+        reason = "scx-pid-reused";
+        return false;
+    }
+
+    if (session.executable_ino != 0 || session.executable_dev != 0) {
+        std::uint64_t dev = 0;
+        std::uint64_t ino = 0;
+        if (!stat_proc_executable(session.pid, dev, ino)) {
+            reason = "scx-exe-not-readable";
+            return false;
+        }
+        if (dev != session.executable_dev || ino != session.executable_ino) {
+            reason = "scx-exe-identity-mismatch";
+            return false;
+        }
+    }
+
+    reason = "scx-owned-instance";
+    return true;
+}
+
 bool start_scx_session(const RuntimeConfig &config, ScxSession &session, bool fifo_mode, std::string &reason) {
     const ScxBinaryChoice binary = resolve_scx_binary(config);
     session.binary_path = binary.path;
@@ -908,21 +1038,24 @@ bool start_scx_session(const RuntimeConfig &config, ScxSession &session, bool fi
 
     close(log_fd);
     session.pid = pid;
+    refresh_scx_session_identity(session);
     append_scx_session_log("start_scx_session: forked pid=" + std::to_string(pid));
 
     for (int i = 0; i < 20; ++i) {
         int status = 0;
         pid_t result = waitpid(pid, &status, WNOHANG);
         if (result == pid) {
-            session.pid = -1;
+            clear_scx_session_identity(session);
             reason = "scx-process-exited-early";
             append_scx_session_log("start_scx_session: scx-process-exited-early");
             return false;
         }
 
         if (read_file_trimmed("/sys/kernel/sched_ext/state") == "enabled") {
+            refresh_scx_session_identity(session);
             reason = fifo_mode ? "scx-fifo-started" : "scx-started";
-            append_scx_session_log("start_scx_session: enabled");
+            append_scx_session_log("start_scx_session: enabled instance=" + session.instance_id +
+                                   " cmdline=" + session.command_line_summary);
             return true;
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -1015,20 +1148,35 @@ void stop_scx_session(ScxSession &session) {
         return;
     }
 
+    std::string identity_reason;
+    if (!scx_session_identity_matches(session, identity_reason)) {
+        append_scx_session_log("stop_scx_session: refuse-stop " + identity_reason +
+                               " pid=" + std::to_string(session.pid));
+        return;
+    }
+
+    const pid_t owned_pid = session.pid;
     kill(session.pid, SIGTERM);
     for (int i = 0; i < 20; ++i) {
         int status = 0;
-        pid_t result = waitpid(session.pid, &status, WNOHANG);
-        if (result == session.pid) {
-            session.pid = -1;
+        pid_t result = waitpid(owned_pid, &status, WNOHANG);
+        if (result == owned_pid) {
+            clear_scx_session_identity(session);
             return;
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
-    kill(session.pid, SIGKILL);
-    waitpid(session.pid, nullptr, 0);
-    session.pid = -1;
+    std::string kill_reason;
+    if (!scx_session_identity_matches(session, kill_reason)) {
+        append_scx_session_log("stop_scx_session: refuse-kill " + kill_reason +
+                               " pid=" + std::to_string(owned_pid));
+        return;
+    }
+
+    kill(owned_pid, SIGKILL);
+    waitpid(owned_pid, nullptr, 0);
+    clear_scx_session_identity(session);
 }
 
 void close_scx_map(ScxSession &session) {

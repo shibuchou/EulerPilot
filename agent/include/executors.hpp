@@ -12,6 +12,11 @@ namespace eulerpilot {
 
 struct ScxSession {
     pid_t pid = -1;
+    std::uint64_t pid_start_time_ticks = 0;
+    std::uint64_t executable_dev = 0;
+    std::uint64_t executable_ino = 0;
+    std::string command_line_summary;
+    std::string instance_id;
     std::string binary_path;
     std::string binary_source = "unresolved";
     bool fifo_mode = false;
