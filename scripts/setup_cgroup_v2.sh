@@ -49,6 +49,86 @@ write_cgroup_value_or_fallback() {
     fi
 }
 
+compute_dynamic_cpusets() {
+    local effective="$1"
+    local online
+    online="$(cat /sys/devices/system/cpu/online 2>/dev/null || printf '%s' "$effective")"
+    python3 - "$effective" "$online" "${EULERPILOT_ALLOW_2CPU_CPUSET:-0}" <<'PY'
+import sys
+
+def expand(spec):
+    out = set()
+    for part in (spec or "").split(","):
+        part = part.strip()
+        if not part:
+            continue
+        if "-" in part:
+            start, end = part.split("-", 1)
+            out.update(range(int(start), int(end) + 1))
+        else:
+            out.add(int(part))
+    return out
+
+def compress(values):
+    values = sorted(values)
+    if not values:
+        return ""
+    ranges = []
+    start = prev = values[0]
+    for value in values[1:]:
+        if value == prev + 1:
+            prev = value
+            continue
+        ranges.append(f"{start}-{prev}" if start != prev else str(start))
+        start = prev = value
+    ranges.append(f"{start}-{prev}" if start != prev else str(start))
+    return ",".join(ranges)
+
+effective = expand(sys.argv[1])
+online = expand(sys.argv[2])
+cpus = sorted(effective & online)
+if not cpus:
+    print("CPUSET_DEGRADED=1")
+    print("DYNAMIC_LATENCY_CPUSET=")
+    print("DYNAMIC_BATCH_CPUSET=")
+    print("DYNAMIC_BACKGROUND_CPUSET=")
+    raise SystemExit(0)
+
+allow_two = sys.argv[3] == "1"
+count = len(cpus)
+if count == 1:
+    latency = batch = background = cpus
+    degraded = 1
+elif count == 2 and not allow_two:
+    latency = batch = background = cpus
+    degraded = 1
+elif count == 2:
+    latency = [cpus[0]]
+    batch = cpus
+    background = [cpus[1]]
+    degraded = 0
+elif count == 3:
+    latency = [cpus[0]]
+    batch = [cpus[1]]
+    background = [cpus[2]]
+    degraded = 0
+else:
+    latency_n = max(1, count // 4)
+    batch_n = max(1, count // 4)
+    latency = cpus[:latency_n]
+    batch = cpus[latency_n:latency_n + batch_n]
+    background = cpus[latency_n + batch_n:]
+    if not background:
+        background = [batch.pop()]
+    degraded = 0
+
+print(f"CPUSET_DEGRADED={degraded}")
+print(f"DYNAMIC_LATENCY_CPUSET={compress(latency)}")
+print(f"DYNAMIC_BATCH_CPUSET={compress(batch)}")
+print(f"DYNAMIC_BACKGROUND_CPUSET={compress(background)}")
+PY
+}
+
 if ! mount | grep -q 'type cgroup2'; then
     fail 'cgroup v2 is not mounted on this system'
 fi
@@ -70,9 +150,10 @@ done
 IO_DEVICE="${IO_DEVICE:-$(detect_root_io_device)}"
 CPUSET_CPUS="${CPUSET_CPUS:-$(detect_effective_value cpuset.cpus "$(nproc --all 2>/dev/null | awk '{ if ($1 > 1) print "0-" $1 - 1; else print "0" }')")}"
 CPUSET_MEMS="${CPUSET_MEMS:-$(detect_effective_value cpuset.mems 0)}"
-LATENCY_CPUSET="${LATENCY_CPUSET:-0-1}"
-BATCH_CPUSET="${BATCH_CPUSET:-2-3}"
-BACKGROUND_CPUSET="${BACKGROUND_CPUSET:-4-7}"
+eval "$(compute_dynamic_cpusets "$CPUSET_CPUS")"
+LATENCY_CPUSET="${LATENCY_CPUSET:-$DYNAMIC_LATENCY_CPUSET}"
+BATCH_CPUSET="${BATCH_CPUSET:-$DYNAMIC_BATCH_CPUSET}"
+BACKGROUND_CPUSET="${BACKGROUND_CPUSET:-$DYNAMIC_BACKGROUND_CPUSET}"
 
 write_cgroup_value_or_fallback "$ROOT/cpuset.mems" "$CPUSET_MEMS" 0
 write_cgroup_value_or_fallback "$ROOT/cpuset.cpus" "$CPUSET_CPUS" "$CPUSET_CPUS"
@@ -109,3 +190,6 @@ info "  io controller requested for latency/batch/background, io.device=${IO_DEV
 info "  latency/cpuset.cpus=$(cat "$ROOT/latency/cpuset.cpus" 2>/dev/null || true)"
 info "  batch/cpuset.cpus=$(cat "$ROOT/batch/cpuset.cpus" 2>/dev/null || true)"
 info "  background/cpuset.cpus=$(cat "$ROOT/background/cpuset.cpus" 2>/dev/null || true)"
+if [ "${CPUSET_DEGRADED:-0}" = "1" ]; then
+    info '  cpuset split degraded: using full effective CPU set for one or more groups'
+fi

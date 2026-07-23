@@ -37,11 +37,14 @@ constexpr const char *kResourceJournalPath = "run/eulerpilot/action_journal.json
 
 struct ControlFileSnapshot {
     std::string path;
+    std::string cgroup_path;
     std::string group;
     std::string file;
     std::string old_value;
     std::string restore_value;
     std::string target_ref;
+    dev_t cgroup_dev = 0;
+    ino_t cgroup_ino = 0;
 };
 
 void append_scx_session_log(const std::string &message) {
@@ -189,11 +192,62 @@ bool valid_resource_group(const std::string &group) {
 }
 
 bool valid_resource_cgroup_path(const std::string &path) {
-    if (path.rfind("/sys/fs/cgroup/", 0) != 0 && path != "/sys/fs/cgroup") {
+    std::error_code ec;
+    const fs::path canonical = fs::weakly_canonical(path, ec);
+    if (ec || (canonical.string().rfind("/sys/fs/cgroup/", 0) != 0 &&
+               canonical.string() != "/sys/fs/cgroup")) {
         return false;
     }
     struct stat st {};
-    return stat(path.c_str(), &st) == 0 && S_ISDIR(st.st_mode);
+    if (stat(canonical.c_str(), &st) != 0 || !S_ISDIR(st.st_mode)) {
+        return false;
+    }
+
+    const fs::path root = fs::weakly_canonical(kCgroupRoot, ec);
+    if (!ec) {
+        const std::string root_s = root.string();
+        const std::string path_s = canonical.string();
+        if (path_s == root_s || path_s.rfind(root_s + "/", 0) == 0) {
+            return true;
+        }
+    }
+
+    const char *external_write = std::getenv("EULERPILOT_EXTERNAL_CGROUP_WRITE");
+    if (!external_write || std::strcmp(external_write, "1") != 0) {
+        return false;
+    }
+    const char *allowlist = std::getenv("EULERPILOT_EXTERNAL_CGROUP_ALLOWLIST");
+    if (!allowlist || !*allowlist) {
+        return false;
+    }
+
+    std::istringstream entries(allowlist);
+    std::string entry;
+    const std::string path_s = canonical.string();
+    while (std::getline(entries, entry, ':')) {
+        if (entry.empty()) {
+            continue;
+        }
+        const fs::path allowed = fs::weakly_canonical(entry, ec);
+        if (ec) {
+            continue;
+        }
+        const std::string allowed_s = allowed.string();
+        if (path_s == allowed_s || path_s.rfind(allowed_s + "/", 0) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool stat_cgroup_identity(const std::string &cgroup_path, dev_t &dev, ino_t &ino) {
+    struct stat st {};
+    if (stat(cgroup_path.c_str(), &st) != 0 || !S_ISDIR(st.st_mode)) {
+        return false;
+    }
+    dev = st.st_dev;
+    ino = st.st_ino;
+    return true;
 }
 
 bool write_file_value(const std::string &path, const std::string &value) {
@@ -489,8 +543,17 @@ bool apply_control_file_at(const std::string &group,
         const std::string restore_value = file == "io.max" && old_value.empty()
             ? io_max_unlimited_value(value)
             : old_value;
+        dev_t cgroup_dev = 0;
+        ino_t cgroup_ino = 0;
+        if (!stat_cgroup_identity(cgroup_path, cgroup_dev, cgroup_ino)) {
+            reason = "cgroup-identity-read-failed";
+            append_resource_audit(group, cgroup_path, target_ref, file, old_value, value,
+                                  mode, "failed", reason, pid, profile);
+            return false;
+        }
         resource_control_snapshots()[key] = {
-            path, group, file, old_value, restore_value, target_ref};
+            path, cgroup_path, group, file, old_value, restore_value, target_ref,
+            cgroup_dev, cgroup_ino};
     }
 
     if (!write_file_value(path, value)) {
@@ -555,20 +618,20 @@ ProfileSettings select_profile_settings(const WorkloadDecision &decision) {
     const int light_background_weight = get_env_int("EULERPILOT_BACKGROUND_LIGHT_WEIGHT", 100);
 
     if (decision.target_profile == "mixed_profile") {
-        return {"mixed_profile", "background", background_weight, "4-7"};
+        return {"mixed_profile", "background", background_weight, ""};
     }
 
     if (decision.target_profile == "latency_profile") {
         if (decision.klass == WorkloadClass::LatencySensitive) {
-            return {"latency_profile", "latency", latency_weight, "0-1"};
+            return {"latency_profile", "latency", latency_weight, ""};
         }
         if (decision.klass == WorkloadClass::BackgroundNoisy || decision.klass == WorkloadClass::ThroughputBatch) {
-            return {"latency_profile", "background", light_background_weight, "4-7"};
+            return {"latency_profile", "background", light_background_weight, ""};
         }
     }
 
     if (decision.target_profile == "throughput_profile") {
-        return {"throughput_profile", "batch", batch_weight, "2-3"};
+        return {"throughput_profile", "batch", batch_weight, ""};
     }
 
     return {"normal_profile", "", 100, ""};
@@ -1526,14 +1589,25 @@ bool rollback_resource_control_state() {
         if (snapshot.restore_value.empty()) {
             continue;
         }
+        dev_t current_dev = 0;
+        ino_t current_ino = 0;
+        if (!stat_cgroup_identity(snapshot.cgroup_path, current_dev, current_ino) ||
+            current_dev != snapshot.cgroup_dev ||
+            current_ino != snapshot.cgroup_ino) {
+            ok = false;
+            append_resource_audit(snapshot.group, snapshot.cgroup_path,
+                                  snapshot.target_ref, snapshot.file, "", snapshot.restore_value,
+                                  "rollback", "failed", "ownership_mismatch", 0, "rollback");
+            continue;
+        }
         if (!write_file_value(snapshot.path, snapshot.restore_value)) {
             ok = false;
-            append_resource_audit(snapshot.group, fs::path(snapshot.path).parent_path().string(),
+            append_resource_audit(snapshot.group, snapshot.cgroup_path,
                                   snapshot.target_ref, snapshot.file, "", snapshot.restore_value,
                                   "rollback", "failed", "restore-failed", 0, "rollback");
             continue;
         }
-        append_resource_audit(snapshot.group, fs::path(snapshot.path).parent_path().string(),
+        append_resource_audit(snapshot.group, snapshot.cgroup_path,
                               snapshot.target_ref, snapshot.file, "", snapshot.restore_value,
                               "rollback", "restored", "restored-old-value", 0, "rollback");
     }
