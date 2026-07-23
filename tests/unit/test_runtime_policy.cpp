@@ -1,8 +1,12 @@
+#include "action_journal.hpp"
 #include "eulerpilot.hpp"
 #include "executors.hpp"
 
 #include <cassert>
 #include <cstdlib>
+#include <filesystem>
+#include <fstream>
+#include <sstream>
 #include <string>
 #include <utility>
 
@@ -255,6 +259,31 @@ int main() {
     assert(fallback_reset[0].runtime_ns_delta == 2);
     assert(fallback_reset[0].total_wait_ns_delta == 1);
     assert(fallback_reset[0].generation_cookie != first_cookie);
+
+    const auto journal_path =
+        std::filesystem::temp_directory_path() / "eulerpilot-action-journal-test.jsonl";
+    std::filesystem::remove(journal_path);
+    eulerpilot::JournalAction applied;
+    applied.action_id = "unit-applied";
+    applied.skill = "unit";
+    applied.target = "target";
+    applied.operation = "apply";
+    std::string journal_error;
+    assert(eulerpilot::append_journal_action(journal_path.string(), applied,
+                                             &journal_error));
+    eulerpilot::JournalAction restored = applied;
+    restored.action_id = "unit-restored";
+    restored.operation = "rollback";
+    restored.restored = true;
+    assert(eulerpilot::append_journal_action(journal_path.string(), restored,
+                                             &journal_error));
+    std::ifstream journal_file(journal_path);
+    std::stringstream journal_buffer;
+    journal_buffer << journal_file.rdbuf();
+    const std::string journal_text = journal_buffer.str();
+    assert(journal_text.find("\"state\":\"APPLIED\"") != std::string::npos);
+    assert(journal_text.find("\"state\":\"ROLLED_BACK\"") != std::string::npos);
+    std::filesystem::remove(journal_path);
 
     return 0;
 }

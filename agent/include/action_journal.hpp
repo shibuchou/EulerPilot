@@ -13,6 +13,7 @@ struct JournalAction {
     std::string policy_id;
     std::string target;
     std::string operation;
+    std::string state;
     std::map<std::string, std::string> old_values;
     std::map<std::string, std::string> new_values;
     std::map<std::string, std::string> handles;

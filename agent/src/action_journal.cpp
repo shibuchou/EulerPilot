@@ -46,6 +46,10 @@ bool append_journal_action(const std::string &path, const JournalAction &action,
         return false;
     }
 
+    const std::string state = action.state.empty()
+                                  ? (action.restored ? "ROLLED_BACK" : "APPLIED")
+                                  : action.state;
+
     out << "{"
         << "\"action_id\":\"" << escape_json(action.action_id) << "\","
         << "\"skill\":\"" << escape_json(action.skill) << "\",";
@@ -61,6 +65,7 @@ bool append_journal_action(const std::string &path, const JournalAction &action,
     out
         << "\"target\":\"" << escape_json(action.target) << "\","
         << "\"operation\":\"" << escape_json(action.operation) << "\","
+        << "\"state\":\"" << escape_json(state) << "\","
         << "\"old_values\":";
     write_map(out, action.old_values);
     out << ",\"new_values\":";
