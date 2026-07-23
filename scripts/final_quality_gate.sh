@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 # EulerPilot Final Quality Gate — TAP-style
-# P0: 22 blocking checks. P1: optional checks (not in TAP count).
-# Run on 121. For 122: minimal regression only.
+# P0: blocking checks for the SP4 mainline and SP3 compatibility matrix.
+# SP4/123 is the full validation line. SP3/121 must pass the compatible
+# cgroup/safe-doctor/fallback subset. 122 is historical OLK evidence only.
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
@@ -12,7 +13,7 @@ AGENT_YAML="configs/agent.yaml"
 AGENT_BIN="build/eulerpilot-agent"
 TMPLOG="/tmp/eulerpilot-quality-gate.tmp"
 
-TOTAL=22
+TOTAL=23
 N=1
 
 echo "1..$TOTAL"
@@ -106,7 +107,15 @@ else
     not_ok "make unit-tests"
 fi
 
-# 7. list skills
+# 7. config schema/consumption validation
+if run_silent tests/integration/test_config_validation.sh; then
+    ok "config validation rejects unknown fields and bad values"
+else
+    cat "$TMPLOG" >&2
+    not_ok "config validation semantic test failed"
+fi
+
+# 8. list skills
 SKILLS_OUT=$("$AGENT_BIN" --list-skills 2>/dev/null)
 SKILL_COUNT=$(echo "$SKILLS_OUT" | wc -l)
 if [ "$SKILL_COUNT" -ge 8 ] &&
@@ -119,15 +128,15 @@ else
     not_ok "--list-skills missing formal network/security policy skill (count=$SKILL_COUNT)"
 fi
 
-# 8. doctor skills
-if timeout 15s "$AGENT_BIN" --doctor-skills --config "$AGENT_YAML" > "$TMPLOG" 2>&1; then
-    ok "--doctor-skills exit 0"
+# 9. safe doctor
+if timeout 15s "$AGENT_BIN" --doctor-safe --config "$AGENT_YAML" > "$TMPLOG" 2>&1; then
+    ok "--doctor-safe exit 0"
 else
     cat "$TMPLOG" >&2
-    not_ok "--doctor-skills failed"
+    not_ok "--doctor-safe failed"
 fi
 
-# 9. agent 15s smoke (metrics default closed)
+# 10. agent 15s smoke (metrics default closed)
 echo "  metrics config:" "$(grep -A4 'prometheus:' "$AGENT_YAML" | head -4)"
 if timeout 25s "$AGENT_BIN" --config "$AGENT_YAML" --duration-s 10 --interval-ms 2000 > "$TMPLOG" 2>&1; then
     ok "agent 15s smoke"

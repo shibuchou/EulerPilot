@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 MODE="live"
+LIVE_CLEANUP_ARMED=0
 
 usage() {
     cat <<USAGE
@@ -59,6 +60,23 @@ cleanup_mode() {
     echo "cleanup=done"
 }
 
+live_cleanup_trap() {
+    local primary_status=$?
+    local cleanup_status=0
+    trap - EXIT INT TERM HUP
+    if [[ "$LIVE_CLEANUP_ARMED" == "1" ]]; then
+        echo "primary_failure=$primary_status"
+        cleanup_mode || cleanup_status=$?
+        echo "cleanup_failure=$cleanup_status"
+    fi
+    if [[ "$primary_status" -ne 0 ]]; then
+        exit "$primary_status"
+    fi
+    if [[ "$cleanup_status" -ne 0 ]]; then
+        exit "$cleanup_status"
+    fi
+}
+
 offline_mode() {
     section "evidence index"
     sed -n '1,180p' "$ROOT_DIR/docs/final_evidence_index.md"
@@ -78,6 +96,8 @@ offline_mode() {
 live_mode() {
     require_root_for_live
     cd "$ROOT_DIR"
+    LIVE_CLEANUP_ARMED=1
+    trap live_cleanup_trap EXIT INT TERM HUP
 
     section "check_env"
     ./scripts/check_env.sh || true
@@ -94,8 +114,8 @@ live_mode() {
     section "validate v3.1 config"
     ./build/eulerpilot-agent --validate-config configs/policy_engine_security_network_resource.yaml
 
-    section "doctor default skills"
-    ./build/eulerpilot-agent --doctor-skills --config configs/agent.yaml
+    section "safe doctor default skills"
+    ./build/eulerpilot-agent --doctor-safe --config configs/agent.yaml
 
     section "status json"
     ./build/eulerpilot-agent --status --json
@@ -105,9 +125,6 @@ live_mode() {
 
     section "policy engine cross-skill v2 live test"
     tests/integration/test_policy_engine_security_network_resource.sh
-
-    section "rollback cleanup"
-    demo/demo_all_final.sh --cleanup || true
 
     echo "demo_live=pass"
 }
