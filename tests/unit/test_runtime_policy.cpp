@@ -171,5 +171,90 @@ int main() {
     assert(!missing_binary.executable);
     unsetenv("EULERPILOT_SCX_BINARY");
 
+    assert(eulerpilot::safe_counter_delta(30, 10) == 20);
+    assert(eulerpilot::safe_counter_delta(5, 10) == 5);
+
+    eulerpilot::reset_sample_delta_history_for_tests();
+    auto redis_thread_a = sample("redis-server", 1000, 100, 4);
+    redis_thread_a.pid = 201;
+    redis_thread_a.tgid = 200;
+    redis_thread_a.start_boottime_ns = 10001;
+    auto redis_thread_b = sample("redis-server", 2000, 200, 6);
+    redis_thread_b.pid = 202;
+    redis_thread_b.tgid = 200;
+    redis_thread_b.start_boottime_ns = 10002;
+
+    auto aggregated = eulerpilot::compute_sample_deltas_for_test({redis_thread_a, redis_thread_b});
+    assert(aggregated.size() == 1);
+    assert(aggregated[0].pid == 200);
+    assert(aggregated[0].tgid == 200);
+    assert(aggregated[0].runtime_ns_delta == 3000);
+    assert(aggregated[0].total_wait_ns_delta == 300);
+    assert(aggregated[0].wakeup_count_delta == 10);
+    assert(aggregated[0].identity_source.find("bpf_start_boottime_ns") != std::string::npos);
+
+    redis_thread_a.runtime_ns = 1300;
+    redis_thread_a.total_wait_ns = 150;
+    redis_thread_a.wakeup_count = 5;
+    redis_thread_b.runtime_ns = 2600;
+    redis_thread_b.total_wait_ns = 260;
+    redis_thread_b.wakeup_count = 8;
+    aggregated = eulerpilot::compute_sample_deltas_for_test({redis_thread_a, redis_thread_b});
+    assert(aggregated.size() == 1);
+    assert(aggregated[0].runtime_ns_delta == 900);
+    assert(aggregated[0].total_wait_ns_delta == 110);
+    assert(aggregated[0].wakeup_count_delta == 3);
+
+    redis_thread_a.runtime_ns = 10;
+    redis_thread_a.total_wait_ns = 5;
+    redis_thread_a.wakeup_count = 1;
+    aggregated = eulerpilot::compute_sample_deltas_for_test({redis_thread_a});
+    assert(aggregated.size() == 1);
+    assert(aggregated[0].runtime_ns_delta == 10);
+    assert(aggregated[0].total_wait_ns_delta == 5);
+    assert(aggregated[0].wakeup_count_delta == 1);
+
+    eulerpilot::reset_sample_delta_history_for_tests();
+    auto reused_tid_old = sample("opaque", 500, 50, 2);
+    reused_tid_old.pid = 301;
+    reused_tid_old.tgid = 300;
+    reused_tid_old.start_boottime_ns = 90001;
+    auto reused_first = eulerpilot::compute_sample_deltas_for_test({reused_tid_old});
+    assert(reused_first[0].runtime_ns_delta == 500);
+
+    auto reused_tid_new = reused_tid_old;
+    reused_tid_new.start_boottime_ns = 90002;
+    reused_tid_new.runtime_ns = 7;
+    reused_tid_new.total_wait_ns = 3;
+    reused_tid_new.wakeup_count = 1;
+    auto reused_second = eulerpilot::compute_sample_deltas_for_test({reused_tid_new});
+    assert(reused_second[0].runtime_ns_delta == 7);
+    assert(reused_second[0].total_wait_ns_delta == 3);
+
+    eulerpilot::reset_sample_delta_history_for_tests();
+    auto fallback_identity = sample("fallback", 100, 10, 1);
+    fallback_identity.pid = 401;
+    fallback_identity.tgid = 400;
+    fallback_identity.start_boottime_ns = 0;
+    auto fallback_first = eulerpilot::compute_sample_deltas_for_test({fallback_identity});
+    assert(fallback_first[0].identity_source.find("user_generation_cookie") != std::string::npos);
+    const auto first_cookie = fallback_first[0].generation_cookie;
+
+    fallback_identity.runtime_ns = 130;
+    fallback_identity.total_wait_ns = 16;
+    fallback_identity.wakeup_count = 2;
+    auto fallback_second = eulerpilot::compute_sample_deltas_for_test({fallback_identity});
+    assert(fallback_second[0].runtime_ns_delta == 30);
+    assert(fallback_second[0].total_wait_ns_delta == 6);
+    assert(fallback_second[0].generation_cookie == first_cookie);
+
+    fallback_identity.runtime_ns = 2;
+    fallback_identity.total_wait_ns = 1;
+    fallback_identity.wakeup_count = 1;
+    auto fallback_reset = eulerpilot::compute_sample_deltas_for_test({fallback_identity});
+    assert(fallback_reset[0].runtime_ns_delta == 2);
+    assert(fallback_reset[0].total_wait_ns_delta == 1);
+    assert(fallback_reset[0].generation_cookie != first_cookie);
+
     return 0;
 }

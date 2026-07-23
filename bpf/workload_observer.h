@@ -19,6 +19,7 @@ struct task_metrics {
     EP_U32 pid;
     EP_U32 tgid;
     EP_U64 cgroup_id;
+    EP_U64 start_boottime_ns;
     EP_U64 wakeup_count;
     EP_U64 total_wait_ns;
     EP_U64 runtime_ns;

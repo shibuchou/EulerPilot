@@ -103,6 +103,9 @@ struct WorkloadSample {
     int tgid = 0;
     std::string comm;
     std::uint64_t cgroup_id = 0;
+    std::uint64_t start_boottime_ns = 0;
+    std::uint64_t generation_cookie = 0;
+    std::string identity_source = "unknown";
     std::uint64_t total_wait_ns = 0;
     std::uint64_t runtime_ns = 0;
     std::uint64_t wakeup_count = 0;
@@ -192,6 +195,9 @@ RuntimeConfig parse_args(int argc, char **argv);
 EnvironmentStatus detect_environment();
 PsiSnapshot read_psi_snapshot();
 WorkloadDecision classify_sample(const WorkloadSample &sample);
+std::uint64_t safe_counter_delta(std::uint64_t current, std::uint64_t previous);
+std::vector<WorkloadSample> compute_sample_deltas_for_test(const std::vector<WorkloadSample> &samples);
+void reset_sample_delta_history_for_tests();
 RuntimeThresholds calibrate_runtime_thresholds(const RuntimeThresholds &base,
                                                 const std::vector<double> &latency_wait_ns,
                                                 const std::vector<double> &background_runtime_ns,

@@ -26,14 +26,15 @@ static int dump_metrics(struct workload_observer_bpf *skel)
     struct task_metrics metrics;
     int map_fd = bpf_map__fd(skel->maps.task_metrics_map);
 
-    printf("%-7s %-7s %-16s %-8s %-10s %-12s %-10s %-10s %-6s\n",
-           "PID", "TGID", "COMM", "WAKEUPS", "WAIT_NS",
+    printf("%-7s %-7s %-16s %-16s %-8s %-10s %-12s %-10s %-10s %-6s\n",
+           "PID", "TGID", "COMM", "START_BOOT_NS", "WAKEUPS", "WAIT_NS",
            "RUNTIME_NS", "CTXSW", "MIGRATE", "CPU");
 
     while (bpf_map_get_next_key(map_fd, &key, &next_key) == 0) {
         if (bpf_map_lookup_elem(map_fd, &next_key, &metrics) == 0) {
-            printf("%-7u %-7u %-16s %-8lu %-10lu %-12lu %-10lu %-10lu %-6u\n",
+            printf("%-7u %-7u %-16s %-16lu %-8lu %-10lu %-12lu %-10lu %-10lu %-6u\n",
                    metrics.pid, metrics.tgid, metrics.comm,
+                   metrics.start_boottime_ns,
                    metrics.wakeup_count, metrics.total_wait_ns,
                    metrics.runtime_ns, metrics.ctx_switch_count,
                    metrics.migrate_count, metrics.last_cpu);

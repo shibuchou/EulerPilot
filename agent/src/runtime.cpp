@@ -19,6 +19,7 @@
 #include <thread>
 #include <unordered_map>
 #include <unistd.h>
+#include <utility>
 #include <vector>
 
 #include "workload_observer.h"
@@ -132,6 +133,8 @@ WorkloadSample to_sample(const task_metrics &metrics) {
     sample.tgid = static_cast<int>(metrics.tgid);
     sample.comm = metrics.comm;
     sample.cgroup_id = metrics.cgroup_id;
+    sample.start_boottime_ns = metrics.start_boottime_ns;
+    sample.identity_source = metrics.start_boottime_ns ? "bpf_start_boottime_ns" : "user_generation_cookie";
     sample.total_wait_ns = metrics.total_wait_ns;
     sample.runtime_ns = metrics.runtime_ns;
     sample.wakeup_count = metrics.wakeup_count;
@@ -147,13 +150,18 @@ std::vector<WorkloadSample> read_samples(struct workload_observer_bpf *skel) {
     struct task_metrics metrics = {};
     int map_fd = bpf_map__fd(skel->maps.task_metrics_map);
     bool first = true;
+    std::vector<__u32> keys;
 
     while (bpf_map_get_next_key(map_fd, first ? nullptr : &key, &next_key) == 0) {
-        if (bpf_map_lookup_elem(map_fd, &next_key, &metrics) == 0) {
-            samples.push_back(to_sample(metrics));
-        }
+        keys.push_back(next_key);
         key = next_key;
         first = false;
+    }
+
+    for (const auto sample_key : keys) {
+        if (bpf_map_lookup_elem(map_fd, &sample_key, &metrics) == 0) {
+            samples.push_back(to_sample(metrics));
+        }
     }
 
     return samples;
@@ -165,7 +173,168 @@ bool should_ignore_sample(const WorkloadSample &sample, int self_pid) {
            sample.comm.rfind("kcompactd", 0) == 0 || sample.comm.rfind("ksoftirqd", 0) == 0;
 }
 
+struct TaskIdentityKey {
+    int tgid = 0;
+    int tid = 0;
+    std::uint64_t identity_value = 0;
+    bool uses_start_boottime = false;
+
+    bool operator==(const TaskIdentityKey &other) const {
+        return tgid == other.tgid &&
+               tid == other.tid &&
+               identity_value == other.identity_value &&
+               uses_start_boottime == other.uses_start_boottime;
+    }
+};
+
+struct TaskIdentityHash {
+    std::size_t operator()(const TaskIdentityKey &key) const {
+        std::size_t h = std::hash<int>{}(key.tgid);
+        h ^= std::hash<int>{}(key.tid) + 0x9e3779b97f4a7c15ULL + (h << 6) + (h >> 2);
+        h ^= std::hash<std::uint64_t>{}(key.identity_value) + 0x9e3779b97f4a7c15ULL + (h << 6) + (h >> 2);
+        h ^= std::hash<bool>{}(key.uses_start_boottime) + 0x9e3779b97f4a7c15ULL + (h << 6) + (h >> 2);
+        return h;
+    }
+};
+
+struct SampleDeltaHistory {
+    std::unordered_map<TaskIdentityKey, WorkloadSample, TaskIdentityHash> previous_samples;
+    std::unordered_map<std::string, std::uint64_t> fallback_generations;
+    std::uint64_t next_generation_cookie = 1;
+};
+
+SampleDeltaHistory &sample_delta_history() {
+    static SampleDeltaHistory history;
+    return history;
+}
+
+std::string task_pair_key(const WorkloadSample &sample) {
+    return std::to_string(sample.tgid) + ":" + std::to_string(sample.pid);
+}
+
+bool sample_counter_reset(const WorkloadSample &current, const WorkloadSample &previous) {
+    return current.total_wait_ns < previous.total_wait_ns ||
+           current.runtime_ns < previous.runtime_ns ||
+           current.wakeup_count < previous.wakeup_count ||
+           current.ctx_switch_count < previous.ctx_switch_count ||
+           current.migrate_count < previous.migrate_count;
+}
+
+TaskIdentityKey resolve_task_identity(WorkloadSample &sample, SampleDeltaHistory &history) {
+    if (sample.start_boottime_ns != 0) {
+        sample.identity_source = "bpf_start_boottime_ns";
+        sample.generation_cookie = 0;
+        return TaskIdentityKey{sample.tgid, sample.pid, sample.start_boottime_ns, true};
+    }
+
+    const std::string pair_key = task_pair_key(sample);
+    auto generation = history.fallback_generations.find(pair_key);
+    if (generation == history.fallback_generations.end()) {
+        generation = history.fallback_generations.emplace(pair_key, history.next_generation_cookie++).first;
+    }
+
+    TaskIdentityKey key{sample.tgid, sample.pid, generation->second, false};
+    auto previous = history.previous_samples.find(key);
+    if (previous != history.previous_samples.end() && sample_counter_reset(sample, previous->second)) {
+        generation->second = history.next_generation_cookie++;
+        key.identity_value = generation->second;
+    }
+
+    sample.generation_cookie = key.identity_value;
+    sample.identity_source = "user_generation_cookie";
+    return key;
+}
+
+void add_to_tgid_aggregate(std::unordered_map<int, WorkloadSample> &aggregates,
+                           std::vector<int> &tgid_order,
+                           const WorkloadSample &sample) {
+    auto [it, inserted] = aggregates.emplace(sample.tgid, sample);
+    if (inserted) {
+        tgid_order.push_back(sample.tgid);
+        it->second.pid = sample.tgid;
+        it->second.identity_source = "tgid_aggregate:" + sample.identity_source;
+        return;
+    }
+
+    auto &aggregate = it->second;
+    aggregate.total_wait_ns += sample.total_wait_ns;
+    aggregate.runtime_ns += sample.runtime_ns;
+    aggregate.wakeup_count += sample.wakeup_count;
+    aggregate.ctx_switch_count += sample.ctx_switch_count;
+    aggregate.migrate_count += sample.migrate_count;
+    aggregate.total_wait_ns_delta += sample.total_wait_ns_delta;
+    aggregate.runtime_ns_delta += sample.runtime_ns_delta;
+    aggregate.wakeup_count_delta += sample.wakeup_count_delta;
+    aggregate.ctx_switch_count_delta += sample.ctx_switch_count_delta;
+    aggregate.migrate_count_delta += sample.migrate_count_delta;
+    if (aggregate.cgroup_id == 0 && sample.cgroup_id != 0) {
+        aggregate.cgroup_id = sample.cgroup_id;
+    }
+    if (aggregate.identity_source.find(sample.identity_source) == std::string::npos) {
+        aggregate.identity_source += "+" + sample.identity_source;
+    }
+}
+
 } // namespace
+
+std::uint64_t safe_counter_delta(std::uint64_t current, std::uint64_t previous) {
+    return current >= previous ? current - previous : current;
+}
+
+std::vector<WorkloadSample> compute_sample_deltas_for_test(const std::vector<WorkloadSample> &samples) {
+    auto &history = sample_delta_history();
+    std::unordered_map<TaskIdentityKey, WorkloadSample, TaskIdentityHash> next_previous;
+    std::unordered_map<int, WorkloadSample> aggregates;
+    std::unordered_map<std::string, bool> seen_pairs;
+    std::vector<int> tgid_order;
+
+    for (const auto &sample : samples) {
+        WorkloadSample current = sample;
+        TaskIdentityKey identity = resolve_task_identity(current, history);
+        seen_pairs[task_pair_key(current)] = true;
+
+        auto previous = history.previous_samples.find(identity);
+        if (previous != history.previous_samples.end()) {
+            current.total_wait_ns_delta = safe_counter_delta(current.total_wait_ns, previous->second.total_wait_ns);
+            current.runtime_ns_delta = safe_counter_delta(current.runtime_ns, previous->second.runtime_ns);
+            current.wakeup_count_delta = safe_counter_delta(current.wakeup_count, previous->second.wakeup_count);
+            current.ctx_switch_count_delta = safe_counter_delta(current.ctx_switch_count, previous->second.ctx_switch_count);
+            current.migrate_count_delta = safe_counter_delta(current.migrate_count, previous->second.migrate_count);
+        } else {
+            current.total_wait_ns_delta = current.total_wait_ns;
+            current.runtime_ns_delta = current.runtime_ns;
+            current.wakeup_count_delta = current.wakeup_count;
+            current.ctx_switch_count_delta = current.ctx_switch_count;
+            current.migrate_count_delta = current.migrate_count;
+        }
+
+        next_previous[identity] = current;
+        add_to_tgid_aggregate(aggregates, tgid_order, current);
+    }
+
+    for (auto it = history.fallback_generations.begin(); it != history.fallback_generations.end();) {
+        if (seen_pairs.find(it->first) == seen_pairs.end()) {
+            it = history.fallback_generations.erase(it);
+        } else {
+            ++it;
+        }
+    }
+    history.previous_samples = std::move(next_previous);
+
+    std::vector<WorkloadSample> out;
+    out.reserve(tgid_order.size());
+    for (const auto tgid : tgid_order) {
+        out.push_back(aggregates[tgid]);
+    }
+    return out;
+}
+
+void reset_sample_delta_history_for_tests() {
+    auto &history = sample_delta_history();
+    history.previous_samples.clear();
+    history.fallback_generations.clear();
+    history.next_generation_cookie = 1;
+}
 
 const char *to_string(ExecutorBackend backend) {
     switch (backend) {
@@ -536,35 +705,20 @@ void assign_profiles(std::vector<WorkloadDecision> &decisions, ControlMode mode)
 }
 
 std::vector<WorkloadDecision> collect_cycle_decisions(struct workload_observer_bpf *skel, int self_pid) {
-    static std::unordered_map<int, WorkloadSample> previous_samples;
     std::vector<WorkloadDecision> decisions;
     auto samples = read_samples(skel);
-    std::unordered_map<int, WorkloadSample> current_samples;
+    std::vector<WorkloadSample> observed;
     for (const auto &sample : samples) {
         if (should_ignore_sample(sample, self_pid)) {
             continue;
         }
-
-        WorkloadSample current = sample;
-        auto it = previous_samples.find(current.tgid);
-        if (it != previous_samples.end()) {
-            current.total_wait_ns_delta = current.total_wait_ns - it->second.total_wait_ns;
-            current.runtime_ns_delta = current.runtime_ns - it->second.runtime_ns;
-            current.wakeup_count_delta = current.wakeup_count - it->second.wakeup_count;
-            current.ctx_switch_count_delta = current.ctx_switch_count - it->second.ctx_switch_count;
-            current.migrate_count_delta = current.migrate_count - it->second.migrate_count;
-        } else {
-            current.total_wait_ns_delta = current.total_wait_ns;
-            current.runtime_ns_delta = current.runtime_ns;
-            current.wakeup_count_delta = current.wakeup_count;
-            current.ctx_switch_count_delta = current.ctx_switch_count;
-            current.migrate_count_delta = current.migrate_count;
-        }
-
-        current_samples[current.tgid] = current;
-        decisions.push_back(classify_sample(current));
+        observed.push_back(sample);
     }
-    previous_samples = std::move(current_samples);
+
+    auto aggregated_samples = compute_sample_deltas_for_test(observed);
+    for (const auto &sample : aggregated_samples) {
+        decisions.push_back(classify_sample(sample));
+    }
     return decisions;
 }
 

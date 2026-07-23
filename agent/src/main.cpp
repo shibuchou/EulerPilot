@@ -212,6 +212,10 @@ void print_decision(const eulerpilot::WorkloadDecision &d, bool verbose, bool js
         std::cout << "{"
                   << "\"comm\":\"" << d.sample.comm << "\""
                   << ",\"pid\":" << d.sample.pid
+                  << ",\"tgid\":" << d.sample.tgid
+                  << ",\"start_boottime_ns\":" << d.sample.start_boottime_ns
+                  << ",\"generation_cookie\":" << d.sample.generation_cookie
+                  << ",\"identity_source\":\"" << d.sample.identity_source << "\""
                   << ",\"class\":\"" << eulerpilot::to_string(d.klass) << "\""
                   << ",\"latency_score\":" << d.latency_score
                   << ",\"batch_score\":" << d.batch_score
@@ -278,6 +282,10 @@ void print_decision(const eulerpilot::WorkloadDecision &d, bool verbose, bool js
                   << " interference=" << d.interference_score << "\n"
                   << "    gate: relevant=" << (d.gate_relevant ? "yes" : "no")
                   << " reason=" << d.gate_reason << "\n"
+                  << "    identity: tgid=" << d.sample.tgid
+                  << " start_boottime_ns=" << d.sample.start_boottime_ns
+                  << " generation_cookie=" << d.sample.generation_cookie
+                  << " source=" << d.sample.identity_source << "\n"
                   << "    evidence: latency_exists=" << (d.latency_exists ? "yes" : "no")
                   << " background_exists=" << (d.background_exists ? "yes" : "no")
                   << " cpu_psi_high=" << (d.cpu_psi_high ? "yes" : "no")
