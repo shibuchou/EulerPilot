@@ -62,7 +62,7 @@ enum stat_idx {
 	STAT_RUNNING_BACKGROUND = 18,
 	STAT_SHARED_FALLBACK = 19,
 	STAT_STARVATION_GUARD = 20,
-	STAT_BG_WAIT_TOTAL = 21,
+	STAT_BG_CONSUMED_SLICE_TOTAL = 21,
 	STAT_DIRECT_LOCAL_LATENCY = 22,
 };
 
@@ -124,8 +124,34 @@ static u32 lookup_class(struct task_struct *p)
 	return EULERPILOT_CLASS_NORMAL;
 }
 
-static u64 select_dsq(u32 klass)
+static u32 current_gate_state(void)
 {
+	u32 key = 0;
+	struct gate_state_value *gate = bpf_map_lookup_elem(&gate_state_map, &key);
+
+	if (!gate)
+		return GATE_NORMAL;
+	switch (gate->state) {
+	case GATE_NORMAL:
+	case GATE_ARMED:
+	case GATE_ACTIVE:
+	case GATE_COOLDOWN:
+		return gate->state;
+	default:
+		return GATE_NORMAL;
+	}
+}
+
+static bool gate_uses_class_dsqs(u32 state)
+{
+	return state == GATE_ACTIVE;
+}
+
+static u64 select_dsq(u32 klass, u32 gate_state)
+{
+	if (!gate_uses_class_dsqs(gate_state))
+		return DSQ_SHARED;
+
 	switch (klass) {
 	case EULERPILOT_CLASS_LATENCY:
 		return DSQ_LATENCY;
@@ -140,9 +166,7 @@ static u64 select_dsq(u32 klass)
 
 static u64 select_slice(u32 klass)
 {
-	u32 key = 0;
-	struct gate_state_value *gate = bpf_map_lookup_elem(&gate_state_map, &key);
-	bool active = gate && (gate->state == GATE_ACTIVE || gate->state == GATE_COOLDOWN);
+	bool active = gate_uses_class_dsqs(current_gate_state());
 
 	if (!active)
 		return shared_slice_ns ?: SCX_SLICE_DFL;
@@ -193,6 +217,15 @@ static void stat_enqueue_hit(u32 klass)
 		stat_inc(STAT_ENQ_SHARED);
 		break;
 	}
+}
+
+static void stat_enqueue_dsq(u64 dsq_id, u32 klass)
+{
+	if (dsq_id == DSQ_SHARED) {
+		stat_inc(STAT_ENQ_SHARED);
+		return;
+	}
+	stat_enqueue_hit(klass);
 }
 
 static void stat_dispatch_hit(u32 klass)
@@ -258,11 +291,12 @@ s32 BPF_STRUCT_OPS(eulerpilot_select_cpu, struct task_struct *p, s32 prev_cpu, u
 void BPF_STRUCT_OPS(eulerpilot_enqueue, struct task_struct *p, u64 enq_flags)
 {
 	u32 klass = lookup_class(p);
-	u64 dsq_id = select_dsq(klass);
+	u32 gate_state = current_gate_state();
+	u64 dsq_id = select_dsq(klass, gate_state);
 	u64 slice = select_slice(klass);
 
 	stat_class_hit(klass);
-	stat_enqueue_hit(klass);
+	stat_enqueue_dsq(dsq_id, klass);
 
 	if (fifo_sched || dsq_id != DSQ_SHARED) {
 		scx_bpf_dsq_insert(p, dsq_id, slice, enq_flags);
@@ -300,16 +334,14 @@ static void note_background_dispatch(void)
 
 void BPF_STRUCT_OPS(eulerpilot_dispatch, s32 cpu, struct task_struct *prev)
 {
-	u32 key = 0;
-	struct gate_state_value *gate = bpf_map_lookup_elem(&gate_state_map, &key);
-	bool active = gate && (gate->state == GATE_ACTIVE || gate->state == GATE_COOLDOWN);
-
-	if (!active) {
-		stat_inc(STAT_SHARED_FALLBACK);
-		stat_dispatch_hit(EULERPILOT_CLASS_NORMAL);
-		scx_bpf_dsq_move_to_local(DSQ_SHARED);
-		return;
-	}
+	/*
+	 * Dispatch must remain able to consume every DSQ in every gate state.
+	 * NORMAL/ARMED enqueue new work into DSQ_SHARED, but stale classified
+	 * tasks may exist after a gate transition.  COOLDOWN also enqueues new
+	 * work into DSQ_SHARED while draining classified leftovers.  This keeps
+	 * invalid or missing gate_state_map values fail-safe without stranding
+	 * tasks in latency/batch/background DSQs.
+	 */
 
 	if (scx_bpf_dsq_move_to_local(DSQ_LATENCY)) {
 		stat_dispatch_hit(EULERPILOT_CLASS_LATENCY);
@@ -333,7 +365,8 @@ void BPF_STRUCT_OPS(eulerpilot_dispatch, s32 cpu, struct task_struct *prev)
 
 	stat_inc(STAT_SHARED_FALLBACK);
 	stat_dispatch_hit(EULERPILOT_CLASS_NORMAL);
-	scx_bpf_dsq_move_to_local(DSQ_SHARED);
+	if (scx_bpf_dsq_move_to_local(DSQ_SHARED))
+		return;
 }
 
 void BPF_STRUCT_OPS(eulerpilot_running, struct task_struct *p)
@@ -360,7 +393,7 @@ void BPF_STRUCT_OPS(eulerpilot_stopping, struct task_struct *p, bool runnable)
 
 	consumed = slice > p->scx.slice ? slice - p->scx.slice : 0;
 	if (klass == EULERPILOT_CLASS_BACKGROUND)
-		stat_add(STAT_BG_WAIT_TOTAL, consumed);
+		stat_add(STAT_BG_CONSUMED_SLICE_TOTAL, consumed);
 
 	p->scx.dsq_vtime += consumed * 100 / p->scx.weight;
 }

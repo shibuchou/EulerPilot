@@ -27,7 +27,7 @@ STAT_NAMES = {
     18: "running_background",
     19: "shared_fallback",
     20: "starvation_guard",
-    21: "bg_wait_total",
+    21: "bg_consumed_slice_total",
     22: "direct_local_latency",
 }
 

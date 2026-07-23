@@ -20,7 +20,7 @@ const char help_fmt[] =
 "  -v            Print libbpf debug messages\n"
 "  --status      Print current sched_ext state and exit\n"
 "  --stats       Print pinned class_map and sched_ext state summary, then exit\n"
-"  --detach      Stop active scx_eulerpilot processes and exit\n"
+"  --detach      Refuse unsafe global detach; Agent-managed stop owns its PID\n"
 "  --gate-status Print pinned gate_state_map value and exit\n"
 "  --gate-set <normal|active>  Update pinned gate_state_map for wiring tests\n"
 "  -h            Display this help and exit\n";
@@ -182,8 +182,8 @@ static void print_stats_fd(int fd)
 	       stats[11], stats[12], stats[13], stats[14]);
 	printf("running shared=%llu latency=%llu batch=%llu background=%llu ",
 	       stats[15], stats[16], stats[17], stats[18]);
-	printf("shared_fallback=%llu starvation_guard=%llu bg_wait_total=%llu direct_local_latency=%llu\n",
-	       stats[19], stats[20], stats[21], stats[22]);
+	printf("shared_fallback=%llu starvation_guard=%llu bg_consumed_slice_total=%llu bg_wait_total_legacy=%llu direct_local_latency=%llu\n",
+	       stats[19], stats[20], stats[21], stats[21], stats[22]);
 }
 
 static void print_stats(struct scx_eulerpilot *skel)
@@ -207,12 +207,10 @@ static int print_pinned_stats(void)
 
 static int detach_running_scheduler(void)
 {
-	int ret;
-
-	ret = system("pkill -x scx_eulerpilot >/dev/null 2>&1 || true");
-	(void)ret;
+	fprintf(stderr,
+		"refuse unsafe global detach: use Agent-owned ScxExecutor stop or signal the known scheduler PID\n");
 	print_sched_ext_state();
-	return 0;
+	return 2;
 }
 
 static int set_gate_state(const char *state_name)

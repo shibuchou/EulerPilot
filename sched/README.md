@@ -43,7 +43,7 @@ scripts/build_scx_eulerpilot.sh
 - 已补第一版工程管理能力：
   - `--status`
   - `--stats`
-  - `--detach`
+  - `--detach` now refuses unsafe global `pkill`-style cleanup; stop an Agent-owned scheduler through the recorded ScxExecutor session/PID instead.
   - kill-loader 后自动回退
 
 当前这版还不是最终的 `scx_eulerpilot`：
