@@ -85,16 +85,26 @@ bool valid_ifname(const std::string &ifname) {
 }
 
 bool valid_container_id(const std::string &container_id) {
-    if (container_id.size() < 8 || container_id.size() > 128) {
+    // Runtime CLIs may accept short IDs as prefixes.  EulerPilot only accepts
+    // full OCI/containerd IDs so a policy cannot bind to an ambiguous target.
+    constexpr std::size_t kFullContainerIdLength = 64;
+    if (container_id.size() != kFullContainerIdLength) {
         return false;
     }
     for (const char ch : container_id) {
         const auto uch = static_cast<unsigned char>(ch);
-        if (!(std::isalnum(uch) || ch == '_' || ch == '-' || ch == '.')) {
+        if (!std::isxdigit(uch)) {
             return false;
         }
     }
     return true;
+}
+
+bool valid_runtime_scheme(const std::string &scheme) {
+    return scheme == "containerd" || scheme == "cri-o" ||
+           scheme == "crio" || scheme == "docker" ||
+           scheme == "cri-dockerd" || scheme == "podman" ||
+           scheme == "isula" || scheme == "isulad";
 }
 
 std::string trim_copy(const std::string &value);
@@ -105,9 +115,14 @@ std::string runtime_container_id_from_output(const std::string &value) {
     while (in >> token) {
         token = trim_copy(token);
         const std::size_t scheme = token.find("://");
-        if (scheme != std::string::npos) {
-            token = token.substr(scheme + 3);
+        if (scheme == std::string::npos) {
+            continue;
         }
+        const std::string runtime_scheme = token.substr(0, scheme);
+        if (!valid_runtime_scheme(runtime_scheme)) {
+            continue;
+        }
+        token = token.substr(scheme + 3);
         while (!token.empty() &&
                (token.back() == '"' || token.back() == '\'' ||
                 token.back() == ',' || token.back() == ']')) {

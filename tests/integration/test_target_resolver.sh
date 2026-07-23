@@ -40,7 +40,7 @@ case "$*" in
         printf '%s\n' '123e4567-e89b-12d3-a456-426614174000'
         ;;
     *containerStatuses*)
-        printf '%s\n' 'containerd://abcdef1234567890'
+        printf '%s\n' "${EULERPILOT_TEST_KUBECTL_CONTAINER_ID:-containerd://abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890}"
         ;;
     *)
         exit 1
@@ -52,10 +52,13 @@ chmod +x "$FAKE_KUBECTL"
 cat >"$FAKE_CRICTL" <<'SH'
 #!/bin/sh
 if [ "$1" = "ps" ]; then
-    printf '%s\n' 'abcdef1234567890'
+    printf '%s\n' 'abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890'
     exit 0
 fi
 if [ "$1" = "inspect" ]; then
+    if [ "$2" != "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890" ]; then
+        exit 1
+    fi
     printf '{"info":{"pid":%s}}\n' "${EULERPILOT_TEST_POD_PID:-0}"
     exit 0
 fi
@@ -172,10 +175,34 @@ int main(int argc, char **argv) {
         pod_spec("eulerpilot-lab", "web-demo"), options);
     expect_reason(missing_runtime, "missing-runtime", "missing runtime");
 
+    options.crictl_path = argv[2];
+    options.require_runtime_socket = false;
+    auto short_id_spec = pod_spec("eulerpilot-lab", "web-demo");
+    short_id_spec.container_id = "abcdef1234567890";
+    const auto short_id_target =
+        eulerpilot::resolve_k8s_pod_target(short_id_spec, options);
+    expect_reason(short_id_target, "invalid-container-id",
+                  "explicit short container id");
+
+    setenv("EULERPILOT_TEST_KUBECTL_CONTAINER_ID",
+           "containerd://abcdef1234567890", 1);
+    const auto short_kubectl_id = eulerpilot::resolve_k8s_pod_target(
+        pod_spec("eulerpilot-lab", "web-demo"), options);
+    expect_reason(short_kubectl_id, "kubectl-container-id-invalid",
+                  "kubectl short container id");
+
+    setenv("EULERPILOT_TEST_KUBECTL_CONTAINER_ID",
+           "unknownrt://abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+           1);
+    const auto unsupported_runtime_id = eulerpilot::resolve_k8s_pod_target(
+        pod_spec("eulerpilot-lab", "web-demo"), options);
+    expect_reason(unsupported_runtime_id, "kubectl-container-id-invalid",
+                  "unsupported runtime scheme");
+
+    unsetenv("EULERPILOT_TEST_KUBECTL_CONTAINER_ID");
+
     const std::string expected_host_ifname = argv[3];
     if (expected_host_ifname != "skip") {
-        options.crictl_path = argv[2];
-        options.require_runtime_socket = false;
         const auto pod_veth = eulerpilot::resolve_k8s_pod_target(
             pod_spec("eulerpilot-lab", "web-demo"), options);
         expect(pod_veth.resolved, "pod veth resolves with fake kubectl/crictl, reason " +
@@ -188,7 +215,7 @@ int main(int argc, char **argv) {
         expect(pod_veth.ifindex > 0, "pod veth ifindex is positive");
         expect(pod_veth.pid > 0, "pod veth runtime pid is recorded");
         expect(!pod_veth.netns_path.empty(), "pod veth netns path is recorded");
-        expect(pod_veth.container_id == "abcdef1234567890",
+        expect(pod_veth.container_id == "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
                "pod container id is parsed from kubectl runtime URI");
         expect(pod_veth.pod_uid == "123e4567-e89b-12d3-a456-426614174000",
                "pod uid is parsed from kubectl");
@@ -207,7 +234,7 @@ int main(int argc, char **argv) {
         expect(container_veth.ifname == expected_host_ifname,
                "container veth host ifname matches expected, got " +
                    container_veth.ifname + ", expected " + expected_host_ifname);
-        expect(container_veth.container_id == "abcdef1234567890",
+        expect(container_veth.container_id == "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
                "container id is parsed from runtime name lookup");
         expect(container_veth.pid > 0, "container runtime pid is recorded");
     }
