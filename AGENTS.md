@@ -3,9 +3,14 @@
 ## 交流与工作目录
 
 - 始终使用简体中文与用户交流，除非用户明确要求使用其他语言。
-- 本项目当前核心验证与最终交付验证仓库为 openEuler 服务器 `openEuler-2403-LTS-SP4`，主机 `192.168.1.123`，用户 `root`，系统为 openEuler 24.03 LTS SP4。
-- SP4 服务器上的项目目录固定为 `/root/EulerPilot`；新增功能、Web Console、Kubernetes 验证和最终 evidence 收口优先在该目录完成。
-- `EulerPilot-openEuler` / `192.168.1.121:/root/EulerPilot` 已降级为初代迭代仓库和 SP3 历史验证仓库，只作为旧版本参考、兼容性回归和对照证据，不再作为最终主验证线。
+- 本轮复审收口采用双层交付矩阵，不再把任一单机写成唯一交付口径：
+  - `192.168.1.123:/root/EulerPilot`，openEuler 24.03 LTS SP4：主开发仓库、`sched_ext/scx` 功能验证、性能实验、Web、完整集成、最终演示和 release candidate 生成。
+  - `192.168.1.121:/root/EulerPilot`，openEuler 24.03 LTS SP3：比赛要求的强制兼容交付环境，必须完成构建、配置校验、cgroup 主闭环、安全扩展 smoke、rollback、safe doctor、基础质量门和 `sched_ext` unavailable graceful fallback。
+  - `192.168.1.122`：仅保留历史 OLK/sched_ext 对照，不作为最终 release 来源。
+- 最终文档统一表述为：SP4/123 是 EulerPilot 的主验证和性能实验环境；SP3/121 是比赛要求的强制兼容交付环境。`sched_ext/scx` 在 SP4 源码自编译启用内核上完成验证，`cgroup v2` 是官方发行内核上的稳定执行后端。
+- SP4 服务器上的原始项目目录为 `/root/EulerPilot`；若该目录存在 dirty 状态，只用于保存、审计和核对现有修改，不得直接 reset、clean、stash drop、覆盖同步或批量删除。
+- 正式复审收口使用独立工作树 `/root/EulerPilot-closeout` 和本地分支 `closeout/sp4-sp3-release`；阶段修复、阶段提交、质量门和 release candidate 均在该工作树进行。
+- 阶段提交仅保存在 123 的本地 closeout 分支。未经用户明确要求，不 push 分支、不 push tag、不创建远端 Release，也不覆盖 `origin/main`。
 - 本地镜像目录作为项目同步落点；只有在用户要求同步时，才从服务器同步到本地，再按用户要求同步到 GitHub 或比赛仓库。
 - 在用户明确要求同步或推送之前，不要主动把服务器代码同步到本地或 GitHub，也不要主动 push。
 - 项目主要开发语言为 C 和 C++；eBPF 内核侧程序优先使用 C，用户态 Agent/工具优先使用 C/C++，除非某个辅助脚本或工具链明显更适合用 Shell/Python。
@@ -47,8 +52,10 @@
 
 ## 最终交付要求
 
-- 当前项目验证与最终交付验收基线调整为 openEuler 24.03 LTS SP4；SP3 证据继续保留为历史兼容和回归对照。
-- 鼓励在 SP3、SP4 和更多 Linux 发行版上编译、运行和测试；新增最终证据优先以 SP4 主验证仓库为准。
+- 当前项目采用 SP4 主验证 + SP3 强制兼容的最终交付矩阵；SP4 负责主开发、完整集成、性能实验和 release candidate，SP3 负责比赛要求的官方发行环境兼容交付。
+- SP3/121 不是可选历史证据：正式 release 前必须通过构建、配置校验、cgroup 主闭环、安全扩展 smoke、rollback、safe doctor、基础质量门和 sched_ext unavailable graceful fallback。
+- `sched_ext/scx` 不要求在官方 SP3 默认内核上强行运行；但必须明确验证不可用时的 graceful fallback，并说明 `cgroup v2` 是发行内核上的稳定执行后端。
+- 鼓励在 SP3、SP4 和更多 Linux 发行版上编译、运行和测试；新增性能实验和 Web/完整集成证据优先以 SP4 主验证仓库为准。
 - 技术报告需要包含作品链接、设计方案、实现方案、运行效果/测试结果、演示视频、特色创新等内容。
 - 系统创新赛道会重点考察项目代码、开发过程数据、技术报告和现场答辩表现。
 
