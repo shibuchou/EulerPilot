@@ -135,10 +135,38 @@ async function postJson<T>(path: string, body?: Record<string, unknown>, headers
     body: body ? JSON.stringify(body) : undefined
   });
   if (!response.ok) {
-    const body = await response.json().catch(() => ({ error: response.statusText }));
-    throw new Error(String(body.error || response.statusText));
+    const payload = await response.json().catch(() => ({ error: response.statusText }));
+    const error = new Error(String(payload.error || response.statusText)) as Error & {
+      payload?: Record<string, unknown>;
+      statusCode?: number;
+    };
+    error.payload = payload;
+    error.statusCode = response.status;
+    throw error;
   }
   return response.json() as Promise<T>;
+}
+
+async function postWithConfirmation<T>(path: string): Promise<T> {
+  try {
+    return await postJson<T>(path);
+  } catch (error) {
+    const typed = error as Error & {
+      payload?: Record<string, unknown>;
+      statusCode?: number;
+    };
+    const token = typeof typed.payload?.confirmation_token === 'string'
+      ? typed.payload.confirmation_token
+      : '';
+    if (typed.statusCode !== 428 || !token) {
+      throw error;
+    }
+    return postJson<T>(
+      path,
+      { confirm_token: token },
+      { 'X-EulerPilot-Confirm-Token': token }
+    );
+  }
 }
 
 export const api = {
@@ -151,10 +179,8 @@ export const api = {
   doctor: () => getJson<{ ok: boolean; raw: string }>('/api/agent/doctor'),
   evidence: () => getJson<EvidenceSummary>('/api/evidence/summary'),
   events: (skill: string, tail = 100) => getJson<{ skill: string; path: string; events: Record<string, unknown>[] }>(`/api/events?skill=${encodeURIComponent(skill)}&tail=${tail}`),
-  startAction: (id: string, confirmed = false) => postJson<{ job: Job }>(
-    `/api/actions/${id}/start`,
-    confirmed ? { confirm_action_id: id } : undefined,
-    confirmed ? { 'X-EulerPilot-Confirm-Action': id } : undefined
-  ),
-  cancelJob: (id: string) => postJson<{ job: Job }>(`/api/jobs/${id}/cancel`)
+  startAction: (id: string, confirmed = false) => confirmed
+    ? postWithConfirmation<{ job: Job }>(`/api/actions/${id}/start`)
+    : postJson<{ job: Job }>(`/api/actions/${id}/start`),
+  cancelJob: (id: string) => postWithConfirmation<{ job: Job }>(`/api/jobs/${id}/cancel`)
 };

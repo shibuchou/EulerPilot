@@ -29,7 +29,8 @@ export class JobManager extends EventEmitter {
 
   hasRunningMutatingJob() {
     for (const job of this.jobs.values()) {
-      if ((job.status === 'queued' || job.status === 'running') && job.mutating) {
+      if (job.mutating && !job.process_exited &&
+          ['queued', 'running', 'timeout', 'canceled'].includes(job.status)) {
         return true;
       }
     }
@@ -99,7 +100,9 @@ export class JobManager extends EventEmitter {
       output_bytes: 0,
       process: null,
       killed_for_limit: false,
-      timeout: null
+      timeout: null,
+      process_exited: false,
+      kill_timer: null
     };
     this.jobs.set(jobId, job);
     this.pruneJobs();
@@ -157,6 +160,8 @@ export class JobManager extends EventEmitter {
 
     child.on('close', (code, signal) => {
       clearTimeout(job.timeout);
+      if (job.kill_timer) clearTimeout(job.kill_timer);
+      job.process_exited = true;
       job.ended_at = nowIso();
       job.exit_code = code;
       job.signal = signal || '';
@@ -175,12 +180,17 @@ export class JobManager extends EventEmitter {
   }
 
   terminate(job, signal = 'SIGTERM') {
-    if (!job || !job.process || job.process.killed) return;
+    if (!job || !job.process || job.process_exited) return;
     try {
       if (process.platform !== 'win32' && job.process.pid) {
         process.kill(-job.process.pid, signal);
       } else {
         job.process.kill(signal);
+      }
+      if (signal === 'SIGTERM' && !job.kill_timer) {
+        job.kill_timer = setTimeout(() => {
+          if (!job.process_exited) this.terminate(job, 'SIGKILL');
+        }, 3000);
       }
     } catch (error) {
       job.error = error.message;
@@ -198,9 +208,8 @@ export class JobManager extends EventEmitter {
       return this.serializeJob(job);
     }
     job.status = 'canceled';
-    job.ended_at = nowIso();
     this.terminate(job, 'SIGTERM');
-    this.emitUpdate(job, 'done', 'canceled by user\n');
+    this.emitUpdate(job, 'status', 'cancel requested\n');
     return this.serializeJob(job);
   }
 

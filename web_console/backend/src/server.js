@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
+import { createHash, randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { actionForClient, loadActions } from './actions.js';
 import { getAgentDoctor, getAgentSkills, getAgentStatus, getEvents, getEvidenceSummary, getSystem } from './data.js';
@@ -9,6 +10,8 @@ import { resolveConsoleConfig } from './paths.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const BODY_LIMIT = 4096;
+const CONFIRM_TTL_MS = 60_000;
+const confirmationTokens = new Map();
 
 function json(res, statusCode, payload) {
   const body = JSON.stringify(payload);
@@ -32,6 +35,98 @@ function isAuthorized(req, config) {
   if (!config.requiresToken) return true;
   const header = req.headers.authorization || '';
   return header === `Bearer ${config.token}`;
+}
+
+function stableJson(value) {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`;
+  return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableJson(value[key])}`).join(',')}}`;
+}
+
+function confirmationBody(body) {
+  const copy = { ...(body || {}) };
+  delete copy.confirm_action_id;
+  delete copy.confirm_token;
+  return copy;
+}
+
+function bodyHash(body) {
+  return createHash('sha256').update(stableJson(confirmationBody(body))).digest('hex');
+}
+
+function sessionKey(req, config) {
+  if (config.requiresToken) {
+    return createHash('sha256')
+      .update(String(req.headers.authorization || ''))
+      .digest('hex');
+  }
+  return `loopback:${req.socket.remoteAddress || 'local'}`;
+}
+
+function pruneConfirmationTokens() {
+  const now = Date.now();
+  for (const [token, record] of confirmationTokens.entries()) {
+    if (record.used || record.expires_at <= now) {
+      confirmationTokens.delete(token);
+    }
+  }
+}
+
+function issueConfirmationToken(req, config, actionId, body) {
+  pruneConfirmationTokens();
+  const token = randomUUID();
+  confirmationTokens.set(token, {
+    action_id: actionId,
+    params_hash: bodyHash(body),
+    session_key: sessionKey(req, config),
+    expires_at: Date.now() + CONFIRM_TTL_MS,
+    used: false
+  });
+  return token;
+}
+
+function consumeConfirmationToken(req, config, actionId, body) {
+  pruneConfirmationTokens();
+  const token = String(req.headers['x-eulerpilot-confirm-token'] || body.confirm_token || '');
+  const record = confirmationTokens.get(token);
+  if (!record || record.used) return false;
+  if (record.expires_at <= Date.now()) return false;
+  if (record.action_id !== actionId) return false;
+  if (record.params_hash !== bodyHash(body)) return false;
+  if (record.session_key !== sessionKey(req, config)) return false;
+  record.used = true;
+  confirmationTokens.delete(token);
+  return true;
+}
+
+function requestHasValidContentType(req) {
+  if (req.method !== 'POST' && req.method !== 'PUT' && req.method !== 'PATCH') return true;
+  const length = Number(req.headers['content-length'] || '0');
+  if (length === 0) return true;
+  const contentType = String(req.headers['content-type'] || '').toLowerCase();
+  return contentType.startsWith('application/json');
+}
+
+function originAllowed(req, config) {
+  const origin = req.headers.origin;
+  if (!origin) return true;
+  try {
+    const parsed = new URL(origin);
+    const allowed = new Set([
+      `http://${config.host}:${config.port}`,
+      `http://127.0.0.1:${config.port}`,
+      `http://localhost:${config.port}`
+    ]);
+    return allowed.has(`${parsed.protocol}//${parsed.host}`);
+  } catch {
+    return false;
+  }
+}
+
+function fetchMetadataAllowed(req) {
+  const site = req.headers['sec-fetch-site'];
+  if (!site) return true;
+  return site === 'same-origin' || site === 'same-site' || site === 'none';
 }
 
 function readJsonBody(req) {
@@ -63,10 +158,9 @@ function readJsonBody(req) {
   });
 }
 
-function hasActionConfirmation(req, action, body) {
+function hasActionConfirmation(req, config, action, body) {
   if (!action.requires_confirm) return true;
-  const header = req.headers['x-eulerpilot-confirm-action'] || req.headers['x-eulerpilot-confirm'];
-  return header === action.id || body.confirm_action_id === action.id;
+  return consumeConfirmationToken(req, config, action.id, body);
 }
 
 function serveFile(res, filePath, contentType) {
@@ -123,6 +217,14 @@ async function routeApi(req, res, config, actions, jobs, url) {
     json(res, 401, { error: 'unauthorized' });
     return;
   }
+  if (!originAllowed(req, config) || !fetchMetadataAllowed(req)) {
+    json(res, 403, { error: 'forbidden_origin' });
+    return;
+  }
+  if (!requestHasValidContentType(req)) {
+    json(res, 415, { error: 'unsupported_media_type' });
+    return;
+  }
 
   try {
     if (req.method === 'GET' && url.pathname === '/api/health') {
@@ -170,10 +272,13 @@ async function routeApi(req, res, config, actions, jobs, url) {
         return;
       }
       const body = await readJsonBody(req);
-      if (!hasActionConfirmation(req, action, body)) {
+      if (!hasActionConfirmation(req, config, action, body)) {
+        const token = issueConfirmationToken(req, config, action.id, body);
         json(res, 428, {
           error: 'confirmation_required',
           action_id: action.id,
+          confirmation_token: token,
+          expires_in_ms: CONFIRM_TTL_MS,
           safe_description: action.safe_description,
           risk_description: action.risk_description
         });
@@ -200,6 +305,19 @@ async function routeApi(req, res, config, actions, jobs, url) {
 
     const cancelMatch = url.pathname.match(/^\/api\/jobs\/([a-z0-9_-]+)\/cancel$/);
     if (req.method === 'POST' && cancelMatch) {
+      const body = await readJsonBody(req);
+      if (!consumeConfirmationToken(req, config, `cancel:${cancelMatch[1]}`, body)) {
+        const token = issueConfirmationToken(req, config, `cancel:${cancelMatch[1]}`, body);
+        json(res, 428, {
+          error: 'confirmation_required',
+          action_id: `cancel:${cancelMatch[1]}`,
+          confirmation_token: token,
+          expires_in_ms: CONFIRM_TTL_MS,
+          safe_description: '取消正在运行的 Web Console job。',
+          risk_description: '会向该 job 的进程组发送终止信号。'
+        });
+        return;
+      }
       json(res, 200, { job: jobs.cancel(cancelMatch[1]) });
       return;
     }
