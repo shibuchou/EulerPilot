@@ -33,6 +33,9 @@ jobs:
       - name: Build agent
         run: make agent
 
+      - name: Build observer helper
+        run: make observer
+
       - name: Build eBPF extension objects
         run: make network-policy network-qos-tc network-xdp security-policy
 
@@ -41,6 +44,9 @@ jobs:
 
       - name: Validate policy engine config
         run: ./build/eulerpilot-agent --validate-config configs/policy_engine_security_network_resource.yaml
+
+      - name: Run config schema semantic checks
+        run: tests/integration/test_config_validation.sh
 
       - name: Check shell script syntax
         run: find scripts tests bench demo -type f -name '*.sh' -print0 | xargs -0 -r bash -n
