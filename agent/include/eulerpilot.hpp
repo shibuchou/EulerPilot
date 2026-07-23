@@ -43,6 +43,7 @@ struct RuntimeConfig {
     bool backend_cli_set = false;
     bool list_skills_only = false;
     bool doctor_skills_only = false;
+    bool doctor_safe_only = false;
     bool validate_config_only = false;
     bool status_only = false;
     bool strict = false;

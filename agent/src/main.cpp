@@ -123,6 +123,8 @@ void print_doctor_json(const eulerpilot::RuntimeConfig &config,
                        const std::vector<eulerpilot::SkillSnapshot> &snapshots,
                        int exit_code) {
     std::cout << "{\"strict\":" << (config.strict ? "true" : "false")
+              << ",\"doctor_mode\":\""
+              << (config.doctor_safe_only ? "safe" : "live-probe") << "\""
               << ",\"exit_code\":" << exit_code
               << ",\"backend\":\"" << escape_json(eulerpilot::to_string(config.preferred_backend)) << "\""
               << ",\"capabilities\":{";
@@ -374,18 +376,26 @@ int main(int argc, char **argv) {
             return 0;
         }
 
-        if (config.doctor_skills_only) {
+        if (config.doctor_safe_only || config.doctor_skills_only) {
             eulerpilot::SkillManager manager;
             if (!manager.load_from_yaml(config, registry)) {
                 std::cerr << "EulerPilot error: " << manager.last_error() << "\n";
                 return 1;
             }
             auto capabilities = eulerpilot::detect_capabilities();
-            int exit_code = manager.doctor_enabled_skills();
+            int exit_code = 0;
+            if (config.doctor_skills_only) {
+                exit_code = manager.doctor_enabled_skills();
+            }
             if (config.jsonl) {
                 print_doctor_json(config, capabilities, manager.snapshots(), exit_code);
                 return exit_code;
             }
+            std::cout << "\n" << clr::yellow_() << clr::b()
+                      << "  Doctor mode: "
+                      << (config.doctor_safe_only ? "safe (no BPF/TC/XDP/LSM probe)"
+                                                  : "live-probe (may load short-lived probes)")
+                      << clr::r() << "\n";
             std::cout << "\n" << clr::cyan_() << clr::b() << "  Capability Detector" << clr::r() << "\n"
                       << clr::dim_() << "  " << bar() << clr::r() << "\n";
             for (const auto &probe : capabilities.probes) {
@@ -400,13 +410,15 @@ int main(int argc, char **argv) {
             std::cout << "\n" << clr::cyan_() << clr::b() << "  Skills Doctor" << clr::r() << "\n"
                       << clr::dim_() << "  " << bar() << clr::r() << "\n";
             for (const auto &snapshot : manager.snapshots()) {
-                const char *sc = snapshot.available ? clr::green_() : clr::red_();
-                const char *si = snapshot.available ? "+" : "x";
+                const bool safe_skip = config.doctor_safe_only;
+                const char *sc = safe_skip ? clr::yellow_()
+                                           : (snapshot.available ? clr::green_() : clr::red_());
+                const char *si = safe_skip ? "!" : (snapshot.available ? "+" : "x");
                 std::cout << "  " << sc << si << clr::r() << " "
                           << clr::b() << std::left << std::setw(22) << snapshot.skill_name << clr::r()
-                          << " " << snapshot.state;
+                          << " " << (safe_skip ? "safe-not-probed" : snapshot.state);
                 auto reason = snapshot.evidence.find("reason");
-                if (reason != snapshot.evidence.end() && reason->second != "ok") {
+                if (!safe_skip && reason != snapshot.evidence.end() && reason->second != "ok") {
                     std::cout << " " << clr::red_() << "[" << reason->second << "]" << clr::r();
                 }
                 std::cout << "\n";

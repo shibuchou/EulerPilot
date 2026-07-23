@@ -66,16 +66,16 @@ actions:
 
   doctor_skills:
     id: doctor_skills
-    title: Skill 诊断
+    title: Skill 安全诊断
     kind: verify
-    command: ["build/eulerpilot-agent", "--doctor-skills", "--config", "configs/agent.yaml"]
+    command: ["build/eulerpilot-agent", "--doctor-safe", "--config", "configs/agent.yaml"]
     timeout_seconds: 45
     max_output_bytes: 1048576
     requires_confirm: false
     cleanup_action: ""
     parse_json: false
-    safe_description: "执行 Skill doctor 与能力探测，用于展示当前环境支持情况。"
-    risk_description: "不创建 lab cgroup/veth/qdisc。"
+    safe_description: "执行 safe doctor，只读取配置、依赖、权限和 capability，不加载 BPF/TC/XDP/LSM 探针。"
+    risk_description: "不启动 Agent，不创建 lab cgroup/veth/qdisc；Skill 行会显示 safe-not-probed。"
 
   demo_offline:
     id: demo_offline

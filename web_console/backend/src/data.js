@@ -134,7 +134,7 @@ export async function getAgentSkills(rootDir) {
 }
 
 export async function getAgentDoctor(rootDir) {
-  const result = await runQuick(rootDir, ['build/eulerpilot-agent', '--doctor-skills', '--config', 'configs/agent.yaml'], 30000);
+  const result = await runQuick(rootDir, ['build/eulerpilot-agent', '--doctor-safe', '--config', 'configs/agent.yaml'], 30000);
   return {
     ok: result.ok,
     raw: result.stdout || result.stderr
