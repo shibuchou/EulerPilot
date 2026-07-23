@@ -1,6 +1,9 @@
 #include "common.hpp"
 #include "factories.hpp"
 
+#include <functional>
+#include <unordered_set>
+
 namespace eulerpilot {
 namespace {
 // One PolicyEngineAction is a single whitelisted side effect. The engine keeps
@@ -421,6 +424,23 @@ private:
         return line.substr(value_start, value_end - value_start);
     }
 
+    std::string request_id_for_source(const std::string &source_line) const {
+        const std::string event_id = extract_json_string(source_line, "event_id");
+        if (!event_id.empty()) {
+            return event_id;
+        }
+        return "source-hash-" + std::to_string(std::hash<std::string>{}(source_line));
+    }
+
+    std::string desired_state_key(const PolicyEngineAction &action) const {
+        const std::string target_identity = action.resolved_target_type == "netdev"
+            ? action.target_ifname
+            : action.target_path;
+        return policy_id_ + "|" + action.resolved_target_type + "|" +
+               target_identity + "|" + action.file + "|" + action.value + "|" +
+               action.burst + "|" + action.latency;
+    }
+
     void event_loop() {
         while (!event_thread_stop_.load()) {
             std::error_code ec;
@@ -586,6 +606,10 @@ private:
             last_error_ = "policy-engine-netdev-missing-at-apply:" + action.target_ifname;
             return "failed";
         }
+        if (tc_has_existing_root_qdisc(action.target_ifname)) {
+            last_error_ = "policy-engine-existing-root-qdisc-denied:" + action.target_ifname;
+            return "failed";
+        }
         const std::string command = "tc qdisc replace dev " + action.target_ifname +
                                     " root tbf rate " + action.value +
                                     " burst " + action.burst +
@@ -604,7 +628,10 @@ private:
     }
 
     void apply_actions(const std::string &source_line) {
-        if (applied_once_.exchange(true)) {
+        const std::string request_id = request_id_for_source(source_line);
+        if (successful_request_ids_.find(request_id) != successful_request_ids_.end()) {
+            write_policy_event("decision", policy_id_, "deduplicated", source_line,
+                               last_transaction_id_, last_trigger_event_id_, nullptr);
             return;
         }
         // The transaction id is written to Policy Engine, child Skill audit
@@ -619,8 +646,13 @@ private:
                            transaction_id, trigger_event_id, nullptr);
 
         for (auto &action : actions_) {
-            const std::string result =
-                apply_action(action, transaction_id, trigger_event_id, source_line);
+            std::string result;
+            const std::string desired_key = desired_state_key(action);
+            if (effective_desired_states_.find(desired_key) != effective_desired_states_.end()) {
+                result = "converged";
+            } else {
+                result = apply_action(action, transaction_id, trigger_event_id, source_line);
+            }
             write_policy_event("apply", action.name, result, source_line,
                                transaction_id, trigger_event_id, &action);
             write_skill_action_event(action, "apply", result, transaction_id,
@@ -629,12 +661,16 @@ private:
                 write_policy_journal(action, "apply", false,
                                      transaction_id, trigger_event_id);
             }
+            if (result == "applied" || result == "converged") {
+                effective_desired_states_.insert(desired_key);
+            }
             if (result == "failed") {
                 restore_actions(transaction_id, trigger_event_id);
                 state_ = "failed";
                 return;
             }
         }
+        successful_request_ids_.insert(request_id);
         state_ = "applied";
     }
 
@@ -656,6 +692,7 @@ private:
                 restored = run_tc_command("tc qdisc del dev " + action.target_ifname + " root");
             }
             if (restored) {
+                effective_desired_states_.erase(desired_state_key(action));
                 write_policy_event("rollback", action.name, "restored", "",
                                    transaction_id, trigger_event_id, &action);
                 write_skill_action_event(action, "rollback", "restored",
@@ -686,6 +723,9 @@ private:
         }
         if (result == "failed") {
             return "failed";
+        }
+        if (result == "converged" || result == "deduplicated") {
+            return "no-op";
         }
         return result;
     }
@@ -879,12 +919,13 @@ private:
     std::uint32_t poll_interval_ms_ = 100;
     std::vector<PolicyEngineAction> actions_;
     std::atomic<bool> event_thread_stop_{false};
-    std::atomic<bool> applied_once_{false};
     std::atomic<std::uint64_t> trigger_count_{0};
     std::thread event_thread_;
     std::uint64_t source_offset_ = 0;
     std::string last_transaction_id_;
     std::string last_trigger_event_id_;
+    std::unordered_set<std::string> successful_request_ids_;
+    std::unordered_set<std::string> effective_desired_states_;
 };
 
 } // namespace
