@@ -35,6 +35,7 @@
 #include <map>
 #include <net/if.h>
 #include <netinet/in.h>
+#include <sstream>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <string>
@@ -848,13 +849,41 @@ bool is_lab_netdev_name(const std::string &ifname) {
 
 bool is_denied_host_netdev_name(const std::string &ifname) {
     return has_prefix(ifname, "eth") || has_prefix(ifname, "ens") ||
-           has_prefix(ifname, "eno") || has_prefix(ifname, "wlan") ||
+           has_prefix(ifname, "eno") || has_prefix(ifname, "enp") ||
+           has_prefix(ifname, "wlan") ||
            has_prefix(ifname, "bond") || has_prefix(ifname, "br") ||
            has_prefix(ifname, "cni") || has_prefix(ifname, "flannel");
 }
 
+std::string default_route_ifname() {
+    std::ifstream route("/proc/net/route");
+    std::string line;
+    std::getline(route, line);
+    while (std::getline(route, line)) {
+        std::istringstream in(line);
+        std::string iface;
+        std::string destination;
+        std::string gateway;
+        std::string flags;
+        if (!(in >> iface >> destination >> gateway >> flags)) {
+            continue;
+        }
+        if (destination == "00000000") {
+            return iface;
+        }
+    }
+    return {};
+}
+
+bool is_default_route_netdev_name(const std::string &ifname) {
+    const std::string route_ifname = default_route_ifname();
+    return !route_ifname.empty() && ifname == route_ifname;
+}
+
 bool is_allowed_lab_netdev_name(const std::string &ifname) {
-    return is_lab_netdev_name(ifname) && !is_denied_host_netdev_name(ifname);
+    return is_lab_netdev_name(ifname) &&
+           !is_denied_host_netdev_name(ifname) &&
+           !is_default_route_netdev_name(ifname);
 }
 
 bool command_available(const char *command) {
@@ -864,6 +893,37 @@ bool command_available(const char *command) {
 
 bool run_tc_command(const std::string &command) {
     return std::system((command + " >/dev/null 2>&1").c_str()) == 0;
+}
+
+std::string read_shell_command_output(const std::string &command) {
+    std::string output;
+    FILE *pipe = popen((command + " 2>/dev/null").c_str(), "r");
+    if (!pipe) {
+        return output;
+    }
+    char buffer[256] = {};
+    while (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
+        output += buffer;
+    }
+    pclose(pipe);
+    return output;
+}
+
+bool tc_has_existing_root_qdisc(const std::string &ifname) {
+    const std::string output = read_shell_command_output("tc qdisc show dev " + ifname);
+    std::istringstream lines(output);
+    std::string line;
+    while (std::getline(lines, line)) {
+        if (line.find("qdisc ") == std::string::npos) {
+            continue;
+        }
+        if (line.find("qdisc noqueue") != std::string::npos ||
+            line.find("qdisc clsact") != std::string::npos) {
+            continue;
+        }
+        return true;
+    }
+    return false;
 }
 
 std::uint8_t protocol_id(const std::string &protocol) {

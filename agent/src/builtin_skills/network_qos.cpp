@@ -147,6 +147,10 @@ public:
             last_error_ = "tc-ifindex-resolve-failed";
             return false;
         }
+        if (tc_has_existing_root_qdisc(ifname_)) {
+            last_error_ = "tc-existing-root-qdisc-denied";
+            return false;
+        }
 
         const std::string object_path = eulerpilot_bpf_object_path("network_qos_tc.bpf.o");
         bpf_object_ = bpf_object__open_file(object_path.c_str(), nullptr);
@@ -181,12 +185,13 @@ public:
             last_error_ = "tc-hook-create-failed";
             return false;
         }
-        tc_hook_created_ = true;
+        tc_hook_created_ = err == 0;
+        tc_hook_preexisting_ = err == -EEXIST;
 
         tc_opts_ = {};
         tc_opts_.sz = sizeof(tc_opts_);
         tc_opts_.prog_fd = bpf_program__fd(prog);
-        tc_opts_.flags = BPF_TC_F_REPLACE;
+        tc_opts_.flags = 0;
         tc_opts_.handle = 1;
         tc_opts_.priority = 1;
         if (bpf_tc_attach(&tc_hook_, &tc_opts_) != 0) {
@@ -221,6 +226,8 @@ public:
         snapshot.evidence["ifindex"] = std::to_string(ifindex_);
         snapshot.evidence["target_ref"] = target_ref_;
         snapshot.evidence["target_type"] = target_type_;
+        snapshot.evidence["tc_hook_created"] = tc_hook_created_ ? "true" : "false";
+        snapshot.evidence["tc_hook_preexisting"] = tc_hook_preexisting_ ? "true" : "false";
         snapshot.evidence["rule_id"] = rule_id_;
         snapshot.evidence["protocol"] = protocol_;
         snapshot.evidence["dst_port"] = dst_port_;
@@ -250,9 +257,9 @@ public:
         }
         if (tc_hook_created_) {
             bpf_tc_hook_destroy(&tc_hook_);
-            run_tc_command("tc qdisc del dev " + ifname_ + " clsact");
             tc_hook_created_ = false;
         }
+        tc_hook_preexisting_ = false;
         if (bpf_object_) {
             bpf_object__close(bpf_object_);
             bpf_object_ = nullptr;
@@ -355,6 +362,8 @@ private:
             {"ifindex", std::to_string(ifindex_)},
             {"target_ref", target_ref_},
             {"target_type", target_type_},
+            {"tc_hook_created", tc_hook_created_ ? "true" : "false"},
+            {"tc_hook_preexisting", tc_hook_preexisting_ ? "true" : "false"},
         };
         event.operation = operation;
         event.evidence = {
@@ -399,6 +408,8 @@ private:
         entry.handles = {
             {"ifname", ifname_},
             {"tc_hook", handle},
+            {"tc_filter_handle", std::to_string(tc_opts_.handle)},
+            {"tc_filter_priority", std::to_string(tc_opts_.priority)},
             {"qdisc", "tbf"},
         };
         entry.restored = operation == "rollback";
@@ -409,6 +420,7 @@ private:
     bool available_ = false;
     bool running_ = false;
     bool tc_hook_created_ = false;
+    bool tc_hook_preexisting_ = false;
     bool tc_attached_ = false;
     bool tbf_attached_ = false;
     std::string state_ = "created";

@@ -51,6 +51,7 @@ public:
             if (ifname_.empty()) {
                 ifname_ = ifname;
                 target_ref_ = rule.target_ref;
+                target_type_ = config_value_or(spec, target_prefix + "type", "netdev");
             } else if (ifname_ != ifname) {
                 last_error_ = "network-xdp-multiple-ifnames-unsupported";
                 return false;
@@ -90,6 +91,7 @@ public:
             rule.dst_ip = config_value_or(spec, "dst_ip", "");
             rule.src_port = config_value_or(spec, "src_port", "0");
             target_ref_ = config_value_or(spec, "target_ref", "legacy_netdev");
+            target_type_ = "netdev";
             rule.target_ref = target_ref_;
             rule.rule_id = "xdp-" + rule.action + "-" + rule.protocol + "-" + ifname_;
             if (!parse_and_add_rule(rule)) {
@@ -108,6 +110,15 @@ public:
         }
         if (!valid_tc_token(ifname_)) {
             last_error_ = "invalid-ifname";
+            return false;
+        }
+        const bool resolved_lab_runtime_veth =
+            (target_type_ == "k8s_pod" || target_type_ == "pod" ||
+             target_type_ == "container_id" || target_type_ == "container") &&
+            !is_denied_host_netdev_name(ifname_) &&
+            !is_default_route_netdev_name(ifname_);
+        if (!is_allowed_lab_netdev_name(ifname_) && !resolved_lab_runtime_veth) {
+            last_error_ = "network-xdp-non-lab-netdev-denied:" + ifname_;
             return false;
         }
         if (rules_.empty()) {
@@ -205,10 +216,22 @@ public:
             return false;
         }
 
+        has_xdp_prog_before_ = query_current_xdp_prog_id(xdp_prog_id_before_);
+        if (!read_program_id(prog, attached_prog_id_)) {
+            rollback();
+            last_error_ = "xdp-program-id-unavailable";
+            return false;
+        }
         const std::uint32_t flags = XDP_FLAGS_SKB_MODE | XDP_FLAGS_UPDATE_IF_NOEXIST;
         if (bpf_xdp_attach(ifindex_, bpf_program__fd(prog), flags, nullptr) != 0) {
             rollback();
             last_error_ = "xdp-attach-failed";
+            return false;
+        }
+        std::uint32_t current_prog_id = 0;
+        if (!query_current_xdp_prog_id(current_prog_id) || current_prog_id != attached_prog_id_) {
+            rollback();
+            last_error_ = "xdp-attach-ownership-verify-failed";
             return false;
         }
         xdp_attached_ = true;
@@ -230,6 +253,9 @@ public:
         snapshot.evidence["ifname"] = ifname_;
         snapshot.evidence["ifindex"] = std::to_string(ifindex_);
         snapshot.evidence["target_ref"] = target_ref_;
+        snapshot.evidence["target_type"] = target_type_;
+        snapshot.evidence["xdp_prog_id_before"] = std::to_string(xdp_prog_id_before_);
+        snapshot.evidence["attached_prog_id"] = std::to_string(attached_prog_id_);
         snapshot.evidence["rule_ids"] = rule_ids_;
         snapshot.evidence["rule_count"] = std::to_string(rules_.size());
         const auto stats = read_xdp_stats();
@@ -243,13 +269,27 @@ public:
 
     bool rollback() override {
         update_cached_stats();
+        if (xdp_attached_) {
+            std::uint32_t current_prog_id = 0;
+            if (query_current_xdp_prog_id(current_prog_id) &&
+                current_prog_id != 0 &&
+                attached_prog_id_ != 0 &&
+                current_prog_id != attached_prog_id_) {
+                last_error_ = "xdp-ownership-mismatch";
+                state_ = "rollback-refused";
+                running_ = false;
+                if (bpf_object_) {
+                    bpf_object__close(bpf_object_);
+                    bpf_object_ = nullptr;
+                }
+                return false;
+            }
+            bpf_xdp_detach(ifindex_, XDP_FLAGS_SKB_MODE, nullptr);
+            xdp_attached_ = false;
+        }
         if (running_) {
             write_audit_event("rollback", "detach-xdp-generic", "success");
             write_journal_action("rollback", "detach-xdp-generic", ifname_);
-        }
-        if (xdp_attached_) {
-            bpf_xdp_detach(ifindex_, XDP_FLAGS_SKB_MODE, nullptr);
-            xdp_attached_ = false;
         }
         if (bpf_object_) {
             bpf_object__close(bpf_object_);
@@ -276,6 +316,20 @@ public:
     std::string last_error() const override { return last_error_; }
 
 private:
+    bool query_current_xdp_prog_id(std::uint32_t &prog_id) const {
+        prog_id = 0;
+        return bpf_xdp_query_id(ifindex_, XDP_FLAGS_SKB_MODE, &prog_id) == 0;
+    }
+
+    bool read_program_id(bpf_program *prog, std::uint32_t &prog_id) const {
+        prog_id = 0;
+        struct bpf_prog_info info {};
+        std::uint32_t info_len = sizeof(info);
+        return bpf_obj_get_info_by_fd(bpf_program__fd(prog), &info, &info_len) == 0 &&
+               info.id != 0 &&
+               (prog_id = info.id) != 0;
+    }
+
     bool parse_and_add_rule(NetworkXdpRule &rule) {
         if (rule.protocol != "any" && rule.protocol != "tcp" &&
             rule.protocol != "udp" && rule.protocol != "icmp") {
@@ -467,12 +521,15 @@ private:
             {"ifname", ifname_},
             {"ifindex", std::to_string(ifindex_)},
             {"target_ref", target_ref_},
+            {"target_type", target_type_},
         };
         event.operation = operation;
         event.evidence = {
             {"hook", hook_},
             {"rule_count", std::to_string(rules_.size())},
             {"rule_ids", rule_ids_},
+            {"xdp_prog_id_before", std::to_string(xdp_prog_id_before_)},
+            {"attached_prog_id", std::to_string(attached_prog_id_)},
             {"pass_count", std::to_string(pass_count_)},
             {"drop_count", std::to_string(drop_count_)},
             {"byte_count", std::to_string(byte_count_)},
@@ -500,6 +557,7 @@ private:
             {"mode", mode_},
             {"hook", hook_},
             {"target_ref", target_ref_},
+            {"target_type", target_type_},
             {"rule_ids", rule_ids_},
             {"rule_count", std::to_string(rules_.size())},
             {"action", action},
@@ -523,12 +581,16 @@ private:
     std::string mode_ = "audit";
     std::string ifname_ = "ep-veth-xdp0";
     std::string target_ref_ = "legacy_netdev";
+    std::string target_type_ = "netdev";
     std::string rule_ids_ = "xdp-drop-icmp-lab";
     std::vector<NetworkXdpRule> rules_;
     std::uint64_t pass_count_ = 0;
     std::uint64_t drop_count_ = 0;
     std::uint64_t byte_count_ = 0;
     int ifindex_ = 0;
+    bool has_xdp_prog_before_ = false;
+    std::uint32_t xdp_prog_id_before_ = 0;
+    std::uint32_t attached_prog_id_ = 0;
     bpf_object *bpf_object_ = nullptr;
 };
 
