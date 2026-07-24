@@ -298,7 +298,6 @@ register_builtin_skills(registry)
 
 ```text
 EulerPilot/
-  AGENTS.md
   README.md
   Makefile
   configs/

@@ -1,6 +1,6 @@
 # EulerPilot 最终证据压缩报告
 
-生成时间：`2026-07-24T14:31:00+08:00`
+生成时间：`2026-07-24T15:44:52+08:00`
 清单：`configs/final_evidence_manifest.json`
 
 本报告由 `scripts/collect_final_evidence.py` 根据白名单清单生成，用于把分散的双机结果压缩成答辩入口。它不会递归扫描全部 `results/`，缺失项会显式列出。
@@ -12,7 +12,7 @@
 | 清单条目 | 41 |
 | 必需缺失 | 0 |
 | 带警告条目 | 0 |
-| Git 工作区额外状态 | 18 |
+| Git 工作区额外状态 | 0 |
 
 ## quality_gate
 
@@ -99,27 +99,6 @@
 | 状态 | 主机 | 名称 | 路径 | 摘要 |
 | --- | --- | --- | --- | --- |
 | present | 123 | SP4 Web Console whitelist actions | `results/k8s/sp4-validation-20260708-023552/web_console` | [ / { / "action": "status_json", |
-
-## 生成时 Git 工作区状态
-
-- ` M README.md`
-- ` M configs/final_evidence_manifest.json`
-- ` M docs/demo_final_runbook.md`
-- ` M docs/final_evidence_index.md`
-- ` M docs/final_report_submission.md`
-- ` M docs/final_results_summary.md`
-- ` M docs/progress_status.md`
-- ` M docs/submission_checklist.md`
-- ` M docs/web_console_design.md`
-- `?? results/final/agent-overhead-20260724-tested-2541464-runs10/`
-- `?? results/final/formal_batch_2_summary_20260724_tested_2541464.md`
-- `?? results/final/formal_run_manifest_20260724_tested_2541464.json`
-- `?? results/final/mixed-adaptive-20260724-tested-2541464-runs10-lite/`
-- `?? results/final/nginx-scx-compare-20260724-tested-2541464-runs10/`
-- `?? results/final/redis-pressure-gradient-20260724-tested-2541464-runs3/`
-- `?? results/final/redis-scx-compare-20260724-tested-2541464-runs10/`
-- `?? results/final/redis-static-vs-agent-20260724-tested-2541464-runs10/`
-- `?? results/final/throughput-first-20260724-tested-2541464-runs10/`
 
 ## 使用方式
 

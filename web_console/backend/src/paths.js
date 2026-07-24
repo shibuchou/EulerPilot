@@ -15,7 +15,11 @@ export function resolveConsoleConfig() {
   if (!samePath(cwd, rootDir)) {
     throw new Error(`Web Console must start from repository root. cwd=${cwd} root=${rootDir}`);
   }
-  if (!fs.existsSync(path.join(rootDir, 'AGENTS.md')) || !fs.existsSync(path.join(rootDir, 'web_console'))) {
+  if (
+    !fs.existsSync(path.join(rootDir, 'README.md')) ||
+    !fs.existsSync(path.join(rootDir, 'Makefile')) ||
+    !fs.existsSync(path.join(rootDir, 'web_console'))
+  ) {
     throw new Error(`Web Console root does not look like EulerPilot: ${rootDir}`);
   }
 

@@ -1,27 +1,8 @@
 {
-  "generated_at": "2026-07-24T14:31:00+08:00",
+  "generated_at": "2026-07-24T15:44:52+08:00",
   "manifest_path": "configs/final_evidence_manifest.json",
   "manifest_title": "EulerPilot final evidence manifest",
-  "git_status_short": [
-    " M README.md",
-    " M configs/final_evidence_manifest.json",
-    " M docs/demo_final_runbook.md",
-    " M docs/final_evidence_index.md",
-    " M docs/final_report_submission.md",
-    " M docs/final_results_summary.md",
-    " M docs/progress_status.md",
-    " M docs/submission_checklist.md",
-    " M docs/web_console_design.md",
-    "?? results/final/agent-overhead-20260724-tested-2541464-runs10/",
-    "?? results/final/formal_batch_2_summary_20260724_tested_2541464.md",
-    "?? results/final/formal_run_manifest_20260724_tested_2541464.json",
-    "?? results/final/mixed-adaptive-20260724-tested-2541464-runs10-lite/",
-    "?? results/final/nginx-scx-compare-20260724-tested-2541464-runs10/",
-    "?? results/final/redis-pressure-gradient-20260724-tested-2541464-runs3/",
-    "?? results/final/redis-scx-compare-20260724-tested-2541464-runs10/",
-    "?? results/final/redis-static-vs-agent-20260724-tested-2541464-runs10/",
-    "?? results/final/throughput-first-20260724-tested-2541464-runs10/"
-  ],
+  "git_status_short": [],
   "entries": [
     {
       "category": "quality_gate",
@@ -227,7 +208,7 @@
         {
           "path": "results/final/redis-scx-compare-20260724-tested-2541464-runs10/compare_summary_avg.csv",
           "exists": true,
-          "bytes": 2557
+          "bytes": 2552
         },
         {
           "path": "results/final/redis-scx-compare-20260724-tested-2541464-runs10/run_manifest.json",
@@ -265,7 +246,7 @@
         {
           "path": "results/final/nginx-scx-compare-20260724-tested-2541464-runs10/compare_summary_avg.csv",
           "exists": true,
-          "bytes": 1582
+          "bytes": 1580
         },
         {
           "path": "results/final/nginx-scx-compare-20260724-tested-2541464-runs10/run_manifest.json",
@@ -297,7 +278,7 @@
         {
           "path": "results/final/redis-pressure-gradient-20260724-tested-2541464-runs3/pressure_gradient_summary.csv",
           "exists": true,
-          "bytes": 2639
+          "bytes": 2618
         },
         {
           "path": "results/final/redis-pressure-gradient-20260724-tested-2541464-runs3/report.md",
@@ -330,7 +311,7 @@
         {
           "path": "results/final/redis-static-vs-agent-20260724-tested-2541464-runs10/compare_summary_avg.csv",
           "exists": true,
-          "bytes": 1573
+          "bytes": 1568
         },
         {
           "path": "results/final/redis-static-vs-agent-20260724-tested-2541464-runs10/report.md",
@@ -401,12 +382,12 @@
         {
           "path": "results/final/throughput-first-20260724-tested-2541464-runs10/throughput_summary_avg.csv",
           "exists": true,
-          "bytes": 384
+          "bytes": 380
         },
         {
           "path": "results/final/throughput-first-20260724-tested-2541464-runs10/throughput_summary.csv",
           "exists": true,
-          "bytes": 2532
+          "bytes": 2501
         },
         {
           "path": "results/final/throughput-first-20260724-tested-2541464-runs10/run_manifest.json",
@@ -440,12 +421,12 @@
         {
           "path": "results/final/mixed-adaptive-20260724-tested-2541464-runs10-lite/mixed_adaptive_summary.csv",
           "exists": true,
-          "bytes": 288
+          "bytes": 284
         },
         {
           "path": "results/final/mixed-adaptive-20260724-tested-2541464-runs10-lite/mixed_adaptive_timeline.csv",
           "exists": true,
-          "bytes": 1570
+          "bytes": 1539
         },
         {
           "path": "results/final/mixed-adaptive-20260724-tested-2541464-runs10-lite/run_manifest.json",
@@ -479,12 +460,12 @@
         {
           "path": "results/final/agent-overhead-20260724-tested-2541464-runs10/agent_overhead_summary_avg.csv",
           "exists": true,
-          "bytes": 244
+          "bytes": 240
         },
         {
           "path": "results/final/agent-overhead-20260724-tested-2541464-runs10/agent_overhead_summary.csv",
           "exists": true,
-          "bytes": 2080
+          "bytes": 2049
         },
         {
           "path": "results/final/agent-overhead-20260724-tested-2541464-runs10/run_manifest.json",
