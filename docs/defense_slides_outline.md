@@ -1,6 +1,6 @@
 # EulerPilot 答辩页提纲
 
-更新时间：`2026-07-20`
+更新时间：`2026-07-24`
 
 ## 第 1 页：作品概述
 - 面向 openEuler 的自适应资源管控 Agent
@@ -46,12 +46,12 @@
 
 ## 第 7 页：Redis 正式结果
 引用：`results/final/redis-scx-compare-20260612-191543`
-SP4 复核：`results/final/redis-scx-compare-20260708-150702`
+SP4 复核：`results/final/redis-scx-compare-20260724-tested-2541464-runs10`
 图表：redis_sched_ext_rps / p99 / quiet_overhead
 
 ## 第 8 页：Nginx 正式结果
 引用：`results/final/nginx-scx-compare-20260612-194018`
-SP4 复核：`results/final/nginx-scx-compare-20260708-152602`
+SP4 复核：`results/final/nginx-scx-compare-20260724-tested-2541464-runs10`
 图表：nginx_sched_ext_rps / p99 / quiet_overhead
 
 ## 第 9 页：关键证据链
@@ -68,7 +68,7 @@ SP4 复核：`results/final/nginx-scx-compare-20260708-152602`
 
 ## 第 11 页：最终结论
 1. 发行内核 cgroup v2 稳定闭环可正式交付
-2. OLK-6.6 与 SP4 官方源码自编译 sched_ext 内核上完成 Redis/Nginx compare / RUNS=5 复核
+2. OLK-6.6 与 SP4 官方源码自编译 sched_ext 内核上完成 Redis/Nginx compare / RUNS=10 frozen-code 复核
 3. Skills 框架 + Network/Security/Resource/Policy Engine 证明 Agent 可扩展、可联动、可回滚
-4. 40 条 final evidence compact + Web Console + 最终质量门禁完成争奖证据收口
+4. 41 条 final evidence compact + Web Console + 最终质量门禁完成争奖证据收口
 

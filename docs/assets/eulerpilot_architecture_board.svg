@@ -123,7 +123,7 @@
 <text x="166" y="1134" font-size="22" font-weight="700" fill="#CA8A04" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">7. 证据与交付</text>
 <rect x="296.0" y="1108" width="424.0" height="86" rx="12" fill="#FFFFFF" stroke="#CA8A04" stroke-width="1.5"/>
 <text x="508.0" y="1138" font-size="17" font-weight="700" fill="#0F172A" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">Benchmark 结果</text>
-<text x="508.0" y="1166" font-size="13" font-weight="500" fill="#475569" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">Redis / Nginx RUNS=5、压力梯度、CPU</text>
+<text x="508.0" y="1166" font-size="13" font-weight="500" fill="#475569" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">Redis / Nginx RUNS=10、压力梯度、CPU</text>
 <text x="508.0" y="1183" font-size="13" font-weight="500" fill="#475569" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">效率</text>
 <rect x="738.0" y="1108" width="424.0" height="86" rx="12" fill="#FFFFFF" stroke="#CA8A04" stroke-width="1.5"/>
 <text x="950.0" y="1138" font-size="17" font-weight="700" fill="#0F172A" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, Arial">事件证据</text>

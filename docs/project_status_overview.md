@@ -1,8 +1,8 @@
 # EulerPilot 项目阶段总览
 
-更新时间：`2026-07-20`
+更新时间：`2026-07-24`
 
-> 本文是阶段总览归档，保留 6 月阶段路线和 RUNS=3 过程记录。当前最终交付口径已切换到 SP4/123 主验证线：Redis/Nginx `RUNS=5`、Redis pressure gradient、40 条 final evidence compact、22/22 P0 质量门禁和 Web Console/K8s 旁路验证。最新状态请以 `README.md`、`docs/progress_status.md` 和 `docs/final_evidence_index.md` 为准。
+> 本文是阶段总览归档，保留 6 月阶段路线和 RUNS=3 过程记录。当前最终交付口径已切换到 SP4/123 主验证线：Redis/Nginx `RUNS=10` frozen-code、Redis pressure gradient、41 条 final evidence compact、22/22 P0 质量门禁和 Web Console/K8s 旁路验证。最新状态请以 `README.md`、`docs/progress_status.md` 和 `docs/final_evidence_index.md` 为准。
 
 ## 1. 这是什么项目
 
@@ -759,7 +759,7 @@ Redis 相关脚本当前已经比较完善。
 如果让一个不熟悉项目的人快速理解当前状态，可以这样说：
 
 > EulerPilot 当前已经在 openEuler SP3 上完成了基于 eBPF 观测、用户态 Agent 分类和 cgroup v2 执行的完整主闭环，并已跑通 Redis 与 Nginx 两条实验线；与此同时，项目也在独立 `OLK-6.6` 验证环境上完成了 `sched_ext` 基础能力验证、`ScxExecutor` 第一版接入、`class_map -> scx_eulerpilot` 链路验证以及 Redis 正式多轮 compare。  
-> 也就是说，当前项目的主交付线已经可运行、可实验、可报告；`sched_ext` 增强线也已经形成 Redis 与 Nginx 两条业务线的正式候选结果目录，当前主要剩余工作已经收敛为最终报告、图表和答辩材料的整理，以及后续向 `openEuler 24.03-LTS-SP4` 的迁移收口。
+> 也就是说，当前项目的主交付线已经可运行、可实验、可报告；`sched_ext` 增强线也已经形成 Redis 与 Nginx 两条业务线的历史候选结果目录，当前主要剩余工作已经收敛为最终报告、图表和答辩材料的整理，以及后续向 `openEuler 24.03-LTS-SP4` 的迁移收口。
 
 ---
 

@@ -234,7 +234,7 @@ nodes:
       x: 1240
       'y': 392
   - id: evidence_benchmark
-    label: Redis / Nginx / Mixed Benchmark / RUNS=5 + CPU 效率
+    label: Redis / Nginx / Mixed Benchmark / RUNS=10 + CPU 效率
     type: document
     module: evidence
     position:

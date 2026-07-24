@@ -1,6 +1,6 @@
 # EulerPilot 最终答辩文档
 
-更新时间：`2026-07-20`
+更新时间：`2026-07-24`
 
 ---
 
@@ -69,7 +69,7 @@ Observer (eBPF + PSI)
 
 ### 4. 正式 compare 实验框架
 - 7 种后端组合矩阵
-- RUNS=5 多轮运行
+- RUNS=10 frozen-code 多轮运行
 - 平衡轮换顺序
 - `run_manifest.json` 记录实验上下文
 - `invalid_run` 机制
@@ -84,8 +84,8 @@ Observer (eBPF + PSI)
 | 项目 | 内容 |
 |------|------|
 | 候选目录 | `results/final/redis-scx-compare-20260612-191543` |
-| SP4 复核目录 | `results/final/redis-scx-compare-20260708-150702` |
-| 轮数 | RUNS=5 |
+| SP4 复核目录 | `results/final/redis-scx-compare-20260724-tested-2541464-runs10` |
+| 轮数 | RUNS=10 frozen-code |
 | 矩阵 | quiet_default / quiet_scx_normal / noisy_default / noisy_cgroup_v2 / noisy_scx_normal / noisy_scx_always_active / noisy_scx_psi |
 | 观察 | noisy_cgroup_v2 在 GET 上吞吐明显提升；noisy_scx_normal 在 GET/INCR/SET 上 RPS 改善 |
 | 图表 | redis_sched_ext_rps.svg / redis_sched_ext_p99.svg / redis_quiet_overhead.svg |
@@ -97,8 +97,8 @@ Observer (eBPF + PSI)
 | 项目 | 内容 |
 |------|------|
 | 候选目录 | `results/final/nginx-scx-compare-20260612-194018` |
-| SP4 复核目录 | `results/final/nginx-scx-compare-20260708-152602` |
-| 轮数 | RUNS=5 |
+| SP4 复核目录 | `results/final/nginx-scx-compare-20260724-tested-2541464-runs10` |
+| 轮数 | RUNS=10 frozen-code |
 | 矩阵 | 与 Redis 保持一致 |
 | 观察 | cgroup_v2 在 Nginx 场景下更稳；部分 sched_ext 模式存在明显 P99 代价 |
 | 图表 | nginx_sched_ext_rps.svg / nginx_sched_ext_p99.svg / nginx_quiet_overhead.svg |
@@ -186,7 +186,7 @@ cat demo/security_policy_demo/secret.txt  # -> Operation not permitted
 | 可视化 | `reports/dashboard/index.html` 静态 Dashboard + Agent `/metrics` 端点 + `web_console/` |
 | 图表 | `reports/final_figures/`（7 张 SVG） |
 | 实验结果 | `results/final/`、`results/network_policy/`、`results/security_policy/`、`results/resource_control/`、`results/policy_engine/` |
-| 证据压缩入口 | `configs/final_evidence_manifest.json`、`reports/final_evidence_compact.md/json`，40 条核心证据、必需缺失 0、警告 0 |
+| 证据压缩入口 | `configs/final_evidence_manifest.json`、`reports/final_evidence_compact.md/json`，41 条核心证据、必需缺失 0、警告 0 |
 | 代码仓库 | `https://github.com/shibuchou/EulerPilot` |
 
 ---
@@ -195,8 +195,8 @@ cat demo/security_policy_demo/secret.txt  # -> Operation not permitted
 
 **可以说的：**
 - 系统实现完成，双后端均可真实运行
-- Redis/Nginx 双业务线均有 RUNS=5 正式候选结果，SP4 上有 RUNS=5 复核结果
-- SP4 上补充 Redis pressure gradient 与修复后的 manual static vs agent dynamic RUNS=5 重跑，用于解释干扰强度变化、CPU 效率和动态调控价值边界
+- Redis/Nginx 双业务线保留 RUNS=5 历史候选结果；当前主结论以 SP4 RUNS=10 frozen-code 复核结果为准
+- SP4 上补充 Redis pressure gradient 与修复后的 manual static vs agent dynamic RUNS=10 frozen-code 重跑，用于解释干扰强度变化、CPU 效率和动态调控价值边界
 - Skills 框架可扩展，Network/Security/Resource/Policy Engine 证明 eBPF hook 与系统控制器可统一编排
 - 正式 compare 框架具备可复现性
 
@@ -209,7 +209,7 @@ cat demo/security_policy_demo/secret.txt  # -> Operation not permitted
 
 ## 十、最终结论
 
-> EulerPilot 已完成为一个面向 openEuler 的、可运行、可实验、可解释、可复现、可扩展的系统资源管控 Agent 工程闭环。项目同时覆盖了 resource control、network policy、security policy 三个 OS Agent 扩展方向，并通过 Policy Engine 跨 Skill 联动、SP4 发行环境适配、SP4 官方源码自编译 sched_ext 内核复核、Kubernetes 旁路验证、Web Console 和 40 条 final evidence compact 证明了新增 eBPF hook 与系统控制器可以在统一 Agent 框架下安全编排和回滚。
+> EulerPilot 已完成为一个面向 openEuler 的、可运行、可实验、可解释、可复现、可扩展的系统资源管控 Agent 工程闭环。项目同时覆盖了 resource control、network policy、security policy 三个 OS Agent 扩展方向，并通过 Policy Engine 跨 Skill 联动、SP4 发行环境适配、SP4 官方源码自编译 sched_ext 内核复核、Kubernetes 旁路验证、Web Console 和 41 条 final evidence compact 证明了新增 eBPF hook 与系统控制器可以在统一 Agent 框架下安全编排和回滚。
 
-**当前状态：最终收口修复中；static-vs-Agent 证据已用修复脚本 RUNS=5 重跑并恢复到最终提交清单。**
+**当前状态：最终收口修复中；static-vs-Agent 证据已用修复脚本 RUNS=10 frozen-code 重跑并恢复到最终提交清单。**
 

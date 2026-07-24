@@ -1,6 +1,6 @@
 # EulerPilot：面向 openEuler 的自适应资源管控 Agent
 
-> 说明：本文件保留为 `v2` 阶段版本。当前建议继续润色并作为最终提交主稿使用的文档为：
+> 说明：本文件保留为 `v2` 历史阶段版本，内部 RUNS=5 叙述仅代表旧阶段结果。当前最终提交主稿已经切换为：
 >
 > - `/root/EulerPilot/docs/final_report_submission.md`
 

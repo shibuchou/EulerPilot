@@ -1,6 +1,6 @@
 # EulerPilot 最终报告草稿
 
-> 说明：本文件保留为中间草稿版本。当前建议继续润色并作为最终提交主稿使用的文档为：
+> 说明：本文件保留为历史中间草稿版本，内部 RUNS=5 叙述仅代表旧阶段结果。当前最终提交主稿已经切换为：
 >
 > - `/root/EulerPilot/docs/final_report_submission.md`
 >

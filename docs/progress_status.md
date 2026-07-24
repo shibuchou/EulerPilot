@@ -1,8 +1,8 @@
 # EulerPilot 进度状态看板
 
-更新时间：`2026-07-20`
+更新时间：`2026-07-24`
 
-## SP4/Kubernetes 最新验证批次（2026-07-20）
+## SP4/Kubernetes 最新验证批次（2026-07-24）
 
 - 验证与交付基线已调整：`192.168.1.123:/root/EulerPilot` 的 openEuler 24.03 LTS SP4 仓库作为主验证和性能实验环境；`192.168.1.121:/root/EulerPilot` 是比赛要求的 SP3 强制兼容交付环境。
 - SP4 发行环境已完成适配验证；当前验证机运行基于 SP4 官方源码自编译启用 `CONFIG_SCHED_CLASS_EXT` 的 `6.6.0-159.4.3.154.oe2403sp4.x86_64-eulerpilot-scx` 内核，Web Console `/api/system` 显示 `cgroup_v2=true`、`psi=true`、`sched_ext=true`、`btf=true`。
@@ -67,7 +67,7 @@
 - SP4 平台复核已完成：123 机器 `/root/EulerPilot` 已启动自编译 `eulerpilot-scx` 内核，`CONFIG_SCHED_CLASS_EXT=y`、`/sys/kernel/sched_ext` 可用；Web Console、质量门禁、Redis/Nginx `RUNS=10` frozen-code 对照、Redis 压力梯度和静态/动态对比均通过。
 - Kubernetes/真实 runtime/真实 Pod veth 不作为 v3.1 完成条件，但保留为 v3.2 第一优先级。
 
-阶段归档更新时间：`2026-07-20`
+阶段归档更新时间：`2026-07-24`
 
 当前执行口径：SP4/123 是核心验证和最终交付验证线；v3.1/v3.2 计划文档作为历史阶段归档。最终状态以 `docs/final_evidence_index.md`、`docs/submission_checklist.md`、`reports/final_evidence_compact.md` 和本看板为准。
 

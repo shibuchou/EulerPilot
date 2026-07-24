@@ -1,6 +1,6 @@
 # openEuler 24.03 LTS SP4 验证计划
 
-更新时间：`2026-07-20`
+更新时间：`2026-07-24`
 
 SP4 已接入为 EulerPilot 后续完整能力验证平台。本文件记录 SP4 初始验证结果、sched_ext/scx 自编译内核验证结果和后续复核入口；121/122 的 SP3 双机结果仍作为既有稳定证据保留。
 
@@ -16,10 +16,10 @@ SP4 已接入为 EulerPilot 后续完整能力验证平台。本文件记录 SP4
 - cgroup v2：已挂载，controllers 包含 `cpu io memory`
 - PSI：`cpu/memory/io` 已可用
 - BTF / BPF LSM / TC / XDP / sched_ext：能力探测可用
-- Web Console：已通过 `npm ci/test/lint/build/audit`；Evidence 显示 40 条、必需缺失 0、警告 0
+- Web Console：已通过 `npm ci/test/lint/build/audit`；Evidence 显示 41 条、必需缺失 0、警告 0
 - 质量门禁：`scripts/final_quality_gate.sh` 已在 SP4 sched_ext 内核通过 22/22 P0、100 轮 smoke、5 轮 doctor；最新日志为 `results/k8s/sp4-validation-20260708-023552/final_quality_gate.log`
 - v3.1 主链路：`tests/integration/test_policy_engine_security_network_resource.sh --repeat 10` 已在 SP4 sched_ext 内核通过
-- sched_ext workload：Redis smoke、Redis PSI ACTIVE probe、Redis RUNS=5 sched_ext compare、Nginx RUNS=5 sched_ext compare、Redis pressure gradient 已通过；Redis static-vs-agent 已用修复脚本 RUNS=5 重跑
+- sched_ext workload：Redis smoke、Redis PSI ACTIVE probe、Redis RUNS=10 frozen-code sched_ext compare、Nginx RUNS=10 frozen-code sched_ext compare、Redis pressure gradient 已通过；Redis static-vs-agent 已用修复脚本 RUNS=10 frozen-code 重跑
 - Kubernetes 旁路验证：已通过 `k8s-master` 只读盘点、独立 namespace 最小写入、Web Console 白名单动作、cleanup 复查；结果目录为 `results/k8s/sp4-validation-20260708-023552`
 
 已保存的 SP4 初始验证与 sched_ext 复核证据：
@@ -40,8 +40,8 @@ results/reports/redis-scx-smoke-20260706-092724
 results/final/redis-scx-psi-probe-20260706-100857
 results/final/redis-scx-compare-20260706-101505
 results/final/nginx-scx-compare-20260706-101928
-results/final/redis-scx-compare-20260708-150702
-results/final/nginx-scx-compare-20260708-152602
+results/final/redis-scx-compare-20260724-tested-2541464-runs10
+results/final/nginx-scx-compare-20260724-tested-2541464-runs10
 results/k8s/sp4-validation-20260708-023552
 ```
 
@@ -139,8 +139,8 @@ sudo tests/integration/test_policy_engine_security_network_resource.sh
 sudo tests/integration/test_policy_engine_security_network_resource.sh --repeat 10
 sudo scripts/final_quality_gate.sh
 SCX_BIN=/usr/local/bin/scx_eulerpilot sudo bench/redis/run_redis_sched_ext_psi_probe.sh
-SCX_BIN=/usr/local/bin/scx_eulerpilot RUNS=5 sudo bench/redis/run_redis_sched_ext_compare.sh
-SCX_BIN=/usr/local/bin/scx_eulerpilot RUNS=5 sudo bench/nginx/run_nginx_sched_ext_compare.sh
+SCX_BIN=/usr/local/bin/scx_eulerpilot RUNS=10 sudo bench/redis/run_redis_sched_ext_compare.sh
+SCX_BIN=/usr/local/bin/scx_eulerpilot RUNS=10 sudo bench/nginx/run_nginx_sched_ext_compare.sh
 bash bench/redis/run_redis_pressure_gradient.sh
 bash bench/redis/run_static_vs_agent_compare.sh
 ```

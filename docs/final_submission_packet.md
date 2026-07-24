@@ -153,13 +153,17 @@ Redis 正式 compare 矩阵包括：
 - `noisy_scx_always_active`
 - `noisy_scx_psi`
 
-当前最强候选结果目录：
+历史候选结果目录：
 
 - `/root/EulerPilot/results/final/redis-scx-compare-20260612-191543`
 
+当前主交付结果目录：
+
+- `/root/EulerPilot/results/final/redis-scx-compare-20260724-tested-2541464-runs10`
+
 当前已满足：
 
-- `RUNS=5`
+- `RUNS=10 frozen-code`
 - 平衡轮换
 - `run_manifest.json`
 - 中文报告
@@ -169,13 +173,17 @@ Redis 正式 compare 矩阵包括：
 
 Nginx 正式 compare 矩阵与 Redis 保持一致。
 
-当前最强候选结果目录：
+历史候选结果目录：
 
 - `/root/EulerPilot/results/final/nginx-scx-compare-20260612-194018`
 
+当前主交付结果目录：
+
+- `/root/EulerPilot/results/final/nginx-scx-compare-20260724-tested-2541464-runs10`
+
 当前已满足：
 
-- `RUNS=5`
+- `RUNS=10 frozen-code`
 - 平衡轮换
 - `run_manifest.json`
 - 中文报告
@@ -253,8 +261,8 @@ Nginx 正式 compare 矩阵与 Redis 保持一致。
 
 - 统一 Agent 主体
 - 双执行后端
-- Redis `RUNS=5` 正式候选结果
-- Nginx `RUNS=5` 正式候选结果
+- Redis `RUNS=10 frozen-code` 正式结果，历史 `RUNS=5` 候选结果保留为对照
+- Nginx `RUNS=10 frozen-code` 正式结果，历史 `RUNS=5` 候选结果保留为对照
 - 中文结果摘要
 - 中文最终报告主稿
 - 图表材料

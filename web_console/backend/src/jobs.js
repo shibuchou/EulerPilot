@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { EventEmitter } from 'node:events';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { isMutatingAction } from './actions.js';
 
@@ -33,6 +33,7 @@ export class JobManager extends EventEmitter {
           ['queued', 'running', 'timeout', 'canceled'].includes(job.status)) {
         return true;
       }
+      if (job.mutating && job.cleanup_running) return true;
     }
     return false;
   }
@@ -62,7 +63,10 @@ export class JobManager extends EventEmitter {
       log_file: path.relative(this.rootDir, job.log_file).replace(/\\/g, '/'),
       command: job.command,
       pid: job.pid || null,
-      error: job.error || ''
+      error: job.error || '',
+      cleanup_action: job.cleanup_action || '',
+      cleanup_status: job.cleanup_status || '',
+      cleanup_exit_code: job.cleanup_exit_code ?? null
     };
   }
 
@@ -102,7 +106,11 @@ export class JobManager extends EventEmitter {
       killed_for_limit: false,
       timeout: null,
       process_exited: false,
-      kill_timer: null
+      kill_timer: null,
+      cleanup_action: action.cleanup_action || '',
+      cleanup_running: false,
+      cleanup_status: '',
+      cleanup_exit_code: null
     };
     this.jobs.set(jobId, job);
     this.pruneJobs();
@@ -165,13 +173,16 @@ export class JobManager extends EventEmitter {
       job.ended_at = nowIso();
       job.exit_code = code;
       job.signal = signal || '';
-      if (job.status !== 'timeout') {
+      if (!['timeout', 'canceled'].includes(job.status)) {
         if (job.killed_for_limit) {
           job.status = 'failed';
           job.error = `output exceeded ${action.max_output_bytes} bytes`;
         } else {
           job.status = code === 0 ? 'succeeded' : 'failed';
         }
+      }
+      if (['failed', 'timeout', 'canceled'].includes(job.status) && action.cleanup_action) {
+        this.runCleanupAction(job, action.cleanup_action, logStream);
       }
       logStream.write(`[status] ${job.status} exit_code=${code ?? ''} signal=${signal ?? ''}\n`);
       logStream.end();
@@ -195,6 +206,48 @@ export class JobManager extends EventEmitter {
     } catch (error) {
       job.error = error.message;
     }
+  }
+
+  runCleanupAction(job, cleanupActionId, logStream) {
+    const cleanup = this.actions.get(cleanupActionId);
+    if (!cleanup) {
+      job.cleanup_status = 'missing';
+      job.error = `${job.error ? `${job.error}; ` : ''}cleanup action missing: ${cleanupActionId}`;
+      return;
+    }
+    job.cleanup_running = true;
+    job.cleanup_action = cleanup.id;
+    logStream.write(`[cleanup] start ${cleanup.id}\n`);
+    const [cmd, ...args] = cleanup.command;
+    const result = spawnSync(cmd, args, {
+      cwd: this.rootDir,
+      shell: false,
+      encoding: 'utf8',
+      timeout: cleanup.timeout_seconds * 1000,
+      env: {
+        ...process.env,
+        EULERPILOT_WEB_CONSOLE: '1'
+      }
+    });
+    const cleanupOutput = `${result.stdout || ''}${result.stderr || ''}`;
+    if (cleanupOutput) {
+      const prefixed = cleanupOutput
+        .split(/(?<=\n)/)
+        .map((part) => (part.length ? `[cleanup] ${part}` : part))
+        .join('');
+      logStream.write(prefixed);
+      job.log_tail = trimTail(job.log_tail + prefixed);
+    }
+    job.cleanup_exit_code = result.status ?? null;
+    if (result.error || result.status !== 0) {
+      job.cleanup_status = 'failed';
+      const detail = result.error ? result.error.message : `exit ${result.status}`;
+      job.error = `${job.error ? `${job.error}; ` : ''}cleanup failed: ${detail}`;
+    } else {
+      job.cleanup_status = 'succeeded';
+    }
+    logStream.write(`[cleanup] ${job.cleanup_status} exit_code=${job.cleanup_exit_code ?? ''}\n`);
+    job.cleanup_running = false;
   }
 
   cancel(jobId) {

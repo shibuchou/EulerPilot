@@ -1,6 +1,6 @@
 # EulerPilot 答辩讲稿
 
-更新时间：`2026-07-20`
+更新时间：`2026-07-24`
 
 ## 开场（30秒）
 
@@ -42,15 +42,15 @@
 
 ## 实验环境（15秒）
 
-三台环境分工：121 是 SP3 历史验证和回归对照环境，122 是 OLK-6.6 sched_ext 对照环境，123 是 SP4 核心验证仓库。123 的 sched_ext/scx 验证使用基于 SP4 官方源码自编译启用 `CONFIG_SCHED_CLASS_EXT` 的内核，不声称 SP4 发行默认内核直接支持 sched_ext。代码已推送 GitHub。
+三台环境分工：123 是 SP4 主验证和性能实验仓库，121 是比赛要求的 SP3 强制兼容交付环境，122 只保留 OLK-6.6 sched_ext 历史对照。123 的 sched_ext/scx 验证使用基于 SP4 官方源码自编译启用 `CONFIG_SCHED_CLASS_EXT` 的内核，不声称 SP4 发行默认内核直接支持 sched_ext。代码已推送 GitHub。
 
 ## Redis 结果（30秒）
 
-最强候选：redis-scx-compare-20260612-191543，RUNS=5，平衡轮换，无 invalid_run。SP4 上追加了 redis-scx-compare-20260708-150702，RUNS=5，作为 SP4 发行环境适配与自编译 sched_ext 内核复核。Redis pressure gradient 用来解释干扰增强时的收益/代价变化；manual static vs agent dynamic 已用修复脚本在 SP4 RUNS=5 重跑，manual_static 与 agent_dynamic 均控制同一类 background cgroup worker。noisy_cgroup_v2 和部分 sched_ext 模式在 Redis 场景呈现正向趋势，但结论限定在 latency-sensitive 混布场景，不对所有 workload 做绝对性能提升承诺。
+最强候选：redis-scx-compare-20260612-191543，RUNS=5，平衡轮换，无 invalid_run。SP4 上追加了 redis-scx-compare-20260724-tested-2541464-runs10，RUNS=10 frozen-code，作为 SP4 发行环境适配与自编译 sched_ext 内核复核。Redis pressure gradient 用来解释干扰增强时的收益/代价变化；manual static vs agent dynamic 已用修复脚本在 SP4 RUNS=10 frozen-code 重跑，manual_static 与 agent_dynamic 均控制同一类 background cgroup worker。noisy_cgroup_v2 和部分 sched_ext 模式在 Redis 场景呈现正向趋势，但结论限定在 latency-sensitive 混布场景，不对所有 workload 做绝对性能提升承诺。
 
 ## Nginx 结果（20秒）
 
-最强候选：nginx-scx-compare-20260612-194018，同样 RUNS=5。SP4 上追加了 nginx-scx-compare-20260708-152602，RUNS=5。cgroup_v2 在 Nginx 场景下更稳，sched_ext 部分模式存在明显 P99 代价。这证明框架已成功迁移到第二业务线，也暴露了 workload 差异化策略边界。
+最强候选：nginx-scx-compare-20260612-194018，同样 RUNS=5。SP4 上追加了 nginx-scx-compare-20260724-tested-2541464-runs10，RUNS=10 frozen-code。cgroup_v2 在 Nginx 场景下更稳，sched_ext 部分模式存在明显 P99 代价。这证明框架已成功迁移到第二业务线，也暴露了 workload 差异化策略边界。
 
 ## 证据链（15秒）
 
@@ -61,9 +61,8 @@
 1. SP3 上完成主闭环，可正式交付。
 2. OLK-6.6 和 SP4 官方源码自编译 sched_ext 内核上完成 Redis/Nginx compare 与复核。
 3. Skills 框架 + Network/Security/Resource/Policy Engine 证明 Agent 可扩展、可联动、可回滚。
-4. 项目已形成 40 条 final evidence compact、Web Console 和最终质量门禁证据。
+4. 项目已形成 41 条 final evidence compact、Web Console 和最终质量门禁证据。
 
 ## 收尾
 
 > EulerPilot 已经完成了一个面向 openEuler 的、可运行、可实验、可解释、可复现、可扩展的系统资源管控 Agent 工程闭环。
-

@@ -42,6 +42,7 @@ struct ControlFileSnapshot {
     std::string file;
     std::string old_value;
     std::string restore_value;
+    std::string desired_value;
     std::string target_ref;
     dev_t cgroup_dev = 0;
     ino_t cgroup_ino = 0;
@@ -552,7 +553,7 @@ bool apply_control_file_at(const std::string &group,
             return false;
         }
         resource_control_snapshots()[key] = {
-            path, cgroup_path, group, file, old_value, restore_value, target_ref,
+            path, cgroup_path, group, file, old_value, restore_value, value, target_ref,
             cgroup_dev, cgroup_ino};
     }
 
@@ -867,10 +868,7 @@ std::string scx_class_map_path() {
     if (value && *value) {
         return value;
     }
-    if (file_exists("/sys/fs/bpf/eulerpilot/scx_eulerpilot/v1/class_map")) {
-        return "/sys/fs/bpf/eulerpilot/scx_eulerpilot/v1/class_map";
-    }
-    return "/sys/fs/bpf/class_map";
+    return "/sys/fs/bpf/eulerpilot/scx_eulerpilot/v1/class_map";
 }
 
 std::string scx_gate_state_map_path() {
@@ -878,17 +876,11 @@ std::string scx_gate_state_map_path() {
     if (value && *value) {
         return value;
     }
-    if (file_exists("/sys/fs/bpf/eulerpilot/scx_eulerpilot/v1/gate_state_map")) {
-        return "/sys/fs/bpf/eulerpilot/scx_eulerpilot/v1/gate_state_map";
-    }
-    return "/sys/fs/bpf/gate_state_map";
+    return "/sys/fs/bpf/eulerpilot/scx_eulerpilot/v1/gate_state_map";
 }
 
 std::string scx_stats_map_path() {
-    if (file_exists("/sys/fs/bpf/eulerpilot/scx_eulerpilot/v1/stats")) {
-        return "/sys/fs/bpf/eulerpilot/scx_eulerpilot/v1/stats";
-    }
-    return "/sys/fs/bpf/stats";
+    return "/sys/fs/bpf/eulerpilot/scx_eulerpilot/v1/stats";
 }
 
 bool ensure_scx_stats_map(ScxSession &session, std::string &reason) {
@@ -1071,6 +1063,14 @@ bool start_scx_session(const RuntimeConfig &config, ScxSession &session, bool fi
         return false;
     }
 
+    if (read_file_trimmed("/sys/kernel/sched_ext/state") == "enabled") {
+        reason = "scx-external-instance-active";
+        append_scx_session_log("start_scx_session: refuse start because sched_ext is already enabled without an owned session");
+        return false;
+    }
+
+    const std::string enable_seq_before = read_file_trimmed("/sys/kernel/sched_ext/enable_seq");
+
     const int log_fd = open("/tmp/eulerpilot-scx.log", O_WRONLY | O_CREAT | O_APPEND, 0644);
     if (log_fd < 0) {
         reason = "scx-log-open-failed";
@@ -1114,12 +1114,24 @@ bool start_scx_session(const RuntimeConfig &config, ScxSession &session, bool fi
             return false;
         }
 
-        if (read_file_trimmed("/sys/kernel/sched_ext/state") == "enabled") {
+        const bool enabled = read_file_trimmed("/sys/kernel/sched_ext/state") == "enabled";
+        const std::string enable_seq_after = read_file_trimmed("/sys/kernel/sched_ext/enable_seq");
+        std::string identity_reason;
+        const bool owned = is_process_alive(pid) && scx_session_identity_matches(session, identity_reason);
+        const bool enable_seq_changed = enable_seq_before.empty() || enable_seq_after.empty() ||
+                                        enable_seq_before != enable_seq_after;
+        if (enabled && owned && enable_seq_changed) {
             refresh_scx_session_identity(session);
             reason = fifo_mode ? "scx-fifo-started" : "scx-started";
             append_scx_session_log("start_scx_session: enabled instance=" + session.instance_id +
                                    " cmdline=" + session.command_line_summary);
             return true;
+        }
+        if (enabled && !owned) {
+            stop_scx_session(session);
+            reason = "scx-enabled-but-owned-identity-mismatch";
+            append_scx_session_log("start_scx_session: " + reason + " detail=" + identity_reason);
+            return false;
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
@@ -1274,8 +1286,10 @@ bool reconcile_scx_session(const RuntimeConfig &config, ControlMode mode, ScxSes
     }
 
     const bool should_enable = !config.dry_run;
+    std::string running_identity_reason;
     const bool running = session.pid > 0 && is_process_alive(session.pid) &&
-                         read_file_trimmed("/sys/kernel/sched_ext/state") == "enabled";
+                         read_file_trimmed("/sys/kernel/sched_ext/state") == "enabled" &&
+                         scx_session_identity_matches(session, running_identity_reason);
 
     if (!should_enable) {
         if (session.pid > 0) {
@@ -1598,6 +1612,15 @@ bool rollback_resource_control_state() {
             append_resource_audit(snapshot.group, snapshot.cgroup_path,
                                   snapshot.target_ref, snapshot.file, "", snapshot.restore_value,
                                   "rollback", "failed", "ownership_mismatch", 0, "rollback");
+            continue;
+        }
+        std::string current_value;
+        if (!read_control_file(snapshot.path, current_value) ||
+            !control_value_matches(snapshot.file, snapshot.desired_value, current_value)) {
+            ok = false;
+            append_resource_audit(snapshot.group, snapshot.cgroup_path,
+                                  snapshot.target_ref, snapshot.file, current_value, snapshot.restore_value,
+                                  "rollback", "failed", "compare-before-restore-mismatch", 0, "rollback");
             continue;
         }
         if (!write_file_value(snapshot.path, snapshot.restore_value)) {

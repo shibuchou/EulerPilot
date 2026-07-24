@@ -3,7 +3,7 @@ import http from 'node:http';
 import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { actionForClient, loadActions } from './actions.js';
+import { actionForClient, isMutatingAction, loadActions } from './actions.js';
 import { getAgentDoctor, getAgentSkills, getAgentStatus, getEvents, getEvidenceSummary, getSystem } from './data.js';
 import { JobManager } from './jobs.js';
 import { resolveConsoleConfig } from './paths.js';
@@ -35,6 +35,26 @@ function isAuthorized(req, config) {
   if (!config.requiresToken) return true;
   const header = req.headers.authorization || '';
   return header === `Bearer ${config.token}`;
+}
+
+function hasBearerToken(req, config) {
+  return Boolean(config.token) && req.headers.authorization === `Bearer ${config.token}`;
+}
+
+function ensureMutatingAuthorized(req, res, config) {
+  if (!config.mutatingRequiresToken) return true;
+  if (!config.token) {
+    json(res, 403, {
+      error: 'mutation_token_required',
+      reason: 'mutating Web Console actions require EULERPILOT_CONSOLE_TOKEN even on loopback'
+    });
+    return false;
+  }
+  if (!hasBearerToken(req, config)) {
+    json(res, 401, { error: 'unauthorized' });
+    return false;
+  }
+  return true;
 }
 
 function stableJson(value) {
@@ -271,6 +291,9 @@ async function routeApi(req, res, config, actions, jobs, url) {
         notFound(res);
         return;
       }
+      if (isMutatingAction(action) && !ensureMutatingAuthorized(req, res, config)) {
+        return;
+      }
       const body = await readJsonBody(req);
       if (!hasActionConfirmation(req, config, action, body)) {
         const token = issueConfirmationToken(req, config, action.id, body);
@@ -305,6 +328,9 @@ async function routeApi(req, res, config, actions, jobs, url) {
 
     const cancelMatch = url.pathname.match(/^\/api\/jobs\/([a-z0-9_-]+)\/cancel$/);
     if (req.method === 'POST' && cancelMatch) {
+      if (!ensureMutatingAuthorized(req, res, config)) {
+        return;
+      }
       const body = await readJsonBody(req);
       if (!consumeConfirmationToken(req, config, `cancel:${cancelMatch[1]}`, body)) {
         const token = issueConfirmationToken(req, config, `cancel:${cancelMatch[1]}`, body);

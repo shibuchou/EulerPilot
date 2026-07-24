@@ -1,6 +1,6 @@
 # EulerPilot 最终提交说明
 
-更新时间：`2026-07-20`
+更新时间：`2026-07-24`
 
 ## 1. 当前提交材料已经具备什么
 
@@ -10,9 +10,9 @@
 - `cgroup v2` 稳定执行后端和 `sched_ext/scx` 增强执行后端。
 - Resource Control、Network Policy/QoS/XDP、Security Policy/LSM/anomaly 三方向 OS Agent 扩展。
 - Policy Engine 跨 Skill 联动、事务回滚、AuditBus 和 ActionJournal。
-- Redis/Nginx RUNS=5、压力梯度、静态 vs 动态、throughput-first、mixed-adaptive、Agent overhead。
+- Redis/Nginx RUNS=10 frozen-code、压力梯度、静态 vs 动态、throughput-first、mixed-adaptive、Agent overhead。
 - SP4 主验证、K8s 旁路隔离验证、Web Console 展示。
-- 40 条 final evidence compact，strict 缺失 0、警告 0。
+- 41 条 final evidence compact，strict 缺失 0、警告 0。
 - 最终质量门禁 22/22 P0、100 轮 smoke、5 轮 doctor 通过。
 
 这意味着：
@@ -63,13 +63,13 @@
 
 ## 3. 当前建议优先使用的结果目录
 
-- `results/final/redis-scx-compare-20260708-150702`
-- `results/final/nginx-scx-compare-20260708-152602`
+- `results/final/redis-scx-compare-20260724-tested-2541464-runs10`
+- `results/final/nginx-scx-compare-20260724-tested-2541464-runs10`
 - `results/final/redis-pressure-gradient-20260708-153811`
-- `results/final/redis-static-vs-agent-20260720-150342`
-- `results/final/throughput-first-20260720-165544`
-- `results/final/mixed-adaptive-20260720-170840`
-- `results/final/agent-overhead-20260720-170415`
+- `results/final/redis-static-vs-agent-20260724-tested-2541464-runs10`
+- `results/final/throughput-first-20260724-tested-2541464-runs10`
+- `results/final/mixed-adaptive-20260724-tested-2541464-runs10-lite`
+- `results/final/agent-overhead-20260724-tested-2541464-runs10`
 - `results/k8s/sp4-validation-20260708-023552`
 - `reports/final_figures`
 - `reports/dashboard`

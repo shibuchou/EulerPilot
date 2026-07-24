@@ -1,6 +1,6 @@
 # NetworkPolicySkill 设计与实施说明
 
-更新时间：`2026-07-20`
+更新时间：`2026-07-24`
 
 对应阶段：`docs/next_phase_plan_v2_1.md` 阶段 B
 

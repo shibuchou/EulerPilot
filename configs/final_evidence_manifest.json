@@ -61,7 +61,7 @@
         "report.md"
       ],
       "required": true,
-      "notes": "RUNS=5 Redis candidate result."
+      "notes": "Historical SP3/OLK RUNS=5 Redis candidate result retained as comparison evidence; current primary line is SP4 RUNS=10 frozen-code."
     },
     {
       "category": "cpu_sched_ext",
@@ -76,7 +76,7 @@
         "report.md"
       ],
       "required": true,
-      "notes": "RUNS=5 Nginx candidate result."
+      "notes": "Historical SP3/OLK RUNS=5 Nginx candidate result retained as comparison evidence; current primary line is SP4 RUNS=10 frozen-code."
     },
     {
       "category": "cpu_sched_ext",

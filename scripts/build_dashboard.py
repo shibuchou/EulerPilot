@@ -236,13 +236,13 @@ h4 {{ color: #666666; margin: 10px 0 5px; }}
 {skill_cards}
 </div>
 
-<h2>Redis 实验结果 (RUNS=5)</h2>
+<h2>Redis 实验结果 (RUNS=10 frozen-code)</h2>
 {build_redis_table(redis_rows)}
 
 <h3>Redis 图表</h3>
 {''.join(f'<div class="chart"><img src="data:image/svg+xml;base64,{svgs[k]}" alt="{k}"></div>' for k in sorted(svgs) if 'redis' in k)}
 
-<h2>Nginx 实验结果 (RUNS=5)</h2>
+<h2>Nginx 实验结果 (RUNS=10 frozen-code)</h2>
 {build_nginx_table(nginx_rows)}
 
 <h3>Nginx 图表</h3>
@@ -274,7 +274,7 @@ h4 {{ color: #666666; margin: 10px 0 5px; }}
 </div>
 
 <div class="footer">
-  EulerPilot 发布看板 &middot; 基于 RUNS=5 候选结果生成 &middot; openEuler 24.03 LTS SP3 + OLK-6.6
+  EulerPilot 发布看板 &middot; 基于 RUNS=10 frozen-code 正式结果生成 &middot; openEuler 24.03 LTS SP3 + OLK-6.6
 </div>
 
 </body>

@@ -42,6 +42,21 @@ ssh -L 18080:127.0.0.1:18080 openEuler-2403-LTS-SP4
 http://127.0.0.1:18080
 ```
 
+只读页面和只读 API 可以直接访问；`demo`、`lab`、`cleanup` 等会触发系统状态变化的动作，即使监听在 loopback，也必须设置一次会话 token：
+
+```bash
+export EULERPILOT_CONSOLE_TOKEN="$(openssl rand -hex 16)"
+web_console/scripts/run_console.sh --daemon
+```
+
+浏览器访问时可在地址栏临时带入 token，前端会写入本机 `localStorage` 并从 URL 中移除：
+
+```text
+http://127.0.0.1:18080/?token=<EULERPILOT_CONSOLE_TOKEN>
+```
+
+如果未设置 token，Overview、Evidence、Skills 等只读展示仍可用，但跨 Skill 联动实验、cleanup 等按钮会被后端拒绝，返回 `mutation_token_required`。这是为了防止同机其他进程绕过浏览器触发 root 级白名单动作。
+
 ## 验证
 
 ```bash
@@ -59,6 +74,7 @@ curl http://127.0.0.1:18080/api/jobs
 
 - 已支持总览、Skills 与 Agent、调度与 PSI、eBPF 扩展能力、Policy Engine 时间线、证据与现场演示六个页面。
 - 已支持 `actions.yaml` 白名单动作、SSE 日志流、最近 job 查询、demo/lab/cleanup 单任务锁。
+- 变更类动作需要显式 token 授权；失败、超时或取消后会按 `cleanup_action` 执行受控清理。
 - 关键页面已中文优先展示；Shell 脚本、集成测试、质量门禁、清理动作使用明确图标和风险说明。
 - 默认只监听 `127.0.0.1:18080`，建议始终通过 SSH 隧道访问。
 

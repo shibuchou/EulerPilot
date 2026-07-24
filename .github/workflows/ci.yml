@@ -15,17 +15,29 @@ jobs:
 
       - name: Install dependencies
         run: |
+          sudo add-apt-repository -y universe || true
           sudo apt-get update
           sudo apt-get install -y \
             build-essential \
             clang \
             llvm \
-            bpftool \
             pkg-config \
             libbpf-dev \
             libelf-dev \
             zlib1g-dev \
             libyaml-cpp-dev
+          if apt-cache show bpftool >/dev/null 2>&1; then
+            sudo apt-get install -y bpftool
+          else
+            sudo apt-get install -y linux-tools-common linux-tools-generic || true
+            if ! command -v bpftool >/dev/null 2>&1; then
+              candidate="$(find /usr/lib -path '*/bpftool' -type f 2>/dev/null | sort -V | tail -1 || true)"
+              if [ -n "$candidate" ]; then
+                sudo ln -sf "$candidate" /usr/local/bin/bpftool
+              fi
+            fi
+          fi
+          bpftool version
 
       - name: Build unit tests
         run: make unit-tests

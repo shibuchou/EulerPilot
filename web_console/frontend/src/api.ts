@@ -28,6 +28,9 @@ export interface Job {
   command: string[];
   pid: number | null;
   error: string;
+  cleanup_action?: string;
+  cleanup_status?: string;
+  cleanup_exit_code?: number | null;
 }
 
 export interface SystemInfo {
@@ -117,8 +120,27 @@ export interface AgentSkills {
   skills: string[];
 }
 
+function consoleToken(): string {
+  const params = new URLSearchParams(window.location.search);
+  const queryToken = params.get('token') || '';
+  if (queryToken) {
+    window.localStorage.setItem('eulerpilot_console_token', queryToken);
+    params.delete('token');
+    const nextQuery = params.toString();
+    const nextUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}${window.location.hash}`;
+    window.history.replaceState({}, document.title, nextUrl);
+    return queryToken;
+  }
+  return window.localStorage.getItem('eulerpilot_console_token') || '';
+}
+
+function authHeaders(): Record<string, string> {
+  const token = consoleToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 async function getJson<T>(path: string): Promise<T> {
-  const response = await fetch(path);
+  const response = await fetch(path, { headers: authHeaders() });
   if (!response.ok) {
     throw new Error(`${path} -> ${response.status}`);
   }
@@ -129,6 +151,7 @@ async function postJson<T>(path: string, body?: Record<string, unknown>, headers
   const response = await fetch(path, {
     method: 'POST',
     headers: {
+      ...authHeaders(),
       ...(body ? { 'Content-Type': 'application/json' } : {}),
       ...(headers || {})
     },

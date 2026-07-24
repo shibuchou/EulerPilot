@@ -5,6 +5,8 @@ CLANG ?= clang
 BPFTOOL ?= bpftool
 CPPFLAGS ?= -Iagent/include
 BUILD_DIR := build
+BPF_TARGET_ARCH ?= $(shell uname -m | sed -e 's/x86_64/x86/' -e 's/amd64/x86/' -e 's/aarch64/arm64/' -e 's/arm64/arm64/' -e 's/ppc64le/powerpc/' -e 's/s390x/s390/')
+BPF_CFLAGS := -g -O2 -target bpf -D__TARGET_ARCH_$(BPF_TARGET_ARCH) -D__BPF__ -I. -I./bpf
 AGENT_BIN := $(BUILD_DIR)/eulerpilot-agent
 UNIT_SKILL_REGISTRY_BIN := $(BUILD_DIR)/test_skill_registry
 UNIT_RUNTIME_POLICY_BIN := $(BUILD_DIR)/test_runtime_policy
@@ -27,7 +29,7 @@ NETWORK_XDP_BPF := $(BUILD_DIR)/network_xdp.bpf.o
 SECURITY_POLICY_BPF := $(BUILD_DIR)/security_policy.bpf.o
 SECURITY_POLICY_SKEL := $(BUILD_DIR)/security_policy.skel.h
 
-.PHONY: all agent observer unit-tests network-policy network-policy-demo network-qos-tc network-xdp network-xdp-demo security-policy security-policy-demo clean check-env format format-check
+.PHONY: all agent observer unit-tests network-policy network-policy-demo network-qos-tc network-xdp network-xdp-demo security-policy security-policy-demo clean distclean clean-generated-vmlinux check-env format format-check
 
 all: agent observer
 
@@ -68,7 +70,7 @@ $(VMLINUX):
 	$(BPFTOOL) btf dump file /sys/kernel/btf/vmlinux format c > $@
 
 $(BPF_OBJ): bpf/workload_observer.bpf.c bpf/workload_observer.h $(VMLINUX) | $(BUILD_DIR)
-	$(CLANG) -g -O2 -target bpf -D__TARGET_ARCH_x86 -D__BPF__ -I. -I./bpf -c $< -o $@
+	$(CLANG) $(BPF_CFLAGS) -c $< -o $@
 
 $(BPF_SKEL): $(BPF_OBJ)
 	$(BPFTOOL) gen skeleton $< > $@
@@ -77,19 +79,19 @@ $(OBSERVER_BIN): tools/workload_observer_dump.c bpf/workload_observer.h $(BPF_SK
 	$(CC) -Wall -Wextra -O2 -g -I./bpf -I$(BUILD_DIR) $(LIBBPF_CFLAGS) $< -o $@ $(LIBBPF_LIBS) -lelf -lz
 
 $(NETWORK_POLICY_BPF): bpf/network_policy.bpf.c $(VMLINUX) | $(BUILD_DIR)
-	$(CLANG) -g -O2 -target bpf -D__TARGET_ARCH_x86 -D__BPF__ -I. -I./bpf -c $< -o $@
+	$(CLANG) $(BPF_CFLAGS) -c $< -o $@
 
 $(NETWORK_POLICY_SKEL): $(NETWORK_POLICY_BPF)
 	$(BPFTOOL) gen skeleton $< > $@
 
 $(NETWORK_QOS_TC_BPF): bpf/network_qos_tc.bpf.c $(VMLINUX) | $(BUILD_DIR)
-	$(CLANG) -g -O2 -target bpf -D__TARGET_ARCH_x86 -D__BPF__ -I. -I./bpf -c $< -o $@
+	$(CLANG) $(BPF_CFLAGS) -c $< -o $@
 
 $(NETWORK_XDP_BPF): bpf/network_xdp.bpf.c $(VMLINUX) | $(BUILD_DIR)
-	$(CLANG) -g -O2 -target bpf -D__TARGET_ARCH_x86 -D__BPF__ -I. -I./bpf -c $< -o $@
+	$(CLANG) $(BPF_CFLAGS) -c $< -o $@
 
 $(SECURITY_POLICY_BPF): bpf/security_policy.bpf.c $(VMLINUX) | $(BUILD_DIR)
-	$(CLANG) -g -O2 -target bpf -D__TARGET_ARCH_x86 -D__BPF__ -I. -I./bpf -c $< -o $@
+	$(CLANG) $(BPF_CFLAGS) -c $< -o $@
 
 $(SECURITY_POLICY_SKEL): $(SECURITY_POLICY_BPF)
 	$(BPFTOOL) gen skeleton $< > $@
@@ -134,4 +136,13 @@ format-check:
 	fi
 
 clean:
-	rm -rf $(BUILD_DIR) $(VMLINUX)
+	rm -rf $(BUILD_DIR)
+
+clean-generated-vmlinux:
+	@if git ls-files --error-unmatch "$(VMLINUX)" >/dev/null 2>&1; then \
+		echo "refusing to remove tracked $(VMLINUX); use git rm only for intentional source changes"; \
+	else \
+		rm -f "$(VMLINUX)"; \
+	fi
+
+distclean: clean clean-generated-vmlinux

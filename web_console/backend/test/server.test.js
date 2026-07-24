@@ -7,6 +7,8 @@ import { createConsoleServer } from '../src/server.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..', '..', '..');
+const TEST_TOKEN = 'test-token-1234567890';
+const AUTH_HEADER = { Authorization: `Bearer ${TEST_TOKEN}` };
 
 function requestJson(server, method, requestPath, body, headers = {}) {
   const address = server.address();
@@ -65,27 +67,33 @@ function requestRaw(server, method, requestPath, payload, headers = {}) {
 
 test('confirmed actions require a backend confirmation token', async () => {
   const oldCwd = process.cwd();
+  const oldToken = process.env.EULERPILOT_CONSOLE_TOKEN;
+  process.env.EULERPILOT_CONSOLE_TOKEN = TEST_TOKEN;
   process.chdir(ROOT);
   const { server } = createConsoleServer();
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   try {
-    const response = await requestJson(server, 'POST', '/api/actions/policy_engine_lab/start');
+    const response = await requestJson(server, 'POST', '/api/actions/policy_engine_lab/start', undefined, AUTH_HEADER);
     assert.equal(response.statusCode, 428);
     assert.equal(response.body.error, 'confirmation_required');
     assert.equal(response.body.action_id, 'policy_engine_lab');
   } finally {
     await new Promise((resolve) => server.close(resolve));
+    if (oldToken === undefined) delete process.env.EULERPILOT_CONSOLE_TOKEN;
+    else process.env.EULERPILOT_CONSOLE_TOKEN = oldToken;
     process.chdir(oldCwd);
   }
 });
 
 test('confirmation tokens are one-shot and bound to cancel action', async () => {
   const oldCwd = process.cwd();
+  const oldToken = process.env.EULERPILOT_CONSOLE_TOKEN;
+  process.env.EULERPILOT_CONSOLE_TOKEN = TEST_TOKEN;
   process.chdir(ROOT);
   const { server } = createConsoleServer();
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   try {
-    const first = await requestJson(server, 'POST', '/api/jobs/nonexistent/cancel');
+    const first = await requestJson(server, 'POST', '/api/jobs/nonexistent/cancel', undefined, AUTH_HEADER);
     assert.equal(first.statusCode, 428);
     assert.equal(first.body.error, 'confirmation_required');
     assert.equal(first.body.action_id, 'cancel:nonexistent');
@@ -97,7 +105,7 @@ test('confirmation tokens are one-shot and bound to cancel action', async () => 
       'POST',
       '/api/jobs/nonexistent/cancel',
       { confirm_token: token },
-      { 'X-EulerPilot-Confirm-Token': token }
+      { ...AUTH_HEADER, 'X-EulerPilot-Confirm-Token': token }
     );
     assert.equal(accepted.statusCode, 404);
     assert.equal(accepted.body.error, 'unknown job: nonexistent');
@@ -107,12 +115,33 @@ test('confirmation tokens are one-shot and bound to cancel action', async () => 
       'POST',
       '/api/jobs/nonexistent/cancel',
       { confirm_token: token },
-      { 'X-EulerPilot-Confirm-Token': token }
+      { ...AUTH_HEADER, 'X-EulerPilot-Confirm-Token': token }
     );
     assert.equal(reused.statusCode, 428);
     assert.equal(reused.body.error, 'confirmation_required');
   } finally {
     await new Promise((resolve) => server.close(resolve));
+    if (oldToken === undefined) delete process.env.EULERPILOT_CONSOLE_TOKEN;
+    else process.env.EULERPILOT_CONSOLE_TOKEN = oldToken;
+    process.chdir(oldCwd);
+  }
+});
+
+test('loopback mutating actions require an explicit console token', async () => {
+  const oldCwd = process.cwd();
+  const oldToken = process.env.EULERPILOT_CONSOLE_TOKEN;
+  delete process.env.EULERPILOT_CONSOLE_TOKEN;
+  process.chdir(ROOT);
+  const { server } = createConsoleServer();
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  try {
+    const response = await requestJson(server, 'POST', '/api/actions/policy_engine_lab/start');
+    assert.equal(response.statusCode, 403);
+    assert.equal(response.body.error, 'mutation_token_required');
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    if (oldToken === undefined) delete process.env.EULERPILOT_CONSOLE_TOKEN;
+    else process.env.EULERPILOT_CONSOLE_TOKEN = oldToken;
     process.chdir(oldCwd);
   }
 });

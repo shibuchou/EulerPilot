@@ -242,14 +242,22 @@ public:
     }
 
     bool rollback() override {
+        bool ok = true;
         update_cached_stats();
         if (running_) {
             write_audit_event("rollback", "detach-tc-egress", "success");
             write_journal_action("rollback", "detach-tc-egress", ifname_);
         }
         if (tbf_attached_) {
-            run_tc_command("tc qdisc del dev " + ifname_ + " root");
-            tbf_attached_ = false;
+            const std::string current_qdisc = tc_qdisc_show();
+            if (!tbf_qdisc_after_.empty() && current_qdisc == tbf_qdisc_after_) {
+                run_tc_command("tc qdisc del dev " + ifname_ + " root");
+                tbf_attached_ = false;
+            } else {
+                last_error_ = "tc-rollback-refused-qdisc-changed";
+                state_ = "rollback-refused";
+                ok = false;
+            }
         }
         if (tc_attached_) {
             bpf_tc_detach(&tc_hook_, &tc_opts_);
@@ -265,8 +273,10 @@ public:
             bpf_object_ = nullptr;
         }
         running_ = false;
-        state_ = "rolled-back";
-        return true;
+        if (ok) {
+            state_ = "rolled-back";
+        }
+        return ok;
     }
 
     void stop() override {
@@ -315,11 +325,20 @@ private:
         return true;
     }
 
-    bool apply_tbf_qdisc() const {
-        return run_tc_command("tc qdisc replace dev " + ifname_ +
-                              " root tbf rate " + rate_ +
-                              " burst " + burst_ +
-                              " latency " + latency_);
+    bool apply_tbf_qdisc() {
+        if (!run_tc_command("tc qdisc replace dev " + ifname_ +
+                            " root tbf rate " + rate_ +
+                            " burst " + burst_ +
+                            " latency " + latency_)) {
+            return false;
+        }
+        tbf_qdisc_after_ = tc_qdisc_show();
+        return !tbf_qdisc_after_.empty() &&
+               tbf_qdisc_after_.find("qdisc tbf") != std::string::npos;
+    }
+
+    std::string tc_qdisc_show() const {
+        return read_shell_command_output("tc qdisc show dev " + ifname_ + " 2>/dev/null");
     }
 
     std::pair<std::uint64_t, std::uint64_t> read_tc_stats() const {
@@ -423,6 +442,7 @@ private:
     bool tc_hook_preexisting_ = false;
     bool tc_attached_ = false;
     bool tbf_attached_ = false;
+    std::string tbf_qdisc_after_;
     std::string state_ = "created";
     std::string last_error_;
     std::string hook_ = "tc_egress";

@@ -308,7 +308,7 @@ lines.extend([
     "",
     "## 结论边界",
     "",
-    "`pressure_active` 阶段包含额外 Redis PSI probe，目的在于稳定触发 PSI gate 和调度路径，不作为净性能提升结论；性能收益仍需结合无额外 probe 的 Redis/Nginx RUNS=5 对照解释。",
+    "`pressure_active` 阶段包含额外 Redis PSI probe，目的在于稳定触发 PSI gate 和调度路径，不作为净性能提升结论；性能收益仍需结合无额外 probe 的 Redis/Nginx RUNS=10 frozen-code 对照解释。",
 ])
 (root / "report.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 PY

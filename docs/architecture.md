@@ -1,6 +1,6 @@
 # 架构设计
 
-更新时间：`2026-07-20`
+更新时间：`2026-07-24`
 
 EulerPilot 采用“观测 - 决策 - 执行 - 反馈”的闭环架构。当前实现已经从早期 CPU 资源控制扩展为统一 OS Agent 框架，覆盖 Resource Control、Network Policy、Security Policy、Policy Engine、Web Console 和最终证据链。
 
@@ -22,7 +22,7 @@ Workloads / Containers / Kubernetes Pods
 |------|------|----------|
 | SP3 + cgroup v2 | 官方稳定主路径，证明项目可运行、可测试、可回滚 | 121 历史验证和回归对照 |
 | OLK-6.6 + sched_ext | scx 提前验证线，打通 `ScxExecutor`、`class_map` 和 `scx_eulerpilot` | 122 对照验证 |
-| SP4 + 自编译 sched_ext 内核 | 当前核心验证和最终交付验证线 | 123 已完成适配、RUNS=5 复核、K8s/Web Console 验证 |
+| SP4 + 自编译 sched_ext 内核 | 当前核心验证和最终交付验证线 | 123 已完成适配、RUNS=10 frozen-code 复核、K8s/Web Console 验证 |
 
 统一口径：
 

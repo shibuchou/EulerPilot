@@ -2,6 +2,7 @@
 #include "factories.hpp"
 
 #include <functional>
+#include <sstream>
 #include <unordered_set>
 
 namespace eulerpilot {
@@ -21,6 +22,7 @@ struct PolicyEngineAction {
     std::string pod_uid;
     std::string file;
     std::string value;
+    std::string applied_value;
     std::string burst = "32kb";
     std::string latency = "50ms";
     std::string old_value;
@@ -546,6 +548,32 @@ private:
         return output;
     }
 
+    bool control_value_matches(const PolicyEngineAction &action,
+                               const std::string &actual) const {
+        if (actual == action.value) {
+            return true;
+        }
+        if (action.file == "cpu.max" && action.value == "max") {
+            return actual == "max" || actual.rfind("max ", 0) == 0;
+        }
+        if (action.file == "io.max") {
+            std::istringstream desired(action.value);
+            std::string desired_device;
+            desired >> desired_device;
+            if (desired_device.empty() || actual.rfind(desired_device, 0) != 0) {
+                return false;
+            }
+            std::string token;
+            while (desired >> token) {
+                if (actual.find(token) == std::string::npos) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        return false;
+    }
+
     std::string apply_action(PolicyEngineAction &action,
                              const std::string &transaction_id,
                              const std::string &trigger_event_id,
@@ -623,6 +651,7 @@ private:
             last_error_ = "policy-engine-network-qos-verify-failed:" + action.target_ifname;
             return "failed";
         }
+        action.applied_value = after;
         action.applied = true;
         return "applied";
     }
@@ -687,8 +716,27 @@ private:
             bool restored = false;
             if (action.resolved_target_type == "cgroup") {
                 const fs::path control_path = fs::path(action.target_path) / action.file;
+                std::string current_value;
+                if (!read_value(control_path, current_value) ||
+                    !control_value_matches(action, current_value)) {
+                    last_error_ = "policy-engine-restore-refused-current-value-changed:" + action.name;
+                    write_policy_event("rollback", action.name, "failed", "",
+                                       transaction_id, trigger_event_id, &action);
+                    write_skill_action_event(action, "rollback", "failed",
+                                             transaction_id, trigger_event_id, "");
+                    continue;
+                }
                 restored = !action.old_value.empty() && write_value(control_path, action.old_value);
             } else if (action.resolved_target_type == "netdev") {
+                const std::string current_qdisc = tc_qdisc_show(action.target_ifname);
+                if (action.applied_value.empty() || current_qdisc != action.applied_value) {
+                    last_error_ = "policy-engine-restore-refused-qdisc-changed:" + action.name;
+                    write_policy_event("rollback", action.name, "failed", "",
+                                       transaction_id, trigger_event_id, &action);
+                    write_skill_action_event(action, "rollback", "failed",
+                                             transaction_id, trigger_event_id, "");
+                    continue;
+                }
                 restored = run_tc_command("tc qdisc del dev " + action.target_ifname + " root");
             }
             if (restored) {

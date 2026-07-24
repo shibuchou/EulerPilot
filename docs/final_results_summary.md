@@ -1,6 +1,6 @@
 # EulerPilot 最终结果摘要
 
-更新时间：`2026-07-20`
+更新时间：`2026-07-24`
 
 本文只保留最终提交口径。早期 RUNS=1/3、SP3/OLK 候选结果作为阶段记录保留在对应结果目录和历史文档中；答辩正文以 `docs/final_evidence_index.md`、`docs/final_report_submission.md` 和 `reports/final_evidence_compact.md` 为准。
 
@@ -40,7 +40,7 @@
 最终 evidence：
 
 ```text
-entries=40
+entries=41
 missing_required=0
 warnings=0
 ```

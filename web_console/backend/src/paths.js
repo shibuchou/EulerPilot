@@ -31,7 +31,10 @@ export function resolveConsoleConfig() {
 
   const token = process.env.EULERPILOT_CONSOLE_TOKEN || '';
   const loopback = host === '127.0.0.1' || host === 'localhost' || host === '::1';
-  if (!loopback && token.length < 16) {
+  if (token && token.length < 16) {
+    throw new Error('EULERPILOT_CONSOLE_TOKEN must contain at least 16 characters when set');
+  }
+  if (!loopback && !token) {
     throw new Error('non-loopback bind requires EULERPILOT_CONSOLE_TOKEN with at least 16 characters');
   }
 
@@ -40,7 +43,9 @@ export function resolveConsoleConfig() {
     host,
     port,
     token,
-    requiresToken: !loopback,
+    requiresToken: Boolean(token),
+    loopback,
+    mutatingRequiresToken: true,
     runtimeDir: path.join(rootDir, 'web_console', 'runtime'),
     jobsDir: path.join(rootDir, 'web_console', 'runtime', 'jobs'),
     distDir: path.join(rootDir, 'web_console', 'dist')

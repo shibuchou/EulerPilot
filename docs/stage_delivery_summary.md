@@ -1,6 +1,6 @@
 # EulerPilot 阶段交付汇总
 
-更新时间：`2026-07-20`
+更新时间：`2026-07-24`
 
 > 本文保留阶段交付脉络。当前最终交付验证线已升级为 `192.168.1.123:/root/EulerPilot` 的 SP4 主验证仓库；121 作为 SP3 历史验证和回归对照，122 作为 SP3/OLK 对照验证。最终状态以 `docs/progress_status.md`、`docs/final_evidence_index.md` 和 `reports/final_evidence_compact.md` 为准。
 
@@ -42,7 +42,7 @@
 
 - SP4 发行环境适配验证
 - SP4 官方源码自编译 sched_ext 内核复核
-- Redis/Nginx RUNS=5 复核
+- Redis/Nginx RUNS=10 frozen-code 复核
 - Web Console、Kubernetes 旁路验证和最终质量门禁
 
 ### 2.2 SP3 历史验证环境
@@ -208,7 +208,7 @@ hostname：cernet2.net
   - 最小正式验证
 - `193017`
   - `RUNS=3`
-  - 平衡轮换正式候选结果
+  - 平衡轮换历史候选结果
 - `194018`
   - `RUNS=5`
   - 当前最接近正文候选的 Nginx 正式结果

@@ -71,7 +71,7 @@
 | ScxExecutor 接入 | ✅ | `agent/src/executors.cpp`：`reconcile_scx_session()` + `apply_scx_assignment()` |
 | PsiGate v1 | ✅ | 状态机 NORMAL→ARMED→ACTIVE→COOLDOWN，已验证 Redis/Redis stress/Redis recover/Redis repeat3 |
 | sched_ext attach/detach | ✅ | `state=enabled` ↔ `state=disabled`，`nr_rejected=0` |
-| 性能对比 | ✅ | Redis RUNS=5 + Nginx RUNS=5，7 种后端组合 |
+| 性能对比 | ✅ | Redis RUNS=10 frozen-code + Nginx RUNS=10 frozen-code，7 种后端组合 |
 
 **Redis 结果**（`redis-scx-compare-20260612-191543`）：
 - `noisy_cgroup_v2`：GET 吞吐明显提升
@@ -113,7 +113,7 @@
 | 维度 | 完成情况 | 证据 |
 |------|----------|------|
 | 多后端矩阵 | ✅ | 7 种组合：quiet_default / quiet_scx / noisy_default / noisy_cgroup_v2 / noisy_scx_normal / noisy_scx_always_active / noisy_scx_psi |
-| 多轮运行 | ✅ | RUNS=5（Redis + Nginx 共 10 轮） |
+| 多轮运行 | ✅ | RUNS=10 frozen-code（Redis + Nginx 共 20 轮） |
 | 平衡轮换 | ✅ | `run_manifest.json` 记录轮换顺序 |
 | invalid_run 机制 | ✅ | 无效运行自动标记 |
 | 自动报告 | ✅ | 每轮生成 compare_summary_avg.csv + report.md + summary.md |
@@ -132,7 +132,7 @@
 |--------|------|------|----------|
 | **创新性** | 30 | 27 | 双后端统一架构 + PsiGate 分层门控 + Skills 插件化框架 + 三层分层证据策略 |
 | **功能完整性** | 25 | 22 | workload 感知完整，Skills 接口标准化，双后端可用，CLI 验证齐全 |
-| **性能提升** | 25 | 20 | 有 RUNS=5 对比数据，cgroup_v2 正向明显，sched_ext 有场景差异 |
+| **性能提升** | 25 | 20 | 有 RUNS=10 frozen-code 对比数据，cgroup_v2 正向明显，sched_ext 有场景差异 |
 | **代码质量** | 10 | 8 | 模块边界清晰，配置驱动，Skills 框架规范；注释偏少、无单元测试 |
 | **演示效果** | 10 | 9 | Skills 框架可现场 `--list-skills` / `--doctor-skills`，network/security demo 可实时 deny/recover |
 | **合计** | **100** | **86** | — |
@@ -208,7 +208,7 @@
    - noisy_scx_psi 在 GET 上有一定正向
 
 3. **实验严谨性**（+4）
-   - RUNS=5 多轮
+   - RUNS=10 frozen-code 多轮
    - 平衡轮换
    - 7 种后端矩阵
 
@@ -311,5 +311,5 @@
 1. 不是单一调度器 demo，而是可扩展 Agent 框架
 2. 双后端（cgroup + sched_ext）统一架构
 3. 三方向 OS Agent（resource/network/security）全覆盖
-4. 正式 compare 实验框架（平衡轮换/RUNS=5/自动报告）
+4. 正式 compare 实验框架（平衡轮换/RUNS=10 frozen-code/自动报告）
 5. Skills 框架证明新增能力不侵入核心 Runtime
