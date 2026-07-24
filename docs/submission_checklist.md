@@ -7,8 +7,8 @@
 - [x] SP3 + cgroup v2 主闭环
 - [x] OLK-6.6 + sched_ext 正式对照线
 - [x] PsiGate v1 闭环验证
-- [x] Redis `RUNS=5` 正式候选结果
-- [x] Nginx `RUNS=5` 正式候选结果
+- [x] Redis `RUNS=10` frozen-code 正式结果
+- [x] Nginx `RUNS=10` frozen-code 正式结果
 - [x] Skills 插件化框架：`Skill / SkillRegistry / SkillManager / builtin_skills`
 - [x] YAML v2 驱动 Skills 启停与配置：`targets + rules + target_ref`
 - [x] `--list-skills / --doctor-skills / --verbose / --jsonl` 命令行
@@ -56,18 +56,18 @@
 - [x] `security_policy_demo` BPF LSM file_open 最小闭环
 - [x] `security_policy_demo` BPF LSM attach/deny/rollback 集成测试 121/122 均通过
 - [x] Runtime 生命周期收拢与 ActionJournal/AuditBus 最小接入；SIGINT/SIGTERM 通过 graceful shutdown 标志触发主循环提前退出，仍走 `stop_all()` 清理路径
-- [x] 121 SP3 编译、集成测试和 22 项质量门禁通过，作为历史验证和回归对照保留；当前最终质量门禁以 SP4 `reports/final_quality_gate_20260720-stage3-performance.log` 为准
-- [x] SP4 sched_ext 自编译内核复核通过：Redis/Nginx `RUNS=5` 多轮对照、Redis PSI ACTIVE probe、Redis pressure gradient、最终质量门禁 `reports/final_quality_gate_20260720-stage3-performance.log`
+- [x] 121 SP3 编译、集成测试和兼容门禁通过，作为比赛要求的强制兼容交付环境；SP4/123 作为主验证和性能实验环境
+- [x] SP4 sched_ext 自编译内核复核通过：Redis/Nginx `RUNS=10` frozen-code 对照、Redis PSI ACTIVE probe、Redis pressure gradient、双环境 gate 和 evidence strict
 - [x] 静态 Dashboard：`reports/dashboard/index.html`
 - [x] Prometheus `/metrics` 端点：默认关闭，监听 `127.0.0.1:9108`
 - [x] 中文最终报告主稿与答辩材料
 
 ## 当前核心结果目录
 
-- Redis SP4 主验证：`results/final/redis-scx-compare-20260708-150702`
-- Nginx SP4 主验证：`results/final/nginx-scx-compare-20260708-152602`
-- Redis pressure gradient：`results/final/redis-pressure-gradient-20260708-153811`
-- Redis static vs Agent dynamic：`results/final/redis-static-vs-agent-20260720-150342`
+- Redis SP4 主验证：`results/final/redis-scx-compare-20260724-tested-2541464-runs10`
+- Nginx SP4 主验证：`results/final/nginx-scx-compare-20260724-tested-2541464-runs10`
+- Redis pressure gradient：`results/final/redis-pressure-gradient-20260724-tested-2541464-runs3`
+- Redis static vs Agent dynamic：`results/final/redis-static-vs-agent-20260724-tested-2541464-runs10`
 - Network connect4：`results/network_policy/integration-20260619-142347`
 - Network TC QoS：`results/network_policy/qos-tc-20260619-142357`
 - Network TC QoS Benchmark 121：`results/network_policy/qos-rate-20260620-181708`
@@ -184,7 +184,7 @@
 
 ## 当前结论
 
-项目已进入最终 release/tag 前收口阶段。当前已完成 Security anomaly -> Policy Engine -> Resource Control 降级、Security anomaly -> Policy Engine -> Network+Resource 联动，以及真实 Pod 版 Network+Resource 联动。121/122 的真实 Podman container target、k3s Pod target、Network QoS Pod host veth、Network XDP Pod host veth、真实 Pod Policy Engine 跨 Skill 联动、服务联动 Security anomaly 规则、anomaly 进程过滤、anomaly 组合 scope 过滤、credential 生命周期 anomaly、credential deep hook scoped attach 评估、isolated-veth XDP ICMP/TCP/UDP + UDP tuple 四规则、real Pod host veth XDP ICMP/TCP/UDP + UDP tuple 四规则均已转为 pass；SP4/123 的 sched_ext 自编译内核、Redis/Nginx RUNS=5 workload 对照、Redis pressure gradient、修复后的 static-vs-Agent RUNS=5、throughput-first、mixed-adaptive、Agent overhead、Web Console、K8s 旁路验证和最终质量门禁也已转为 pass。当前唯一仍未完成的提交材料是正式演示视频文件或公开链接；代码、文档和 evidence 已具备 release/tag 前复核条件。
+项目已进入最终 release/tag 前收口阶段。当前已完成 Security anomaly -> Policy Engine -> Resource Control 降级、Security anomaly -> Policy Engine -> Network+Resource 联动，以及真实 Pod 版 Network+Resource 联动。121/122 的真实 Podman container target、k3s Pod target、Network QoS Pod host veth、Network XDP Pod host veth、真实 Pod Policy Engine 跨 Skill 联动、服务联动 Security anomaly 规则、anomaly 进程过滤、anomaly 组合 scope 过滤、credential 生命周期 anomaly、credential deep hook scoped attach 评估、isolated-veth XDP ICMP/TCP/UDP + UDP tuple 四规则、real Pod host veth XDP ICMP/TCP/UDP + UDP tuple 四规则均已转为 pass；SP4/123 的 sched_ext 自编译内核、Redis/Nginx RUNS=10 frozen-code workload 对照、Redis pressure gradient、修复后的 static-vs-Agent RUNS=10、throughput-first RUNS=10、mixed-adaptive RUNS=10、Agent overhead RUNS=10、Web Console、K8s 旁路验证和双环境门禁也已转为 pass。当前唯一仍未完成的提交材料是正式演示视频文件或公开链接；代码、文档和 evidence 已具备 release/tag 前复核条件。
 
 ## v3.1 提交前新增检查
 
@@ -218,6 +218,6 @@
 - [x] Network XDP real Pod host veth tuple 字段演示 121/122 通过。
 - [x] `python3 scripts/collect_final_evidence.py --strict` 通过，最终证据压缩报告覆盖 40 个核心条目，必需缺失 0、警告 0。
 - [ ] 正式演示视频录制与链接填写。当前已准备 `docs/demo_video_recording_script.md`，但仓库内未包含正式视频文件。
-- [x] SP4 Redis/Nginx `RUNS=5` sched_ext workload 复核通过，Redis pressure gradient 已纳入 `configs/final_evidence_manifest.json` 和 `reports/final_evidence_compact.*`；Redis static-vs-agent 已用修复脚本 RUNS=5 重跑后再回补。
+- [x] SP4 Redis/Nginx `RUNS=10` frozen-code sched_ext workload 复核通过，Redis pressure gradient 已纳入 `configs/final_evidence_manifest.json` 和 `reports/final_evidence_compact.*`；Redis static-vs-agent 已用修复脚本 RUNS=10 重跑后再回补。
 - [x] Stage G Benchmark 与冻结材料已完成：主 Benchmark 结论冻结，现场演示日志仅作为追加彩排记录。
 

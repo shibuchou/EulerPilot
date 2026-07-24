@@ -40,13 +40,26 @@
       "notes": "Start snapshot for the v3.1 execution baseline."
     },
     {
+      "category": "repo_status",
+      "name": "Formal frozen-code experiment manifest 20260724",
+      "host": "123",
+      "path": "results/final/formal_run_manifest_20260724_tested_2541464.json",
+      "kind": "file",
+      "required": true,
+      "notes": "Records tested_code_commit 2541464, output root, formal result directories and source_tree_clean_at_end for the frozen-code experiment batch."
+    },
+    {
       "category": "cpu_sched_ext",
       "name": "Redis sched_ext comparison",
       "host": "121",
       "path": "results/final/redis-scx-compare-20260612-191543",
       "kind": "result_dir",
       "summary": "summary.md",
-      "files": ["compare_summary_avg.csv", "run_manifest.json", "report.md"],
+      "files": [
+        "compare_summary_avg.csv",
+        "run_manifest.json",
+        "report.md"
+      ],
       "required": true,
       "notes": "RUNS=5 Redis candidate result."
     },
@@ -57,53 +70,72 @@
       "path": "results/final/nginx-scx-compare-20260612-194018",
       "kind": "result_dir",
       "summary": "summary.md",
-      "files": ["compare_summary_avg.csv", "run_manifest.json", "report.md"],
+      "files": [
+        "compare_summary_avg.csv",
+        "run_manifest.json",
+        "report.md"
+      ],
       "required": true,
       "notes": "RUNS=5 Nginx candidate result."
     },
     {
       "category": "cpu_sched_ext",
-      "name": "SP4 Redis sched_ext comparison RUNS=5",
+      "name": "SP4 Redis sched_ext comparison RUNS=10 frozen-code formal run",
       "host": "123",
-      "path": "results/final/redis-scx-compare-20260708-150702",
+      "path": "results/final/redis-scx-compare-20260724-tested-2541464-runs10",
       "kind": "result_dir",
       "summary": "summary.md",
-      "files": ["compare_summary_avg.csv", "run_manifest.json", "report.md"],
+      "files": [
+        "compare_summary_avg.csv",
+        "run_manifest.json",
+        "report.md"
+      ],
       "required": true,
-      "notes": "SP4 sched_ext kernel Redis RUNS=5 workload comparison with CPU efficiency metrics."
+      "notes": "Formal RUNS=10 Redis comparison from tested_code_commit 2541464. cgroup v2 is the strongest Redis noisy-path evidence; scx results are retained as valid workload-boundary data and must not be described as stable performance improvement."
     },
     {
       "category": "cpu_sched_ext",
-      "name": "SP4 Nginx sched_ext comparison RUNS=5",
+      "name": "SP4 Nginx sched_ext comparison RUNS=10 frozen-code formal run",
       "host": "123",
-      "path": "results/final/nginx-scx-compare-20260708-152602",
+      "path": "results/final/nginx-scx-compare-20260724-tested-2541464-runs10",
       "kind": "result_dir",
       "summary": "summary.md",
-      "files": ["compare_summary_avg.csv", "run_manifest.json", "report.md"],
+      "files": [
+        "compare_summary_avg.csv",
+        "run_manifest.json",
+        "report.md"
+      ],
       "required": true,
-      "notes": "SP4 sched_ext kernel Nginx RUNS=5 workload comparison with CPU efficiency metrics."
+      "notes": "Formal RUNS=10 Nginx comparison from tested_code_commit 2541464. Results are workload-boundary evidence; sched_ext/psi paths are valid but regressed in this workload and are reported as such."
     },
     {
       "category": "cpu_sched_ext",
-      "name": "SP4 Redis pressure gradient comparison",
+      "name": "SP4 Redis pressure gradient comparison frozen-code formal run",
       "host": "123",
-      "path": "results/final/redis-pressure-gradient-20260708-153811",
+      "path": "results/final/redis-pressure-gradient-20260724-tested-2541464-runs3",
       "kind": "result_dir",
       "summary": "report.md",
-      "files": ["pressure_gradient_summary.csv", "report.md"],
+      "files": [
+        "pressure_gradient_summary.csv",
+        "report.md"
+      ],
       "required": true,
-      "notes": "Redis interference gradient across 0/1/2/4/8 stress workers, used to show workload-dependent benefit and cost boundaries."
+      "notes": "Formal pressure gradient from tested_code_commit 2541464 across STRESS_WORKERS=0/1/2/4/8. Shows Redis cgroup v2 benefit under increasing interference; scx_psi includes PSI probe load and is not used as net performance proof."
     },
     {
       "category": "cpu_sched_ext",
-      "name": "SP4 Redis manual static vs agent dynamic comparison",
+      "name": "SP4 Redis manual static vs Agent dynamic comparison RUNS=10 frozen-code formal run",
       "host": "123",
-      "path": "results/final/redis-static-vs-agent-20260720-150342",
+      "path": "results/final/redis-static-vs-agent-20260724-tested-2541464-runs10",
       "kind": "result_dir",
       "summary": "summary.md",
-      "files": ["compare_summary_avg.csv", "report.md", "summary.md"],
+      "files": [
+        "compare_summary_avg.csv",
+        "report.md",
+        "summary.md"
+      ],
       "required": true,
-      "notes": "Fixed RUNS=5 Redis noisy workload comparison among default, Agent observe-only, manual static cgroup control and EulerPilot dynamic Agent control. All stress-ng parent and worker PIDs are started inside the same background cgroup; strict evidence checks controlled_pid_cgroups, manual_static throttling and cpu_metric_scope."
+      "notes": "Formal RUNS=10 fixed Redis comparison from tested_code_commit 2541464. stress-ng parent and worker PIDs are started inside /eulerpilot/background; strict checks cover controlled_pid_cgroups, throttling, and cpu_metric_scope."
     },
     {
       "category": "cpu_sched_ext",
@@ -112,42 +144,62 @@
       "path": "results/final/redis-scx-psi-probe-20260706-100857",
       "kind": "result_dir",
       "summary": "summary.md",
-      "files": ["psi_gate_trace.jsonl", "agent_snapshot.txt", "gate_status.txt", "scx_stats.json"],
+      "files": [
+        "psi_gate_trace.jsonl",
+        "agent_snapshot.txt",
+        "gate_status.txt",
+        "scx_stats.json"
+      ],
       "required": true,
       "notes": "SP4 sched_ext kernel PSI gate NORMAL to ARMED to ACTIVE transition evidence."
     },
     {
       "category": "cpu_sched_ext",
-      "name": "SP4 throughput-first batch benchmark",
+      "name": "SP4 throughput-first batch benchmark RUNS=10 frozen-code formal run",
       "host": "123",
-      "path": "results/final/throughput-first-20260720-165544",
+      "path": "results/final/throughput-first-20260724-tested-2541464-runs10",
       "kind": "result_dir",
       "summary": "summary.md",
-      "files": ["throughput_summary_avg.csv", "throughput_summary.csv", "run_manifest.json", "report.md"],
+      "files": [
+        "throughput_summary_avg.csv",
+        "throughput_summary.csv",
+        "run_manifest.json",
+        "report.md"
+      ],
       "required": true,
-      "notes": "RUNS=3 batch/throughput workload evidence with explicit EULERPILOT_THROUGHPUT_FIRST=1 switch, cgroup throughput profile hits, and sched_ext batch stats."
+      "notes": "Formal RUNS=10 throughput-first evidence from tested_code_commit 2541464. cgroup throughput profile is valid; scx batch stats are retained with explicit validity/performance boundaries."
     },
     {
       "category": "cpu_sched_ext",
-      "name": "SP4 mixed-adaptive closure benchmark",
+      "name": "SP4 mixed-adaptive closure benchmark RUNS=10 frozen-code formal run",
       "host": "123",
-      "path": "results/final/mixed-adaptive-20260720-170840",
+      "path": "results/final/mixed-adaptive-20260724-tested-2541464-runs10-lite",
       "kind": "result_dir",
       "summary": "summary.md",
-      "files": ["mixed_adaptive_summary.csv", "mixed_adaptive_timeline.csv", "run_manifest.json", "report.md"],
+      "files": [
+        "mixed_adaptive_summary.csv",
+        "mixed_adaptive_timeline.csv",
+        "run_manifest.json",
+        "report.md"
+      ],
       "required": true,
-      "notes": "RUNS=3 Redis mixed workload evidence for pressure appearance, PSI gate ACTIVE transition, scheduler update evidence, recovery and rollback."
+      "notes": "Formal RUNS=10 mixed-adaptive closure from tested_code_commit 2541464. Demonstrates same Agent process across quiet -> pressure -> recovery with NORMAL -> ARMED -> ACTIVE -> COOLDOWN -> NORMAL evidence; PSI probe is not a net performance claim."
     },
     {
       "category": "quality_gate",
-      "name": "SP4 Agent control-plane overhead benchmark",
+      "name": "SP4 Agent control-plane overhead benchmark RUNS=10 frozen-code formal run",
       "host": "123",
-      "path": "results/final/agent-overhead-20260720-170415",
+      "path": "results/final/agent-overhead-20260724-tested-2541464-runs10",
       "kind": "result_dir",
       "summary": "summary.md",
-      "files": ["agent_overhead_summary_avg.csv", "agent_overhead_summary.csv", "run_manifest.json", "report.md"],
+      "files": [
+        "agent_overhead_summary_avg.csv",
+        "agent_overhead_summary.csv",
+        "run_manifest.json",
+        "report.md"
+      ],
       "required": true,
-      "notes": "RUNS=3 Agent CPU/RSS overhead evidence from /proc/<pid>/stat and /proc/<pid>/status across observe-only, active cgroup and active sched_ext modes."
+      "notes": "Formal RUNS=10 Agent CPU/RSS overhead from tested_code_commit 2541464 across observe-only cgroup, active cgroup and active sched_ext modes. This is user-space control-plane overhead evidence."
     },
     {
       "category": "network",
@@ -156,7 +208,12 @@
       "path": "results/network_policy/xdp-20260703-121-fields-v1",
       "kind": "result_dir",
       "summary": "summary.txt",
-      "files": ["network_policy_events.jsonl", "action_journal.network_xdp.jsonl", "xdp_rule_stats.txt", "README.md"],
+      "files": [
+        "network_policy_events.jsonl",
+        "action_journal.network_xdp.jsonl",
+        "xdp_rule_stats.txt",
+        "README.md"
+      ],
       "required": true,
       "notes": "ICMP/TCP/UDP and UDP tuple per-rule XDP evidence."
     },
@@ -167,7 +224,12 @@
       "path": "results/network_policy/xdp-20260703-122-fields-v1",
       "kind": "result_dir",
       "summary": "summary.txt",
-      "files": ["network_policy_events.jsonl", "action_journal.network_xdp.jsonl", "xdp_rule_stats.txt", "README.md"],
+      "files": [
+        "network_policy_events.jsonl",
+        "action_journal.network_xdp.jsonl",
+        "xdp_rule_stats.txt",
+        "README.md"
+      ],
       "required": true,
       "notes": "ICMP/TCP/UDP and UDP tuple per-rule XDP evidence."
     },
@@ -178,7 +240,12 @@
       "path": "results/network_policy/real-pod-veth-xdp-20260703-k3s-121-tuple-v1",
       "kind": "result_dir",
       "summary": "summary.txt",
-      "files": ["network_policy.jsonl", "action_journal.jsonl", "xdp_rule_stats.txt", "report.md"],
+      "files": [
+        "network_policy.jsonl",
+        "action_journal.jsonl",
+        "xdp_rule_stats.txt",
+        "report.md"
+      ],
       "required": true,
       "notes": "Kubernetes Pod host veth XDP evidence with UDP tuple fields."
     },
@@ -189,7 +256,12 @@
       "path": "results/network_policy/real-pod-veth-xdp-20260703-k3s-122-tuple-v1",
       "kind": "result_dir",
       "summary": "summary.txt",
-      "files": ["network_policy.jsonl", "action_journal.jsonl", "xdp_rule_stats.txt", "report.md"],
+      "files": [
+        "network_policy.jsonl",
+        "action_journal.jsonl",
+        "xdp_rule_stats.txt",
+        "report.md"
+      ],
       "required": true,
       "notes": "Kubernetes Pod host veth XDP evidence with UDP tuple fields."
     },
@@ -200,7 +272,13 @@
       "path": "results/network_policy/real-pod-veth-qos-20260630-k3s-121-v2",
       "kind": "result_dir",
       "summary": "summary.txt",
-      "files": ["network_policy.jsonl", "action_journal.jsonl", "tc_qdisc_after.txt", "tc_qdisc_rollback.txt", "report.md"],
+      "files": [
+        "network_policy.jsonl",
+        "action_journal.jsonl",
+        "tc_qdisc_after.txt",
+        "tc_qdisc_rollback.txt",
+        "report.md"
+      ],
       "required": true,
       "notes": "TC/TBF apply and rollback on lab Pod host veth."
     },
@@ -211,7 +289,13 @@
       "path": "results/network_policy/real-pod-veth-qos-20260630-k3s-122-v1",
       "kind": "result_dir",
       "summary": "summary.txt",
-      "files": ["network_policy.jsonl", "action_journal.jsonl", "tc_qdisc_after.txt", "tc_qdisc_rollback.txt", "report.md"],
+      "files": [
+        "network_policy.jsonl",
+        "action_journal.jsonl",
+        "tc_qdisc_after.txt",
+        "tc_qdisc_rollback.txt",
+        "report.md"
+      ],
       "required": true,
       "notes": "TC/TBF apply and rollback on lab Pod host veth."
     },
@@ -222,7 +306,11 @@
       "path": "results/security_policy/anomaly-rules-20260703-121-v4",
       "kind": "result_dir",
       "summary": "summary.txt",
-      "files": ["security_policy_events.anomaly-rules.jsonl", "anomaly_event_summary.txt", "report.md"],
+      "files": [
+        "security_policy_events.anomaly-rules.jsonl",
+        "anomaly_event_summary.txt",
+        "report.md"
+      ],
       "required": true,
       "notes": "burst_connect, burst_openat_sensitive and capability_abuse evidence."
     },
@@ -233,7 +321,11 @@
       "path": "results/security_policy/anomaly-rules-20260703-122-v2",
       "kind": "result_dir",
       "summary": "summary.txt",
-      "files": ["security_policy_events.anomaly-rules.jsonl", "anomaly_event_summary.txt", "report.md"],
+      "files": [
+        "security_policy_events.anomaly-rules.jsonl",
+        "anomaly_event_summary.txt",
+        "report.md"
+      ],
       "required": true,
       "notes": "burst_connect, burst_openat_sensitive and capability_abuse evidence."
     },
@@ -244,7 +336,11 @@
       "path": "results/security_policy/anomaly-process-filter-20260703-121-v1",
       "kind": "result_dir",
       "summary": "summary.txt",
-      "files": ["security_policy_events.anomaly-process-filter.jsonl", "anomaly_process_filter_summary.txt", "report.md"],
+      "files": [
+        "security_policy_events.anomaly-process-filter.jsonl",
+        "anomaly_process_filter_summary.txt",
+        "report.md"
+      ],
       "required": true,
       "notes": "comm_prefix positive filter and comm exact negative filter for openat anomaly."
     },
@@ -255,7 +351,11 @@
       "path": "results/security_policy/anomaly-process-filter-20260703-122-v1",
       "kind": "result_dir",
       "summary": "summary.txt",
-      "files": ["security_policy_events.anomaly-process-filter.jsonl", "anomaly_process_filter_summary.txt", "report.md"],
+      "files": [
+        "security_policy_events.anomaly-process-filter.jsonl",
+        "anomaly_process_filter_summary.txt",
+        "report.md"
+      ],
       "required": true,
       "notes": "comm_prefix positive filter and comm exact negative filter for openat anomaly."
     },
@@ -266,7 +366,11 @@
       "path": "results/security_policy/anomaly-combo-scope-20260703-121-v1",
       "kind": "result_dir",
       "summary": "summary.txt",
-      "files": ["security_policy_events.anomaly-combo-scope.jsonl", "anomaly_combo_scope_summary.txt", "report.md"],
+      "files": [
+        "security_policy_events.anomaly-combo-scope.jsonl",
+        "anomaly_combo_scope_summary.txt",
+        "report.md"
+      ],
       "required": true,
       "notes": "target_ref plus path_prefix plus comm_prefix scoped openat anomaly evidence."
     },
@@ -277,7 +381,11 @@
       "path": "results/security_policy/anomaly-combo-scope-20260703-122-v1",
       "kind": "result_dir",
       "summary": "summary.txt",
-      "files": ["security_policy_events.anomaly-combo-scope.jsonl", "anomaly_combo_scope_summary.txt", "report.md"],
+      "files": [
+        "security_policy_events.anomaly-combo-scope.jsonl",
+        "anomaly_combo_scope_summary.txt",
+        "report.md"
+      ],
       "required": true,
       "notes": "target_ref plus path_prefix plus comm_prefix scoped openat anomaly evidence."
     },
@@ -288,7 +396,11 @@
       "path": "results/security_policy/credential-anomaly-20260703-121-v4",
       "kind": "result_dir",
       "summary": "summary.txt",
-      "files": ["security_policy_events.credential-anomaly.jsonl", "security_policy_events.credential-hits.jsonl", "report.md"],
+      "files": [
+        "security_policy_events.credential-anomaly.jsonl",
+        "security_policy_events.credential-hits.jsonl",
+        "report.md"
+      ],
       "required": true,
       "notes": "credential_churn anomaly and credential lifecycle fields."
     },
@@ -299,7 +411,11 @@
       "path": "results/security_policy/credential-anomaly-20260703-122-v4",
       "kind": "result_dir",
       "summary": "summary.txt",
-      "files": ["security_policy_events.credential-anomaly.jsonl", "security_policy_events.credential-hits.jsonl", "report.md"],
+      "files": [
+        "security_policy_events.credential-anomaly.jsonl",
+        "security_policy_events.credential-hits.jsonl",
+        "report.md"
+      ],
       "required": true,
       "notes": "credential_churn anomaly and credential lifecycle fields."
     },
@@ -310,7 +426,12 @@
       "path": "results/security_policy/credential-deep-hooks-20260703-121-v2",
       "kind": "result_dir",
       "summary": "summary.txt",
-      "files": ["deep_hook_status.txt", "security_policy_events.credential-deep-hits.jsonl", "security_policy_events.credential-deep-anomaly.jsonl", "report.md"],
+      "files": [
+        "deep_hook_status.txt",
+        "security_policy_events.credential-deep-hits.jsonl",
+        "security_policy_events.credential-deep-anomaly.jsonl",
+        "report.md"
+      ],
       "required": true,
       "notes": "cred_alloc_blank and cred_transfer scoped attach boundary evidence."
     },
@@ -321,7 +442,12 @@
       "path": "results/security_policy/credential-deep-hooks-20260703-122-v2",
       "kind": "result_dir",
       "summary": "summary.txt",
-      "files": ["deep_hook_status.txt", "security_policy_events.credential-deep-hits.jsonl", "security_policy_events.credential-deep-anomaly.jsonl", "report.md"],
+      "files": [
+        "deep_hook_status.txt",
+        "security_policy_events.credential-deep-hits.jsonl",
+        "security_policy_events.credential-deep-anomaly.jsonl",
+        "report.md"
+      ],
       "required": true,
       "notes": "cred_alloc_blank and cred_transfer scoped attach boundary evidence."
     },
@@ -332,7 +458,11 @@
       "path": "results/resource_control/io-20260624-160008",
       "kind": "result_dir",
       "summary": "summary.txt",
-      "files": ["resource_control_events.jsonl", "agent.log", "rollback.log"],
+      "files": [
+        "resource_control_events.jsonl",
+        "agent.log",
+        "rollback.log"
+      ],
       "required": true,
       "notes": "io.max/io.weight apply, effect and rollback evidence."
     },
@@ -343,7 +473,11 @@
       "path": "results/resource_control/io-20260624-160208",
       "kind": "result_dir",
       "summary": "summary.txt",
-      "files": ["resource_control_events.jsonl", "agent.log", "rollback.log"],
+      "files": [
+        "resource_control_events.jsonl",
+        "agent.log",
+        "rollback.log"
+      ],
       "required": true,
       "notes": "io.max/io.weight apply, effect and rollback evidence."
     },
@@ -354,7 +488,11 @@
       "path": "results/resource_control/real-pod-target-20260630-k3s-121-v2",
       "kind": "result_dir",
       "summary": "summary.txt",
-      "files": ["resource_control.jsonl", "agent.log", "report.md"],
+      "files": [
+        "resource_control.jsonl",
+        "agent.log",
+        "report.md"
+      ],
       "required": true,
       "notes": "k8s_pod target resolves to real Pod cgroup and restores CPU/Memory."
     },
@@ -365,7 +503,11 @@
       "path": "results/resource_control/real-pod-target-20260630-k3s-122-v1",
       "kind": "result_dir",
       "summary": "summary.txt",
-      "files": ["resource_control.jsonl", "agent.log", "report.md"],
+      "files": [
+        "resource_control.jsonl",
+        "agent.log",
+        "report.md"
+      ],
       "required": true,
       "notes": "k8s_pod target resolves to real Pod cgroup and restores CPU/Memory."
     },
@@ -376,7 +518,11 @@
       "path": "results/policy_engine/security-network-resource-20260629-214952",
       "kind": "result_dir",
       "summary": "summary.txt",
-      "files": ["summary.txt", "setup.log", "report.md"],
+      "files": [
+        "summary.txt",
+        "setup.log",
+        "report.md"
+      ],
       "required": true,
       "notes": "v3.1 second cross-skill link, including failure rollback test."
     },
@@ -387,7 +533,11 @@
       "path": "results/policy_engine/security-network-resource-20260629-215950",
       "kind": "result_dir",
       "summary": "summary.txt",
-      "files": ["summary.txt", "setup.log", "report.md"],
+      "files": [
+        "summary.txt",
+        "setup.log",
+        "report.md"
+      ],
       "required": true,
       "notes": "v3.1 second cross-skill link, including failure rollback test."
     },
@@ -398,7 +548,14 @@
       "path": "results/policy_engine/real-pod-security-network-resource-20260630-k3s-121-v1",
       "kind": "result_dir",
       "summary": "summary.txt",
-      "files": ["policy_engine_events.jsonl", "security_policy_events.jsonl", "network_policy_events.jsonl", "resource_control_events.jsonl", "action_journal.jsonl", "report.md"],
+      "files": [
+        "policy_engine_events.jsonl",
+        "security_policy_events.jsonl",
+        "network_policy_events.jsonl",
+        "resource_control_events.jsonl",
+        "action_journal.jsonl",
+        "report.md"
+      ],
       "required": true,
       "notes": "v3.2 real Pod cgroup plus host veth cross-skill evidence."
     },
@@ -409,7 +566,14 @@
       "path": "results/policy_engine/real-pod-security-network-resource-20260630-k3s-122-v1",
       "kind": "result_dir",
       "summary": "summary.txt",
-      "files": ["policy_engine_events.jsonl", "security_policy_events.jsonl", "network_policy_events.jsonl", "resource_control_events.jsonl", "action_journal.jsonl", "report.md"],
+      "files": [
+        "policy_engine_events.jsonl",
+        "security_policy_events.jsonl",
+        "network_policy_events.jsonl",
+        "resource_control_events.jsonl",
+        "action_journal.jsonl",
+        "report.md"
+      ],
       "required": true,
       "notes": "v3.2 real Pod cgroup plus host veth cross-skill evidence."
     },
@@ -420,7 +584,13 @@
       "path": "results/k8s/sp4-validation-20260708-023552",
       "kind": "result_dir",
       "summary": "report.md",
-      "files": ["k8s-master-raw/summary.env", "k8s-master-raw/pod_local_health.txt", "k8s-master-raw/service_health.txt", "k8s-master-raw/validation_label_after_cleanup.txt", "k8s-master-raw/webconsole_label_after_cleanup.txt"],
+      "files": [
+        "k8s-master-raw/summary.env",
+        "k8s-master-raw/pod_local_health.txt",
+        "k8s-master-raw/service_health.txt",
+        "k8s-master-raw/validation_label_after_cleanup.txt",
+        "k8s-master-raw/webconsole_label_after_cleanup.txt"
+      ],
       "required": true,
       "notes": "Isolated namespace K8s smoke validation with cleanup proof; no production namespace or existing workload modified."
     },
@@ -431,7 +601,13 @@
       "path": "results/k8s/sp4-validation-20260708-023552/web_console",
       "kind": "result_dir",
       "summary": "web_console_action_summary_v2.json",
-      "files": ["health.json", "system.json", "evidence_summary_after_manifest.json", "web_console_action_summary_v2.json", "jobs_after.json"],
+      "files": [
+        "health.json",
+        "system.json",
+        "evidence_summary_after_manifest.json",
+        "web_console_action_summary_v2.json",
+        "jobs_after.json"
+      ],
       "required": true,
       "notes": "SP4 Web Console API and whitelist action validation: read-only, verify, offline demo and cleanup actions succeeded."
     }

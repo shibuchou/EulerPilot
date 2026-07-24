@@ -1,0 +1,4 @@
+1009: hash  name class_map  flags 0x0
+	key 4B  value 4B  max_entries 8192  memlock 656528B
+	btf_id 5216
+	pids eulerpilot-agen(181103), scx_eulerpilot(181109)

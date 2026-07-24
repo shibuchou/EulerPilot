@@ -1,0 +1,37 @@
+
+  * EulerPilot Agent 
+  --------------------------------------------------
+  config:     /root/EulerPilot-tested-2541464/configs/agent.yaml
+  interval:   1000ms  duration:   6s  warmup: 2
+  mode:       active  backend:    sched_ext
+  scx binary: auto (auto)
+  gate:       always-active
+  env:         psi:ok  cg:ok  scx:ok
+  --------------------------------------------------
+
+  --- legend ---
+  mark: . UNKNOWN  L LATENCY_SENSITIVE  B BACKGROUND_NOISY  T THROUGHPUT_BATCH
+  act:  + applied  ~ managed  - none
+  --- observing ---
+  mark name             pid  class        act profile    w:weight reason
+  B stress-ng-cpu     170469 BACKGROUND_NOISY |~ normal_profile w:0 scx-observe-only
+  L nginx             168321 LATENCY_SENSITIVE |~ normal_profile w:0 scx-observe-only
+  B stress-ng-cpu     170468 BACKGROUND_NOISY |~ normal_profile w:0 scx-observe-only
+  B stress-ng-cpu     170469 BACKGROUND_NOISY |~ mixed_profile w:0 scx-observe-only
+  L nginx             168321 LATENCY_SENSITIVE |~ latency_profile w:0 scx-observe-only
+  B stress-ng-cpu     170468 BACKGROUND_NOISY |~ mixed_profile w:0 scx-observe-only
+  B stress-ng-cpu     170469 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  L nginx             168321 LATENCY_SENSITIVE |+ latency_profile w:0 gate-state-map-updated
+  B stress-ng-cpu     170468 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  B stress-ng-cpu     170469 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  L nginx             168321 LATENCY_SENSITIVE |+ latency_profile w:0 gate-state-map-updated
+  B stress-ng-cpu     170468 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  B stress-ng-cpu     170469 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  L nginx             168321 LATENCY_SENSITIVE |+ latency_profile w:0 gate-state-map-updated
+  B stress-ng-cpu     170468 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  B stress-ng-cpu     170469 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  L nginx             168321 LATENCY_SENSITIVE |+ latency_profile w:0 gate-state-map-updated
+  B stress-ng-cpu     170468 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  --------------------------------------------------
+  DONE  total=84  applied=12  L=6  T=0  B=12  U=66
+

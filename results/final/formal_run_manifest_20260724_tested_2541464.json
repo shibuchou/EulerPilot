@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "tested_code_commit": "2541464552aa763522a8496a5082a514a843a179",
+  "run_id": "formal-20260723-153923",
+  "host": "cernet2.net",
+  "kernel": "6.6.0-159.4.3.154.oe2403sp4.x86_64-eulerpilot-scx",
+  "started_at": "2026-07-23T15:39:23+08:00",
+  "source_tree_status_start": 0,
+  "output_root": "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923",
+  "formal_experiment_scope": "redis_nginx_static_agent_overhead_throughput_mixed_runs10_with_mixed_retry",
+  "randomization_note": "bench script uses deterministic balanced RUN_ORDERS rotation; no benchmark logic changed after tested_code_commit",
+  "seed": "not_applicable_balanced_rotation",
+  "commands": [
+    "RUNS=10 OUTDIR=/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/redis-scx-compare-runs10 SCX_BIN=/usr/local/bin/scx_eulerpilot bash bench/redis/run_redis_sched_ext_compare.sh",
+    "RUNS=10 OUTDIR=/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10 SCX_BIN=/usr/local/bin/scx_eulerpilot bash bench/nginx/run_nginx_sched_ext_compare.sh",
+    "RUNS=10 OUTDIR=/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/redis-static-vs-agent-runs10 bash bench/redis/run_static_vs_agent_compare.sh",
+    "RUNS=10 OUTDIR=/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/agent-overhead-runs10 SCX_BIN=/usr/local/bin/scx_eulerpilot bash bench/overhead/run_agent_overhead.sh",
+    "RUNS=10 OUTDIR=/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/throughput-first-runs10 SCX_BIN=/usr/local/bin/scx_eulerpilot bash bench/throughput/run_throughput_first_benchmark.sh",
+    "RUNS=10 OUTDIR=/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/mixed-adaptive-runs10 SCX_BIN=/usr/local/bin/scx_eulerpilot bash bench/mixed/run_mixed_adaptive_closure.sh",
+    "RUNS=10 DURATION_S=10 BENCH_REQUESTS=50000 STRESS_WORKERS=4 OUTDIR=/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/mixed-adaptive-runs10-lite SCX_BIN=/usr/local/bin/scx_eulerpilot bash bench/mixed/run_mixed_adaptive_closure.sh"
+  ],
+  "ended_at_command_batch_1": "2026-07-23T16:51:54+08:00",
+  "source_tree_status_end": 0,
+  "formal_results": [
+    {
+      "id": "redis_scx_compare_runs10",
+      "path": "redis-scx-compare-runs10",
+      "runs": 10,
+      "invalid_markers": 0,
+      "summary": "Redis sched_ext/cgroup compare RUNS=10",
+      "status": "complete"
+    },
+    {
+      "id": "nginx_scx_compare_runs10",
+      "path": "nginx-scx-compare-runs10",
+      "runs": 10,
+      "invalid_markers": 0,
+      "summary": "Nginx sched_ext/cgroup compare RUNS=10",
+      "status": "complete"
+    },
+    {
+      "id": "redis_static_vs_agent_runs10",
+      "path": "redis-static-vs-agent-runs10",
+      "runs": 10,
+      "invalid_markers": 0,
+      "summary": "Redis manual static vs Agent dynamic RUNS=10 with controlled stress worker cgroup evidence",
+      "status": "complete"
+    },
+    {
+      "id": "agent_overhead_runs10",
+      "path": "agent-overhead-runs10",
+      "runs": 10,
+      "invalid_markers": 0,
+      "summary": "Agent overhead RUNS=10",
+      "status": "complete"
+    },
+    {
+      "id": "throughput_first_runs10",
+      "path": "throughput-first-runs10",
+      "runs": 10,
+      "invalid_markers": 0,
+      "summary": "Throughput-first profile RUNS=10",
+      "status": "complete"
+    },
+    {
+      "id": "mixed_adaptive_runs10_original",
+      "path": "mixed-adaptive-runs10",
+      "runs": 10,
+      "invalid_markers": 1,
+      "summary": "Original mixed-adaptive attempt stopped as invalid; retained as parameter-boundary evidence",
+      "status": "invalid_retained"
+    },
+    {
+      "id": "mixed_adaptive_runs10_lite",
+      "path": "mixed-adaptive-runs10-lite",
+      "runs": 10,
+      "invalid_markers": 0,
+      "summary": "Mixed-adaptive closure RUNS=10 with NORMAL/ARMED/ACTIVE/COOLDOWN/NORMAL evidence",
+      "status": "complete"
+    },
+    {
+      "id": "redis_pressure_gradient_runs3",
+      "path": "redis-pressure-gradient-runs3",
+      "runs": 3,
+      "workers": [
+        0,
+        1,
+        2,
+        4,
+        8
+      ],
+      "invalid_markers": 0,
+      "summary": "Redis pressure gradient RUNS=3 across 0/1/2/4/8 stress workers",
+      "status": "complete"
+    }
+  ],
+  "result_interpretation_note": "Redis noisy cgroup_v2 shows clearer benefit; Nginx scx/psi shows workload boundary and regression, must be reported as valid/regressed or boundary evidence, not as stable improvement.",
+  "updated_at": "2026-07-24T06:20:43.467464+00:00",
+  "source_tree_clean_at_end": true,
+  "source_status_porcelain_at_end": ""
+}

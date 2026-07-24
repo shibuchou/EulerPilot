@@ -1,0 +1,5 @@
+test,rps,avg_latency_ms,p95_latency_ms,p99_latency_ms,max_latency_ms
+PING_INLINE,10770.06,1.248,2.823,4.215,8.839
+SET,9560.23,1.430,3.743,4.351,8.127
+GET,9220.84,1.487,3.047,4.311,8.023
+INCR,9074.41,1.528,2.911,4.279,6.431

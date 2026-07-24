@@ -1,0 +1,4 @@
+1010: array  name gate_state_map  flags 0x0
+	key 4B  value 24B  max_entries 1  memlock 408B
+	btf_id 5216
+	pids eulerpilot-agen(181103), scx_eulerpilot(181109)

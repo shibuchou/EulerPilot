@@ -1,0 +1,39 @@
+
+  * EulerPilot Agent 
+  --------------------------------------------------
+  config:     /root/EulerPilot-tested-2541464/configs/agent.yaml
+  interval:   500ms  duration:   10s  warmup: 0
+  mode:       active  backend:    sched_ext
+  scx binary: auto (auto)
+  gate:       psi
+  env:         psi:ok  cg:ok  scx:ok
+  --------------------------------------------------
+
+  --- legend ---
+  mark: . UNKNOWN  L LATENCY_SENSITIVE  B BACKGROUND_NOISY  T THROUGHPUT_BATCH
+  act:  + applied  ~ managed  - none
+  --- observing ---
+  mark name             pid  class        act profile    w:weight reason
+  T redis-benchmark   187132 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  T redis-benchmark   187132 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  T redis-benchmark   187132 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  T redis-benchmark   187132 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  T redis-benchmark   187132 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  T redis-benchmark   187132 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  T redis-benchmark   187132 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  T redis-benchmark   187132 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  T redis-benchmark   187132 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  T redis-benchmark   187132 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  T redis-benchmark   187132 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  T redis-benchmark   187132 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  T redis-benchmark   187132 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  T redis-benchmark   187132 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  T redis-benchmark   187132 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  T redis-benchmark   187132 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  T redis-benchmark   187132 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  T redis-benchmark   187132 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  T redis-benchmark   187132 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  T redis-benchmark   187132 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  --------------------------------------------------
+  DONE  total=325  applied=0  L=0  T=20  B=0  U=305
+

@@ -1,0 +1,16 @@
+{
+  "run_id": "throughput-first-runs10",
+  "timestamp": "2026-07-24T12:12:54+08:00",
+  "host": "cernet2.net",
+  "kernel_release": "6.6.0-159.4.3.154.oe2403sp4.x86_64-eulerpilot-scx",
+  "runs": 10,
+  "workers": 2,
+  "duration_s": 8,
+  "labels": [
+    "default_batch",
+    "cgroup_throughput_first",
+    "scx_throughput_first"
+  ],
+  "benchmark": "throughput-first-sysbench-lite",
+  "notes": "sysbench is a result-local CPU worker name used to match the existing managed batch classifier; it is not the upstream sysbench package."
+}

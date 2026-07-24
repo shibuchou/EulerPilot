@@ -1,0 +1,10 @@
+{
+  "run_id": "mixed-adaptive-runs10-lite",
+  "timestamp": "2026-07-24T13:30:13+08:00",
+  "host": "cernet2.net",
+  "kernel_release": "6.6.0-159.4.3.154.oe2403sp4.x86_64-eulerpilot-scx",
+  "runs": 10,
+  "stress_workers": 4,
+  "benchmark": "mixed-adaptive-redis-psi",
+  "notes": "pressure_active uses a Redis PSI probe only to trigger PSI gate; it is activation evidence, not net performance comparison."
+}

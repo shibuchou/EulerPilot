@@ -1,0 +1,2 @@
+run,label,workers,total_ops,ops_per_sec
+run-1,scx_throughput_first,2,484044800,48404480.000

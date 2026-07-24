@@ -48,10 +48,10 @@ SP4 增强验证链路已经完成，现场默认作为证据展示，不作为�
 
 ```text
 SP4 / 123 sched_ext kernel
-  -> Redis RUNS=5 sched_ext compare
-  -> Nginx RUNS=5 sched_ext compare
+  -> Redis RUNS=10 frozen-code sched_ext compare
+  -> Nginx RUNS=10 frozen-code sched_ext compare
   -> final_quality_gate.sh 22/22 P0 + 100 smoke + 5 doctor
-  -> final evidence compact 40 entries / missing 0 / warnings 0
+  -> final evidence compact 41 entries / missing 0 / warnings 0
 ```
 
 ## 演示视频状态
@@ -71,8 +71,8 @@ SP4 / 123 sched_ext kernel
 - `docs/resource_control_skill.md`
 - `docs/sp4_validation_plan.md`
 - `reports/sp4/final_quality_gate_scx_workload_20260706-1214.log`
-- `results/final/redis-scx-compare-20260708-150702/report.md`
-- `results/final/nginx-scx-compare-20260708-152602/report.md`
+- `results/final/redis-scx-compare-20260724-tested-2541464-runs10/report.md`
+- `results/final/nginx-scx-compare-20260724-tested-2541464-runs10/report.md`
 - `results/policy_engine/security-network-resource-*/report.md`
 - `results/policy_engine/security-network-resource-*/summary.txt`
 

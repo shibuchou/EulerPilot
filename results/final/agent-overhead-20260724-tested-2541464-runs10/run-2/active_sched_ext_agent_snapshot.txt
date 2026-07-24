@@ -1,0 +1,60 @@
+
+  * EulerPilot Agent 
+  --------------------------------------------------
+  config:     /root/EulerPilot-tested-2541464/configs/agent.yaml
+  interval:   500ms  duration:   8s  warmup: 0
+  mode:       active  backend:    sched_ext
+  scx binary: auto (auto)
+  gate:       normal
+  env:         psi:ok  cg:ok  scx:ok
+  --------------------------------------------------
+
+  --- legend ---
+  mark: . UNKNOWN  L LATENCY_SENSITIVE  B BACKGROUND_NOISY  T THROUGHPUT_BATCH
+  act:  + applied  ~ managed  - none
+  --- observing ---
+  mark name             pid  class        act profile    w:weight reason
+  B sleep             180434 BACKGROUND_NOISY |- normal_profile w:0 gate-state-map-updated
+  B sleep             180434 BACKGROUND_NOISY |- normal_profile w:0 gate-state-map-updated
+  B sleep             180434 BACKGROUND_NOISY |- normal_profile w:0 gate-state-map-updated
+  B sleep             180434 BACKGROUND_NOISY |- normal_profile w:0 gate-state-map-updated
+  B sleep             180440 BACKGROUND_NOISY |- normal_profile w:0 gate-state-map-updated
+  B sleep             180434 BACKGROUND_NOISY |- normal_profile w:0 gate-state-map-updated
+  B sleep             180440 BACKGROUND_NOISY |- normal_profile w:0 gate-state-map-updated
+  B sleep             180434 BACKGROUND_NOISY |- normal_profile w:0 gate-state-map-updated
+  B sleep             180440 BACKGROUND_NOISY |- normal_profile w:0 gate-state-map-updated
+  B sleep             180434 BACKGROUND_NOISY |- normal_profile w:0 gate-state-map-updated
+  B sleep             180446 BACKGROUND_NOISY |- normal_profile w:0 gate-state-map-updated
+  B sleep             180440 BACKGROUND_NOISY |- normal_profile w:0 gate-state-map-updated
+  B sleep             180434 BACKGROUND_NOISY |- normal_profile w:0 gate-state-map-updated
+  B sleep             180446 BACKGROUND_NOISY |- normal_profile w:0 gate-state-map-updated
+  B sleep             180440 BACKGROUND_NOISY |- normal_profile w:0 gate-state-map-updated
+  B sleep             180434 BACKGROUND_NOISY |- normal_profile w:0 gate-state-map-updated
+  B sleep             180446 BACKGROUND_NOISY |- normal_profile w:0 gate-state-map-updated
+  B sleep             180440 BACKGROUND_NOISY |- normal_profile w:0 gate-state-map-updated
+  B sleep             180434 BACKGROUND_NOISY |- normal_profile w:0 gate-state-map-updated
+  B sleep             180446 BACKGROUND_NOISY |- normal_profile w:0 gate-state-map-updated
+  B sleep             180440 BACKGROUND_NOISY |- normal_profile w:0 gate-state-map-updated
+  B sleep             180452 BACKGROUND_NOISY |- normal_profile w:0 gate-state-map-updated
+  B sleep             180434 BACKGROUND_NOISY |- normal_profile w:0 gate-state-map-updated
+  B sleep             180446 BACKGROUND_NOISY |- normal_profile w:0 gate-state-map-updated
+  B sleep             180440 BACKGROUND_NOISY |- normal_profile w:0 gate-state-map-updated
+  B sleep             180452 BACKGROUND_NOISY |- normal_profile w:0 gate-state-map-updated
+  B sleep             180434 BACKGROUND_NOISY |- normal_profile w:0 gate-state-map-updated
+  B sleep             180446 BACKGROUND_NOISY |- normal_profile w:0 gate-state-map-updated
+  B sleep             180440 BACKGROUND_NOISY |- normal_profile w:0 gate-state-map-updated
+  B sleep             180452 BACKGROUND_NOISY |- normal_profile w:0 gate-state-map-updated
+  B sleep             180434 BACKGROUND_NOISY |- normal_profile w:0 gate-state-map-updated
+  B sleep             180446 BACKGROUND_NOISY |- normal_profile w:0 gate-state-map-updated
+  B sleep             180440 BACKGROUND_NOISY |- normal_profile w:0 gate-state-map-updated
+  B sleep             180452 BACKGROUND_NOISY |- normal_profile w:0 gate-state-map-updated
+  B sleep             180434 BACKGROUND_NOISY |- normal_profile w:0 gate-state-map-updated
+  B sleep             180458 BACKGROUND_NOISY |- normal_profile w:0 gate-state-map-updated
+  B sleep             180446 BACKGROUND_NOISY |- normal_profile w:0 gate-state-map-updated
+  B sleep             180440 BACKGROUND_NOISY |- normal_profile w:0 gate-state-map-updated
+  B sleep             180452 BACKGROUND_NOISY |- normal_profile w:0 gate-state-map-updated
+  B sleep             180434 BACKGROUND_NOISY |- normal_profile w:0 gate-state-map-updated
+  B sleep             180458 BACKGROUND_NOISY |- normal_profile w:0 gate-state-map-updated
+  --------------------------------------------------
+  DONE  total=509  applied=0  L=0  T=0  B=41  U=468
+

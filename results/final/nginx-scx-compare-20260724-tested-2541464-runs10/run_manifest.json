@@ -1,0 +1,208 @@
+{
+  "run_id": "nginx-scx-compare-runs10",
+  "timestamp": "2026-07-23T16:47:22+08:00",
+  "host": "cernet2.net",
+  "kernel_release": "6.6.0-159.4.3.154.oe2403sp4.x86_64-eulerpilot-scx",
+  "runs": 10,
+  "nginx_port": "18082",
+  "wrk_threads": "2",
+  "wrk_connections": "32",
+  "wrk_duration": "10s",
+  "stress_workers": "2",
+  "labels": [
+    "quiet_default",
+    "quiet_scx_normal",
+    "noisy_default",
+    "noisy_cgroup_v2",
+    "noisy_scx_normal",
+    "noisy_scx_always_active",
+    "noisy_scx_psi"
+  ],
+  "label_titles": {
+    "quiet_default": "仅 Nginx，默认调度器",
+    "quiet_scx_normal": "仅 Nginx，sched_ext 常驻但保持 normal",
+    "noisy_default": "Nginx + stress-ng，默认调度器",
+    "noisy_cgroup_v2": "Nginx + stress-ng，cgroup v2 控制",
+    "noisy_scx_normal": "Nginx + stress-ng，sched_ext normal",
+    "noisy_scx_always_active": "Nginx + stress-ng，sched_ext always-active",
+    "noisy_scx_psi": "Nginx + stress-ng，sched_ext psi"
+  },
+  "summary_paths": {
+    "quiet_default": [
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-1/quiet_default_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-10/quiet_default_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-2/quiet_default_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-3/quiet_default_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-4/quiet_default_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-5/quiet_default_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-6/quiet_default_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-7/quiet_default_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-8/quiet_default_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-9/quiet_default_summary.csv"
+    ],
+    "quiet_scx_normal": [
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-1/quiet_scx_normal_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-10/quiet_scx_normal_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-2/quiet_scx_normal_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-3/quiet_scx_normal_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-4/quiet_scx_normal_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-5/quiet_scx_normal_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-6/quiet_scx_normal_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-7/quiet_scx_normal_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-8/quiet_scx_normal_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-9/quiet_scx_normal_summary.csv"
+    ],
+    "noisy_default": [
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-1/noisy_default_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-10/noisy_default_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-2/noisy_default_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-3/noisy_default_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-4/noisy_default_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-5/noisy_default_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-6/noisy_default_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-7/noisy_default_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-8/noisy_default_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-9/noisy_default_summary.csv"
+    ],
+    "noisy_cgroup_v2": [
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-1/noisy_cgroup_v2_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-10/noisy_cgroup_v2_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-2/noisy_cgroup_v2_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-3/noisy_cgroup_v2_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-4/noisy_cgroup_v2_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-5/noisy_cgroup_v2_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-6/noisy_cgroup_v2_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-7/noisy_cgroup_v2_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-8/noisy_cgroup_v2_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-9/noisy_cgroup_v2_summary.csv"
+    ],
+    "noisy_scx_normal": [
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-1/noisy_scx_normal_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-10/noisy_scx_normal_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-2/noisy_scx_normal_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-3/noisy_scx_normal_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-4/noisy_scx_normal_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-5/noisy_scx_normal_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-6/noisy_scx_normal_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-7/noisy_scx_normal_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-8/noisy_scx_normal_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-9/noisy_scx_normal_summary.csv"
+    ],
+    "noisy_scx_always_active": [
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-1/noisy_scx_always_active_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-10/noisy_scx_always_active_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-2/noisy_scx_always_active_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-3/noisy_scx_always_active_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-4/noisy_scx_always_active_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-5/noisy_scx_always_active_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-6/noisy_scx_always_active_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-7/noisy_scx_always_active_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-8/noisy_scx_always_active_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-9/noisy_scx_always_active_summary.csv"
+    ],
+    "noisy_scx_psi": [
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-1/noisy_scx_psi_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-10/noisy_scx_psi_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-2/noisy_scx_psi_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-3/noisy_scx_psi_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-4/noisy_scx_psi_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-5/noisy_scx_psi_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-6/noisy_scx_psi_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-7/noisy_scx_psi_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-8/noisy_scx_psi_summary.csv",
+      "/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/nginx-scx-compare-runs10/run-9/noisy_scx_psi_summary.csv"
+    ]
+  },
+  "run_orders": {
+    "run-1": [
+      "quiet_default",
+      "quiet_scx_normal",
+      "noisy_default",
+      "noisy_cgroup_v2",
+      "noisy_scx_normal",
+      "noisy_scx_always_active",
+      "noisy_scx_psi"
+    ],
+    "run-10": [
+      "quiet_default",
+      "quiet_scx_normal",
+      "noisy_default",
+      "noisy_cgroup_v2",
+      "noisy_scx_normal",
+      "noisy_scx_always_active",
+      "noisy_scx_psi"
+    ],
+    "run-2": [
+      "noisy_scx_psi",
+      "quiet_default",
+      "quiet_scx_normal",
+      "noisy_default",
+      "noisy_cgroup_v2",
+      "noisy_scx_normal",
+      "noisy_scx_always_active"
+    ],
+    "run-3": [
+      "noisy_scx_always_active",
+      "noisy_scx_psi",
+      "quiet_default",
+      "quiet_scx_normal",
+      "noisy_default",
+      "noisy_cgroup_v2",
+      "noisy_scx_normal"
+    ],
+    "run-4": [
+      "quiet_default",
+      "quiet_scx_normal",
+      "noisy_default",
+      "noisy_cgroup_v2",
+      "noisy_scx_normal",
+      "noisy_scx_always_active",
+      "noisy_scx_psi"
+    ],
+    "run-5": [
+      "noisy_scx_psi",
+      "quiet_default",
+      "quiet_scx_normal",
+      "noisy_default",
+      "noisy_cgroup_v2",
+      "noisy_scx_normal",
+      "noisy_scx_always_active"
+    ],
+    "run-6": [
+      "noisy_scx_always_active",
+      "noisy_scx_psi",
+      "quiet_default",
+      "quiet_scx_normal",
+      "noisy_default",
+      "noisy_cgroup_v2",
+      "noisy_scx_normal"
+    ],
+    "run-7": [
+      "quiet_default",
+      "quiet_scx_normal",
+      "noisy_default",
+      "noisy_cgroup_v2",
+      "noisy_scx_normal",
+      "noisy_scx_always_active",
+      "noisy_scx_psi"
+    ],
+    "run-8": [
+      "noisy_scx_psi",
+      "quiet_default",
+      "quiet_scx_normal",
+      "noisy_default",
+      "noisy_cgroup_v2",
+      "noisy_scx_normal",
+      "noisy_scx_always_active"
+    ],
+    "run-9": [
+      "noisy_scx_always_active",
+      "noisy_scx_psi",
+      "quiet_default",
+      "quiet_scx_normal",
+      "noisy_default",
+      "noisy_cgroup_v2",
+      "noisy_scx_normal"
+    ]
+  }
+}

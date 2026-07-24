@@ -1,0 +1,60 @@
+
+  * EulerPilot Agent 
+  --------------------------------------------------
+  config:     /root/EulerPilot-tested-2541464/configs/agent.yaml
+  interval:   1000ms  duration:   6s  warmup: 0
+  mode:       active  backend:    sched_ext
+  scx binary: auto (auto)
+  gate:       psi
+  env:         psi:ok  cg:ok  scx:ok
+  --------------------------------------------------
+
+  --- legend ---
+  mark: . UNKNOWN  L LATENCY_SENSITIVE  B BACKGROUND_NOISY  T THROUGHPUT_BATCH
+  act:  + applied  ~ managed  - none
+  --- observing ---
+  mark name             pid  class        act profile    w:weight reason
+  B stress-ng-cpu     192378 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  B stress-ng-cpu     192379 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  T redis-benchmark   192387 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  B stress-ng-cpu     192380 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  T redis-benchmark   192385 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  B stress-ng-cpu     192377 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  B stress-ng-cpu     192378 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  B stress-ng-cpu     192379 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  T redis-benchmark   192387 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  B stress-ng-cpu     192380 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  T redis-benchmark   192385 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  B stress-ng-cpu     192377 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  T redis-benchmark   192399 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  B stress-ng-cpu     192378 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  B stress-ng-cpu     192379 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  T redis-benchmark   192387 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  B stress-ng-cpu     192380 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  T redis-benchmark   192385 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  B stress-ng-cpu     192377 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  T redis-benchmark   192399 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  B stress-ng-cpu     192378 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  B stress-ng-cpu     192379 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  T redis-benchmark   192387 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  B stress-ng-cpu     192380 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  T redis-benchmark   192385 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  B stress-ng-cpu     192377 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  T redis-benchmark   192399 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  B stress-ng-cpu     192378 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  B stress-ng-cpu     192379 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  T redis-benchmark   192387 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  B stress-ng-cpu     192380 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  T redis-benchmark   192385 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  B stress-ng-cpu     192377 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  T redis-benchmark   192399 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  B stress-ng-cpu     192378 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  B stress-ng-cpu     192379 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  T redis-benchmark   192400 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  T redis-benchmark   192387 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  B stress-ng-cpu     192380 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  T redis-benchmark   192385 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  B stress-ng-cpu     192377 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  --------------------------------------------------
+  DONE  total=133  applied=0  L=0  T=17  B=24  U=92
+

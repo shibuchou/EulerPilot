@@ -30,7 +30,7 @@
 python3 scripts/collect_final_evidence.py --strict
 ```
 
-当前压缩报告覆盖 40 个核心条目：质量门禁、仓库快照、Redis/Nginx sched_ext、SP4 RUNS=5 workload、Redis pressure gradient、Network QoS/XDP、Security anomaly/process filter/combo scope/deep hook、Resource Control CPU/Memory/IO/Pod target、Policy Engine 双机联动、真实 Pod 联动、Web Console 与 K8s 旁路验证。`--strict` 当前通过，必需证据缺失为 0、清单警告为 0。
+当前压缩报告覆盖 41 个核心条目：质量门禁、仓库快照、frozen-code 正式实验 manifest、Redis/Nginx sched_ext、SP4 RUNS=10 workload、Redis pressure gradient、Network QoS/XDP、Security anomaly/process filter/combo scope/deep hook、Resource Control CPU/Memory/IO/Pod target、Policy Engine 双机联动、真实 Pod 联动、Web Console 与 K8s 旁路验证。`--strict` 当前通过，必需证据缺失为 0、清单警告为 0。
 
 ## Skill 证据
 
@@ -191,13 +191,13 @@ SP4 sched_ext 增强复核：
 - SP4 check 121：`results/resource_control/sp4-env-20260630-101422-121.log`
 - SP4 check 122：`results/resource_control/sp4-env-20260630-101422-122.log`
 - SP4 Redis PSI ACTIVE probe：`results/final/redis-scx-psi-probe-20260706-100857`
-- SP4 Redis RUNS=5 compare：`results/final/redis-scx-compare-20260708-150702`
-- SP4 Nginx RUNS=5 compare：`results/final/nginx-scx-compare-20260708-152602`
-- SP4 Redis pressure gradient：`results/final/redis-pressure-gradient-20260708-153811`
-- SP4 Redis static-vs-agent compare：`results/final/redis-static-vs-agent-20260720-150342`
-- SP4 throughput-first batch benchmark：`results/final/throughput-first-20260720-165544`
-- SP4 mixed-adaptive closure benchmark：`results/final/mixed-adaptive-20260720-170840`
-- SP4 Agent control-plane overhead benchmark：`results/final/agent-overhead-20260720-170415`
+- SP4 Redis RUNS=10 frozen-code compare：`results/final/redis-scx-compare-20260724-tested-2541464-runs10`
+- SP4 Nginx RUNS=10 frozen-code compare：`results/final/nginx-scx-compare-20260724-tested-2541464-runs10`
+- SP4 Redis pressure gradient：`results/final/redis-pressure-gradient-20260724-tested-2541464-runs3`
+- SP4 Redis static-vs-agent RUNS=10 compare：`results/final/redis-static-vs-agent-20260724-tested-2541464-runs10`
+- SP4 throughput-first batch benchmark：`results/final/throughput-first-20260724-tested-2541464-runs10`
+- SP4 mixed-adaptive closure benchmark：`results/final/mixed-adaptive-20260724-tested-2541464-runs10-lite`
+- SP4 Agent control-plane overhead benchmark：`results/final/agent-overhead-20260724-tested-2541464-runs10`
 - SP4 sched_ext workload quality gate：`reports/sp4/final_quality_gate_scx_workload_20260706-1214.log`
 - SP4 final quality gate after Stage3 performance evidence closeout：`reports/final_quality_gate_20260720-stage3-performance.log`
 
@@ -209,7 +209,7 @@ SP4 sched_ext 增强复核：
 - 122 isula real runtime blocked：`results/resource_control/real-runtime-target-20260630-isula-check-122`
 - 121 v3.1 回归：`results/policy_engine/security-network-resource-20260630-102629`
 
-SP4 主验证仓库在 observer 指标、warmup dry-run、sched_ext 默认路径、工程路径和 Stage3 性能证据收口后再次通过 `scripts/final_quality_gate.sh`：22/22 P0、100 轮 smoke、5 轮 doctor 均通过；121 工程质量收口门禁作为历史回归证据保留。
+SP4 主验证仓库在 observer 指标、warmup dry-run、sched_ext 默认路径、工程路径和 Stage3 性能证据收口后再次通过 `scripts/final_quality_gate.sh`：22/22 P0、100 轮 smoke、5 轮 doctor 均通过；121 工程质量收口门禁作为 SP3 强制兼容证据保留。
 ## 后置事项
 
 - SP4 sched_ext 自编译内核复核已完成，准备文档为 `docs/sp4_validation_plan.md`，检查脚本为 `scripts/check_sp4_env.sh`。

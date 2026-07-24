@@ -1,0 +1,74 @@
+
+  * EulerPilot Agent 
+  --------------------------------------------------
+  config:     /root/EulerPilot-tested-2541464/configs/agent.yaml
+  interval:   1000ms  duration:   6s  warmup: 2
+  mode:       active  backend:    cgroup_v2
+  scx binary: auto (auto)
+  gate:       always-active
+  env:         psi:ok  cg:ok  scx:ok
+  --------------------------------------------------
+
+  --- legend ---
+  mark: . UNKNOWN  L LATENCY_SENSITIVE  B BACKGROUND_NOISY  T THROUGHPUT_BATCH
+  act:  + applied  ~ managed  - none
+  --- observing ---
+  mark name             pid  class        act profile    w:weight reason
+  B stress-ng-cpu     193807 BACKGROUND_NOISY |~ normal_profile w:100 no-group-for-class
+  B stress-ng-cpu     193804 BACKGROUND_NOISY |~ normal_profile w:100 no-group-for-class
+  L redis-server      193182 LATENCY_SENSITIVE |~ normal_profile w:100 no-group-for-class
+  T redis-benchmark   193814 THROUGHPUT_BATCH |- normal_profile w:100 non-target-process
+  B stress-ng-cpu     193805 BACKGROUND_NOISY |~ normal_profile w:100 no-group-for-class
+  B stress-ng-cpu     193803 BACKGROUND_NOISY |~ normal_profile w:100 no-group-for-class
+  B stress-ng-cpu     193809 BACKGROUND_NOISY |~ normal_profile w:100 no-group-for-class
+  B stress-ng-cpu     193806 BACKGROUND_NOISY |~ normal_profile w:100 no-group-for-class
+  B stress-ng-cpu     193808 BACKGROUND_NOISY |~ normal_profile w:100 no-group-for-class
+  B stress-ng-cpu     193810 BACKGROUND_NOISY |~ normal_profile w:100 no-group-for-class
+  B stress-ng-cpu     193807 BACKGROUND_NOISY |~ normal_profile w:100 no-group-for-class
+  B stress-ng-cpu     193804 BACKGROUND_NOISY |~ normal_profile w:100 no-group-for-class
+  T redis-benchmark   193814 THROUGHPUT_BATCH |- normal_profile w:100 non-target-process
+  B stress-ng-cpu     193805 BACKGROUND_NOISY |~ normal_profile w:100 no-group-for-class
+  B stress-ng-cpu     193803 BACKGROUND_NOISY |~ normal_profile w:100 no-group-for-class
+  B stress-ng-cpu     193809 BACKGROUND_NOISY |~ normal_profile w:100 no-group-for-class
+  B stress-ng-cpu     193806 BACKGROUND_NOISY |~ normal_profile w:100 no-group-for-class
+  B stress-ng-cpu     193808 BACKGROUND_NOISY |~ normal_profile w:100 no-group-for-class
+  B stress-ng-cpu     193810 BACKGROUND_NOISY |~ normal_profile w:100 no-group-for-class
+  B stress-ng-cpu     193807 BACKGROUND_NOISY |+ latency_profile w:100 assigned
+  B stress-ng-cpu     193804 BACKGROUND_NOISY |+ latency_profile w:100 assigned
+  T redis-benchmark   193814 THROUGHPUT_BATCH |- normal_profile w:100 non-target-process
+  B stress-ng-cpu     193805 BACKGROUND_NOISY |+ latency_profile w:100 assigned
+  B stress-ng-cpu     193803 BACKGROUND_NOISY |+ latency_profile w:100 assigned
+  B stress-ng-cpu     193809 BACKGROUND_NOISY |+ latency_profile w:100 assigned
+  B stress-ng-cpu     193806 BACKGROUND_NOISY |+ latency_profile w:100 assigned
+  B stress-ng-cpu     193808 BACKGROUND_NOISY |+ latency_profile w:100 assigned
+  B stress-ng-cpu     193810 BACKGROUND_NOISY |+ latency_profile w:100 assigned
+  B stress-ng-cpu     193807 BACKGROUND_NOISY |+ latency_profile w:100 assigned
+  B stress-ng-cpu     193804 BACKGROUND_NOISY |+ latency_profile w:100 assigned
+  T redis-benchmark   193814 THROUGHPUT_BATCH |- normal_profile w:100 non-target-process
+  B stress-ng-cpu     193805 BACKGROUND_NOISY |+ latency_profile w:100 assigned
+  B stress-ng-cpu     193803 BACKGROUND_NOISY |+ latency_profile w:100 assigned
+  B stress-ng-cpu     193809 BACKGROUND_NOISY |+ latency_profile w:100 assigned
+  B stress-ng-cpu     193806 BACKGROUND_NOISY |+ latency_profile w:100 assigned
+  B stress-ng-cpu     193808 BACKGROUND_NOISY |+ latency_profile w:100 assigned
+  B stress-ng-cpu     193810 BACKGROUND_NOISY |+ latency_profile w:100 assigned
+  B stress-ng-cpu     193807 BACKGROUND_NOISY |+ latency_profile w:100 assigned
+  B stress-ng-cpu     193804 BACKGROUND_NOISY |+ latency_profile w:100 assigned
+  T redis-benchmark   193814 THROUGHPUT_BATCH |- normal_profile w:100 non-target-process
+  B stress-ng-cpu     193805 BACKGROUND_NOISY |+ latency_profile w:100 assigned
+  B stress-ng-cpu     193803 BACKGROUND_NOISY |+ latency_profile w:100 assigned
+  B stress-ng-cpu     193809 BACKGROUND_NOISY |+ latency_profile w:100 assigned
+  B stress-ng-cpu     193806 BACKGROUND_NOISY |+ latency_profile w:100 assigned
+  B stress-ng-cpu     193808 BACKGROUND_NOISY |+ latency_profile w:100 assigned
+  B stress-ng-cpu     193810 BACKGROUND_NOISY |+ latency_profile w:100 assigned
+  B stress-ng-cpu     193807 BACKGROUND_NOISY |+ latency_profile w:100 assigned
+  B stress-ng-cpu     193804 BACKGROUND_NOISY |+ latency_profile w:100 assigned
+  T redis-benchmark   193814 THROUGHPUT_BATCH |- normal_profile w:100 non-target-process
+  B stress-ng-cpu     193805 BACKGROUND_NOISY |+ latency_profile w:100 assigned
+  B stress-ng-cpu     193803 BACKGROUND_NOISY |+ latency_profile w:100 assigned
+  B stress-ng-cpu     193809 BACKGROUND_NOISY |+ latency_profile w:100 assigned
+  B stress-ng-cpu     193806 BACKGROUND_NOISY |+ latency_profile w:100 assigned
+  B stress-ng-cpu     193808 BACKGROUND_NOISY |+ latency_profile w:100 assigned
+  B stress-ng-cpu     193810 BACKGROUND_NOISY |+ latency_profile w:100 assigned
+  --------------------------------------------------
+  DONE  total=113  applied=32  L=1  T=6  B=48  U=58
+

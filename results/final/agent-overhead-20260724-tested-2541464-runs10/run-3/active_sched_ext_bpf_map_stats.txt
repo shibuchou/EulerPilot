@@ -1,0 +1,2 @@
+1011: percpu_array  name stats  flags 0x0
+	key 4B  value 8B  max_entries 23  memlock 936B

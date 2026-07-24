@@ -1,0 +1,61 @@
+
+  * EulerPilot Agent 
+  --------------------------------------------------
+  config:     /root/EulerPilot-tested-2541464/configs/agent.yaml
+  interval:   500ms  duration:   8s  warmup: 0
+  mode:       dry-run  backend:    cgroup_v2
+  scx binary: auto (auto)
+  gate:       always-active
+  env:         psi:ok  cg:ok  scx:ok
+  --------------------------------------------------
+
+  --- legend ---
+  mark: . UNKNOWN  L LATENCY_SENSITIVE  B BACKGROUND_NOISY  T THROUGHPUT_BATCH
+  act:  + applied  ~ managed  - none
+  --- observing ---
+  mark name             pid  class        act profile    w:weight reason
+  B sleep             180976 BACKGROUND_NOISY |- latency_profile w:100 dry-run
+  B sleep             180976 BACKGROUND_NOISY |- latency_profile w:100 dry-run
+  B sleep             180976 BACKGROUND_NOISY |- latency_profile w:100 dry-run
+  B sleep             180976 BACKGROUND_NOISY |- latency_profile w:100 dry-run
+  B sleep             180982 BACKGROUND_NOISY |- latency_profile w:100 dry-run
+  B sleep             180976 BACKGROUND_NOISY |- latency_profile w:100 dry-run
+  B sleep             180982 BACKGROUND_NOISY |- latency_profile w:100 dry-run
+  B sleep             180976 BACKGROUND_NOISY |- latency_profile w:100 dry-run
+  B sleep             180982 BACKGROUND_NOISY |- latency_profile w:100 dry-run
+  B sleep             180976 BACKGROUND_NOISY |- latency_profile w:100 dry-run
+  B sleep             180982 BACKGROUND_NOISY |- latency_profile w:100 dry-run
+  B sleep             180988 BACKGROUND_NOISY |- latency_profile w:100 dry-run
+  B sleep             180976 BACKGROUND_NOISY |- latency_profile w:100 dry-run
+  B sleep             180982 BACKGROUND_NOISY |- latency_profile w:100 dry-run
+  B sleep             180988 BACKGROUND_NOISY |- latency_profile w:100 dry-run
+  B sleep             180976 BACKGROUND_NOISY |- latency_profile w:100 dry-run
+  B sleep             180982 BACKGROUND_NOISY |- latency_profile w:100 dry-run
+  B sleep             180988 BACKGROUND_NOISY |- latency_profile w:100 dry-run
+  B sleep             180976 BACKGROUND_NOISY |- latency_profile w:100 dry-run
+  B sleep             180982 BACKGROUND_NOISY |- latency_profile w:100 dry-run
+  B sleep             180988 BACKGROUND_NOISY |- latency_profile w:100 dry-run
+  B sleep             180994 BACKGROUND_NOISY |- latency_profile w:100 dry-run
+  B sleep             180976 BACKGROUND_NOISY |- latency_profile w:100 dry-run
+  B sleep             180982 BACKGROUND_NOISY |- latency_profile w:100 dry-run
+  B sleep             180988 BACKGROUND_NOISY |- latency_profile w:100 dry-run
+  B sleep             180994 BACKGROUND_NOISY |- latency_profile w:100 dry-run
+  B sleep             180976 BACKGROUND_NOISY |- latency_profile w:100 dry-run
+  B sleep             180982 BACKGROUND_NOISY |- latency_profile w:100 dry-run
+  B sleep             180988 BACKGROUND_NOISY |- latency_profile w:100 dry-run
+  B sleep             180994 BACKGROUND_NOISY |- latency_profile w:100 dry-run
+  B sleep             180976 BACKGROUND_NOISY |- latency_profile w:100 dry-run
+  B sleep             180982 BACKGROUND_NOISY |- latency_profile w:100 dry-run
+  B sleep             181000 BACKGROUND_NOISY |- latency_profile w:100 dry-run
+  B sleep             180988 BACKGROUND_NOISY |- latency_profile w:100 dry-run
+  B sleep             180994 BACKGROUND_NOISY |- latency_profile w:100 dry-run
+  B sleep             180976 BACKGROUND_NOISY |- latency_profile w:100 dry-run
+  B sleep             180982 BACKGROUND_NOISY |- latency_profile w:100 dry-run
+  B sleep             181000 BACKGROUND_NOISY |- latency_profile w:100 dry-run
+  B sleep             180988 BACKGROUND_NOISY |- latency_profile w:100 dry-run
+  B sleep             180994 BACKGROUND_NOISY |- latency_profile w:100 dry-run
+  B sleep             180976 BACKGROUND_NOISY |- latency_profile w:100 dry-run
+  B sleep             180982 BACKGROUND_NOISY |- latency_profile w:100 dry-run
+  --------------------------------------------------
+  DONE  total=437  applied=0  L=0  T=0  B=42  U=395
+

@@ -1,54 +1,26 @@
 {
-  "generated_at": "2026-07-22T10:39:37+08:00",
+  "generated_at": "2026-07-24T14:31:00+08:00",
   "manifest_path": "configs/final_evidence_manifest.json",
   "manifest_title": "EulerPilot final evidence manifest",
   "git_status_short": [
-    " M .github/workflows/ci.yml",
-    " M AGENTS.md",
-    " M Makefile",
-    " M docs/design_proposal.md",
-    " M docs/development.md",
-    " M docs/final_submission_guide.md",
-    " M docs/reference_repos.md",
-    " M docs/v3_1_start_status_20260629.md",
-    " M reports/final_figures/nginx_sched_ext_p99.svg",
-    " M reports/final_figures/nginx_sched_ext_rps.svg",
-    " M reports/final_figures/redis_sched_ext_p99.svg",
-    " M reports/final_figures/redis_sched_ext_rps.svg",
-    " M reports/final_repo_consistency_20260706-1504.log",
-    " M reports/final_repo_consistency_20260706-1550.log",
-    " M scripts/render_sched_ext_figures.py",
-    " M third_party/reference/kata-lsm-ebpf/README.md",
-    " D third_party/reference/libbpf-bootstrap/examples/c/Packetloss",
-    " D third_party/reference/libbpf-bootstrap/examples/c/Transmission",
-    " D third_party/reference/libbpf-bootstrap/examples/c/buddystat",
-    " D third_party/reference/libbpf-bootstrap/examples/c/cpu_usage",
-    " D third_party/reference/libbpf-bootstrap/examples/c/fileinfo",
-    " D third_party/reference/libbpf-bootstrap/examples/c/iolatency",
-    " D third_party/reference/libbpf-bootstrap/examples/c/latency_5",
-    " D third_party/reference/libbpf-bootstrap/examples/c/merge_latency",
-    " D third_party/reference/libbpf-bootstrap/examples/c/merge_occupancy",
-    " D third_party/reference/libbpf-bootstrap/examples/c/myringbuffer",
-    " D third_party/reference/libbpf-bootstrap/examples/c/nf_hook",
-    " D third_party/reference/libbpf-bootstrap/examples/c/pidmm",
-    " D third_party/reference/libbpf-bootstrap/examples/c/pidmm1",
-    " D third_party/reference/libbpf-bootstrap/examples/c/pidmm2",
-    " D third_party/reference/libbpf-bootstrap/examples/c/psi_pf",
-    " D third_party/reference/libbpf-bootstrap/examples/c/psidata",
-    " D third_party/reference/libbpf-bootstrap/examples/c/test",
-    " D third_party/reference/libbpf-bootstrap/examples/c/tpruntime",
-    " D third_party/reference/libbpf-bootstrap/examples/c/tptest",
-    " D third_party/reference/libbpf-bootstrap/examples/c/usage",
-    " D third_party/reference/libbpf-bootstrap/examples/c/usage2",
-    " M third_party/reference/lmp-xdp-lsm/README.md",
-    " M web_console/backend/src/server.js",
-    " M web_console/frontend/src/App.tsx",
-    " M web_console/frontend/src/api.ts",
-    "?? CONTRIBUTING.md",
-    "?? LICENSE",
-    "?? NOTICE",
-    "?? SECURITY.md",
-    "?? web_console/backend/test/server.test.js"
+    " M README.md",
+    " M configs/final_evidence_manifest.json",
+    " M docs/demo_final_runbook.md",
+    " M docs/final_evidence_index.md",
+    " M docs/final_report_submission.md",
+    " M docs/final_results_summary.md",
+    " M docs/progress_status.md",
+    " M docs/submission_checklist.md",
+    " M docs/web_console_design.md",
+    "?? results/final/agent-overhead-20260724-tested-2541464-runs10/",
+    "?? results/final/formal_batch_2_summary_20260724_tested_2541464.md",
+    "?? results/final/formal_run_manifest_20260724_tested_2541464.json",
+    "?? results/final/mixed-adaptive-20260724-tested-2541464-runs10-lite/",
+    "?? results/final/nginx-scx-compare-20260724-tested-2541464-runs10/",
+    "?? results/final/redis-pressure-gradient-20260724-tested-2541464-runs3/",
+    "?? results/final/redis-scx-compare-20260724-tested-2541464-runs10/",
+    "?? results/final/redis-static-vs-agent-20260724-tested-2541464-runs10/",
+    "?? results/final/throughput-first-20260724-tested-2541464-runs10/"
   ],
   "entries": [
     {
@@ -139,6 +111,22 @@
       "warnings": []
     },
     {
+      "category": "repo_status",
+      "name": "Formal frozen-code experiment manifest 20260724",
+      "host": "123",
+      "path": "results/final/formal_run_manifest_20260724_tested_2541464.json",
+      "kind": "file",
+      "required": true,
+      "exists": true,
+      "status": "present",
+      "notes": "Records tested_code_commit 2541464, output root, formal result directories and source_tree_clean_at_end for the frozen-code experiment batch.",
+      "summary": {
+        "bytes": 4800
+      },
+      "evidence_files": [],
+      "warnings": []
+    },
+    {
       "category": "cpu_sched_ext",
       "name": "Redis sched_ext comparison",
       "host": "121",
@@ -217,142 +205,142 @@
     },
     {
       "category": "cpu_sched_ext",
-      "name": "SP4 Redis sched_ext comparison RUNS=5",
+      "name": "SP4 Redis sched_ext comparison RUNS=10 frozen-code formal run",
       "host": "123",
-      "path": "results/final/redis-scx-compare-20260708-150702",
+      "path": "results/final/redis-scx-compare-20260724-tested-2541464-runs10",
       "kind": "result_dir",
       "required": true,
       "exists": true,
       "status": "present",
-      "notes": "SP4 sched_ext kernel Redis RUNS=5 workload comparison with CPU efficiency metrics.",
+      "notes": "Formal RUNS=10 Redis comparison from tested_code_commit 2541464. cgroup v2 is the strongest Redis noisy-path evidence; scx results are retained as valid workload-boundary data and must not be described as stable performance improvement.",
       "summary": {
-        "summary_excerpt": "# Redis sched_ext 正式对照 / - timestamp: 2026-07-08T15:25:52+08:00 / - runs: 5",
+        "summary_excerpt": "# Redis sched_ext 正式对照 / - timestamp: 2026-07-23T16:21:01+08:00 / - runs: 10",
         "csv_rows": 4,
         "test": "GET",
-        "quiet_default_rps_avg": "35075.634",
-        "quiet_scx_normal_rps_avg": "35559.110",
-        "noisy_default_rps_avg": "17245.446",
-        "noisy_cgroup_v2_rps_avg": "32695.928",
-        "noisy_scx_psi_rps_avg": "10454.576"
+        "quiet_default_rps_avg": "35982.827",
+        "quiet_scx_normal_rps_avg": "36133.404",
+        "noisy_default_rps_avg": "17817.630",
+        "noisy_cgroup_v2_rps_avg": "27995.558",
+        "noisy_scx_psi_rps_avg": "9613.600"
       },
       "evidence_files": [
         {
-          "path": "results/final/redis-scx-compare-20260708-150702/compare_summary_avg.csv",
+          "path": "results/final/redis-scx-compare-20260724-tested-2541464-runs10/compare_summary_avg.csv",
           "exists": true,
-          "bytes": 2545
+          "bytes": 2557
         },
         {
-          "path": "results/final/redis-scx-compare-20260708-150702/run_manifest.json",
+          "path": "results/final/redis-scx-compare-20260724-tested-2541464-runs10/run_manifest.json",
           "exists": true,
-          "bytes": 6067
+          "bytes": 14087
         },
         {
-          "path": "results/final/redis-scx-compare-20260708-150702/report.md",
+          "path": "results/final/redis-scx-compare-20260724-tested-2541464-runs10/report.md",
           "exists": true,
-          "bytes": 4108
+          "bytes": 4157
         }
       ],
       "warnings": []
     },
     {
       "category": "cpu_sched_ext",
-      "name": "SP4 Nginx sched_ext comparison RUNS=5",
+      "name": "SP4 Nginx sched_ext comparison RUNS=10 frozen-code formal run",
       "host": "123",
-      "path": "results/final/nginx-scx-compare-20260708-152602",
+      "path": "results/final/nginx-scx-compare-20260724-tested-2541464-runs10",
       "kind": "result_dir",
       "required": true,
       "exists": true,
       "status": "present",
-      "notes": "SP4 sched_ext kernel Nginx RUNS=5 workload comparison with CPU efficiency metrics.",
+      "notes": "Formal RUNS=10 Nginx comparison from tested_code_commit 2541464. Results are workload-boundary evidence; sched_ext/psi paths are valid but regressed in this workload and are reported as such.",
       "summary": {
-        "summary_excerpt": "# Nginx sched_ext 正式对照 / - timestamp: 2026-07-08T15:38:01+08:00 / - runs: 5",
+        "summary_excerpt": "# Nginx sched_ext 正式对照 / - timestamp: 2026-07-23T16:47:22+08:00 / - runs: 10",
         "csv_rows": 1,
-        "quiet_default_rps_avg": "22344.040",
-        "quiet_scx_normal_rps_avg": "22517.994",
-        "noisy_default_rps_avg": "15921.544",
-        "noisy_cgroup_v2_rps_avg": "16265.772",
-        "noisy_scx_psi_rps_avg": "16997.658"
+        "quiet_default_rps_avg": "22600.675",
+        "quiet_scx_normal_rps_avg": "15206.129",
+        "noisy_default_rps_avg": "16644.758",
+        "noisy_cgroup_v2_rps_avg": "16200.689",
+        "noisy_scx_psi_rps_avg": "10207.239"
       },
       "evidence_files": [
         {
-          "path": "results/final/nginx-scx-compare-20260708-152602/compare_summary_avg.csv",
+          "path": "results/final/nginx-scx-compare-20260724-tested-2541464-runs10/compare_summary_avg.csv",
           "exists": true,
-          "bytes": 1577
+          "bytes": 1582
         },
         {
-          "path": "results/final/nginx-scx-compare-20260708-152602/run_manifest.json",
+          "path": "results/final/nginx-scx-compare-20260724-tested-2541464-runs10/run_manifest.json",
           "exists": true,
-          "bytes": 6053
+          "bytes": 14073
         },
         {
-          "path": "results/final/nginx-scx-compare-20260708-152602/report.md",
+          "path": "results/final/nginx-scx-compare-20260724-tested-2541464-runs10/report.md",
           "exists": true,
-          "bytes": 1704
+          "bytes": 1765
         }
       ],
       "warnings": []
     },
     {
       "category": "cpu_sched_ext",
-      "name": "SP4 Redis pressure gradient comparison",
+      "name": "SP4 Redis pressure gradient comparison frozen-code formal run",
       "host": "123",
-      "path": "results/final/redis-pressure-gradient-20260708-153811",
+      "path": "results/final/redis-pressure-gradient-20260724-tested-2541464-runs3",
       "kind": "result_dir",
       "required": true,
       "exists": true,
       "status": "present",
-      "notes": "Redis interference gradient across 0/1/2/4/8 stress workers, used to show workload-dependent benefit and cost boundaries.",
+      "notes": "Formal pressure gradient from tested_code_commit 2541464 across STRESS_WORKERS=0/1/2/4/8. Shows Redis cgroup v2 benefit under increasing interference; scx_psi includes PSI probe load and is not used as net performance proof.",
       "summary": {
-        "summary_excerpt": "# Redis 压力递增梯度实验 / - 结果目录：`/root/EulerPilot/results/final/redis-pressure-gradient-20260708-153811` / - worker 档位：0 / 1 / 2 / 4 / 8"
+        "summary_excerpt": "# Redis 压力递增梯度实验 / - 结果目录：`/root/eulerpilot-runs/2541464552aa763522a8496a5082a514a843a179/formal-20260723-153923/redis-pressure-gradient-runs3` / - worker 档位：0 / 1 / 2 / 4 / 8"
       },
       "evidence_files": [
         {
-          "path": "results/final/redis-pressure-gradient-20260708-153811/pressure_gradient_summary.csv",
+          "path": "results/final/redis-pressure-gradient-20260724-tested-2541464-runs3/pressure_gradient_summary.csv",
           "exists": true,
-          "bytes": 2622
+          "bytes": 2639
         },
         {
-          "path": "results/final/redis-pressure-gradient-20260708-153811/report.md",
+          "path": "results/final/redis-pressure-gradient-20260724-tested-2541464-runs3/report.md",
           "exists": true,
-          "bytes": 1483
+          "bytes": 1526
         }
       ],
       "warnings": []
     },
     {
       "category": "cpu_sched_ext",
-      "name": "SP4 Redis manual static vs agent dynamic comparison",
+      "name": "SP4 Redis manual static vs Agent dynamic comparison RUNS=10 frozen-code formal run",
       "host": "123",
-      "path": "results/final/redis-static-vs-agent-20260720-150342",
+      "path": "results/final/redis-static-vs-agent-20260724-tested-2541464-runs10",
       "kind": "result_dir",
       "required": true,
       "exists": true,
       "status": "present",
-      "notes": "Fixed RUNS=5 Redis noisy workload comparison among default, Agent observe-only, manual static cgroup control and EulerPilot dynamic Agent control. All stress-ng parent and worker PIDs are started inside the same background cgroup; strict evidence checks controlled_pid_cgroups, manual_static throttling and cpu_metric_scope.",
+      "notes": "Formal RUNS=10 fixed Redis comparison from tested_code_commit 2541464. stress-ng parent and worker PIDs are started inside /eulerpilot/background; strict checks cover controlled_pid_cgroups, throttling, and cpu_metric_scope.",
       "summary": {
-        "summary_excerpt": "# Redis static vs Agent dynamic compare / - timestamp: 2026-07-20T15:13:18+08:00 / - runs: 5",
+        "summary_excerpt": "# Redis static vs Agent dynamic compare / - timestamp: 2026-07-24T11:58:24+08:00 / - runs: 10",
         "csv_rows": 4,
         "test": "GET",
         "static_vs_agent_groups": "default_noisy,agent_observe_only,manual_static,agent_dynamic",
         "cpu_metric_scope": "system_proc_stat",
         "static_vs_agent_validity": "pass",
-        "static_vs_agent_runs": 5
+        "static_vs_agent_runs": 10
       },
       "evidence_files": [
         {
-          "path": "results/final/redis-static-vs-agent-20260720-150342/compare_summary_avg.csv",
+          "path": "results/final/redis-static-vs-agent-20260724-tested-2541464-runs10/compare_summary_avg.csv",
           "exists": true,
           "bytes": 1573
         },
         {
-          "path": "results/final/redis-static-vs-agent-20260720-150342/report.md",
+          "path": "results/final/redis-static-vs-agent-20260724-tested-2541464-runs10/report.md",
           "exists": true,
-          "bytes": 2083
+          "bytes": 2130
         },
         {
-          "path": "results/final/redis-static-vs-agent-20260720-150342/summary.md",
+          "path": "results/final/redis-static-vs-agent-20260724-tested-2541464-runs10/summary.md",
           "exists": true,
-          "bytes": 538
+          "bytes": 539
         }
       ],
       "warnings": []
@@ -396,117 +384,117 @@
     },
     {
       "category": "cpu_sched_ext",
-      "name": "SP4 throughput-first batch benchmark",
+      "name": "SP4 throughput-first batch benchmark RUNS=10 frozen-code formal run",
       "host": "123",
-      "path": "results/final/throughput-first-20260720-165544",
+      "path": "results/final/throughput-first-20260724-tested-2541464-runs10",
       "kind": "result_dir",
       "required": true,
       "exists": true,
       "status": "present",
-      "notes": "RUNS=3 batch/throughput workload evidence with explicit EULERPILOT_THROUGHPUT_FIRST=1 switch, cgroup throughput profile hits, and sched_ext batch stats.",
+      "notes": "Formal RUNS=10 throughput-first evidence from tested_code_commit 2541464. cgroup throughput profile is valid; scx batch stats are retained with explicit validity/performance boundaries.",
       "summary": {
-        "summary_excerpt": "# Throughput-first benchmark / - timestamp: 2026-07-20T16:57:28+08:00 / - runs: 3",
+        "summary_excerpt": "# Throughput-first benchmark / - timestamp: 2026-07-24T12:12:54+08:00 / - runs: 10",
         "throughput_first_validity": "pass",
-        "throughput_first_runs": 3
+        "throughput_first_runs": 10
       },
       "evidence_files": [
         {
-          "path": "results/final/throughput-first-20260720-165544/throughput_summary_avg.csv",
+          "path": "results/final/throughput-first-20260724-tested-2541464-runs10/throughput_summary_avg.csv",
           "exists": true,
-          "bytes": 378
+          "bytes": 384
         },
         {
-          "path": "results/final/throughput-first-20260720-165544/throughput_summary.csv",
+          "path": "results/final/throughput-first-20260724-tested-2541464-runs10/throughput_summary.csv",
           "exists": true,
-          "bytes": 853
+          "bytes": 2532
         },
         {
-          "path": "results/final/throughput-first-20260720-165544/run_manifest.json",
+          "path": "results/final/throughput-first-20260724-tested-2541464-runs10/run_manifest.json",
           "exists": true,
-          "bytes": 539
+          "bytes": 531
         },
         {
-          "path": "results/final/throughput-first-20260720-165544/report.md",
+          "path": "results/final/throughput-first-20260724-tested-2541464-runs10/report.md",
           "exists": true,
-          "bytes": 1343
+          "bytes": 1396
         }
       ],
       "warnings": []
     },
     {
       "category": "cpu_sched_ext",
-      "name": "SP4 mixed-adaptive closure benchmark",
+      "name": "SP4 mixed-adaptive closure benchmark RUNS=10 frozen-code formal run",
       "host": "123",
-      "path": "results/final/mixed-adaptive-20260720-170840",
+      "path": "results/final/mixed-adaptive-20260724-tested-2541464-runs10-lite",
       "kind": "result_dir",
       "required": true,
       "exists": true,
       "status": "present",
-      "notes": "RUNS=3 Redis mixed workload evidence for pressure appearance, PSI gate ACTIVE transition, scheduler update evidence, recovery and rollback.",
+      "notes": "Formal RUNS=10 mixed-adaptive closure from tested_code_commit 2541464. Demonstrates same Agent process across quiet -> pressure -> recovery with NORMAL -> ARMED -> ACTIVE -> COOLDOWN -> NORMAL evidence; PSI probe is not a net performance claim.",
       "summary": {
-        "summary_excerpt": "# Mixed-Adaptive closure / - timestamp: 2026-07-20T17:15:02+08:00 / - runs: 3",
+        "summary_excerpt": "# Mixed-Adaptive closure / - timestamp: 2026-07-24T13:30:13+08:00 / - runs: 10",
         "mixed_adaptive_validity": "pass",
-        "mixed_adaptive_runs": 3
+        "mixed_adaptive_runs": 10
       },
       "evidence_files": [
         {
-          "path": "results/final/mixed-adaptive-20260720-170840/mixed_adaptive_summary.csv",
+          "path": "results/final/mixed-adaptive-20260724-tested-2541464-runs10-lite/mixed_adaptive_summary.csv",
           "exists": true,
-          "bytes": 276
+          "bytes": 288
         },
         {
-          "path": "results/final/mixed-adaptive-20260720-170840/mixed_adaptive_timeline.csv",
+          "path": "results/final/mixed-adaptive-20260724-tested-2541464-runs10-lite/mixed_adaptive_timeline.csv",
           "exists": true,
-          "bytes": 557
+          "bytes": 1570
         },
         {
-          "path": "results/final/mixed-adaptive-20260720-170840/run_manifest.json",
+          "path": "results/final/mixed-adaptive-20260724-tested-2541464-runs10-lite/run_manifest.json",
           "exists": true,
-          "bytes": 408
+          "bytes": 405
         },
         {
-          "path": "results/final/mixed-adaptive-20260720-170840/report.md",
+          "path": "results/final/mixed-adaptive-20260724-tested-2541464-runs10-lite/report.md",
           "exists": true,
-          "bytes": 968
+          "bytes": 1032
         }
       ],
       "warnings": []
     },
     {
       "category": "quality_gate",
-      "name": "SP4 Agent control-plane overhead benchmark",
+      "name": "SP4 Agent control-plane overhead benchmark RUNS=10 frozen-code formal run",
       "host": "123",
-      "path": "results/final/agent-overhead-20260720-170415",
+      "path": "results/final/agent-overhead-20260724-tested-2541464-runs10",
       "kind": "result_dir",
       "required": true,
       "exists": true,
       "status": "present",
-      "notes": "RUNS=3 Agent CPU/RSS overhead evidence from /proc/<pid>/stat and /proc/<pid>/status across observe-only, active cgroup and active sched_ext modes.",
+      "notes": "Formal RUNS=10 Agent CPU/RSS overhead from tested_code_commit 2541464 across observe-only cgroup, active cgroup and active sched_ext modes. This is user-space control-plane overhead evidence.",
       "summary": {
-        "summary_excerpt": "# Agent overhead / - timestamp: 2026-07-20T17:05:47+08:00 / - runs: 3",
+        "summary_excerpt": "# Agent overhead / - timestamp: 2026-07-24T12:06:18+08:00 / - runs: 10",
         "agent_overhead_validity": "pass",
-        "agent_overhead_runs": 3
+        "agent_overhead_runs": 10
       },
       "evidence_files": [
         {
-          "path": "results/final/agent-overhead-20260720-170415/agent_overhead_summary_avg.csv",
+          "path": "results/final/agent-overhead-20260724-tested-2541464-runs10/agent_overhead_summary_avg.csv",
           "exists": true,
-          "bytes": 241
+          "bytes": 244
         },
         {
-          "path": "results/final/agent-overhead-20260720-170415/agent_overhead_summary.csv",
+          "path": "results/final/agent-overhead-20260724-tested-2541464-runs10/agent_overhead_summary.csv",
           "exists": true,
-          "bytes": 694
+          "bytes": 2080
         },
         {
-          "path": "results/final/agent-overhead-20260720-170415/run_manifest.json",
+          "path": "results/final/agent-overhead-20260724-tested-2541464-runs10/run_manifest.json",
           "exists": true,
-          "bytes": 428
+          "bytes": 420
         },
         {
-          "path": "results/final/agent-overhead-20260720-170415/report.md",
+          "path": "results/final/agent-overhead-20260724-tested-2541464-runs10/report.md",
           "exists": true,
-          "bytes": 957
+          "bytes": 1007
         }
       ],
       "warnings": []

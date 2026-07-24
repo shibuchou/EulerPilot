@@ -1,0 +1,19 @@
+reconcile_scx_session: enter backend=sched_ext dry_run=true
+reconcile_scx_session: scx-observe-only
+reconcile_scx_session: enter backend=sched_ext dry_run=false
+start_scx_session: enter binary=/usr/local/bin/scx_eulerpilot source=env:EULERPILOT_SCX_BINARY
+start_scx_session: forked pid=163770
+start_scx_session: enabled instance=163770:103854752:64768:2014733 cmdline=/usr/local/bin/scx_eulerpilot
+ensure_scx_stats_map: trying path=/sys/fs/bpf/stats
+ensure_scx_stats_map: success fd=16
+reconcile_scx_session: handshake iter=0 enabled=1 class_map=1 gate_map=1 stats_map=1
+reconcile_scx_session: scx-session-ready
+reconcile_scx_session: enter backend=sched_ext dry_run=false
+reconcile_scx_session: running state class_map=1 gate_map=1 stats_map=1
+reconcile_scx_session: scx-running
+reconcile_scx_session: enter backend=sched_ext dry_run=false
+reconcile_scx_session: running state class_map=1 gate_map=1 stats_map=1
+reconcile_scx_session: scx-running
+reconcile_scx_session: enter backend=sched_ext dry_run=false
+reconcile_scx_session: running state class_map=1 gate_map=1 stats_map=1
+reconcile_scx_session: scx-running

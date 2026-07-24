@@ -1,0 +1,2 @@
+{"timestamp_ns":1038241080956569,"previous_state":"NORMAL","next_state":"ACTIVE","cpu_psi_triggered":false,"latency_wait_high":true,"background_runtime_high":true,"latency_workload_present":true,"background_workload_present":true,"generation":1,"profile":"sched_ext_active"}
+{"timestamp_ns":1038242098505809,"previous_state":"ACTIVE","next_state":"ACTIVE","cpu_psi_triggered":false,"latency_wait_high":true,"background_runtime_high":true,"latency_workload_present":true,"background_workload_present":true,"generation":2,"profile":"sched_ext_active"}

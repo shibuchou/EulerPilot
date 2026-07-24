@@ -4,7 +4,7 @@
 
 ## 摘要
 
-EulerPilot 是一个面向 openEuler 的自适应资源管控 Agent。项目通过 eBPF 进行低开销观测，在用户态完成 workload 分类、压力识别和策略决策，并通过 `cgroup v2` 与 `sched_ext/scx` 双执行后端实现资源调控。当前项目已经完成从系统观测、策略执行到正式实验、Web Console 展示和中文报告输出的完整工程闭环，并分别在 Redis 与 Nginx 两条业务线上形成 `RUNS=5` 的候选结果目录，在 SP4 自编译 sched_ext 内核上形成 `RUNS=5` 复核结果，同时补充 Redis pressure gradient 争奖增强证据。manual static vs agent dynamic 已用修复脚本在 SP4 RUNS=5 重跑，并纳入最终证据。
+EulerPilot 是一个面向 openEuler 的自适应资源管控 Agent。项目通过 eBPF 进行低开销观测，在用户态完成 workload 分类、压力识别和策略决策，并通过 `cgroup v2` 与 `sched_ext/scx` 双执行后端实现资源调控。当前项目已经完成从系统观测、策略执行到正式实验、Web Console 展示和中文报告输出的完整工程闭环。最新正式性能证据来自 `tested_code_commit=2541464` 的 frozen-code 实验：Redis/Nginx RUNS=10、Redis static-vs-Agent RUNS=10、throughput-first RUNS=10、mixed-adaptive RUNS=10、Agent overhead RUNS=10，以及 Redis pressure gradient RUNS=3。
 
 EulerPilot 不追求无条件替代 Linux 默认调度器，而是面向混部干扰场景，通过 eBPF/PSI 感知 workload 状态，在延迟敏感服务与后台干扰共存时，选择 cgroup v2 或 sched_ext/scx 后端进行按需控制，并通过 Redis/Nginx 对照实验展示收益、边界与可回滚能力。
 
@@ -225,12 +225,12 @@ TC QoS 还完成了速率误差 Benchmark：在 2 Mbit/s 目标下，121 实测 
 
 ## 4. 实验环境
 
-### 4.1 SP3 历史验证环境
+### 4.1 SP3 强制兼容验证环境
 
 ```text
 主机：192.168.1.121
 系统：openEuler 24.03 LTS SP3
-定位：SP3 历史验证与回归对照；最终主验证线已切换到 SP4
+定位：比赛要求的 openEuler 24.03 LTS SP3 强制兼容环境；验证发行内核下的构建、配置校验、cgroup v2 主闭环、安全扩展 smoke、rollback、safe doctor 与 sched_ext unavailable graceful fallback
 ```
 
 ### 4.2 OLK-6.6 正式对照环境
@@ -255,9 +255,9 @@ TC QoS 还完成了速率误差 Benchmark：在 2 Mbit/s 目标下，121 实测 
 |------|------|-----------|------|----------|
 | 121 / SP3 主环境 | openEuler 24.03 LTS SP3 官方内核 | 不可用 | cgroup v2 主闭环、代码、文档、Dashboard、质量门禁 | **主交付** |
 | 122 / OLK-6.6 验证环境 | 6.6.0-olk66-scx | 可用 | sched_ext/scx 正式 compare、class_map、PsiGate 验证 | **增强验证** |
-| 123 / SP4 复核环境 | openEuler 24.03 LTS SP4，自编译 `eulerpilot-scx` 内核 | 可用 | SP4 sched_ext、Redis/Nginx RUNS=5、Web Console 与最终门禁复核 | **平台复核** |
+| 123 / SP4 主验证环境 | openEuler 24.03 LTS SP4，自编译 `eulerpilot-scx` 内核 | 可用 | 主开发、sched_ext/scx 功能验证、Redis/Nginx RUNS=10、Web Console、完整集成与 release candidate | **主验证 / 性能实验** |
 
-`cgroup v2` 是当前 SP3 上的正式主交付路径；`sched_ext/scx` 已在 OLK-6.6 和 SP4 自编译内核环境完成增强验证，用于证明 Agent 架构可以对接用户态调度后端。
+`cgroup v2` 是官方发行内核上的稳定执行后端；SP3/121 作为强制兼容交付环境验证 fallback 与主闭环。`sched_ext/scx` 在 SP4 官方源码自编译启用内核上完成复核，用于证明 Agent 架构可以对接用户态调度后端；不声称 SP4 发行默认内核直接支持 sched_ext。
 
 ---
 
@@ -266,11 +266,11 @@ TC QoS 还完成了速率误差 Benchmark：在 2 Mbit/s 目标下，121 实测 
 当前建议直接引用的 Redis 候选结果目录为：
 
 - `/root/EulerPilot/results/final/redis-scx-compare-20260612-191543`
-- SP4 复核目录：`/root/EulerPilot/results/final/redis-scx-compare-20260708-150702`
+- SP4 frozen-code 正式目录：`/root/EulerPilot/results/final/redis-scx-compare-20260724-tested-2541464-runs10`
 
 该目录当前满足：
 
-- `RUNS=5`
+- `RUNS=10`
 - 平衡轮换
 - `run_manifest.json`
 - `compare_summary_avg.csv`
@@ -293,9 +293,9 @@ TC QoS 还完成了速率误差 Benchmark：在 2 Mbit/s 目标下，121 实测 
 从当前候选结果看：
 
 - `noisy_cgroup_v2` 在 `GET` 上表现出明显的吞吐正向趋势
-- `noisy_scx_normal` 在 `GET / INCR / SET` 上表现出较明显的 RPS 改善趋势
+- `noisy_cgroup_v2` 是 Redis noisy 场景下最强的性能证据；`noisy_scx_normal` 与 `noisy_scx_psi` 在 frozen-code RUNS=10 中作为 valid/regressed 或 workload-boundary 证据保留
 - `noisy_scx_psi` 保留为 PSI Gate ACTIVE 与 scx map 联动证据；该组会额外运行 PSI Redis probe，不与无 probe 组直接比较净性能收益
-- `noisy_scx_always_active` 并不稳定优于其他模式
+- `noisy_scx_always_active` 当前不作为性能主结论，只作为调度路径和策略边界证据保留
 
 当前可配套引用图表：
 
@@ -310,11 +310,11 @@ TC QoS 还完成了速率误差 Benchmark：在 2 Mbit/s 目标下，121 实测 
 当前建议直接引用的 Nginx 候选结果目录为：
 
 - `/root/EulerPilot/results/final/nginx-scx-compare-20260612-194018`
-- SP4 复核目录：`/root/EulerPilot/results/final/nginx-scx-compare-20260708-152602`
+- SP4 frozen-code 正式目录：`/root/EulerPilot/results/final/nginx-scx-compare-20260724-tested-2541464-runs10`
 
 该目录当前满足：
 
-- `RUNS=5`
+- `RUNS=10`
 - 平衡轮换
 - `run_manifest.json`
 - `compare_summary_avg.csv`
@@ -339,7 +339,7 @@ TC QoS 还完成了速率误差 Benchmark：在 2 Mbit/s 目标下，121 实测 
 从当前候选结果看：
 
 - `noisy_cgroup_v2` 在当前 Nginx 场景下表现更稳
-- `noisy_scx_psi` 吞吐接近 `noisy_default`
+- `noisy_scx_psi` 在 frozen-code RUNS=10 中吞吐和尾延迟均表现为 workload-boundary / regressed 证据
 - `noisy_scx_psi` 与 `noisy_scx_always_active` 当前仍存在显著尾延迟代价
 - `quiet_scx_normal` 的基础开销不可忽略
 - `cpu_per_10k_requests` 是同一脚本、同一采样窗口内的 CPU 效率辅助指标；不同 workload、不同 probe 负载之间不做跨窗口强比较
@@ -394,7 +394,7 @@ EulerPilot 的价值不在于证明某一组参数在所有场景下都优于默
 ### 8.1 最终数据采用规则
 
 1. 正文主结论以最新完成的正式实验轮次为准
-2. 历史候选结果（含 `RUNS=5`）作为参考保留，不作为正文主结论
+2. 历史候选结果（含旧 `RUNS=5`）作为参考保留，不作为正文主结论；正文主结论以 20260724 frozen-code RUNS=10 / RUNS=3 结果为准
 3. 报告中保留全部轮次的 `run_manifest`、原始 CSV、`summary.json`
 4. 结论优先使用 median 与方向一致的指标，不只挑单项最优值
 5. 不同 workload 的结果按各自场景分别讨论，不做跨场景简单平均
@@ -413,14 +413,14 @@ EulerPilot 的价值不在于证明某一组参数在所有场景下都优于默
 ## 9. 当前结论
 
 1. EulerPilot 已在 `SP3` 上完成 cgroup v2 主闭环，具备正式交付能力。
-2. EulerPilot 已在 `OLK-6.6` 上完成 Redis 与 Nginx 的 `sched_ext` 正式 compare，并在 `SP4` 自编译 sched_ext 内核上完成 Redis/Nginx `RUNS=5` 复核。
+2. EulerPilot 已在 `OLK-6.6` 上完成 Redis 与 Nginx 的 `sched_ext` 对照验证，并在 `SP4` 自编译 sched_ext 内核上完成 Redis/Nginx frozen-code `RUNS=10` 复核。
 3. EulerPilot 已实现 Skills 插件化框架与 YAML v2 驱动，并通过 `network_policy`、`network_qos`、`network_xdp` 和正式 `security_policy` 证明了 Agent 能力可扩展。
-4. 项目已通过最新 SP4 质量门禁（`reports/final_quality_gate_20260720-stage3-performance.log`，22/22 P0、100 轮 smoke、5 轮 doctor）和安全审计，并形成 40 条 final evidence compact；新增 SP4 Redis pressure gradient 用于说明收益边界，static-vs-agent 对比已使用修复脚本 RUNS=5 重跑，用于说明 Agent 动态调控价值和边界。
+4. 项目已通过 frozen-code preflight、SP4 Host Gate、SP3 Compatibility Gate 和 evidence strict，并形成 41 条 final evidence compact；新增 SP4 Redis pressure gradient 用于说明收益边界，static-vs-agent、throughput-first、mixed-adaptive 和 Agent overhead 均已使用 tested_code_commit=2541464 的正式结果回补。
 
 补充说明：
 
 - `cgroup v2` 是当前 SP3 上的正式主交付路径；`sched_ext/scx` 是在 OLK-6.6 与 SP4 自编译内核环境完成的增强验证线。
-- 当前建议提交时以 `192.168.1.123:/root/EulerPilot` 作为 SP4 主验证和最终交付验证目录；`192.168.1.121:/root/EulerPilot` 作为 SP3 历史验证和回归对照目录保留。
+- 当前建议提交时采用双层交付矩阵：`192.168.1.123:/root/EulerPilot` 作为 SP4 主验证和性能实验环境；`192.168.1.121:/root/EulerPilot` 作为比赛要求的 SP3 强制兼容交付环境。
 - 项目代码已同步推送至 GitHub 私密仓库 `shibuchou/EulerPilot`。
 
 项目代码已同步推送至 GitHub 私密仓库 `shibuchou/EulerPilot`。

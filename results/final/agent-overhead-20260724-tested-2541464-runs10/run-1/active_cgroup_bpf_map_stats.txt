@@ -1,0 +1,1 @@
+Error: bpf obj get (/sys/fs/bpf/eulerpilot/scx_eulerpilot/v1/stats): No such file or directory

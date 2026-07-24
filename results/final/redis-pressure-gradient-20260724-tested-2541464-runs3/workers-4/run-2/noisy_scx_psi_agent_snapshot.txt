@@ -1,0 +1,67 @@
+
+  * EulerPilot Agent 
+  --------------------------------------------------
+  config:     /root/EulerPilot-tested-2541464/configs/agent.yaml
+  interval:   1000ms  duration:   6s  warmup: 0
+  mode:       active  backend:    sched_ext
+  scx binary: auto (auto)
+  gate:       psi
+  env:         psi:ok  cg:ok  scx:ok
+  --------------------------------------------------
+
+  --- legend ---
+  mark: . UNKNOWN  L LATENCY_SENSITIVE  B BACKGROUND_NOISY  T THROUGHPUT_BATCH
+  act:  + applied  ~ managed  - none
+  --- observing ---
+  mark name             pid  class        act profile    w:weight reason
+  B stress-ng-cpu     192545 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  B stress-ng-cpu     192546 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  B stress-ng-cpu     192547 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  T redis-benchmark   192554 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  L redis-server      192149 LATENCY_SENSITIVE |~ normal_profile w:0 gate-state-map-updated
+  B stress-ng-cpu     192544 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  T redis-benchmark   192552 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  B stress-ng-cpu     192545 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  B stress-ng-cpu     192546 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  B stress-ng-cpu     192547 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  T redis-benchmark   192554 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  L redis-server      192149 LATENCY_SENSITIVE |~ normal_profile w:0 gate-state-map-updated
+  B stress-ng-cpu     192544 BACKGROUND_NOISY |~ normal_profile w:0 gate-state-map-updated
+  T redis-benchmark   192552 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  B stress-ng-cpu     192545 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  B stress-ng-cpu     192546 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  B stress-ng-cpu     192547 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  B stress-ng         192542 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  T redis-benchmark   192554 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  L redis-server      192149 LATENCY_SENSITIVE |+ latency_profile w:0 gate-state-map-updated
+  B stress-ng-cpu     192544 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  T redis-benchmark   192552 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  B stress-ng-cpu     192545 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  B stress-ng-cpu     192546 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  B stress-ng-cpu     192547 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  B stress-ng         192542 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  T redis-benchmark   192554 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  L redis-server      192149 LATENCY_SENSITIVE |+ latency_profile w:0 gate-state-map-updated
+  B stress-ng-cpu     192544 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  T redis-benchmark   192552 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  T redis-benchmark   192566 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  B stress-ng-cpu     192545 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  B stress-ng-cpu     192546 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  B stress-ng-cpu     192547 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  B stress-ng         192542 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  T redis-benchmark   192554 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  L redis-server      192149 LATENCY_SENSITIVE |+ latency_profile w:0 gate-state-map-updated
+  B stress-ng-cpu     192544 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  T redis-benchmark   192552 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  T redis-benchmark   192566 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  B stress-ng-cpu     192545 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  B stress-ng-cpu     192546 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  B stress-ng-cpu     192547 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  B stress-ng         192542 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  T redis-benchmark   192554 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  L redis-server      192149 LATENCY_SENSITIVE |+ latency_profile w:0 gate-state-map-updated
+  B stress-ng-cpu     192544 BACKGROUND_NOISY |+ mixed_profile w:0 gate-state-map-updated
+  T redis-benchmark   192552 THROUGHPUT_BATCH |- mixed_profile w:0 non-target-process
+  --------------------------------------------------
+  DONE  total=151  applied=24  L=6  T=14  B=28  U=103
+

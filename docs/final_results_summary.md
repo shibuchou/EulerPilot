@@ -8,20 +8,20 @@
 
 | 类别 | 结果目录 | 口径 |
 |------|----------|------|
-| SP4 Redis sched_ext compare | `results/final/redis-scx-compare-20260708-150702` | RUNS=5，SP4 发行环境适配 + 自编译 sched_ext 内核复核 |
-| SP4 Nginx sched_ext compare | `results/final/nginx-scx-compare-20260708-152602` | RUNS=5，第二业务线复核 |
-| Redis pressure gradient | `results/final/redis-pressure-gradient-20260708-153811` | workers=0/1/2/4/8，展示干扰强度变化下的收益与代价 |
-| Redis static vs Agent dynamic | `results/final/redis-static-vs-agent-20260720-150342` | 修复脚本后 RUNS=5，证明 Agent 动态调控接近人工静态调参并具备审计/rollback |
-| Throughput-first | `results/final/throughput-first-20260720-165544` | RUNS=3，批处理优先模式争奖增强证据 |
-| Mixed-Adaptive | `results/final/mixed-adaptive-20260720-170840` | RUNS=3，多场景自动切换和闭环证据 |
-| Agent overhead | `results/final/agent-overhead-20260720-170415` | RUNS=3，控制面开销证据 |
+| SP4 Redis sched_ext compare | `results/final/redis-scx-compare-20260724-tested-2541464-runs10` | RUNS=10，tested_code_commit=2541464 的 frozen-code 正式实验 |
+| SP4 Nginx sched_ext compare | `results/final/nginx-scx-compare-20260724-tested-2541464-runs10` | RUNS=10，第二业务线边界复核 |
+| Redis pressure gradient | `results/final/redis-pressure-gradient-20260724-tested-2541464-runs3` | RUNS=3，workers=0/1/2/4/8，展示干扰强度变化下的收益与代价 |
+| Redis static vs Agent dynamic | `results/final/redis-static-vs-agent-20260724-tested-2541464-runs10` | RUNS=10，证明 Agent 动态调控具备自动观测、审计和 rollback；不写成永远超过人工最优 |
+| Throughput-first | `results/final/throughput-first-20260724-tested-2541464-runs10` | RUNS=10，批处理优先模式争奖增强证据 |
+| Mixed-Adaptive | `results/final/mixed-adaptive-20260724-tested-2541464-runs10-lite` | RUNS=10，同一 Agent 进程完成 NORMAL/ARMED/ACTIVE/COOLDOWN/NORMAL 闭环证据 |
+| Agent overhead | `results/final/agent-overhead-20260724-tested-2541464-runs10` | RUNS=10，控制面开销证据 |
 
 ## 2. Redis 观察
 
 - Redis / latency-sensitive 混布场景收益更明确。
 - `cgroup v2` 和部分 `sched_ext/scx` 模式在干扰场景下能保护前台业务或抑制后台干扰。
 - `noisy_scx_psi` 额外运行 PSI probe，报告中只作为带观测负载的自适应路径分析，不与无额外 probe 的模式做无条件性能优劣断言。
-- `static-vs-Agent` 旧无效结果已撤下；当前最终目录为修复脚本后的 RUNS=5 结果，验证目标 worker 归属和 throttling 证据。
+- `static-vs-Agent` 旧无效结果已撤下；当前最终目录为 frozen-code RUNS=10 结果，验证目标 worker 归属和 throttling 证据。
 
 ## 3. Nginx 观察
 
@@ -54,7 +54,7 @@ warnings=0
 - Resource / Network / Security 三方向 OS Agent 扩展
 - Kubernetes 旁路隔离验证
 - Web Console 可视化演示
-- 40 条 final evidence compact
+- 41 条 final evidence compact
 
 仍需人工补充：
 

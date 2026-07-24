@@ -1,0 +1,37 @@
+
+  * EulerPilot Agent 
+  --------------------------------------------------
+  config:     /root/EulerPilot-tested-2541464/configs/agent.yaml
+  interval:   1000ms  duration:   6s  warmup: 2
+  mode:       active  backend:    sched_ext
+  scx binary: auto (auto)
+  gate:       always-active
+  env:         psi:ok  cg:ok  scx:ok
+  --------------------------------------------------
+
+  --- legend ---
+  mark: . UNKNOWN  L LATENCY_SENSITIVE  B BACKGROUND_NOISY  T THROUGHPUT_BATCH
+  act:  + applied  ~ managed  - none
+  --- observing ---
+  mark name             pid  class        act profile    w:weight reason
+  B stress-ng-cpu     165554 BACKGROUND_NOISY |~ normal_profile w:0 scx-observe-only
+  T redis-benchmark   165558 THROUGHPUT_BATCH |- normal_profile w:0 non-target-process
+  B stress-ng-cpu     165553 BACKGROUND_NOISY |~ normal_profile w:0 scx-observe-only
+  B stress-ng-cpu     165554 BACKGROUND_NOISY |~ latency_profile w:0 scx-observe-only
+  T redis-benchmark   165558 THROUGHPUT_BATCH |- latency_profile w:0 non-target-process
+  B stress-ng-cpu     165553 BACKGROUND_NOISY |~ latency_profile w:0 scx-observe-only
+  B stress-ng-cpu     165554 BACKGROUND_NOISY |+ latency_profile w:0 gate-state-map-updated
+  T redis-benchmark   165558 THROUGHPUT_BATCH |- latency_profile w:0 non-target-process
+  B stress-ng-cpu     165553 BACKGROUND_NOISY |+ latency_profile w:0 gate-state-map-updated
+  B stress-ng-cpu     165554 BACKGROUND_NOISY |+ latency_profile w:0 gate-state-map-updated
+  T redis-benchmark   165558 THROUGHPUT_BATCH |- latency_profile w:0 non-target-process
+  B stress-ng-cpu     165553 BACKGROUND_NOISY |+ latency_profile w:0 gate-state-map-updated
+  B stress-ng-cpu     165554 BACKGROUND_NOISY |+ latency_profile w:0 gate-state-map-updated
+  T redis-benchmark   165558 THROUGHPUT_BATCH |- latency_profile w:0 non-target-process
+  B stress-ng-cpu     165553 BACKGROUND_NOISY |+ latency_profile w:0 gate-state-map-updated
+  B stress-ng-cpu     165554 BACKGROUND_NOISY |+ latency_profile w:0 gate-state-map-updated
+  T redis-benchmark   165558 THROUGHPUT_BATCH |- latency_profile w:0 non-target-process
+  B stress-ng-cpu     165553 BACKGROUND_NOISY |+ latency_profile w:0 gate-state-map-updated
+  --------------------------------------------------
+  DONE  total=83  applied=8  L=0  T=6  B=12  U=65
+
