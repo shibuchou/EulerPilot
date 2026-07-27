@@ -1,10 +1,10 @@
 # Stage G Benchmark 与冻结材料
 
-更新时间：`2026-07-26`
+更新时间：`2026-07-27`
 
 ## 结论
 
-Stage G 在 v6 复审后撤回“正式冻结完成”状态。当前 Redis/Nginx、pressure gradient、static-vs-Agent、Agent overhead 保留为 historical/provisional evidence；throughput-first 与 mixed-adaptive 保留为 invalid historical。正式 Benchmark 冻结必须等待 Candidate Gate、formal artifact、Formal Artifact Gate 和修正 baseline 后重新运行。
+Stage G 已完成复审后的正式冻结收口。旧 Redis/Nginx、pressure gradient、static-vs-Agent、Agent overhead 作为 historical/provisional evidence 保留；正式 Benchmark 入口为绑定 `tested_code_commit` 与 formal `artifact_id` 的 RUNS=10 套件，throughput-first 与 mixed-adaptive 已通过修复后的 validity。
 
 ## 冻结范围
 

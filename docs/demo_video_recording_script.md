@@ -1,6 +1,6 @@
 # EulerPilot 最终演示视频录制脚本
 
-更新时间：`2026-07-26`
+更新时间：`2026-07-27`
 
 当前状态：正式演示视频尚未录制。本文是 8-10 分钟录制脚本和命令清单，不代表视频文件已经交付。录制完成后，需要在 `docs/submission_checklist.md`、`docs/final_submission_guide.md` 和提交包中补充视频路径或公开链接。
 
@@ -15,7 +15,7 @@ ssh -L 18080:127.0.0.1:18080 openEuler-2403-LTS-SP4
 SP4 主验证仓库启动控制台：
 
 ```bash
-cd /root/EulerPilot-closeout
+cd /root/EulerPilot
 web_console/scripts/run_console.sh --daemon
 ```
 
@@ -28,7 +28,7 @@ web_console/scripts/run_console.sh --daemon
 录制前只读检查：
 
 ```bash
-cd /root/EulerPilot-closeout
+cd /root/EulerPilot
 git rev-parse --short HEAD
 uname -r
 python3 scripts/collect_final_evidence.py
@@ -75,7 +75,7 @@ curl -s http://127.0.0.1:18080/api/system | jq '.kernel,.features,.path_roles'
 
 讲稿：
 
-> 这是 evidence 白名单。它不是递归扫描全部结果，而是按提交清单固定 41 条核心证据。当前必需证据缺失为 0，但预期有 8 条 warning，因为我们把旧 SP4 RUNS=10 性能结果降级为 provisional 或 invalid historical。这样做是为了保证最终答辩的收益数字只来自后续 formal artifact 重跑，而不是复用旧二进制或旧 baseline。
+> 这是 evidence 白名单。它不是递归扫描全部结果，而是按提交清单固定 42 条核心证据。当前必需证据缺失为 0，但当前 warning 为 0；旧 SP4 RUNS=10 pre-fix 结果仍通过 status override 保留为 historical/provisional，最终答辩默认引用 formal artifact RUNS=10 证据。
 
 展示命令：
 

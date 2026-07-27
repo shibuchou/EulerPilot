@@ -1,6 +1,6 @@
 # 提交清单
 
-更新时间：`2026-07-26`
+更新时间：`2026-07-27`
 
 ## 代码
 
@@ -43,12 +43,12 @@
 当前 v6 evidence compact 口径：
 
 ```text
-entries=41
+entries=42
 missing_required=0
-warnings=8
+warnings=0
 ```
 
-8 条 warning 来自旧 SP4 RUNS=10 证据降级，不是文件缺失。正式 release 需要 `--validate-release` 在 formal artifact 重跑后通过。
+旧 SP4 RUNS=10 pre-fix 证据保留为 historical/provisional；当前 `--validate-release` 已在 formal artifact 证据入口通过，warning 为 0。
 
 ## 现场演示
 
@@ -65,4 +65,4 @@ warnings=8
 
 ## 未放入仓库的材料
 
-- 正式演示视频文件尚未交付。提交前需要录制 8-10 分钟视频，并在最终提交平台填写视频路径或公开链接。
+- 正式演示视频已放入 `docs/答辩提交材料/项目演示视频.mp4`；5 分钟精简版可按 `docs/demo_video_5min_script.md` 另行录制。

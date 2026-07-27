@@ -1,13 +1,13 @@
 # 编译与运行
 
-更新时间：`2026-07-26`
+更新时间：`2026-07-27`
 
 ## 1. 编译
 
 建议在 openEuler 24.03 LTS SP4 主验证仓库执行：
 
 ```bash
-cd /root/EulerPilot-closeout
+cd /root/EulerPilot
 make agent
 make unit-tests
 make network-policy network-qos-tc network-xdp security-policy
@@ -31,12 +31,12 @@ python3 scripts/collect_final_evidence.py
 v6 当前状态：
 
 ```text
-entries=41
+entries=42
 missing_required=0
-warnings=8
+warnings=0
 ```
 
-这些 warning 来自 `evidence/evidence_status_overrides.json` 对旧 SP4 RUNS=10 结果的降级。最终封版时需要在 Candidate Gate、formal artifact build、Formal Artifact Gate 和正式随机化实验完成后运行：
+旧 SP4 RUNS=10 pre-fix 结果仍由 `evidence/evidence_status_overrides.json` 保留历史状态。最终证据已在 formal artifact RUNS=10 后通过 release validation：
 
 ```bash
 python3 scripts/collect_final_evidence.py --validate-release
@@ -59,17 +59,18 @@ scripts/final_quality_gate.sh
 预期：
 
 ```text
-v6 preflight: 29/29 P0 pass
+SP4 final gate: 29/29 P0 + 100 smoke + 5 doctor-safe pass
+SP3 compatibility gate: 10/10 pass
 ```
 
-最终 release gate 需要在同一 `tested_candidate_commit` 和 formal `artifact_id` 上重新执行完整门禁。
+双环境 final gate 已完成；如源码或 benchmark 语义再次变更，必须重新执行对应门禁。
 
 ## 5. Web Console
 
 SP4 主验证仓库启动：
 
 ```bash
-cd /root/EulerPilot-closeout
+cd /root/EulerPilot
 web_console/scripts/run_console.sh --daemon
 ```
 

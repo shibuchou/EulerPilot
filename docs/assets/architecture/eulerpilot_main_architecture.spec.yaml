@@ -1,0 +1,1072 @@
+meta:
+  profile: engineering-review
+  theme: academic-color
+  source: generated
+  layout: horizontal
+  routing: rounded
+  title: EulerPilot 主架构图
+  description: 面向 openEuler 的自适应资源管控 Agent 主运行闭环，覆盖入口、内核观测、Agent 控制核心、Skills、内核执行、安全横切、证据与双环境验证。
+  legend: 实线表示运行时数据流、决策流和执行反馈；虚线表示能力检测、安全约束和验证关系。cgroup v2 是稳定资源治理主路径，sched_ext/scx 是比赛核心增强调度路径。
+modules:
+  - id: workload
+    label: 业务负载
+    style:
+      fillColor: '#EFF6FF'
+      strokeColor: '#2563EB'
+      fontColor: '#1D4ED8'
+  - id: entry
+    label: ① 用户入口与配置
+    style:
+      fillColor: '#F8FAFC'
+      strokeColor: '#64748B'
+      fontColor: '#334155'
+  - id: observation
+    label: ② 内核观测层
+    style:
+      fillColor: '#ECFEFF'
+      strokeColor: '#0891B2'
+      fontColor: '#0E7490'
+  - id: core
+    label: ③ 用户态 Agent 控制核心
+    style:
+      fillColor: '#FFF7ED'
+      strokeColor: '#D97706'
+      fontColor: '#B45309'
+  - id: skills
+    label: ④ Skills 执行层
+    style:
+      fillColor: '#F7FEE7'
+      strokeColor: '#65A30D'
+      fontColor: '#3F6212'
+  - id: kernel_exec
+    label: ⑤ 内核执行面
+    style:
+      fillColor: '#F8FAFC'
+      strokeColor: '#475569'
+      fontColor: '#334155'
+  - id: safety
+    label: ⑥ 横切安全、事务与恢复
+    style:
+      fillColor: '#FFF7ED'
+      strokeColor: '#C2410C'
+      fontColor: '#9A3412'
+  - id: delivery
+    label: ⑦ 测试、证据与交付
+    style:
+      fillColor: '#F5F3FF'
+      strokeColor: '#7C3AED'
+      fontColor: '#6D28D9'
+  - id: env
+    label: 部署与验证矩阵
+    style:
+      fillColor: '#F0F9FF'
+      strokeColor: '#0284C7'
+      fontColor: '#0369A1'
+nodes:
+  - id: workload
+    label: |-
+      业务负载
+      Redis / Nginx / Batch Jobs
+      Containers / K8s Pods
+    type: service
+    module: workload
+    size: xl
+    position:
+      x: 120
+      'y': 170
+    style:
+      fillColor: '#DBEAFE'
+      strokeColor: '#2563EB'
+      strokeWidth: 2
+      fontColor: '#0F172A'
+      fontSize: 13
+  - id: cli
+    label: |-
+      CLI
+      validate-config / status
+      doctor / run
+    type: terminal
+    module: entry
+    size: large
+    position:
+      x: 330
+      'y': 100
+    style:
+      fillColor: '#FFFFFF'
+      strokeColor: '#64748B'
+      fontColor: '#0F172A'
+      fontSize: 12
+  - id: web
+    label: |-
+      Web Console
+      Overview / Skills / Policy
+      Demo / Evidence
+    type: service
+    module: entry
+    size: large
+    position:
+      x: 330
+      'y': 205
+    style:
+      fillColor: '#FFFFFF'
+      strokeColor: '#64748B'
+      fontColor: '#0F172A'
+      fontSize: 12
+  - id: cfg
+    label: |-
+      配置与策略
+      agent.yaml / skills.yaml
+      Policy Events / Rules
+    type: document
+    module: entry
+    size: large
+    position:
+      x: 330
+      'y': 310
+    style:
+      fillColor: '#FFFFFF'
+      strokeColor: '#64748B'
+      fontColor: '#0F172A'
+      fontSize: 12
+  - id: adapter
+    label: |-
+      Control Adapter
+      Command Dispatch
+      Job Runner
+    type: process
+    module: entry
+    size: large
+    position:
+      x: 318
+      'y': 410
+    style:
+      fillColor: '#F1F5F9'
+      strokeColor: '#475569'
+      strokeWidth: 2
+      fontColor: '#0F172A'
+      fontSize: 12
+  - id: obs
+    label: |-
+      内核观测与信号采集
+      eBPF sched tracepoints / PSI
+      cgroup 状态与事件
+    type: process
+    module: observation
+    size: xl
+    position:
+      x: 690
+      'y': 170
+    style:
+      fillColor: '#CFFAFE'
+      strokeColor: '#0891B2'
+      strokeWidth: 2
+      fontColor: '#0F172A'
+      fontSize: 12
+  - id: runtime
+    label: |-
+      Agent Runtime
+      生命周期 / 配置加载
+      状态聚合
+    type: service
+    module: core
+    size: large
+    position:
+      x: 910
+      'y': 90
+    style:
+      fillColor: '#FFEDD5'
+      strokeColor: '#EA580C'
+      strokeWidth: 2
+      fontColor: '#0F172A'
+      fontSize: 12
+  - id: reader
+    label: |-
+      Observer Reader
+      TaskIdentity / TID delta
+      TGID aggregation
+    type: process
+    module: core
+    size: large
+    position:
+      x: 910
+      'y': 205
+    style:
+      fillColor: '#FFF7ED'
+      strokeColor: '#D97706'
+      strokeWidth: 2
+      fontColor: '#0F172A'
+      fontSize: 12
+  - id: analyzer
+    label: |-
+      Workload Analyzer
+      运行特征 / 分类
+      干扰识别
+    type: process
+    module: core
+    size: large
+    position:
+      x: 1110
+      'y': 205
+    style:
+      fillColor: '#FFF7ED'
+      strokeColor: '#D97706'
+      strokeWidth: 2
+      fontColor: '#0F172A'
+      fontSize: 12
+  - id: gate
+    label: |-
+      PsiGate 状态机
+      NORMAL / ARMED
+      ACTIVE / COOLDOWN
+    type: decision
+    module: core
+    size: xl
+    position:
+      x: 1320
+      'y': 105
+    style:
+      fillColor: '#FEF3C7'
+      strokeColor: '#D97706'
+      strokeWidth: 2
+      fontColor: '#0F172A'
+      fontSize: 12
+  - id: policy
+    label: |-
+      Policy Engine
+      跨 Skill 决策 / 幂等
+      TransactionContext
+    type: service
+    module: core
+    size: xl
+    position:
+      x: 1320
+      'y': 255
+    style:
+      fillColor: '#FFEDD5'
+      strokeColor: '#EA580C'
+      strokeWidth: 2
+      fontColor: '#0F172A'
+      fontSize: 12
+  - id: skill_manager
+    label: |-
+      Skill Manager
+      注册 / 编排 / 启停 / 状态
+    type: service
+    module: core
+    size: large
+    position:
+      x: 1535
+      'y': 205
+    style:
+      fillColor: '#FED7AA'
+      strokeColor: '#EA580C'
+      strokeWidth: 2
+      fontColor: '#0F172A'
+      fontSize: 12
+  - id: resource
+    label: |-
+      Resource Control
+      CPU / Memory / IO
+      cgroup v2 稳定主路径
+    type: service
+    module: skills
+    size: large
+    position:
+      x: 1780
+      'y': 70
+    style:
+      fillColor: '#DCFCE7'
+      strokeColor: '#15803D'
+      strokeWidth: 2
+      fontColor: '#0F172A'
+      fontSize: 12
+  - id: sched
+    label: |-
+      Scheduling Skill
+      sched_ext / scx
+      增强调度路径
+    type: service
+    module: skills
+    size: large
+    position:
+      x: 1780
+      'y': 170
+    style:
+      fillColor: '#E0E7FF'
+      strokeColor: '#4F46E5'
+      strokeWidth: 2
+      fontColor: '#0F172A'
+      fontSize: 12
+  - id: network
+    label: |-
+      Network Skills
+      Policy / TC QoS / XDP
+      IP / Port / Protocol
+    type: service
+    module: skills
+    size: large
+    position:
+      x: 1780
+      'y': 270
+    style:
+      fillColor: '#CCFBF1'
+      strokeColor: '#0F766E'
+      strokeWidth: 2
+      fontColor: '#0F172A'
+      fontSize: 12
+  - id: security
+    label: |-
+      Security Policy
+      审计 / 受控强制执行
+      异常检测
+    type: service
+    module: skills
+    size: large
+    position:
+      x: 1780
+      'y': 370
+    style:
+      fillColor: '#FFE4E6'
+      strokeColor: '#BE123C'
+      strokeWidth: 2
+      fontColor: '#0F172A'
+      fontSize: 12
+  - id: cgroup
+    label: |-
+      cgroup v2
+      cpu.weight / cpu.max
+      memory / io
+    type: database
+    module: kernel_exec
+    size: large
+    position:
+      x: 2020
+      'y': 70
+    style:
+      fillColor: '#ECFDF5'
+      strokeColor: '#15803D'
+      strokeWidth: 2
+      fontColor: '#0F172A'
+      fontSize: 12
+  - id: scx_kernel
+    label: |-
+      scx_eulerpilot
+      class_map / DSQ
+      gate_state
+    type: process
+    module: kernel_exec
+    size: large
+    position:
+      x: 2020
+      'y': 170
+    style:
+      fillColor: '#EEF2FF'
+      strokeColor: '#4F46E5'
+      strokeWidth: 2
+      fontColor: '#0F172A'
+      fontSize: 12
+  - id: net_hooks
+    label: |-
+      Network Hooks
+      cgroup/connect4
+      TC / XDP
+    type: process
+    module: kernel_exec
+    size: large
+    position:
+      x: 2020
+      'y': 270
+    style:
+      fillColor: '#ECFEFF'
+      strokeColor: '#0284C7'
+      strokeWidth: 2
+      fontColor: '#0F172A'
+      fontSize: 12
+  - id: sec_hooks
+    label: |-
+      Security Hooks
+      BPF LSM
+      syscall tracing
+    type: process
+    module: kernel_exec
+    size: large
+    position:
+      x: 2020
+      'y': 370
+    style:
+      fillColor: '#FFF1F2'
+      strokeColor: '#BE123C'
+      strokeWidth: 2
+      fontColor: '#0F172A'
+      fontSize: 12
+  - id: capability
+    label: |-
+      Capability Matrix
+      能力检测 / Feature Gate
+      Graceful Fallback
+    type: document
+    module: safety
+    size: large
+    position:
+      x: 860
+      'y': 535
+    style:
+      fillColor: '#FFEDD5'
+      strokeColor: '#C2410C'
+      strokeWidth: 2
+      fontColor: '#0F172A'
+      fontSize: 12
+  - id: ownership
+    label: |-
+      Ownership Guard
+      cgroup lease / BPF link
+      qdisc / XDP identity
+    type: process
+    module: safety
+    size: large
+    position:
+      x: 1080
+      'y': 535
+    style:
+      fillColor: '#FFEDD5'
+      strokeColor: '#C2410C'
+      strokeWidth: 2
+      fontColor: '#0F172A'
+      fontSize: 12
+  - id: journal
+    label: |-
+      ActionJournal + Rollback
+      apply / verify
+      compensate
+    type: database
+    module: safety
+    size: large
+    position:
+      x: 1300
+      'y': 535
+    style:
+      fillColor: '#FFEDD5'
+      strokeColor: '#C2410C'
+      strokeWidth: 2
+      fontColor: '#0F172A'
+      fontSize: 12
+  - id: audit
+    label: |-
+      AuditBus + Runtime Status
+      事件 / 日志
+      状态 / 错误
+    type: database
+    module: safety
+    size: large
+    position:
+      x: 1520
+      'y': 535
+    style:
+      fillColor: '#FFEDD5'
+      strokeColor: '#C2410C'
+      strokeWidth: 2
+      fontColor: '#0F172A'
+      fontSize: 12
+  - id: gates
+    label: |-
+      Quality Gates
+      Portable CI / SP4 Gate
+      SP3 Gate
+    type: document
+    module: delivery
+    size: large
+    position:
+      x: 420
+      'y': 720
+    style:
+      fillColor: '#EDE9FE'
+      strokeColor: '#7C3AED'
+      strokeWidth: 2
+      fontColor: '#0F172A'
+      fontSize: 12
+  - id: benchmarks
+    label: |-
+      Benchmarks
+      Redis / Nginx / Throughput
+      Mixed-Adaptive
+    type: process
+    module: delivery
+    size: large
+    position:
+      x: 650
+      'y': 720
+    style:
+      fillColor: '#EDE9FE'
+      strokeColor: '#7C3AED'
+      strokeWidth: 2
+      fontColor: '#0F172A'
+      fontSize: 12
+  - id: evidence
+    label: |-
+      Evidence & Release
+      validate-run / suite / release
+      Reports
+    type: document
+    module: delivery
+    size: xl
+    position:
+      x: 900
+      'y': 720
+    style:
+      fillColor: '#DDD6FE'
+      strokeColor: '#7C3AED'
+      strokeWidth: 2
+      fontColor: '#0F172A'
+      fontSize: 12
+  - id: sp4
+    label: |-
+      SP4 主验证环境
+      完整功能 / Web / Skills
+      SCX 自编译内核验证
+    type: service
+    module: env
+    size: xl
+    position:
+      x: 1250
+      'y': 720
+    style:
+      fillColor: '#E0F2FE'
+      strokeColor: '#0284C7'
+      strokeWidth: 2
+      fontColor: '#0F172A'
+      fontSize: 12
+  - id: sp3
+    label: |-
+      SP3 强制兼容环境
+      cgroup v2 稳定路径
+      sched_ext graceful fallback
+    type: service
+    module: env
+    size: xl
+    position:
+      x: 1500
+      'y': 720
+    style:
+      fillColor: '#E0F2FE'
+      strokeColor: '#0284C7'
+      strokeWidth: 2
+      fontColor: '#0F172A'
+      fontSize: 12
+edges:
+  - from: cli
+    to: adapter
+    type: primary
+    style:
+      strokeColor: '#475569'
+      strokeWidth: 2
+      exitX: 1
+      exitY: 0.5
+      entryX: 1
+      entryY: 0.5
+      waypoints:
+        - x: 560
+          y: 152
+        - x: 560
+          y: 447
+  - from: web
+    to: adapter
+    type: primary
+    style:
+      strokeColor: '#475569'
+      strokeWidth: 2
+      exitX: 1
+      exitY: 0.5
+      entryX: 1
+      entryY: 0.5
+      waypoints:
+        - x: 560
+          y: 250
+        - x: 560
+          y: 447
+  - from: cfg
+    to: runtime
+    type: data
+    label: 配置上下文
+    labelPosition: center
+    style:
+      strokeColor: '#64748B'
+      strokeWidth: 1.5
+      dashed: true
+      exitX: 1
+      exitY: 0.4
+      entryX: 0
+      entryY: 0.6
+  - from: adapter
+    to: runtime
+    type: primary
+    label: 控制请求
+    labelPosition: center
+    style:
+      strokeColor: '#475569'
+      strokeWidth: 2
+      exitX: 1
+      exitY: 0.5
+      entryX: 0
+      entryY: 0.45
+      waypoints:
+        - x: 760
+          y: 447
+        - x: 760
+          y: 148
+  - from: workload
+    to: obs
+    type: primary
+    label: 运行行为
+    labelPosition: center
+    style:
+      strokeColor: '#2563EB'
+      strokeWidth: 2.2
+      exitX: 1
+      exitY: 0.45
+      entryX: 0
+      entryY: 0.5
+  - from: obs
+    to: reader
+    type: primary
+    label: metrics / pressure
+    labelPosition: center
+    style:
+      strokeColor: '#0891B2'
+      strokeWidth: 2.2
+      exitX: 1
+      exitY: 0.5
+      entryX: 0
+      entryY: 0.5
+  - from: runtime
+    to: reader
+    type: data
+    label: 生命周期 / 配置
+    labelPosition: end
+    style:
+      strokeColor: '#D97706'
+      strokeWidth: 1.5
+      dashed: true
+      exitX: 0.5
+      exitY: 1
+      entryX: 0.5
+      entryY: 0
+  - from: reader
+    to: analyzer
+    type: primary
+    style:
+      strokeColor: '#D97706'
+      strokeWidth: 2
+      exitX: 1
+      exitY: 0.5
+      entryX: 0
+      entryY: 0.5
+  - from: analyzer
+    to: gate
+    type: primary
+    label: pressure metrics
+    labelPosition: center
+    style:
+      strokeColor: '#D97706'
+      strokeWidth: 2
+      exitX: 1
+      exitY: 0.3
+      entryX: 0
+      entryY: 0.6
+  - from: analyzer
+    to: policy
+    type: primary
+    label: workload class / evidence
+    labelPosition: center
+    style:
+      strokeColor: '#D97706'
+      strokeWidth: 2
+      exitX: 1
+      exitY: 0.7
+      entryX: 0
+      entryY: 0.5
+  - from: gate
+    to: policy
+    type: primary
+    label: gate state
+    labelPosition: end
+    style:
+      strokeColor: '#D97706'
+      strokeWidth: 2
+      exitX: 0.55
+      exitY: 1
+      entryX: 0.55
+      entryY: 0
+  - from: runtime
+    to: policy
+    type: data
+    label: 运行状态 / 配置上下文
+    labelPosition: center
+    style:
+      strokeColor: '#D97706'
+      strokeWidth: 1.5
+      dashed: true
+      exitX: 1
+      exitY: 0.6
+      entryX: 0
+      entryY: 0.2
+  - from: policy
+    to: skill_manager
+    type: primary
+    label: desired state / actions
+    labelPosition: center
+    style:
+      strokeColor: '#EA580C'
+      strokeWidth: 2.3
+      exitX: 1
+      exitY: 0.5
+      entryX: 0
+      entryY: 0.5
+  - from: skill_manager
+    to: resource
+    type: primary
+    style:
+      strokeColor: '#15803D'
+      strokeWidth: 2
+      exitX: 1
+      exitY: 0.25
+      entryX: 0
+      entryY: 0.5
+  - from: skill_manager
+    to: sched
+    type: primary
+    style:
+      strokeColor: '#4F46E5'
+      strokeWidth: 2
+      exitX: 1
+      exitY: 0.45
+      entryX: 0
+      entryY: 0.5
+  - from: skill_manager
+    to: network
+    type: primary
+    style:
+      strokeColor: '#0F766E'
+      strokeWidth: 2
+      exitX: 1
+      exitY: 0.65
+      entryX: 0
+      entryY: 0.5
+  - from: skill_manager
+    to: security
+    type: primary
+    style:
+      strokeColor: '#BE123C'
+      strokeWidth: 2
+      exitX: 1
+      exitY: 0.85
+      entryX: 0
+      entryY: 0.5
+  - from: resource
+    to: cgroup
+    type: primary
+    style:
+      strokeColor: '#15803D'
+      strokeWidth: 2
+      exitX: 1
+      exitY: 0.5
+      entryX: 0
+      entryY: 0.5
+  - from: sched
+    to: scx_kernel
+    type: primary
+    style:
+      strokeColor: '#4F46E5'
+      strokeWidth: 2
+      exitX: 1
+      exitY: 0.5
+      entryX: 0
+      entryY: 0.5
+  - from: network
+    to: net_hooks
+    type: primary
+    style:
+      strokeColor: '#0F766E'
+      strokeWidth: 2
+      exitX: 1
+      exitY: 0.5
+      entryX: 0
+      entryY: 0.5
+  - from: security
+    to: sec_hooks
+    type: primary
+    style:
+      strokeColor: '#BE123C'
+      strokeWidth: 2
+      exitX: 1
+      exitY: 0.5
+      entryX: 0
+      entryY: 0.5
+  - from: cgroup
+    to: workload
+    type: primary
+    label: 资源控制反馈
+    labelPosition: center
+    waypoints:
+      - x: 2150
+        'y': 30
+      - x: 70
+        'y': 30
+    style:
+      strokeColor: '#15803D'
+      strokeWidth: 1.8
+  - from: scx_kernel
+    to: workload
+    type: primary
+    label: CPU 调度反馈
+    labelPosition: center
+    waypoints:
+      - x: 2180
+        'y': 20
+      - x: 90
+        'y': 20
+    style:
+      strokeColor: '#4F46E5'
+      strokeWidth: 1.8
+  - from: net_hooks
+    to: workload
+    type: primary
+    label: 网络策略 / QoS
+    labelPosition: center
+    waypoints:
+      - x: 2200
+        'y': 500
+      - x: 100
+        'y': 500
+    style:
+      strokeColor: '#0F766E'
+      strokeWidth: 1.8
+  - from: sec_hooks
+    to: workload
+    type: primary
+    label: 审计 / 访问控制
+    labelPosition: center
+    waypoints:
+      - x: 2220
+        'y': 520
+      - x: 120
+        'y': 520
+    style:
+      strokeColor: '#BE123C'
+      strokeWidth: 1.8
+  - from: capability
+    to: runtime
+    type: optional
+    label: 加载前能力检测
+    labelPosition: center
+    style:
+      strokeColor: '#C2410C'
+      strokeWidth: 1.5
+      dashed: true
+      dashPattern: 4 4
+      exitX: 0.35
+      exitY: 0
+      entryX: 0.35
+      entryY: 1
+  - from: capability
+    to: skill_manager
+    type: optional
+    label: Skill 启用 / 降级
+    labelPosition: center
+    style:
+      strokeColor: '#C2410C'
+      strokeWidth: 1.5
+      dashed: true
+      dashPattern: 4 4
+      exitX: 0.7
+      exitY: 0
+      entryX: 0.2
+      entryY: 1
+  - from: ownership
+    to: resource
+    type: optional
+    label: ownership / scope
+    labelPosition: center
+    style:
+      strokeColor: '#C2410C'
+      strokeWidth: 1.5
+      dashed: true
+      dashPattern: 4 4
+      exitX: 1
+      exitY: 0.2
+      entryX: 0.2
+      entryY: 1
+  - from: ownership
+    to: network
+    type: optional
+    label: link / qdisc / XDP
+    labelPosition: center
+    style:
+      strokeColor: '#C2410C'
+      strokeWidth: 1.5
+      dashed: true
+      dashPattern: 4 4
+      exitX: 1
+      exitY: 0.55
+      entryX: 0.2
+      entryY: 1
+  - from: ownership
+    to: security
+    type: optional
+    label: cgroup scope
+    labelPosition: center
+    style:
+      strokeColor: '#C2410C'
+      strokeWidth: 1.5
+      dashed: true
+      dashPattern: 4 4
+      exitX: 1
+      exitY: 0.85
+      entryX: 0.2
+      entryY: 1
+  - from: journal
+    to: policy
+    type: optional
+    label: 事务上下文
+    labelPosition: center
+    style:
+      strokeColor: '#C2410C'
+      strokeWidth: 1.5
+      dashed: true
+      dashPattern: 4 4
+      exitX: 0.5
+      exitY: 0
+      entryX: 0.5
+      entryY: 1
+  - from: journal
+    to: skill_manager
+    type: optional
+    label: apply / verify / rollback
+    labelPosition: center
+    style:
+      strokeColor: '#C2410C'
+      strokeWidth: 1.5
+      dashed: true
+      dashPattern: 4 4
+      exitX: 0.9
+      exitY: 0
+      entryX: 0.55
+      entryY: 1
+  - from: policy
+    to: audit
+    type: data
+    style:
+      strokeColor: '#C2410C'
+      strokeWidth: 1.6
+      dashed: true
+      exitX: 0.75
+      exitY: 1
+      entryX: 0.25
+      entryY: 0
+  - from: skill_manager
+    to: audit
+    type: data
+    style:
+      strokeColor: '#C2410C'
+      strokeWidth: 1.6
+      dashed: true
+      exitX: 0.55
+      exitY: 1
+      entryX: 0.55
+      entryY: 0
+  - from: audit
+    to: web
+    type: data
+    label: 状态 / 日志
+    labelPosition: start
+    waypoints:
+      - x: 1520
+        'y': 620
+      - x: 330
+        'y': 620
+    style:
+      strokeColor: '#C2410C'
+      strokeWidth: 1.5
+      dashed: true
+      dashPattern: 4 4
+  - from: audit
+    to: evidence
+    type: data
+    label: 证据事件
+    labelPosition: center
+    style:
+      strokeColor: '#7C3AED'
+      strokeWidth: 1.8
+      dashed: true
+      exitX: 0
+      exitY: 0.95
+      entryX: 1
+      entryY: 0.4
+  - from: benchmarks
+    to: workload
+    type: data
+    label: 生成受控负载
+    labelPosition: start
+    waypoints:
+      - x: 650
+        'y': 810
+      - x: 120
+        'y': 810
+    style:
+      strokeColor: '#7C3AED'
+      strokeWidth: 1.6
+      dashed: true
+      dashPattern: 6 4
+  - from: gates
+    to: evidence
+    type: data
+    label: 门禁结果
+    labelPosition: center
+    style:
+      strokeColor: '#7C3AED'
+      strokeWidth: 1.8
+      dashed: true
+      exitX: 1
+      exitY: 0.45
+      entryX: 0
+      entryY: 0.35
+  - from: benchmarks
+    to: evidence
+    type: data
+    label: 实验结果
+    labelPosition: center
+    style:
+      strokeColor: '#7C3AED'
+      strokeWidth: 1.8
+      dashed: true
+      exitX: 1
+      exitY: 0.55
+      entryX: 0
+      entryY: 0.65
+  - from: sp4
+    to: gates
+    type: optional
+    label: 完整功能门禁 / SCX Host Gate
+    labelPosition: center
+    style:
+      strokeColor: '#0284C7'
+      strokeWidth: 1.5
+      dashed: true
+      dashPattern: 4 4
+      exitX: 0
+      exitY: 0.4
+      entryX: 1
+      entryY: 0.35
+  - from: sp3
+    to: gates
+    type: optional
+    label: 兼容门禁 / fallback 验证
+    labelPosition: center
+    style:
+      strokeColor: '#0284C7'
+      strokeWidth: 1.5
+      dashed: true
+      dashPattern: 4 4
+      exitX: 0
+      exitY: 0.6
+      entryX: 1
+      entryY: 0.65

@@ -1,6 +1,6 @@
 # EulerPilot 最终质量门禁
 
-更新时间：`2026-07-26`
+更新时间：`2026-07-27`
 
 ## 目的
 
@@ -9,7 +9,7 @@
 ## 运行命令
 
 ```bash
-# SP4 v6 收口仓库 preflight
+# SP4 最终交付收口仓库 preflight
 ./scripts/final_quality_gate.sh | tee reports/final_quality_gate_sp4.tap
 
 # 122 / OLK 对照线最小门禁
@@ -86,6 +86,6 @@ make agent
 ## 最新记录
 
 - SP4 历史完整门禁：`reports/final_quality_gate_20260720-stage3-performance.log`，结果为 22/22 P0、100 轮 smoke、5 轮 doctor，通过但仅作为历史记录。
-- v6 当前状态：`/root/EulerPilot-closeout` 缩短版 preflight 29/29 P0 通过。
+- v6 当前状态：`/root/EulerPilot` 缩短版 preflight 29/29 P0 通过。
 - 最终 release gate：必须在同一 `tested_candidate_commit`、formal `artifact_id` 和修正 baseline 后正式实验上重新运行。
 - 121/SP3 与 122/OLK 既有门禁和回归记录保留为历史对照，不再作为最终主验证线。

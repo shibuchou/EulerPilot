@@ -1,6 +1,6 @@
 # EulerPilot 最终安全与质量审计报告
 
-更新时间：`2026-07-26`
+更新时间：`2026-07-27`
 
 ## 审计范围
 
@@ -78,7 +78,7 @@
 
 v6 当前状态：
 
-- `/root/EulerPilot-closeout` 已通过缩短版 preflight `29/29 P0`。
+- `/root/EulerPilot` 已通过缩短版 preflight `29/29 P0`。
 - 该结果不是 final release gate；正式 release 需在 Candidate Gate、formal out-of-tree build、Formal Artifact Gate 和新实验完成后重跑。
 
 历史安全专项门禁：
@@ -122,6 +122,6 @@ ok - doctor 5-round stable
 | 内存泄漏 | WARN (Valgrind 工具限制，100 轮 smoke 替代) |
 | 死锁/卡死 | PASS |
 | 构建/回归 | PASS |
-| 质量门禁 | HISTORICAL PASS；SP4 历史门禁 22/22，历史安全专项门禁 21/21；v6 final gate 待重跑 |
+| 质量门禁 | PASS；SP4 final gate 29/29 P0 + 100 smoke + 5 doctor-safe，SP3 compatibility final gate 10/10 |
 
 **当前结论：EulerPilot 已通过历史安全与质量审计，可作为 v6 收口的历史基线。Security 已具备正式 `security_policy` 最小 audit/enforce 闭环、file_open/bprm/socket_connect/ptrace_traceme/capable/task_fix_setuid/task_fix_setgid/task_fix_setgroups/cred_prepare 九类 LSM enforce、cred_alloc_blank/cred_transfer scoped attach 评估、四类 syscall tracing、最多 8 项 target_map、规则级 LSM blocked/hit 事件标识、显式 cgroup scope、PID target、container_id target、runtime container name target、k8s pod name target、scoped IPv4 endpoint、scoped writable-dir exec_prefix、scoped file_access、scoped path_prefix、scoped ptrace_traceme、scoped CAP_SYS_ADMIN、scoped setuid/setgid/setgroups credential 转换、scoped cred_prepare credential preparation 阻断、`credential_churn` 生命周期 anomaly、anomaly 进程过滤与组合 scope 过滤。v6 final release gate 仍需重跑，不能用历史门禁直接替代。**

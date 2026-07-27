@@ -1,6 +1,6 @@
 # EulerPilot 最终交付包索引
 
-更新时间：`2026-07-26`
+更新时间：`2026-07-27`
 
 ## 1. 项目定位
 
@@ -10,7 +10,7 @@ EulerPilot 是面向 openEuler 的自适应资源管控 Agent，围绕“观测 
 
 - SP3 / 121：`cgroup v2` 稳定主闭环和历史回归对照。
 - OLK-6.6 / 122：`sched_ext/scx` 提前验证和对照线。
-- SP4 / 123：当前核心验证和 v6 收口线，完成发行环境适配、SP4 官方源码自编译 sched_ext 内核功能复核、K8s/Web Console；旧 RUNS=10 结果已降级为 historical/provisional 或 invalid historical。
+- SP4 / 123：当前核心验证和 最终交付收口线，完成发行环境适配、SP4 官方源码自编译 sched_ext 内核功能复核、K8s/Web Console；旧 RUNS=10 pre-fix 结果已降级为 historical/provisional 或 invalid historical；正式结果以 formal artifact RUNS=10 为准。
 
 ## 2. 核心代码
 
@@ -25,8 +25,8 @@ EulerPilot 是面向 openEuler 的自适应资源管控 Agent，围绕“观测 
 ## 3. 最终证据
 
 - evidence compact：`reports/final_evidence_compact.md`、`reports/final_evidence_compact.json`
-- 当前口径：`entries=41`、`missing_required=0`、`warnings=8`
-- 质量门禁：历史 `reports/final_quality_gate_20260720-stage3-performance.log` 保留；v6 当前通过缩短版 preflight 29/29，最终 gate 待 formal artifact 后重跑
+- 当前口径：`entries=42`、`missing_required=0`、`warnings=0`
+- 质量门禁：历史 `reports/final_quality_gate_20260720-stage3-performance.log` 保留；当前 SP4 final gate 已通过 29/29 P0、100 轮 smoke、5 轮 doctor-safe；SP3 compatibility final gate 已通过 10/10
 - 图表材料：`reports/final_figures/`
 - Dashboard：`reports/dashboard/index.html`
 
@@ -63,4 +63,4 @@ EulerPilot 是面向 openEuler 的自适应资源管控 Agent，围绕“观测 
 
 ## 7. 当前结论
 
-项目已经完成系统主体实现、SP4 主验证线、sched_ext/scx 自编译内核功能复核、三方向 OS Agent 扩展、Policy Engine 跨 Skill 联动、Web Console 展示和 41 条 evidence compact。当前仍需完成 v6 Candidate Gate、Formal Artifact Gate、修正 baseline 后的正式随机化实验、release gate 和正式演示视频。
+项目已经完成系统主体实现、SP4 主验证线、sched_ext/scx 自编译内核功能复核、三方向 OS Agent 扩展、Policy Engine 跨 Skill 联动、Web Console 展示、42 条 evidence compact、formal artifact RUNS=10、双环境 final gate 和演示视频材料。

@@ -1,6 +1,6 @@
 # EulerPilot 答辩问答预案
 
-更新时间：`2026-07-26`
+更新时间：`2026-07-27`
 
 ## 1. 这是不是聊天型 AI Agent？
 
@@ -59,7 +59,7 @@ v3.1 默认只允许 lab netdev，测试脚本创建 isolated veth，例如 `ep-
 
 ## 9. 结果是否只在单机上成立？
 
-不是。121/122 双机完成了 SP3 主路径与历史对照验证；SP4 主机现在作为核心验证仓库，已完成自编译 sched_ext/scx 增强路径、Web Console 和 Kubernetes 旁路验证。Redis/Nginx RUNS=10 历史结果已保留为 provisional evidence，最终收益数字需要等待 formal artifact 重跑。当前 evidence manifest 将这些结果和降级状态统一收口到 41 条核心证据。
+不是。121/122 双机完成了 SP3 主路径与历史对照验证；SP4 主机现在作为核心验证仓库，已完成自编译 sched_ext/scx 增强路径、Web Console 和 Kubernetes 旁路验证。Redis/Nginx RUNS=10 历史结果已保留为 provisional evidence，最终收益数字以 formal artifact RUNS=10 结果为准。当前 evidence manifest 将这些结果和降级状态统一收口到 42 条核心证据。
 
 ## 10. 如果现场环境波动怎么办？
 

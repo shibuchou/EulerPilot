@@ -1,6 +1,6 @@
 # EulerPilot 一页式简介
 
-更新时间：`2026-07-26`
+更新时间：`2026-07-27`
 
 ## 项目是什么
 
@@ -21,11 +21,11 @@ EulerPilot 是面向 openEuler 的自适应资源管控 Agent。它用 eBPF/PSI 
 
 ## 当前完成度
 
-- SP4 主验证和 v6 收口仓库：`192.168.1.123:/root/EulerPilot-closeout`。
+- SP4 主验证和 最终交付收口仓库：`192.168.1.123:/root/EulerPilot`。
 - SP3 强制兼容交付环境：`192.168.1.121`；SP3/OLK 历史对照验证：`192.168.1.122`。
 - SP4 发行环境已完成适配验证；sched_ext/scx 基于 SP4 官方源码自编译启用内核完成复核。
-- v6 缩短版 `scripts/final_quality_gate.sh` 通过 `29/29 P0`；最终 gate 需在同一 candidate SHA 和 formal artifact 上重跑。
-- `python3 scripts/collect_final_evidence.py` 当前覆盖 `41` 条核心证据，缺失 `0`、预期警告 `8`；警告来自旧结果降级。
+- SP4 final gate 已通过 `29/29 P0 + 100 smoke + 5 doctor-safe`；SP3 compatibility final gate 已通过 `10/10`。
+- `python3 scripts/collect_final_evidence.py` 当前覆盖 `42` 条核心证据，缺失 `0`、预期警告 `8`；警告来自旧结果降级。
 - Web Console v1 已落地为旁路展示控制台。
 - Kubernetes 真实 Pod 旁路验证已完成，使用独立 namespace、独立 label、有限 resources，cleanup 后无 EulerPilot 残留。
 

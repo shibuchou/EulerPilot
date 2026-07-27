@@ -1,6 +1,6 @@
 # EulerPilot 最终证据索引
 
-更新时间：`2026-07-26`
+更新时间：`2026-07-27`
 
 本文作为答辩和最终提交前的证据入口，集中索引 EulerPilot 当前已经具备的设计文档、测试脚本、结果目录和演示材料。日期快照文档不反复覆盖；滚动进度以 `docs/progress_status.md` 为准。
 
@@ -30,7 +30,7 @@
 python3 scripts/collect_final_evidence.py
 ```
 
-当前压缩报告覆盖 42 个核心条目：质量门禁、仓库快照、historical/provisional experiment manifest、Redis/Nginx sched_ext、SP4 RUNS=10 historical workload、Redis pressure gradient、Network QoS/XDP、Security anomaly/process filter/combo scope/deep hook、Resource Control CPU/Memory/IO/Pod target、Policy Engine 双机联动、真实 Pod 联动、Web Console 与 K8s 旁路验证。当前必需证据缺失为 0；旧结果的 provisional/invalid 状态由 `evidence/evidence_status_overrides.json` 保留。2026-07-26 已完成 formal artifact 绑定后的 RUNS=10 套件，阶段报告为 `reports/v6_formal_experiment_suite_20260726.md`，release 前仍需把仓库外原始结果打包并运行 `--validate-release`。
+当前压缩报告覆盖 42 个核心条目：质量门禁、仓库快照、historical/provisional experiment manifest、Redis/Nginx sched_ext、formal artifact RUNS=10 workload、Redis pressure gradient、Network QoS/XDP、Security anomaly/process filter/combo scope/deep hook、Resource Control CPU/Memory/IO/Pod target、Policy Engine 双机联动、真实 Pod 联动、Web Console 与 K8s 旁路验证。当前必需证据缺失为 0、warning 为 0；旧结果的 provisional/invalid 状态由 `evidence/evidence_status_overrides.json` 保留。2026-07-26 已完成 formal artifact 绑定后的 RUNS=10 套件，阶段报告为 `reports/v6_formal_experiment_suite_20260726.md`，`--validate-suite`、`--validate-release`、SP4 final gate 与 SP3 compatibility final gate 均已通过。
 
 ## Skill 证据
 
@@ -201,7 +201,7 @@ SP4 sched_ext 增强复核与 v6 状态覆盖：
 - SP4 sched_ext workload quality gate：`reports/sp4/final_quality_gate_scx_workload_20260706-1214.log`
 - SP4 historical quality gate after Stage3 performance evidence closeout：`reports/final_quality_gate_20260720-stage3-performance.log`
 
-说明：上述 20260724 性能目录保留原始数据和哈希，但 v6 复审后由 `evidence/evidence_status_overrides.json` 覆盖为 provisional 或 invalid historical，不能继续作为 final positive evidence。修复 default baseline、formal `artifact_id`、Throughput dispatch accounting 和 Mixed-Adaptive single-Agent trace 后，需要重新运行 Candidate Gate、Formal Artifact Gate 和正式随机化实验。
+说明：上述 20260724 性能目录保留原始数据和哈希，但 v6 复审后由 `evidence/evidence_status_overrides.json` 覆盖为 provisional 或 invalid historical，不能继续作为 final positive evidence。final positive evidence 使用 `tested_code_commit=7a99d87048f4f2040377354bfe0ce21401664642` 与 formal artifact `ef1baebec7ac138acd0eb1a59fc3880ca550330ef89f87615e8579a0ef264240` 绑定后的 RUNS=10 套件。
 
 历史 blocked / iSulad 准备证据保留：
 
@@ -211,7 +211,7 @@ SP4 sched_ext 增强复核与 v6 状态覆盖：
 - 122 isula real runtime blocked：`results/resource_control/real-runtime-target-20260630-isula-check-122`
 - 121 v3.1 回归：`results/policy_engine/security-network-resource-20260630-102629`
 
-SP4 主验证仓库在 v6 收口中已通过缩短版 preflight `scripts/final_quality_gate.sh`：29/29 P0。最终 release gate 需在同一 `tested_candidate_commit` 通过 Candidate Gate，并使用 formal artifact 重跑正式实验后执行；121 工程质量收口门禁作为 SP3 强制兼容历史证据保留。
+SP4 主验证仓库已完成 Candidate Gate、Formal Artifact Gate、formal artifact RUNS=10、`--validate-suite`、`--validate-release` 和 final gate：29/29 P0、100 轮 smoke、5 轮 doctor-safe。SP3 compatibility final gate 已通过 10/10，并保留 capability matrix。
 ## 后置事项
 
 - SP4 sched_ext 自编译内核复核已完成，准备文档为 `docs/sp4_validation_plan.md`，检查脚本为 `scripts/check_sp4_env.sh`。

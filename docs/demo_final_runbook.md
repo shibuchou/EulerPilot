@@ -1,6 +1,6 @@
 # EulerPilot 最终演示 Runbook
 
-更新时间：`2026-07-26`
+更新时间：`2026-07-27`
 
 本文用于现场答辩和本地复现。演示脚本入口为 `demo/demo_all_final.sh`，支持 live、offline 和 cleanup 三种模式。
 

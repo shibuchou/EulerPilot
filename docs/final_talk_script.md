@@ -1,6 +1,6 @@
 # EulerPilot 答辩讲稿
 
-更新时间：`2026-07-26`
+更新时间：`2026-07-27`
 
 ## 开场（30秒）
 
@@ -50,18 +50,18 @@
 
 ## Nginx 结果（20秒）
 
-历史候选：nginx-scx-compare-20260612-194018，同样 RUNS=5。SP4 上追加了 nginx-scx-compare-20260724-tested-2541464-runs10，目前也按 provisional historical 保留。Nginx 结果最重要的价值是说明第二条业务线已经跑通，同时暴露 workload 差异化策略边界；正式性能结论同样等待 formal artifact 重跑。
+历史候选：nginx-scx-compare-20260612-194018，同样 RUNS=5。SP4 上追加了 nginx-scx-compare-20260724-tested-2541464-runs10，目前也按 provisional historical 保留。Nginx 结果最重要的价值是说明第二条业务线已经跑通，同时暴露 workload 差异化策略边界；正式性能结论以 formal artifact RUNS=10 结果为准。
 
 ## 证据链（15秒）
 
-完整证据链：latency+background 场景前提 -> PsiGate 进入 ACTIVE -> cgroup_v2/sched_ext 执行动作确实发生 -> 业务结果写入历史候选或 formal artifact 结果目录。当前 evidence compact 为 41 条、缺失 0、预期警告 8；这些警告来自旧证据降级，不代表文件缺失。
+完整证据链：latency+background 场景前提 -> PsiGate 进入 ACTIVE -> cgroup_v2/sched_ext 执行动作确实发生 -> 业务结果写入历史候选或 formal artifact 结果目录。当前 evidence compact 为 42 条、缺失 0、警告 0；最终证据 release gate 已清零 warning。
 
 ## 结论（20秒）
 
 1. SP3 上完成主闭环，是比赛要求的强制兼容交付环境。
-2. OLK-6.6 和 SP4 官方源码自编译 sched_ext 内核上完成 compare 与功能复核；正式收益数字等待 v6 formal artifact 重跑。
+2. OLK-6.6 和 SP4 官方源码自编译 sched_ext 内核上完成 compare 与功能复核；正式收益数字以 formal artifact RUNS=10 结果为准。
 3. Skills 框架 + Network/Security/Resource/Policy Engine 证明 Agent 可扩展、可联动、可回滚。
-4. 项目已形成 41 条 evidence compact、Web Console 和 v6 preflight 证据；最终 release gate 需要在同一 candidate SHA 和 formal artifact 上重新完成。
+4. 项目已形成 42 条 evidence compact、Web Console 和 v6 preflight 证据；最终 release gate 需要在同一 candidate SHA 和 formal artifact 上重新完成。
 
 ## 收尾
 

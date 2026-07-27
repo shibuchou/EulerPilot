@@ -1,10 +1,10 @@
 # EulerPilot：面向 openEuler 的自适应资源管控 Agent
 
-更新时间：`2026-07-26`
+更新时间：`2026-07-27`
 
 ## 摘要
 
-EulerPilot 是一个面向 openEuler 的自适应资源管控 Agent。项目通过 eBPF 进行低开销观测，在用户态完成 workload 分类、压力识别和策略决策，并通过 `cgroup v2` 与 `sched_ext/scx` 双执行后端实现资源调控。当前项目进入 v6 封版收口阶段：旧 SP4 RUNS=10 性能结果保留为 historical/provisional evidence，原始目录不改写；正式收益数字必须等待修复 default baseline、绑定 `tested_code_commit` 与 formal `artifact_id` 后重新随机化运行。
+EulerPilot 是一个面向 openEuler 的自适应资源管控 Agent。项目通过 eBPF 进行低开销观测，在用户态完成 workload 分类、压力识别和策略决策，并通过 `cgroup v2` 与 `sched_ext/scx` 双执行后端实现资源调控。当前项目进入 最终交付收口阶段：旧 SP4 RUNS=10 性能结果保留为 historical/provisional evidence，原始目录不改写；正式收益数字必须等待修复 default baseline、绑定 `tested_code_commit` 与 formal `artifact_id` 后重新随机化运行。
 
 EulerPilot 不追求无条件替代 Linux 默认调度器，而是面向混部干扰场景，通过 eBPF/PSI 感知 workload 状态，在延迟敏感服务与后台干扰共存时，选择 cgroup v2 或 sched_ext/scx 后端进行按需控制，并通过 Redis/Nginx 对照实验展示收益、边界与可回滚能力。
 
@@ -263,7 +263,7 @@ TC QoS 还完成了速率误差 Benchmark：在 2 Mbit/s 目标下，121 实测 
 
 ## 5. Redis 实验状态
 
-当前 Redis 结果分为历史候选和 v6 待重跑正式结果：
+当前 Redis 结果分为历史候选和 formal artifact 正式结果：
 
 - `/root/EulerPilot/results/final/redis-scx-compare-20260612-191543`
 - SP4 RUNS=10 historical/provisional 目录：`/root/EulerPilot/results/final/redis-scx-compare-20260724-tested-2541464-runs10`
@@ -277,7 +277,7 @@ TC QoS 还完成了速率误差 Benchmark：在 2 Mbit/s 目标下，121 实测 
 - `report.md`
 - `summary.md`
 
-但它当前不得作为 final positive evidence：`default_noisy` baseline 仍带有非默认资源权重，且 SCX 二进制 provenance 未绑定 v6 修复后的 formal `artifact_id`。正式收益数字必须等待 Candidate Gate、formal artifact build、Formal Artifact Gate 通过后重新随机化运行。
+20260724 目录不作为 final positive evidence；正式收益数字使用已绑定 `tested_code_commit` 与 formal `artifact_id` 的 RUNS=10 结果，详见 `reports/v6_formal_experiment_suite_20260726.md`。
 
 ### 5.1 计划正式矩阵
 
@@ -308,7 +308,7 @@ TC QoS 还完成了速率误差 Benchmark：在 2 Mbit/s 目标下，121 实测 
 
 ## 6. Nginx 实验状态
 
-当前 Nginx 结果分为历史候选和 v6 待重跑正式结果：
+当前 Nginx 结果分为历史候选和 formal artifact 正式结果：
 
 - `/root/EulerPilot/results/final/nginx-scx-compare-20260612-194018`
 - SP4 RUNS=10 historical/provisional 目录：`/root/EulerPilot/results/final/nginx-scx-compare-20260724-tested-2541464-runs10`
@@ -340,7 +340,7 @@ TC QoS 还完成了速率误差 Benchmark：在 2 Mbit/s 目标下，121 实测 
 
 从历史候选结果看：
 
-- `noisy_cgroup_v2` 在当前 Nginx 场景下表现相对更稳，但统计结论需等待新 baseline 重跑
+- `noisy_cgroup_v2` 在 formal artifact RUNS=10 中呈现 RPS 与 P99 改善，但仍按 workload 边界讨论
 - `noisy_scx_psi` 在 frozen-code RUNS=10 中吞吐和尾延迟均表现为 workload-boundary / regressed 证据
 - `noisy_scx_psi` 与 `noisy_scx_always_active` 当前仍存在显著尾延迟代价
 - `quiet_scx_normal` 的基础开销不可忽略
@@ -369,13 +369,13 @@ Nginx 结果不是框架不可用，而是当前 `scx_eulerpilot` v1 策略对�
 
 ## 7. 关键证据链
 
-当前 historical/provisional 结果已经可以给出完整功能证据链；正式性能结论仍需等待 v6 formal artifact 重跑：
+formal artifact 结果已经给出完整功能证据链和正式性能入口：
 
 1. `latency workload + background workload` 场景成立
 2. `PsiGate` 进入 `ACTIVE`
 3. `cgroup_v2` 组存在 `applied=yes reason=assigned`
 4. `sched_ext` 组存在 `executor=sched_ext`
-5. Redis / Nginx 的业务结果写入历史候选目录；formal artifact 重跑后写入正式目录
+5. Redis / Nginx 的业务结果已写入 formal artifact 结果目录，历史候选目录只作过程追溯
 
 当前门控时间线图：
 
@@ -408,21 +408,21 @@ EulerPilot 的价值不在于证明某一组参数在所有场景下都优于默
 
 更稳的结论应是：
 
-> EulerPilot 已经完成从系统实现到 compare 框架的工程收口。当前 historical/provisional 结果表明，不同 `sched_ext` 模式在不同 workload 上的收益与代价具有明显场景差异；最终收益数字必须等待 formal artifact 重跑。项目的价值主要体现在统一 Agent 架构、双后端执行能力、Skills 插件化扩展能力和可复现证据链。
+> EulerPilot 已经完成从系统实现到 compare 框架的工程收口。formal artifact RUNS=10 表明，`cgroup v2` 在 Redis GET/INCR 和本次 Nginx noisy 场景中具备正向收益；`sched_ext/scx` 控制链、batch dispatch 记账和 mixed-adaptive 状态闭环可运行，但性能收益必须按 workload 边界如实说明。项目价值主要体现在统一 Agent 架构、双后端执行能力、Skills 插件化扩展能力和可复现证据链。
 
 ---
 
 ## 9. 当前结论
 
 1. EulerPilot 已在 `SP3` 上完成 cgroup v2 主闭环，具备强制兼容交付能力。
-2. EulerPilot 已在 `OLK-6.6` 上完成 Redis 与 Nginx 的 `sched_ext` 对照验证，并在 `SP4` 自编译 sched_ext 内核上完成历史 RUNS=10 功能复核；正式性能收益需等待 v6 formal artifact 重跑。
+2. EulerPilot 已在 `OLK-6.6` 上完成 Redis 与 Nginx 的 `sched_ext` 对照验证，并在 `SP4` 自编译 sched_ext 内核上完成 formal artifact RUNS=10 复核。
 3. EulerPilot 已实现 Skills 插件化框架与 YAML v2 驱动，并通过 `network_policy`、`network_qos`、`network_xdp` 和正式 `security_policy` 证明了 Agent 能力可扩展。
-4. 项目已完成多条历史验证链路，并形成 41 条 evidence compact；v6 复审后其中 8 条性能证据被 `evidence/evidence_status_overrides.json` 标记为 provisional/invalid，后续必须通过 Candidate Gate、Formal Artifact Gate、修正基线后的正式实验和 release gate 后，才能恢复为 final positive evidence。
+4. 项目已完成多条历史验证链路和 formal artifact 正式验证，并形成 42 条 evidence compact；旧 pre-fix 性能证据仍由 `evidence/evidence_status_overrides.json` 标记为 historical/provisional，最终正向证据默认引用 formal artifact RUNS=10。
 
 补充说明：
 
 - `cgroup v2` 是官方发行内核上的稳定执行后端；`sched_ext/scx` 是在 OLK-6.6 与 SP4 自编译内核环境完成的增强验证线。
-- 当前建议提交时采用双层交付矩阵：`192.168.1.123:/root/EulerPilot-closeout` 作为 SP4 主验证和 v6 收口环境；`192.168.1.121:/root/EulerPilot` 作为比赛要求的 SP3 强制兼容交付环境。
+- 当前建议提交时采用双层交付矩阵：`192.168.1.123:/root/EulerPilot` 作为 SP4 主验证和 最终交付收口环境；`192.168.1.121:/root/EulerPilot` 作为比赛要求的 SP3 强制兼容交付环境。
 项目代码已同步推送至 GitHub 私密仓库 `shibuchou/EulerPilot`。
 
 当前项目已覆盖 resource control、network policy、security policy 三类 OS Agent 扩展方向：其中 resource control 进入 Redis/Nginx 主实验路径，network policy 已具备 connect4、TC QoS、XDP 三个可验证子能力，XDP 已支持 ICMP/TCP/UDP 与 UDP tuple 多字段规则和 per-rule 字段统计，security policy 已从独立 demo 升级为正式 Skill，覆盖 file、exec、socket、ptrace 四类 eBPF/LSM hook 的 audit、deny、rollback、recover 可演示闭环。

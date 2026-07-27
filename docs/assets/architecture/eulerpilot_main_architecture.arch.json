@@ -1,0 +1,1410 @@
+{
+  "title": "EulerPilot 主架构图",
+  "canvas": {
+    "width": 2350,
+    "height": 1120
+  },
+  "generated_at": "2026-07-27T08:37:08+00:00",
+  "source": "manual-layout-from-final-mermaid-draft",
+  "caption": "主运行闭环：Workload → Kernel Observation → Runtime/Analyzer → PsiGate/Policy Engine → Skill Manager → Kernel Execution → Workload。实线表示运行时数据流、决策流和执行反馈，虚线表示能力检测、安全约束和验证关系。",
+  "nodes": {
+    "workload": {
+      "label": [
+        "业务负载",
+        "Redis / Nginx / Batch Jobs",
+        "Containers / K8s Pods"
+      ],
+      "x": 48,
+      "y": 225,
+      "w": 195,
+      "h": 95,
+      "fill": "#DBEAFE",
+      "stroke": "#2563EB"
+    },
+    "cli": {
+      "label": [
+        "CLI",
+        "validate-config / status",
+        "doctor / run"
+      ],
+      "x": 318,
+      "y": 115,
+      "w": 210,
+      "h": 74,
+      "fill": "#FFFFFF",
+      "stroke": "#64748B"
+    },
+    "web": {
+      "label": [
+        "Web Console",
+        "Overview / Skills / Policy",
+        "Demo / Evidence"
+      ],
+      "x": 318,
+      "y": 213,
+      "w": 210,
+      "h": 74,
+      "fill": "#FFFFFF",
+      "stroke": "#64748B"
+    },
+    "cfg": {
+      "label": [
+        "配置与策略",
+        "agent.yaml / skills.yaml",
+        "Policy Events / Rules"
+      ],
+      "x": 318,
+      "y": 312,
+      "w": 210,
+      "h": 74,
+      "fill": "#FFFFFF",
+      "stroke": "#64748B"
+    },
+    "adapter": {
+      "label": [
+        "Control Adapter",
+        "Command Dispatch",
+        "Job Runner"
+      ],
+      "x": 318,
+      "y": 410,
+      "w": 210,
+      "h": 74,
+      "fill": "#F1F5F9",
+      "stroke": "#475569"
+    },
+    "obs": {
+      "label": [
+        "内核观测与信号采集",
+        "eBPF sched tracepoints / PSI",
+        "cgroup 状态与事件"
+      ],
+      "x": 662,
+      "y": 218,
+      "w": 210,
+      "h": 86,
+      "fill": "#CFFAFE",
+      "stroke": "#0891B2"
+    },
+    "runtime": {
+      "label": [
+        "Agent Runtime",
+        "生命周期 / 配置加载",
+        "状态聚合"
+      ],
+      "x": 980,
+      "y": 108,
+      "w": 168,
+      "h": 78,
+      "fill": "#FFEDD5",
+      "stroke": "#EA580C"
+    },
+    "reader": {
+      "label": [
+        "Observer Reader",
+        "TaskIdentity / TID delta",
+        "TGID aggregation"
+      ],
+      "x": 980,
+      "y": 255,
+      "w": 168,
+      "h": 82,
+      "fill": "#FFF7ED",
+      "stroke": "#D97706"
+    },
+    "analyzer": {
+      "label": [
+        "Workload Analyzer",
+        "运行特征 / 分类",
+        "干扰识别"
+      ],
+      "x": 1192,
+      "y": 255,
+      "w": 168,
+      "h": 82,
+      "fill": "#FFF7ED",
+      "stroke": "#D97706"
+    },
+    "gate": {
+      "label": [
+        "PsiGate 状态机",
+        "NORMAL / ARMED",
+        "ACTIVE / COOLDOWN"
+      ],
+      "x": 1424,
+      "y": 108,
+      "w": 174,
+      "h": 84,
+      "fill": "#FEF3C7",
+      "stroke": "#D97706"
+    },
+    "policy": {
+      "label": [
+        "Policy Engine",
+        "跨 Skill 决策 / 幂等",
+        "TransactionContext"
+      ],
+      "x": 1424,
+      "y": 285,
+      "w": 174,
+      "h": 84,
+      "fill": "#FFEDD5",
+      "stroke": "#EA580C"
+    },
+    "sm": {
+      "label": [
+        "Skill Manager",
+        "注册 / 编排 / 启停 / 状态"
+      ],
+      "x": 1424,
+      "y": 405,
+      "w": 174,
+      "h": 60,
+      "fill": "#FED7AA",
+      "stroke": "#EA580C"
+    },
+    "rc": {
+      "label": [
+        "Resource Control",
+        "CPU / Memory / IO",
+        "cgroup v2 稳定主路径"
+      ],
+      "x": 1730,
+      "y": 105,
+      "w": 200,
+      "h": 76,
+      "fill": "#DCFCE7",
+      "stroke": "#15803D"
+    },
+    "sched": {
+      "label": [
+        "Scheduling Skill",
+        "sched_ext / scx",
+        "增强调度路径"
+      ],
+      "x": 1730,
+      "y": 220,
+      "w": 200,
+      "h": 76,
+      "fill": "#E0E7FF",
+      "stroke": "#4F46E5"
+    },
+    "net": {
+      "label": [
+        "Network Skills",
+        "Policy / TC QoS / XDP",
+        "IP / Port / Protocol"
+      ],
+      "x": 1730,
+      "y": 335,
+      "w": 200,
+      "h": 76,
+      "fill": "#CCFBF1",
+      "stroke": "#0F766E"
+    },
+    "sec": {
+      "label": [
+        "Security Policy",
+        "审计 / 受控强制执行",
+        "异常检测"
+      ],
+      "x": 1730,
+      "y": 450,
+      "w": 200,
+      "h": 76,
+      "fill": "#FFE4E6",
+      "stroke": "#BE123C"
+    },
+    "cg": {
+      "label": [
+        "cgroup v2",
+        "cpu.weight / cpu.max",
+        "memory / io"
+      ],
+      "x": 2030,
+      "y": 105,
+      "w": 200,
+      "h": 76,
+      "fill": "#ECFDF5",
+      "stroke": "#15803D"
+    },
+    "scxk": {
+      "label": [
+        "scx_eulerpilot",
+        "class_map / DSQ",
+        "gate_state"
+      ],
+      "x": 2030,
+      "y": 220,
+      "w": 200,
+      "h": 76,
+      "fill": "#EEF2FF",
+      "stroke": "#4F46E5"
+    },
+    "nethook": {
+      "label": [
+        "Network Hooks",
+        "cgroup/connect4",
+        "TC / XDP"
+      ],
+      "x": 2030,
+      "y": 335,
+      "w": 200,
+      "h": 76,
+      "fill": "#ECFEFF",
+      "stroke": "#0284C7"
+    },
+    "sechook": {
+      "label": [
+        "Security Hooks",
+        "BPF LSM",
+        "syscall tracing"
+      ],
+      "x": 2030,
+      "y": 450,
+      "w": 200,
+      "h": 76,
+      "fill": "#FFF1F2",
+      "stroke": "#BE123C"
+    },
+    "cap": {
+      "label": [
+        "Capability Matrix",
+        "能力检测 / Feature Gate",
+        "Graceful Fallback"
+      ],
+      "x": 850,
+      "y": 685,
+      "w": 195,
+      "h": 76,
+      "fill": "#FFEDD5",
+      "stroke": "#C2410C"
+    },
+    "own": {
+      "label": [
+        "Ownership Guard",
+        "cgroup lease / BPF link",
+        "qdisc / XDP identity"
+      ],
+      "x": 1070,
+      "y": 685,
+      "w": 195,
+      "h": 76,
+      "fill": "#FFEDD5",
+      "stroke": "#C2410C"
+    },
+    "tx": {
+      "label": [
+        "ActionJournal + Rollback",
+        "apply / verify",
+        "compensate"
+      ],
+      "x": 1290,
+      "y": 685,
+      "w": 195,
+      "h": 76,
+      "fill": "#FFEDD5",
+      "stroke": "#C2410C"
+    },
+    "audit": {
+      "label": [
+        "AuditBus + Runtime Status",
+        "事件 / 日志",
+        "状态 / 错误"
+      ],
+      "x": 1510,
+      "y": 685,
+      "w": 195,
+      "h": 76,
+      "fill": "#FFEDD5",
+      "stroke": "#C2410C"
+    },
+    "test": {
+      "label": [
+        "Quality Gates",
+        "Portable CI / SP4 Gate",
+        "SP3 Gate"
+      ],
+      "x": 330,
+      "y": 925,
+      "w": 200,
+      "h": 76,
+      "fill": "#EDE9FE",
+      "stroke": "#7C3AED"
+    },
+    "bench": {
+      "label": [
+        "Benchmarks",
+        "Redis / Nginx / Throughput",
+        "Mixed-Adaptive"
+      ],
+      "x": 585,
+      "y": 925,
+      "w": 200,
+      "h": 76,
+      "fill": "#EDE9FE",
+      "stroke": "#7C3AED"
+    },
+    "evd": {
+      "label": [
+        "Evidence & Release",
+        "validate-run / suite / release",
+        "Reports"
+      ],
+      "x": 840,
+      "y": 925,
+      "w": 220,
+      "h": 76,
+      "fill": "#DDD6FE",
+      "stroke": "#7C3AED"
+    },
+    "sp4": {
+      "label": [
+        "SP4 主验证环境",
+        "完整功能 / Web / Skills",
+        "SCX 自编译内核验证"
+      ],
+      "x": 1215,
+      "y": 925,
+      "w": 235,
+      "h": 76,
+      "fill": "#E0F2FE",
+      "stroke": "#0284C7"
+    },
+    "sp3": {
+      "label": [
+        "SP3 强制兼容环境",
+        "cgroup v2 稳定路径",
+        "sched_ext graceful fallback"
+      ],
+      "x": 1495,
+      "y": 925,
+      "w": 235,
+      "h": 76,
+      "fill": "#E0F2FE",
+      "stroke": "#0284C7"
+    }
+  },
+  "modules": [
+    {
+      "id": "m_workload",
+      "label": "业务负载",
+      "x": 32,
+      "y": 170,
+      "w": 230,
+      "h": 185
+    },
+    {
+      "id": "m_entry",
+      "label": "① 用户入口与配置",
+      "x": 292,
+      "y": 70,
+      "w": 300,
+      "h": 370
+    },
+    {
+      "id": "m_obs",
+      "label": "② 内核观测层",
+      "x": 632,
+      "y": 145,
+      "w": 270,
+      "h": 235
+    },
+    {
+      "id": "m_core",
+      "label": "③ 用户态 Agent 控制核心",
+      "x": 942,
+      "y": 58,
+      "w": 710,
+      "h": 420
+    },
+    {
+      "id": "m_skills",
+      "label": "④ Skills 执行层",
+      "x": 1700,
+      "y": 58,
+      "w": 260,
+      "h": 530
+    },
+    {
+      "id": "m_kernel",
+      "label": "⑤ 内核执行面",
+      "x": 1995,
+      "y": 58,
+      "w": 270,
+      "h": 530
+    },
+    {
+      "id": "m_safety",
+      "label": "⑥ 横切安全、事务与恢复",
+      "x": 820,
+      "y": 625,
+      "w": 930,
+      "h": 185
+    },
+    {
+      "id": "m_delivery",
+      "label": "⑦ 测试、证据与交付",
+      "x": 300,
+      "y": 855,
+      "w": 800,
+      "h": 205
+    },
+    {
+      "id": "m_env",
+      "label": "部署与验证矩阵",
+      "x": 1180,
+      "y": 855,
+      "w": 590,
+      "h": 205
+    }
+  ],
+  "edges": [
+    {
+      "src": "cli",
+      "dst": "adapter",
+      "label": "",
+      "color": "#475569",
+      "dashed": false,
+      "width": 2.0,
+      "points": [
+        [
+          528,
+          152.0
+        ],
+        [
+          560,
+          152.0
+        ],
+        [
+          560,
+          447.0
+        ],
+        [
+          528,
+          447.0
+        ]
+      ]
+    },
+    {
+      "src": "web",
+      "dst": "adapter",
+      "label": "",
+      "color": "#475569",
+      "dashed": false,
+      "width": 2.0,
+      "points": [
+        [
+          528,
+          250.0
+        ],
+        [
+          560,
+          250.0
+        ],
+        [
+          560,
+          447.0
+        ],
+        [
+          528,
+          447.0
+        ]
+      ]
+    },
+    {
+      "src": "cfg",
+      "dst": "runtime",
+      "label": "配置上下文",
+      "color": "#64748B",
+      "dashed": true,
+      "width": 1.5,
+      "points": [
+        [
+          528,
+          349.0
+        ],
+        [
+          760,
+          349
+        ],
+        [
+          760,
+          148
+        ],
+        [
+          980,
+          147.0
+        ]
+      ]
+    },
+    {
+      "src": "adapter",
+      "dst": "runtime",
+      "label": "控制请求",
+      "color": "#475569",
+      "dashed": false,
+      "width": 2.0,
+      "points": [
+        [
+          528,
+          447.0
+        ],
+        [
+          760,
+          447.0
+        ],
+        [
+          760,
+          148.0
+        ],
+        [
+          980,
+          147.0
+        ]
+      ]
+    },
+    {
+      "src": "workload",
+      "dst": "obs",
+      "label": "运行行为",
+      "color": "#2563EB",
+      "dashed": false,
+      "width": 2.4,
+      "points": [
+        [
+          243,
+          272.5
+        ],
+        [
+          662,
+          261.0
+        ]
+      ]
+    },
+    {
+      "src": "obs",
+      "dst": "reader",
+      "label": "metrics / pressure",
+      "color": "#0891B2",
+      "dashed": false,
+      "width": 2.4,
+      "points": [
+        [
+          872,
+          261.0
+        ],
+        [
+          980,
+          296.0
+        ]
+      ]
+    },
+    {
+      "src": "runtime",
+      "dst": "reader",
+      "label": "生命周期 / 配置",
+      "color": "#D97706",
+      "dashed": true,
+      "width": 1.5,
+      "points": [
+        [
+          1064.0,
+          186
+        ],
+        [
+          1064.0,
+          255
+        ]
+      ]
+    },
+    {
+      "src": "reader",
+      "dst": "analyzer",
+      "label": "",
+      "color": "#D97706",
+      "dashed": false,
+      "width": 2.0,
+      "points": [
+        [
+          1148,
+          296.0
+        ],
+        [
+          1192,
+          296.0
+        ]
+      ]
+    },
+    {
+      "src": "analyzer",
+      "dst": "gate",
+      "label": "pressure metrics",
+      "color": "#D97706",
+      "dashed": false,
+      "width": 2.0,
+      "points": [
+        [
+          1360,
+          296.0
+        ],
+        [
+          1380,
+          296
+        ],
+        [
+          1380,
+          150
+        ],
+        [
+          1424,
+          150.0
+        ]
+      ]
+    },
+    {
+      "src": "analyzer",
+      "dst": "policy",
+      "label": "workload class / evidence",
+      "color": "#D97706",
+      "dashed": false,
+      "width": 2.0,
+      "points": [
+        [
+          1360,
+          296.0
+        ],
+        [
+          1424,
+          327.0
+        ]
+      ]
+    },
+    {
+      "src": "gate",
+      "dst": "policy",
+      "label": "gate state",
+      "color": "#D97706",
+      "dashed": false,
+      "width": 2.0,
+      "points": [
+        [
+          1511.0,
+          192
+        ],
+        [
+          1511.0,
+          285
+        ]
+      ]
+    },
+    {
+      "src": "runtime",
+      "dst": "policy",
+      "label": "运行状态 / 配置上下文",
+      "color": "#D97706",
+      "dashed": true,
+      "width": 1.5,
+      "points": [
+        [
+          1148,
+          147.0
+        ],
+        [
+          1388,
+          148
+        ],
+        [
+          1388,
+          327
+        ],
+        [
+          1424,
+          327.0
+        ]
+      ]
+    },
+    {
+      "src": "policy",
+      "dst": "sm",
+      "label": "desired state / actions",
+      "color": "#EA580C",
+      "dashed": false,
+      "width": 2.3,
+      "points": [
+        [
+          1511.0,
+          369
+        ],
+        [
+          1511.0,
+          405
+        ]
+      ]
+    },
+    {
+      "src": "sm",
+      "dst": "rc",
+      "label": "",
+      "color": "#15803D",
+      "dashed": false,
+      "width": 2.1,
+      "points": [
+        [
+          1598,
+          435
+        ],
+        [
+          1658,
+          435
+        ],
+        [
+          1658,
+          143.0
+        ],
+        [
+          1730,
+          143.0
+        ]
+      ]
+    },
+    {
+      "src": "sm",
+      "dst": "sched",
+      "label": "",
+      "color": "#4F46E5",
+      "dashed": false,
+      "width": 2.1,
+      "points": [
+        [
+          1598,
+          435
+        ],
+        [
+          1658,
+          435
+        ],
+        [
+          1658,
+          258.0
+        ],
+        [
+          1730,
+          258.0
+        ]
+      ]
+    },
+    {
+      "src": "sm",
+      "dst": "net",
+      "label": "",
+      "color": "#0F766E",
+      "dashed": false,
+      "width": 2.1,
+      "points": [
+        [
+          1598,
+          435
+        ],
+        [
+          1658,
+          435
+        ],
+        [
+          1658,
+          373.0
+        ],
+        [
+          1730,
+          373.0
+        ]
+      ]
+    },
+    {
+      "src": "sm",
+      "dst": "sec",
+      "label": "",
+      "color": "#BE123C",
+      "dashed": false,
+      "width": 2.1,
+      "points": [
+        [
+          1598,
+          435
+        ],
+        [
+          1658,
+          435
+        ],
+        [
+          1658,
+          488.0
+        ],
+        [
+          1730,
+          488.0
+        ]
+      ]
+    },
+    {
+      "src": "rc",
+      "dst": "cg",
+      "label": "",
+      "color": "#15803D",
+      "dashed": false,
+      "width": 2.1,
+      "points": [
+        [
+          1930,
+          143.0
+        ],
+        [
+          2030,
+          143.0
+        ]
+      ]
+    },
+    {
+      "src": "sched",
+      "dst": "scxk",
+      "label": "",
+      "color": "#4F46E5",
+      "dashed": false,
+      "width": 2.1,
+      "points": [
+        [
+          1930,
+          258.0
+        ],
+        [
+          2030,
+          258.0
+        ]
+      ]
+    },
+    {
+      "src": "net",
+      "dst": "nethook",
+      "label": "",
+      "color": "#0F766E",
+      "dashed": false,
+      "width": 2.1,
+      "points": [
+        [
+          1930,
+          373.0
+        ],
+        [
+          2030,
+          373.0
+        ]
+      ]
+    },
+    {
+      "src": "sec",
+      "dst": "sechook",
+      "label": "",
+      "color": "#BE123C",
+      "dashed": false,
+      "width": 2.1,
+      "points": [
+        [
+          1930,
+          488.0
+        ],
+        [
+          2030,
+          488.0
+        ]
+      ]
+    },
+    {
+      "src": "cg",
+      "dst": "workload",
+      "label": "资源控制反馈",
+      "color": "#15803D",
+      "dashed": false,
+      "width": 1.8,
+      "points": [
+        [
+          2130.0,
+          105
+        ],
+        [
+          2130,
+          35
+        ],
+        [
+          120,
+          35
+        ],
+        [
+          145.5,
+          225
+        ]
+      ]
+    },
+    {
+      "src": "scxk",
+      "dst": "workload",
+      "label": "CPU 调度反馈",
+      "color": "#4F46E5",
+      "dashed": false,
+      "width": 1.8,
+      "points": [
+        [
+          2130,
+          220
+        ],
+        [
+          2130,
+          25
+        ],
+        [
+          145,
+          25
+        ],
+        [
+          145,
+          225
+        ]
+      ]
+    },
+    {
+      "src": "nethook",
+      "dst": "workload",
+      "label": "网络策略 / QoS",
+      "color": "#0F766E",
+      "dashed": false,
+      "width": 1.8,
+      "points": [
+        [
+          2130.0,
+          411
+        ],
+        [
+          2130,
+          575
+        ],
+        [
+          145,
+          575
+        ],
+        [
+          145.5,
+          320
+        ]
+      ]
+    },
+    {
+      "src": "sechook",
+      "dst": "workload",
+      "label": "审计 / 访问控制",
+      "color": "#BE123C",
+      "dashed": false,
+      "width": 1.8,
+      "points": [
+        [
+          2130.0,
+          526
+        ],
+        [
+          2160,
+          600
+        ],
+        [
+          105,
+          600
+        ],
+        [
+          145.5,
+          320
+        ]
+      ]
+    },
+    {
+      "src": "cap",
+      "dst": "runtime",
+      "label": "加载前能力检测",
+      "color": "#C2410C",
+      "dashed": true,
+      "width": 1.5,
+      "points": [
+        [
+          947.5,
+          685
+        ],
+        [
+          948,
+          610
+        ],
+        [
+          1064,
+          610
+        ],
+        [
+          1064.0,
+          186
+        ]
+      ]
+    },
+    {
+      "src": "cap",
+      "dst": "sm",
+      "label": "Skill 启用 / 降级",
+      "color": "#C2410C",
+      "dashed": true,
+      "width": 1.5,
+      "points": [
+        [
+          947.5,
+          685
+        ],
+        [
+          1048,
+          610
+        ],
+        [
+          1510,
+          610
+        ],
+        [
+          1511.0,
+          465
+        ]
+      ]
+    },
+    {
+      "src": "own",
+      "dst": "rc",
+      "label": "ownership / scope",
+      "color": "#C2410C",
+      "dashed": true,
+      "width": 1.5,
+      "points": [
+        [
+          1167.5,
+          685
+        ],
+        [
+          1168,
+          600
+        ],
+        [
+          1730,
+          600
+        ],
+        [
+          1830.0,
+          181
+        ]
+      ]
+    },
+    {
+      "src": "own",
+      "dst": "net",
+      "label": "link / qdisc / XDP",
+      "color": "#C2410C",
+      "dashed": true,
+      "width": 1.5,
+      "points": [
+        [
+          1265,
+          723.0
+        ],
+        [
+          1680,
+          723
+        ],
+        [
+          1680,
+          373
+        ],
+        [
+          1730,
+          373.0
+        ]
+      ]
+    },
+    {
+      "src": "own",
+      "dst": "sec",
+      "label": "cgroup scope",
+      "color": "#C2410C",
+      "dashed": true,
+      "width": 1.5,
+      "points": [
+        [
+          1265,
+          723.0
+        ],
+        [
+          1665,
+          743
+        ],
+        [
+          1665,
+          488
+        ],
+        [
+          1730,
+          488.0
+        ]
+      ]
+    },
+    {
+      "src": "tx",
+      "dst": "policy",
+      "label": "事务上下文",
+      "color": "#C2410C",
+      "dashed": true,
+      "width": 1.5,
+      "points": [
+        [
+          1387.5,
+          685
+        ],
+        [
+          1388,
+          620
+        ],
+        [
+          1511.0,
+          369
+        ]
+      ]
+    },
+    {
+      "src": "tx",
+      "dst": "sm",
+      "label": "apply / verify / rollback",
+      "color": "#C2410C",
+      "dashed": true,
+      "width": 1.5,
+      "points": [
+        [
+          1485,
+          723.0
+        ],
+        [
+          1510,
+          723
+        ],
+        [
+          1511.0,
+          465
+        ]
+      ]
+    },
+    {
+      "src": "policy",
+      "dst": "audit",
+      "label": "",
+      "color": "#C2410C",
+      "dashed": true,
+      "width": 1.5,
+      "points": [
+        [
+          1511.0,
+          369
+        ],
+        [
+          1510,
+          632
+        ],
+        [
+          1607.5,
+          685
+        ]
+      ]
+    },
+    {
+      "src": "sm",
+      "dst": "audit",
+      "label": "",
+      "color": "#C2410C",
+      "dashed": true,
+      "width": 1.5,
+      "points": [
+        [
+          1511.0,
+          465
+        ],
+        [
+          1607.5,
+          685
+        ]
+      ]
+    },
+    {
+      "src": "audit",
+      "dst": "web",
+      "label": "状态 / 日志",
+      "color": "#C2410C",
+      "dashed": true,
+      "width": 1.5,
+      "points": [
+        [
+          1510,
+          723.0
+        ],
+        [
+          1510,
+          625
+        ],
+        [
+          424,
+          625
+        ],
+        [
+          423.0,
+          287
+        ]
+      ]
+    },
+    {
+      "src": "audit",
+      "dst": "evd",
+      "label": "证据事件",
+      "color": "#7C3AED",
+      "dashed": true,
+      "width": 1.7,
+      "points": [
+        [
+          1607.5,
+          761
+        ],
+        [
+          1608,
+          865
+        ],
+        [
+          1060,
+          963.0
+        ]
+      ]
+    },
+    {
+      "src": "bench",
+      "dst": "workload",
+      "label": "生成受控负载",
+      "color": "#7C3AED",
+      "dashed": true,
+      "width": 1.6,
+      "points": [
+        [
+          585,
+          963.0
+        ],
+        [
+          250,
+          963
+        ],
+        [
+          250,
+          312
+        ],
+        [
+          48,
+          272.5
+        ]
+      ]
+    },
+    {
+      "src": "test",
+      "dst": "evd",
+      "label": "门禁结果",
+      "color": "#7C3AED",
+      "dashed": true,
+      "width": 1.7,
+      "points": [
+        [
+          530,
+          963.0
+        ],
+        [
+          840,
+          963.0
+        ]
+      ]
+    },
+    {
+      "src": "bench",
+      "dst": "evd",
+      "label": "实验结果",
+      "color": "#7C3AED",
+      "dashed": true,
+      "width": 1.7,
+      "points": [
+        [
+          785,
+          963.0
+        ],
+        [
+          840,
+          963.0
+        ]
+      ]
+    },
+    {
+      "src": "sp4",
+      "dst": "test",
+      "label": "完整功能门禁 / SCX Host Gate",
+      "color": "#0284C7",
+      "dashed": true,
+      "width": 1.5,
+      "points": [
+        [
+          1215,
+          963.0
+        ],
+        [
+          1110,
+          945
+        ],
+        [
+          1110,
+          900
+        ],
+        [
+          530,
+          900
+        ],
+        [
+          430.0,
+          925
+        ]
+      ]
+    },
+    {
+      "src": "sp3",
+      "dst": "test",
+      "label": "兼容门禁 / fallback 验证",
+      "color": "#0284C7",
+      "dashed": true,
+      "width": 1.5,
+      "points": [
+        [
+          1495,
+          963.0
+        ],
+        [
+          1170,
+          983
+        ],
+        [
+          1170,
+          1080
+        ],
+        [
+          430,
+          1080
+        ],
+        [
+          430.0,
+          1001
+        ]
+      ]
+    }
+  ]
+}

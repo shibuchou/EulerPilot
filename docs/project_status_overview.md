@@ -1,8 +1,8 @@
 # EulerPilot 项目阶段总览
 
-更新时间：`2026-07-24`
+更新时间：`2026-07-27`
 
-> 本文是阶段总览归档，保留 6 月阶段路线和 RUNS=3 过程记录。当前最终交付口径已切换到 SP4/123 主验证线：Redis/Nginx `RUNS=10` frozen-code、Redis pressure gradient、41 条 final evidence compact、22/22 P0 质量门禁和 Web Console/K8s 旁路验证。最新状态请以 `README.md`、`docs/progress_status.md` 和 `docs/final_evidence_index.md` 为准。
+> 本文是阶段总览归档，保留 6 月阶段路线和 RUNS=3 过程记录。当前最终交付口径已切换到 SP4/123 主验证线与 SP3/121 强制兼容线：formal artifact `RUNS=10`、42 条 final evidence compact、SP4 29/29 P0 final gate、SP3 10/10 compatibility gate 和 Web Console/K8s 旁路验证均已完成。最新状态请以 `README.md`、`docs/progress_status.md` 和 `docs/final_evidence_index.md` 为准。
 
 ## 1. 这是什么项目
 

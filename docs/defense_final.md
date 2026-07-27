@@ -1,6 +1,6 @@
 # EulerPilot 最终答辩文档
 
-更新时间：`2026-07-26`
+更新时间：`2026-07-27`
 
 ---
 
@@ -87,7 +87,7 @@ Observer (eBPF + PSI)
 | SP4 历史复核目录 | `results/final/redis-scx-compare-20260724-tested-2541464-runs10` |
 | 当前状态 | provisional historical，不能作为 final positive evidence |
 | 矩阵 | quiet_default / quiet_scx_normal / noisy_default / noisy_cgroup_v2 / noisy_scx_normal / noisy_scx_always_active / noisy_scx_psi |
-| 观察 | noisy_cgroup_v2 在 GET/INCR 上有正向趋势；正式收益数字等待修复 baseline 和 formal artifact 后重跑 |
+| 观察 | noisy_cgroup_v2 在 GET/INCR 上有正向趋势；正式收益数字以 formal artifact RUNS=10 结果为准 |
 | 图表 | redis_sched_ext_rps.svg / redis_sched_ext_p99.svg / redis_quiet_overhead.svg |
 
 说明：`noisy_scx_psi` 组用于展示 PSI Gate ACTIVE 与 scx map 联动，会额外运行 PSI Redis probe，不作为无 probe 条件下的净性能提升结论。
@@ -186,7 +186,7 @@ cat demo/security_policy_demo/secret.txt  # -> Operation not permitted
 | 可视化 | `reports/dashboard/index.html` 静态 Dashboard + Agent `/metrics` 端点 + `web_console/` |
 | 图表 | `reports/final_figures/`（7 张 SVG） |
 | 实验结果 | `results/final/`、`results/network_policy/`、`results/security_policy/`、`results/resource_control/`、`results/policy_engine/` |
-| 证据压缩入口 | `configs/final_evidence_manifest.json`、`reports/final_evidence_compact.md/json`，当前 41 条核心证据、必需缺失 0、预期警告 8；警告来自旧结果降级 |
+| 证据压缩入口 | `configs/final_evidence_manifest.json`、`reports/final_evidence_compact.md/json`，当前 42 条核心证据、必需缺失 0、警告 0；警告来自旧结果降级 |
 | 代码仓库 | `https://github.com/shibuchou/EulerPilot` |
 
 ---
@@ -195,7 +195,7 @@ cat demo/security_policy_demo/secret.txt  # -> Operation not permitted
 
 **可以说的：**
 - 系统实现主体完成，双后端均有真实运行和历史验证证据
-- Redis/Nginx 双业务线保留 RUNS=5 与 SP4 RUNS=10 历史候选结果；当前主收益结论必须等待 v6 formal artifact 重跑
+- Redis/Nginx 双业务线保留 RUNS=5 与 SP4 RUNS=10 历史候选结果；当前主收益结论以 formal artifact RUNS=10 结果为准
 - SP4 上保留 Redis pressure gradient 与 manual static vs agent dynamic 历史结果，用于解释趋势和边界；正式数字不能直接沿用
 - Skills 框架可扩展，Network/Security/Resource/Policy Engine 证明 eBPF hook 与系统控制器可统一编排
 - 正式 compare 框架具备可复现性
@@ -209,6 +209,6 @@ cat demo/security_policy_demo/secret.txt  # -> Operation not permitted
 
 ## 十、最终结论
 
-> EulerPilot 已形成面向 openEuler 的、可运行、可解释、可复现、可扩展的系统资源管控 Agent 工程闭环。项目同时覆盖 resource control、network policy、security policy 三个 OS Agent 扩展方向，并通过 Policy Engine 跨 Skill 联动、SP4 发行环境适配、SP4 官方源码自编译 sched_ext 内核复核、Kubernetes 旁路验证、Web Console 和 41 条 evidence compact 证明新增 eBPF hook 与系统控制器可以在统一 Agent 框架下安全编排和回滚；最终性能收益数字以 v6 formal artifact 重跑结果为准。
+> EulerPilot 已形成面向 openEuler 的、可运行、可解释、可复现、可扩展的系统资源管控 Agent 工程闭环。项目同时覆盖 resource control、network policy、security policy 三个 OS Agent 扩展方向，并通过 Policy Engine 跨 Skill 联动、SP4 发行环境适配、SP4 官方源码自编译 sched_ext 内核复核、Kubernetes 旁路验证、Web Console 和 42 条 evidence compact 证明新增 eBPF hook 与系统控制器可以在统一 Agent 框架下安全编排和回滚；最终性能收益数字以 formal artifact RUNS=10 结果为准。
 
-**当前状态：v6 封版阻塞收口中；旧 static-vs-Agent、throughput-first、mixed-adaptive 和 Redis/Nginx RUNS=10 结果均已按 evidence override 降级，等待 Candidate Gate、Formal Artifact Gate 和正式随机化实验。**
+**当前状态：最终交付收口中；Candidate Gate、Formal Artifact Gate、RUNS=10 正式随机化实验、`--validate-release`、SP4 final gate 和 SP3 compatibility final gate 已完成。**

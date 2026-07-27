@@ -1,6 +1,6 @@
 # EulerPilot 提交清单
 
-更新时间：`2026-07-26`
+更新时间：`2026-07-27`
 
 ## 已完成
 
@@ -178,13 +178,13 @@
 - `reports/final_quality_gate_20260706-quality-121.log`：121 历史门禁通过记录，22/22 P0 通过，100 轮 smoke 与 5 轮 doctor 通过
 - `configs/final_evidence_manifest.json`：最终证据压缩白名单清单
 - `scripts/collect_final_evidence.py`：最终证据压缩报告生成脚本
-- `reports/final_evidence_compact.md`：答辩入口压缩报告，当前覆盖 41 个核心证据条目，v6 覆盖文件会阻止旧 provisional/invalid 结果进入 final positive evidence
-- `reports/final_evidence_compact.json`：机器可读证据状态，当前缺失 0、预期警告 8；最终 `--validate-release` 必须等待 formal artifact 重跑后再通过
+- `reports/final_evidence_compact.md`：答辩入口压缩报告，当前覆盖 42 个核心证据条目，v6 覆盖文件会阻止旧 provisional/invalid 结果进入 final positive evidence
+- `reports/final_evidence_compact.json`：机器可读证据状态，当前 entries=42、missing=0、warnings=0；`--validate-release` 已通过
 - `docs/final_security_audit.md`：最终安全与质量审计报告
 
 ## 当前结论
 
-项目已进入 v6 封版阻塞收口阶段。当前已完成多 Skill 主体能力、SP3 强制兼容历史验证、SP4 自编译 sched_ext 功能复核、Web Console 和 K8s 旁路验证；但旧 SP4 RUNS=10 性能结果因 baseline、artifact provenance、throughput validity 和 mixed-adaptive 单 Agent 连续性问题，已降级为 provisional 或 invalid historical。正式 release/tag 之前仍需完成 Candidate Gate、formal artifact out-of-tree build、Formal Artifact Gate、修正 baseline 后的正式随机化实验、`--validate-suite`、`--validate-release` 和双环境 final gate。
+项目已进入最终交付收口阶段。当前已完成多 Skill 主体能力、SP3 强制兼容验证、SP4 自编译 sched_ext 功能复核、Web Console、K8s 旁路验证、Candidate Gate、formal artifact out-of-tree build、Formal Artifact Gate、正式随机化实验、`--validate-suite`、`--validate-release` 和双环境 final gate。
 
 ## v3.1 提交前新增检查
 
@@ -216,7 +216,7 @@
 - [x] Security anomaly 组合 scope 过滤 121/122 通过。
 - [x] Network XDP isolated-veth tuple 字段演示 121/122 通过。
 - [x] Network XDP real Pod host veth tuple 字段演示 121/122 通过。
-- [x] `python3 scripts/collect_final_evidence.py` 当前覆盖 41 个核心条目，必需缺失 0、预期警告 8；这些警告来自旧证据降级，最终 release 需由 formal artifact 重跑结果清零。
-- [ ] 正式演示视频录制与链接填写。当前已准备 `docs/demo_video_recording_script.md`，但仓库内未包含正式视频文件。
+- [x] `python3 scripts/collect_final_evidence.py --validate-release` 当前覆盖 42 个核心条目，必需缺失 0、警告 0。
+- [x] 正式演示视频已放入 `docs/答辩提交材料/项目演示视频.mp4`；5 分钟精简版可按 `docs/demo_video_5min_script.md` 另录。
 - [x] SP4 Redis/Nginx `RUNS=10` 历史结果、Redis pressure gradient、static-vs-agent、throughput-first、mixed-adaptive 和 Agent overhead 已纳入 manifest 并通过 override 标记状态。
-- [ ] Stage G Benchmark 与冻结材料需在 v6 修复后重新完成：正式主 Benchmark 结论尚未冻结，当前结果只作历史/趋势/缺陷定位证据。
+- [x] Stage G Benchmark 与冻结材料已通过 formal artifact RUNS=10、`--validate-suite` 和 final evidence 收口。

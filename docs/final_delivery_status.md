@@ -1,10 +1,10 @@
 # EulerPilot 当前最终交付状态
 
-更新时间：`2026-07-26`
+更新时间：`2026-07-27`
 
 ## 当前验证线
 
-- `192.168.1.123:/root/EulerPilot-closeout`：SP4 主验证和 v6 收口仓库，当前核心修复、preflight、Candidate Gate 与 formal artifact 准备线。
+- `192.168.1.123:/root/EulerPilot`：SP4 主验证和最终交付仓库，已完成 Candidate Gate、Formal Artifact Gate、RUNS=10 正式实验、SP4 final gate、Web Console 和答辩材料同步。
 - `192.168.1.121:/root/EulerPilot`：SP3 强制兼容交付环境，验证发行环境构建、cgroup v2 主闭环、安全扩展 smoke、rollback、safe doctor 和 sched_ext graceful fallback。
 - `192.168.1.122:/root/EulerPilot`：OLK-6.6 / sched_ext 对照验证线。
 
@@ -20,7 +20,7 @@ SP4 口径必须保持严格：SP4 发行环境已完成适配验证；`sched_ex
 - Policy Engine 两条跨 Skill 联动和真实 Pod 隔离验证。
 - Redis/Nginx RUNS=10 historical/provisional、Redis pressure gradient、static-vs-Agent、agent overhead 历史趋势证据；throughput-first 与 mixed-adaptive 已降级为 invalid historical。
 - Web Console v1：Evidence-first + 白名单 Demo + 旁路展示控制台。
-- final evidence compact：41 条核心证据，缺失 0，预期警告 8；警告来自旧结果降级，不是文件缺失。
+- final evidence compact：42 条核心证据，缺失 0，警告 0；最终证据 release gate 已清零 warning。
 - v6 缩短版 preflight quality gate：29/29 P0 通过；最终 release gate 仍需在同一 candidate SHA 和 formal artifact 上重跑。
 
 ## 当前最重要的结果目录
@@ -46,12 +46,12 @@ SP4 口径必须保持严格：SP4 发行环境已完成适配验证；`sched_ex
 - `/root/EulerPilot/docs/demo_video_recording_script.md`
 - `/root/EulerPilot/submission/README.md`
 
-## 当前还剩什么
+## 当前收口状态
 
-- 正式演示视频录制与链接填写。
-- Candidate-bound gates、formal out-of-tree build、Formal Artifact Gate、修正 baseline 后的正式随机化实验、`--validate-suite` 和 `--validate-release`。
-- 最终 release/tag 前再次确认 GitHub、GitLink、本地、SP4 仓库状态。
+- 正式演示视频已放入 `docs/答辩提交材料/项目演示视频.mp4`。
+- Candidate-bound gates、formal out-of-tree build、Formal Artifact Gate、正式随机化实验、`--validate-suite` 和 `--validate-release` 已完成。
+- 当前重点是多端仓库一致性、最终提交材料补齐和用户确认是否创建 tag/release。
 
 ## 当前一句话结论
 
-> EulerPilot 已完成主体功能、v6 安全修复和证据降级收口；当前仍处于封版前候选冻结阶段，正式性能收益与 release/tag 需要等待 formal artifact 重跑和双环境 final gate。
+> EulerPilot 已完成主体功能、安全修复、formal artifact RUNS=10、42 条最终 evidence、Web Console、用户手册、演示视频和双环境 final gate；当前进入最终交付封口阶段。

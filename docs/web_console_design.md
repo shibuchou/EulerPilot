@@ -90,7 +90,7 @@ Evidence 页面按比赛评分关注点分组：
 4. 非白名单 action 无法执行。
 5. SSE 日志可实时显示。
 6. `demo/lab/cleanup` 单任务锁生效。
-7. Evidence 能按评分项展示 41 条 evidence，并随 `configs/final_evidence_manifest.json` 更新。
+7. Evidence 能按评分项展示 42 条 evidence，并随 `configs/final_evidence_manifest.json` 更新。
 8. `policy_engine_lab` 可作为主演示链路。
 9. `demo_cleanup` 可清理现场资源。
 10. `scripts/final_quality_gate.sh` 仍能独立运行。

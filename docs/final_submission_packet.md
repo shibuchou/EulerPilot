@@ -252,7 +252,7 @@ Nginx 正式 compare 矩阵与 Redis 保持一致。
 
 更稳的结论应是：
 
-> EulerPilot 已经完成从系统实现到 compare 框架的工程收口，当前 historical/provisional 结果表明 `sched_ext` 在不同 workload 上的收益与代价具有明显场景差异。最终性能收益必须等待 Candidate Gate、formal artifact 和修正 baseline 后的正式随机化实验。
+> EulerPilot 已经完成从系统实现到 compare 框架的工程收口，当前 historical/provisional 结果表明 `sched_ext` 在不同 workload 上的收益与代价具有明显场景差异。最终性能收益以 Candidate Gate 绑定的 formal artifact RUNS=10 正式随机化实验为准。
 
 ---
 

@@ -1,13 +1,13 @@
 # openEuler 24.03 LTS SP4 验证计划
 
-更新时间：`2026-07-26`
+更新时间：`2026-07-27`
 
 SP4 已接入为 EulerPilot 后续完整能力验证平台。本文件记录 SP4 初始验证结果、sched_ext/scx 自编译内核验证结果和 v6 封版收口入口；121 的 SP3 结果作为比赛强制兼容环境继续保留，122 只作为历史 OLK/sched_ext 对照。
 
 ## 当前结果
 
 - SP4 主机：`openEuler-2403-LTS-SP4` / `192.168.1.123`
-- 仓库路径：`/root/EulerPilot-closeout`
+- 仓库路径：`/root/EulerPilot`
 - 验证基线：v6 收口分支需重新形成 `tested_candidate_commit`，并通过 Candidate Gate 后确认 `tested_code_commit`
 - 系统版本：`openEuler 24.03 LTS SP4`
 - 初始发行内核：`6.6.0-159.4.3.154.oe2403sp4.x86_64`
@@ -16,10 +16,10 @@ SP4 已接入为 EulerPilot 后续完整能力验证平台。本文件记录 SP4
 - cgroup v2：已挂载，controllers 包含 `cpu io memory`
 - PSI：`cpu/memory/io` 已可用
 - BTF / BPF LSM / TC / XDP / sched_ext：能力探测可用
-- Web Console：历史构建已通过 `npm ci/test/lint/build/audit`；v6 当前 Evidence 为 41 条、必需缺失 0、预期警告 8，警告来自旧结果降级
-- 质量门禁：历史 SP4 日志保留；v6 后已在 `/root/EulerPilot-closeout` 通过缩短版 preflight `29/29 P0`。最终 release gate 必须在 candidate-bound gates 和 formal artifact 后重跑。
+- Web Console：历史构建已通过 `npm ci/test/lint/build/audit`；当前 Evidence 为 42 条、必需缺失 0、警告 0
+- 质量门禁：历史 SP4 日志保留；v6 后已在 `/root/EulerPilot` 通过缩短版 preflight `29/29 P0`。SP4 final gate 已在 candidate-bound gates 和 formal artifact 后完成。
 - v3.1 主链路：`tests/integration/test_policy_engine_security_network_resource.sh --repeat 10` 已在 SP4 sched_ext 内核通过
-- sched_ext workload：旧 Redis/Nginx RUNS=10、pressure gradient、static-vs-agent、throughput-first、mixed-adaptive 和 Agent overhead 已降级为 provisional/invalid historical。后续必须使用 `/root/eulerpilot-artifacts/<tested_code_commit>/<artifact_id>/` 中的 formal artifact 重跑，不能直接使用固定 `/usr/local/bin/scx_eulerpilot`。
+- sched_ext workload：旧 Redis/Nginx RUNS=10、pressure gradient、static-vs-agent、throughput-first、mixed-adaptive 和 Agent overhead 已降级为 provisional/invalid historical。正式结果已经使用 formal artifact 运行；后续复测仍必须使用 `/root/eulerpilot-artifacts/<tested_code_commit>/<artifact_id>/`，不能直接使用固定 `/usr/local/bin/scx_eulerpilot`。
 - Kubernetes 旁路验证：已通过 `k8s-master` 只读盘点、独立 namespace 最小写入、Web Console 白名单动作、cleanup 复查；结果目录为 `results/k8s/sp4-validation-20260708-023552`
 
 已保存的 SP4 初始验证与 sched_ext 复核证据：

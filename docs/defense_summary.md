@@ -1,6 +1,6 @@
 # EulerPilot 答辩展示摘要
 
-更新时间：`2026-07-26`
+更新时间：`2026-07-27`
 
 ## 1. 一句话介绍
 
@@ -22,7 +22,7 @@ EulerPilot 是一个面向 openEuler 的自适应资源管控 Agent，通过 `eB
 - SP4 Redis/Nginx `RUNS=10` historical/provisional sched_ext 多轮复核
 - Redis pressure gradient、manual static vs agent dynamic、Agent overhead 均已保留为 provisional historical
 - Throughput-first、Mixed-Adaptive 两条旧 SP4 RUNS=10 证据已按 v6 复审标为 invalid historical
-- Web Console v1 + 41 条 evidence compact + 中文报告主稿
+- Web Console v1 + 42 条 evidence compact + 中文报告主稿
 
 ## 3. 核心架构
 
@@ -73,6 +73,6 @@ Observer -> Analyzer -> Policy Engine -> Skill Manager -> Executor -> Benchmark/
 
 ## 7. 可答辩口径
 
-> EulerPilot 已经完成从 SP3 + cgroup v2 强制兼容主闭环到 SP4 发行环境适配、SP4 官方源码自编译 sched_ext 内核功能复核与 Kubernetes 旁路验证的工程收口，并实现了 Skills 框架、三方向 OS Agent 扩展和跨 Skill 联动。项目已形成 Redis/Nginx 双业务线历史候选结果、41 条 evidence compact、Web Console 演示入口和 v6 preflight 证据；最终性能收益以 formal artifact 重跑后的结果为准。
+> EulerPilot 已经完成从 SP3 + cgroup v2 强制兼容主闭环到 SP4 发行环境适配、SP4 官方源码自编译 sched_ext 内核功能复核与 Kubernetes 旁路验证的工程收口，并实现了 Skills 框架、三方向 OS Agent 扩展和跨 Skill 联动。项目已形成 Redis/Nginx 双业务线历史候选结果、42 条 evidence compact、Web Console 演示入口和 v6 preflight 证据；最终性能收益以 formal artifact RUNS=10 结果为准。
 
 项目代码：`https://github.com/shibuchou/EulerPilot`（私密仓库）
