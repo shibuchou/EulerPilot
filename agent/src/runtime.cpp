@@ -50,8 +50,17 @@ void sleep_interruptible(std::chrono::milliseconds duration) {
 }
 
 bool looks_latency_service(const WorkloadSample &sample) {
+    const char *benchmark_signal = std::getenv("EULERPILOT_MIXED_BENCHMARK_LATENCY_SIGNAL");
+    const bool benchmark_signal_enabled = benchmark_signal &&
+        std::strcmp(benchmark_signal, "0") != 0 &&
+        std::strcmp(benchmark_signal, "false") != 0 &&
+        std::strcmp(benchmark_signal, "False") != 0 &&
+        std::strcmp(benchmark_signal, "FALSE") != 0;
+    const bool benchmark_latency_signal = benchmark_signal_enabled &&
+        sample.comm.find("redis-benchmark") != std::string::npos;
     return sample.comm.find("redis-server") != std::string::npos ||
-           sample.comm.find("nginx") != std::string::npos;
+           sample.comm.find("nginx") != std::string::npos ||
+           benchmark_latency_signal;
 }
 
 bool looks_background_noisy(const WorkloadSample &sample) {

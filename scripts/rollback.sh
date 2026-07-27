@@ -15,17 +15,24 @@ IO_DEVICE="${IO_DEVICE:-$(detect_root_io_device)}"
 
 printf '[Rollback] restore cgroup parameters and stop active sched_ext scheduler if configured.\n'
 
+scx_detach_ok=0
 if [ -x "$SCX_BIN" ]; then
-    "$SCX_BIN" --detach >/dev/null 2>&1 || true
+    if "$SCX_BIN" --detach >/dev/null 2>&1; then
+        scx_detach_ok=1
+    else
+        printf '[Rollback] WARN: safe scx detach failed; preserving pinned scx maps.\n' >&2
+    fi
 else
-    pkill -x "$SCX_NAME" 2>/dev/null || true
+    printf '[Rollback] WARN: scx binary not executable; refusing pkill fallback for %s.\n' "$SCX_NAME" >&2
 fi
 
-rm -f /sys/fs/bpf/eulerpilot/scx_eulerpilot/v1/class_map 2>/dev/null || true
-rm -f /sys/fs/bpf/eulerpilot/scx_eulerpilot/v1/gate_state_map 2>/dev/null || true
-rm -f /sys/fs/bpf/eulerpilot/scx_eulerpilot/v1/stats 2>/dev/null || true
-rmdir /sys/fs/bpf/eulerpilot/scx_eulerpilot/v1 2>/dev/null || true
-rmdir /sys/fs/bpf/eulerpilot/scx_eulerpilot 2>/dev/null || true
+if [ "$scx_detach_ok" -eq 1 ]; then
+    rm -f /sys/fs/bpf/eulerpilot/scx_eulerpilot/v1/class_map 2>/dev/null || true
+    rm -f /sys/fs/bpf/eulerpilot/scx_eulerpilot/v1/gate_state_map 2>/dev/null || true
+    rm -f /sys/fs/bpf/eulerpilot/scx_eulerpilot/v1/stats 2>/dev/null || true
+    rmdir /sys/fs/bpf/eulerpilot/scx_eulerpilot/v1 2>/dev/null || true
+    rmdir /sys/fs/bpf/eulerpilot/scx_eulerpilot 2>/dev/null || true
+fi
 
 if [ -d "$ROOT" ]; then
     for subgroup in latency batch background; do

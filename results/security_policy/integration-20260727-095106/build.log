@@ -1,0 +1,3 @@
+make: Nothing to be done for 'agent'.
+clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -D__BPF__ -I. -I./bpf -c bpf/security_policy.bpf.c -o build/security_policy.bpf.o
+bpftool gen skeleton build/security_policy.bpf.o > build/security_policy.skel.h

@@ -3,13 +3,8 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 if [ -z "${KERNEL_SRC:-}" ]; then
-    if [ "${ALLOW_LEGACY_SCX_FALLBACK:-0}" = "1" ] && [ -d /root/kernel-build/src-scx ]; then
-        printf '[WARN] using legacy KERNEL_SRC fallback: /root/kernel-build/src-scx\n' >&2
-        KERNEL_SRC="/root/kernel-build/src-scx"
-    else
-        printf '[FAIL] KERNEL_SRC is required; pass the SP4/OLK kernel source path explicitly\n' >&2
-        exit 1
-    fi
+    printf '[FAIL] KERNEL_SRC is required; pass the SP4/OLK kernel source path explicitly\n' >&2
+    exit 1
 fi
 SCHED_EXT_DIR="${SCHED_EXT_DIR:-$KERNEL_SRC/tools/sched_ext}"
 SCX_BUILD_DIR="${SCX_BUILD_DIR:-$ROOT_DIR/build/scx-tools}"

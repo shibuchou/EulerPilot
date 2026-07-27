@@ -14,6 +14,7 @@ from typing import Any
 
 
 DEFAULT_MANIFEST = "configs/final_evidence_manifest.json"
+DEFAULT_STATUS_OVERRIDES = "evidence/evidence_status_overrides.json"
 DEFAULT_MD = "reports/final_evidence_compact.md"
 DEFAULT_JSON = "reports/final_evidence_compact.json"
 
@@ -47,6 +48,8 @@ KEY_FIELDS = [
     "throughput_first_validity",
     "mixed_adaptive_validity",
     "agent_overhead_validity",
+    "evidence_override_status",
+    "usable_for_final_positive_evidence",
 ]
 
 
@@ -87,6 +90,36 @@ def read_text(path: Path, limit: int | None = None) -> str:
     return data
 
 
+def sha256_file(path: Path) -> str:
+    import hashlib
+
+    digest = hashlib.sha256()
+    try:
+        with path.open("rb") as handle:
+            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                digest.update(chunk)
+    except OSError:
+        return ""
+    return digest.hexdigest()
+
+
+def sha256_path(path: Path) -> str:
+    import hashlib
+
+    if path.is_file():
+        return sha256_file(path)
+    if not path.is_dir():
+        return ""
+    rows = []
+    for child in sorted(p for p in path.rglob("*") if p.is_file()):
+        try:
+            rel = child.relative_to(path).as_posix()
+        except ValueError:
+            rel = child.name
+        rows.append(f"{sha256_file(child)}  {rel}")
+    return hashlib.sha256(("\n".join(rows) + "\n").encode("utf-8")).hexdigest()
+
+
 def parse_key_value(text: str) -> dict[str, str]:
     data: dict[str, str] = {}
     for raw in text.splitlines():
@@ -98,6 +131,59 @@ def parse_key_value(text: str) -> dict[str, str]:
         if re.fullmatch(r"[A-Za-z0-9_.-]+", key):
             data[key] = value.strip()
     return data
+
+
+def load_status_overrides(root: Path, rel_path: str) -> dict[str, dict[str, Any]]:
+    path = root / rel_path
+    if not path.exists():
+        return {}
+    try:
+        payload = json.loads(read_text(path))
+    except json.JSONDecodeError:
+        return {
+            "__invalid_override_file__": {
+                "new_status": "invalid",
+                "invalid_reason": f"failed to parse {rel_path}",
+                "usable_for_final_positive_evidence": False,
+            }
+        }
+    overrides: dict[str, dict[str, Any]] = {}
+    for item in payload.get("overrides", []):
+        original = str(item.get("original_path", "")).strip().replace("\\", "/")
+        if original:
+            overrides[original] = item
+    return overrides
+
+
+def apply_status_override(entry: dict[str, Any],
+                          override: dict[str, Any] | None,
+                          actual_path: Path | None = None) -> None:
+    if not override:
+        return
+    status = str(override.get("new_status", "")).strip()
+    reason = str(override.get("invalid_reason", "")).strip()
+    usable = bool(override.get("usable_for_final_positive_evidence", True))
+    entry["override"] = override
+    entry["summary"]["evidence_override_status"] = status
+    entry["summary"]["usable_for_final_positive_evidence"] = str(usable).lower()
+    if reason:
+        entry["summary"]["evidence_override_reason"] = reason
+    expected_sha = str(override.get("original_sha256", "")).strip()
+    if expected_sha and actual_path is not None and actual_path.exists():
+        actual_sha = sha256_path(actual_path)
+        entry["summary"]["evidence_override_original_sha256"] = expected_sha
+        entry["summary"]["evidence_override_actual_sha256"] = actual_sha
+        if actual_sha != expected_sha:
+            entry["warnings"].append(
+                "evidence status override original_sha256 mismatch"
+            )
+    if status:
+        entry["status"] = status
+    if not usable:
+        warning = f"evidence status override blocks final positive use: {status}"
+        if reason:
+            warning += f" ({reason})"
+        entry["warnings"].append(warning)
 
 
 def parse_quality_gate(path: Path) -> dict[str, Any]:
@@ -283,12 +369,18 @@ def validate_throughput_first_dir(path: Path) -> tuple[dict[str, Any], list[str]
         warnings.append("cgroup_throughput_first did not record throughput_profile_hits_avg > 0")
     if parse_float(scx.get("throughput_profile_hits_avg")) <= 0:
         warnings.append("scx_throughput_first did not record throughput_profile_hits_avg > 0")
-    if max(
-        parse_float(scx.get("class_hits_batch_avg")),
-        parse_float(scx.get("enqueue_batch_avg")),
-        parse_float(scx.get("running_batch_avg")),
-    ) <= 0:
-        warnings.append("scx_throughput_first did not record batch class/enqueue/running evidence")
+    if parse_float(scx.get("class_hits_batch_avg")) <= 0:
+        warnings.append("scx_throughput_first did not record batch classification evidence")
+    enqueue_batch_avg = parse_float(scx.get("enqueue_batch_avg"))
+    batch_dispatch_total_avg = parse_float(scx.get("batch_dispatch_total_avg"))
+    if enqueue_batch_avg > 0 and batch_dispatch_total_avg <= 0:
+        warnings.append("scx_throughput_first enqueued batch work without class-aware batch dispatch")
+    if "counter_delta_valid_avg" in scx and parse_float(scx.get("counter_delta_valid_avg")) < 1:
+        warnings.append("scx_throughput_first counter_delta_valid_avg is not fully valid")
+    if "dispatch_accounting_valid_avg" in scx and parse_float(scx.get("dispatch_accounting_valid_avg")) < 1:
+        warnings.append("scx_throughput_first dispatch_accounting_valid_avg is not fully valid")
+    if "workload_completion_valid_avg" in scx and parse_float(scx.get("workload_completion_valid_avg")) < 1:
+        warnings.append("scx_throughput_first workload_completion_valid_avg is not fully valid")
 
     run_dirs = sorted(p for p in path.glob("run-*") if p.is_dir())
     if not run_dirs:
@@ -302,8 +394,16 @@ def validate_throughput_first_dir(path: Path) -> tuple[dict[str, Any], list[str]
             snapshot = run_dir / f"{label}_agent_snapshot.txt"
             if not snapshot.exists() or file_size(snapshot) == 0:
                 warnings.append(f"{run_dir.name}/{label}_agent_snapshot.txt missing or empty")
+        scx_metrics = parse_key_value(read_text(run_dir / "scx_throughput_first_metrics.env"))
+        if scx_metrics:
+            if parse_int(scx_metrics.get("counter_delta_valid", "1")) != 1:
+                warnings.append(f"{run_dir.name}/scx_throughput_first counter delta invalid")
+            enqueue_batch = parse_int(scx_metrics.get("enqueue_batch"))
+            batch_dispatch_total = parse_int(scx_metrics.get("batch_dispatch_total"))
+            if enqueue_batch > 0 and batch_dispatch_total <= 0:
+                warnings.append(f"{run_dir.name}/scx_throughput_first enqueue_batch without class-aware dispatch")
 
-    summary["throughput_first_validity"] = "pass" if not warnings else "warning"
+    summary["throughput_first_validity"] = "pass" if not warnings else "invalid"
     summary["throughput_first_runs"] = len(run_dirs)
     return summary, warnings
 
@@ -330,15 +430,21 @@ def validate_mixed_adaptive_dir(path: Path) -> tuple[dict[str, Any], list[str]]:
         warnings.append("pressure_active missing switch latency")
     if parse_int(recovery.get("recovery_seen_count")) <= 0:
         warnings.append("recovery did not record recovery evidence")
-    if parse_int(recovery.get("active_seen_count")) > 0:
-        warnings.append("recovery phase unexpectedly recorded ACTIVE transition")
+    # Recovery starts while the gate is still ACTIVE and must then converge through
+    # COOLDOWN back to NORMAL. The per-run trace-chain validator below enforces
+    # that ordered sequence using one agent_instance_id and monotonic event_seq.
 
     run_dirs = sorted(p for p in path.glob("run-*") if p.is_dir())
     if not run_dirs:
         warnings.append("missing run-* directories")
     for run_dir in run_dirs:
-        if not (run_dir / "combined_psi_gate_trace.jsonl").exists():
+        combined_trace = run_dir / "combined_psi_gate_trace.jsonl"
+        if not combined_trace.exists():
             warnings.append(f"{run_dir.name}/combined_psi_gate_trace.jsonl missing")
+        else:
+            chain_valid, chain_reason = validate_mixed_trace_chain(combined_trace)
+            if not chain_valid:
+                warnings.append(f"{run_dir.name}/combined_psi_gate_trace.jsonl invalid: {chain_reason}")
         for phase in ["quiet_pre", "pressure_active", "recovery"]:
             for suffix in ["summary.csv", "agent_snapshot.txt", "gate_status.txt", "psi_gate_trace.jsonl"]:
                 file_path = run_dir / f"{phase}_{suffix}"
@@ -347,9 +453,72 @@ def validate_mixed_adaptive_dir(path: Path) -> tuple[dict[str, Any], list[str]]:
         if not (run_dir / "rollback_after.log").exists():
             warnings.append(f"{run_dir.name}/rollback_after.log missing")
 
-    summary["mixed_adaptive_validity"] = "pass" if not warnings else "warning"
+    summary["mixed_adaptive_validity"] = "pass" if not warnings else "invalid"
     summary["mixed_adaptive_runs"] = len(run_dirs)
     return summary, warnings
+
+
+def validate_mixed_trace_chain(path: Path) -> tuple[bool, str]:
+    events = []
+    for raw in read_text(path, limit=None).splitlines():
+        try:
+            events.append(json.loads(raw))
+        except json.JSONDecodeError:
+            continue
+    if not events:
+        return False, "empty-or-unparseable-trace"
+    instances = {event.get("agent_instance_id") for event in events if event.get("agent_instance_id")}
+    if len(instances) != 1:
+        return False, "agent-instance-id-not-unique"
+    seqs = [parse_int(str(event.get("event_seq"))) for event in events if "event_seq" in event]
+    if not seqs or seqs != sorted(seqs) or len(seqs) != len(set(seqs)):
+        return False, "event-seq-not-strictly-increasing"
+    timestamps = [parse_int(str(event.get("monotonic_timestamp_ns"))) for event in events
+                  if "monotonic_timestamp_ns" in event]
+    if timestamps and timestamps != sorted(timestamps):
+        return False, "monotonic-timestamp-regressed"
+    states = [event.get("next_state") or event.get("gate_state") for event in events
+              if event.get("event_type") == "gate"]
+    target = ["NORMAL", "ARMED", "ACTIVE", "COOLDOWN", "NORMAL"]
+    index = 0
+    for state in states:
+        if index < len(target) and state == target[index]:
+            index += 1
+    if index != len(target):
+        return False, "missing-ordered-normal-armed-active-cooldown-normal-chain"
+    markers = [(i, event.get("phase")) for i, event in enumerate(events)
+               if event.get("event_type") == "phase_marker"]
+    marker_phases = [phase for _, phase in markers]
+    if not {"quiet", "pressure", "recovery"}.issubset(set(marker_phases)):
+        return False, "missing-agent-written-phase-marker"
+    marker_index: dict[str, int] = {}
+    for index_in_events, phase in markers:
+        marker_index.setdefault(str(phase), index_in_events)
+    if not (marker_index["quiet"] < marker_index["pressure"] < marker_index["recovery"]):
+        return False, "phase-markers-out-of-order"
+
+    def gate_states_between(start: int, end: int | None) -> list[str]:
+        window = events[start + 1:end]
+        return [str(event.get("next_state") or event.get("gate_state"))
+                for event in window if event.get("event_type") == "gate"]
+
+    def contains_ordered(values: list[str], expected: list[str]) -> bool:
+        cursor = 0
+        for value in values:
+            if cursor < len(expected) and value == expected[cursor]:
+                cursor += 1
+        return cursor == len(expected)
+
+    quiet_states = gate_states_between(marker_index["quiet"], marker_index["pressure"])
+    pressure_states = gate_states_between(marker_index["pressure"], marker_index["recovery"])
+    recovery_states = gate_states_between(marker_index["recovery"], None)
+    if "NORMAL" not in quiet_states:
+        return False, "quiet-phase-missing-stable-normal"
+    if not contains_ordered(pressure_states, ["ARMED", "ACTIVE"]):
+        return False, "pressure-phase-missing-armed-active"
+    if not contains_ordered(recovery_states, ["COOLDOWN", "NORMAL"]):
+        return False, "recovery-phase-missing-cooldown-normal"
+    return True, "ok"
 
 
 def validate_agent_overhead_dir(path: Path) -> tuple[dict[str, Any], list[str]]:
@@ -396,7 +565,7 @@ def summarize_result_dir(path: Path, entry: dict[str, Any]) -> tuple[dict[str, A
             summary.update(parse_key_value(text))
         else:
             summary["summary_excerpt"] = compact_excerpt(text)
-    else:
+    elif not entry.get("allow_missing_summary", False):
         warnings.append(f"missing summary file: {summary_name}")
 
     for extra in ["deep_hook_status.txt", "anomaly_event_summary.txt"]:
@@ -446,7 +615,9 @@ def file_size(path: Path) -> int:
         return 0
 
 
-def inspect_entry(root: Path, entry: dict[str, Any]) -> dict[str, Any]:
+def inspect_entry(root: Path,
+                  entry: dict[str, Any],
+                  status_overrides: dict[str, dict[str, Any]]) -> dict[str, Any]:
     rel = Path(entry["path"])
     path = root / rel
     kind = entry.get("kind", "file")
@@ -491,7 +662,7 @@ def inspect_entry(root: Path, entry: dict[str, Any]) -> dict[str, Any]:
     else:
         status = "present"
 
-    return {
+    inspected = {
         "category": entry.get("category", "uncategorized"),
         "name": entry.get("name", rel.name),
         "host": entry.get("host", ""),
@@ -505,6 +676,40 @@ def inspect_entry(root: Path, entry: dict[str, Any]) -> dict[str, Any]:
         "evidence_files": evidence_files,
         "warnings": warnings,
     }
+    apply_status_override(inspected, status_overrides.get(inspected["path"]), path)
+    return inspected
+
+
+def validate_single_path(root: Path,
+                         rel_or_abs: str,
+                         status_overrides: dict[str, dict[str, Any]],
+                         mode: str) -> int:
+    raw = Path(rel_or_abs)
+    path = raw if raw.is_absolute() else root / raw
+    try:
+        rel = path.relative_to(root)
+    except ValueError:
+        rel = raw
+    entry = {
+        "path": rel.as_posix(),
+        "kind": "result_dir" if path.is_dir() else "file",
+        "required": True,
+        "summary": "summary.txt",
+        "allow_missing_summary": True,
+        "category": mode,
+        "name": path.name,
+    }
+    inspected = inspect_entry(root, entry, status_overrides)
+    output = {
+        "mode": mode,
+        "path": inspected["path"],
+        "exists": inspected["exists"],
+        "status": inspected["status"],
+        "summary": inspected["summary"],
+        "warnings": inspected["warnings"],
+    }
+    print(json.dumps(output, ensure_ascii=False, indent=2))
+    return 1 if (not inspected["exists"] or inspected["warnings"]) else 0
 
 
 def git_status_short(root: Path, ignored_paths: set[str]) -> list[str]:
@@ -563,8 +768,9 @@ def build_markdown(manifest: dict[str, Any], report: dict[str, Any]) -> str:
         "",
         f"生成时间：`{report['generated_at']}`",
         f"清单：`{report['manifest_path']}`",
+        f"状态覆盖：`{report['status_overrides_path']}`，覆盖条目 `{report['status_overrides_count']}`",
         "",
-        "本报告由 `scripts/collect_final_evidence.py` 根据白名单清单生成，用于把分散的双机结果压缩成答辩入口。它不会递归扫描全部 `results/`，缺失项会显式列出。",
+        "本报告由 `scripts/collect_final_evidence.py` 根据白名单清单生成，用于把分散的双机结果压缩成答辩入口。它不会递归扫描全部 `results/`，缺失项会显式列出；若 `evidence/evidence_status_overrides.json` 将旧证据标为 provisional 或 invalid，strict 模式会阻止其作为最终正向证据。",
         "",
         "## 总览",
         "",
@@ -622,9 +828,12 @@ def build_markdown(manifest: dict[str, Any], report: dict[str, Any]) -> str:
             "```bash",
             "python3 scripts/collect_final_evidence.py",
             "python3 scripts/collect_final_evidence.py --strict",
+            "python3 scripts/collect_final_evidence.py --validate-run <result-dir>",
+            "python3 scripts/collect_final_evidence.py --validate-suite <suite-dir>",
+            "python3 scripts/collect_final_evidence.py --validate-release",
             "```",
             "",
-            "`--strict` 会在必需证据缺失或清单条目存在警告时返回非零退出码，适合最终提交前检查。",
+            "`--validate-run` 用于单轮 smoke，`--validate-suite` 用于正式实验组，`--validate-release` 等价于最终 strict release gate。",
             "",
         ]
     )
@@ -634,15 +843,29 @@ def build_markdown(manifest: dict[str, Any], report: dict[str, Any]) -> str:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--manifest", default=DEFAULT_MANIFEST)
+    parser.add_argument("--status-overrides", default=DEFAULT_STATUS_OVERRIDES)
     parser.add_argument("--output-md", default=DEFAULT_MD)
     parser.add_argument("--output-json", default=DEFAULT_JSON)
     parser.add_argument("--strict", action="store_true", help="Fail on required missing entries or warnings.")
+    parser.add_argument("--validate-run", metavar="PATH", default="",
+                        help="Validate one result directory or file for RUNS=1/development smoke.")
+    parser.add_argument("--validate-suite", metavar="PATH", default="",
+                        help="Validate one formal experiment suite directory.")
+    parser.add_argument("--validate-release", action="store_true",
+                        help="Run final release evidence validation; equivalent to --strict.")
     args = parser.parse_args()
 
     root = repo_root()
+    status_overrides = load_status_overrides(root, args.status_overrides)
+    if args.validate_run:
+        return validate_single_path(root, args.validate_run, status_overrides, "validate-run")
+    if args.validate_suite:
+        return validate_single_path(root, args.validate_suite, status_overrides, "validate-suite")
+    if args.validate_release:
+        args.strict = True
     manifest_path = root / args.manifest
     manifest = json.loads(read_text(manifest_path))
-    entries = [inspect_entry(root, item) for item in manifest.get("entries", [])]
+    entries = [inspect_entry(root, item, status_overrides) for item in manifest.get("entries", [])]
     ignored_status_paths = {
         str(Path(args.output_md)).replace("\\", "/"),
         str(Path(args.output_json)).replace("\\", "/"),
@@ -650,6 +873,8 @@ def main() -> int:
     report = {
         "generated_at": datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds"),
         "manifest_path": args.manifest,
+        "status_overrides_path": args.status_overrides,
+        "status_overrides_count": len([k for k in status_overrides if not k.startswith("__")]),
         "manifest_title": manifest.get("title", ""),
         "git_status_short": git_status_short(root, ignored_status_paths),
         "entries": entries,

@@ -1,0 +1,8 @@
+result=pass
+reason=service-linkage-anomaly-rules-observed
+host=cernet2.net
+date=2026-07-27T09:54:16+08:00
+kernel=6.6.0-159.4.3.154.oe2403sp4.x86_64-eulerpilot-scx
+rules=burst_connect,burst_openat_sensitive,capability_abuse
+cgroup_path=/sys/fs/cgroup/eulerpilot/security-anomaly-capability
+event_file=security_policy_events.anomaly-rules.jsonl

@@ -5,11 +5,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="${ROOT:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
 SCX_BIN="${SCX_BIN:-$(command -v scx_eulerpilot 2>/dev/null || true)}"
 SCX_BIN="${SCX_BIN:-/usr/local/bin/scx_eulerpilot}"
-LEGACY_SCX_BIN="${LEGACY_SCX_BIN:-/root/olk/kernel-OLK-6.6-atomgit/tools/sched_ext/build/bin/scx_eulerpilot}"
-if [ ! -x "$SCX_BIN" ] && [ "${ALLOW_LEGACY_SCX_FALLBACK:-0}" = "1" ] && [ -x "$LEGACY_SCX_BIN" ]; then
-    printf '[WARN] using legacy scx fallback: %s\n' "$LEGACY_SCX_BIN" >&2
-    SCX_BIN="$LEGACY_SCX_BIN"
-fi
 MODE="${MODE:?MODE is required (redis_only|redis_stress|redis_recover|redis_repeat3)}"
 OUTDIR="$ROOT/results/smoke/psi-${MODE}-$(date +%Y%m%d-%H%M%S)"
 REDIS_PORT="${REDIS_PORT:-6396}"
@@ -23,7 +18,6 @@ cleanup() {
     kill "${AGENT_PID:-0}" 2>/dev/null || true
     kill "${STRESS_PID:-0}" 2>/dev/null || true
     pkill -f 'redis-benchmark' 2>/dev/null || true
-    pkill -f '(^|/)scx_' 2>/dev/null || true
     redis-cli -p "$REDIS_PORT" shutdown nosave >/dev/null 2>&1 || true
     "$ROOT/scripts/rollback.sh" >/dev/null 2>&1 || true
 }
@@ -36,7 +30,6 @@ BACKEND="sched_ext" EULERPILOT_GATE_MODE="psi" python3 "$ROOT/scripts/write_run_
 "$ROOT/scripts/rollback.sh" > "$OUTDIR/reset.log" 2>&1 || true
 rm -f /tmp/eulerpilot-psi-gate-trace.jsonl /tmp/eulerpilot-scx-session.log
 pkill -f 'redis-benchmark' 2>/dev/null || true
-pkill -f '(^|/)scx_' 2>/dev/null || true
 redis-server --port "$REDIS_PORT" --save "" --appendonly no --daemonize yes
 
 run_agent() {

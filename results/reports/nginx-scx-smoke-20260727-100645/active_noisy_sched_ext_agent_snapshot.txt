@@ -1,0 +1,31 @@
+
+  * EulerPilot Agent 
+  --------------------------------------------------
+  config:     /root/EulerPilot/configs/agent.yaml
+  interval:   1000ms  duration:   4s  warmup: 0
+  mode:       active  backend:    sched_ext
+  scx binary: auto (auto)
+  gate:       always-active
+  env:         psi:ok  cg:ok  scx:ok
+  --------------------------------------------------
+
+  --- legend ---
+  mark: . UNKNOWN  L LATENCY_SENSITIVE  B BACKGROUND_NOISY  T THROUGHPUT_BATCH
+  act:  + applied  ~ managed  - none
+  --- observing ---
+  mark name             pid  class        act profile    w:weight reason
+  B stress-ng-cpu     368746 BACKGROUND_NOISY |~ normal_profile w:0 scx-enabled-but-owned-identity-mismatch
+  B stress-ng-cpu     368747 BACKGROUND_NOISY |~ normal_profile w:0 scx-enabled-but-owned-identity-mismatch
+  L nginx             368574 LATENCY_SENSITIVE |~ normal_profile w:0 scx-enabled-but-owned-identity-mismatch
+  B stress-ng-cpu     368746 BACKGROUND_NOISY |~ mixed_profile w:0 scx-external-instance-active
+  B stress-ng-cpu     368747 BACKGROUND_NOISY |~ mixed_profile w:0 scx-external-instance-active
+  L nginx             368574 LATENCY_SENSITIVE |~ latency_profile w:0 scx-external-instance-active
+  B stress-ng-cpu     368746 BACKGROUND_NOISY |~ mixed_profile w:0 scx-external-instance-active
+  B stress-ng-cpu     368747 BACKGROUND_NOISY |~ mixed_profile w:0 scx-external-instance-active
+  L nginx             368574 LATENCY_SENSITIVE |~ latency_profile w:0 scx-external-instance-active
+  B stress-ng-cpu     368746 BACKGROUND_NOISY |~ mixed_profile w:0 scx-external-instance-active
+  B stress-ng-cpu     368747 BACKGROUND_NOISY |~ mixed_profile w:0 scx-external-instance-active
+  L nginx             368574 LATENCY_SENSITIVE |~ latency_profile w:0 scx-external-instance-active
+  --------------------------------------------------
+  DONE  total=103  applied=0  L=4  T=0  B=8  U=91
+

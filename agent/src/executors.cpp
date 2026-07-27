@@ -587,6 +587,60 @@ bool apply_control_file_at(const std::string &group,
     return true;
 }
 
+bool restore_resource_snapshot(const ControlFileSnapshot &snapshot) {
+    if (snapshot.restore_value.empty()) {
+        return true;
+    }
+    dev_t current_dev = 0;
+    ino_t current_ino = 0;
+    if (!stat_cgroup_identity(snapshot.cgroup_path, current_dev, current_ino) ||
+        current_dev != snapshot.cgroup_dev ||
+        current_ino != snapshot.cgroup_ino) {
+        append_resource_audit(snapshot.group, snapshot.cgroup_path,
+                              snapshot.target_ref, snapshot.file, "", snapshot.restore_value,
+                              "rollback", "failed", "ownership_mismatch", 0, "rollback");
+        return false;
+    }
+    std::string current_value;
+    if (!read_control_file(snapshot.path, current_value) ||
+        !control_value_matches(snapshot.file, snapshot.desired_value, current_value)) {
+        append_resource_audit(snapshot.group, snapshot.cgroup_path,
+                              snapshot.target_ref, snapshot.file, current_value, snapshot.restore_value,
+                              "rollback", "failed", "compare-before-restore-mismatch", 0, "rollback");
+        return false;
+    }
+    if (!write_file_value(snapshot.path, snapshot.restore_value)) {
+        append_resource_audit(snapshot.group, snapshot.cgroup_path,
+                              snapshot.target_ref, snapshot.file, "", snapshot.restore_value,
+                              "rollback", "failed", "restore-failed", 0, "rollback");
+        return false;
+    }
+    append_resource_audit(snapshot.group, snapshot.cgroup_path,
+                          snapshot.target_ref, snapshot.file, "", snapshot.restore_value,
+                          "rollback", "restored", "restored-old-value", 0, "rollback");
+    return true;
+}
+
+bool rollback_resource_control_keys(const std::vector<std::string> &keys) {
+    bool ok = true;
+    std::unordered_set<std::string> seen;
+    for (auto it = keys.rbegin(); it != keys.rend(); ++it) {
+        if (!seen.insert(*it).second) {
+            continue;
+        }
+        auto snapshot_it = resource_control_snapshots().find(*it);
+        if (snapshot_it == resource_control_snapshots().end()) {
+            continue;
+        }
+        if (restore_resource_snapshot(snapshot_it->second)) {
+            resource_control_snapshots().erase(snapshot_it);
+        } else {
+            ok = false;
+        }
+    }
+    return ok;
+}
+
 bool is_benchmark_client(const WorkloadSample &sample) {
     return sample.comm.find("redis-benchmark") != std::string::npos ||
            sample.comm == "wrk";
@@ -983,6 +1037,16 @@ bool stat_proc_executable(pid_t pid, std::uint64_t &dev, std::uint64_t &ino) {
     return true;
 }
 
+bool stat_path_identity(const std::string &path, std::uint64_t &dev, std::uint64_t &ino) {
+    struct stat st {};
+    if (stat(path.c_str(), &st) != 0) {
+        return false;
+    }
+    dev = static_cast<std::uint64_t>(st.st_dev);
+    ino = static_cast<std::uint64_t>(st.st_ino);
+    return true;
+}
+
 void clear_scx_session_identity(ScxSession &session) {
     session.pid = -1;
     session.pid_start_time_ticks = 0;
@@ -1070,6 +1134,13 @@ bool start_scx_session(const RuntimeConfig &config, ScxSession &session, bool fi
     }
 
     const std::string enable_seq_before = read_file_trimmed("/sys/kernel/sched_ext/enable_seq");
+    std::uint64_t expected_exe_dev = 0;
+    std::uint64_t expected_exe_ino = 0;
+    if (!stat_path_identity(session.binary_path, expected_exe_dev, expected_exe_ino)) {
+        reason = "scx-binary-identity-unreadable";
+        append_scx_session_log("start_scx_session: " + reason);
+        return false;
+    }
 
     const int log_fd = open("/tmp/eulerpilot-scx.log", O_WRONLY | O_CREAT | O_APPEND, 0644);
     if (log_fd < 0) {
@@ -1101,7 +1172,17 @@ bool start_scx_session(const RuntimeConfig &config, ScxSession &session, bool fi
 
     close(log_fd);
     session.pid = pid;
-    refresh_scx_session_identity(session);
+    session.executable_dev = expected_exe_dev;
+    session.executable_ino = expected_exe_ino;
+    std::uint64_t child_start_time = 0;
+    if (read_proc_start_time_ticks(session.pid, child_start_time)) {
+        session.pid_start_time_ticks = child_start_time;
+    }
+    session.command_line_summary = read_proc_cmdline_summary(session.pid);
+    session.instance_id = std::to_string(session.pid) + ":" +
+                          std::to_string(session.pid_start_time_ticks) + ":" +
+                          std::to_string(session.executable_dev) + ":" +
+                          std::to_string(session.executable_ino);
     append_scx_session_log("start_scx_session: forked pid=" + std::to_string(pid));
 
     for (int i = 0; i < 20; ++i) {
@@ -1499,6 +1580,31 @@ ExecutionAction apply_cgroup_assignment(const RuntimeConfig &config,
         return action;
     }
 
+    std::vector<std::string> transaction_keys;
+    auto remember_applied_key = [&](const std::string &file,
+                                    const std::string &step_reason) {
+        if (step_reason == "applied") {
+            transaction_keys.push_back(control_file_path(apply_target.cgroup_path, file));
+        }
+    };
+    auto fail_after_partial_apply = [&](const std::string &fail_reason) {
+        rollback_resource_control_keys(transaction_keys);
+        action.reason = fail_reason;
+    };
+    auto apply_required_control = [&](const std::string &file,
+                                      const std::string &value,
+                                      const std::string &fail_reason) {
+        std::string step_reason;
+        if (!apply_control_file_at(profile.group, apply_target.cgroup_path,
+                                   apply_target.target_ref, file, value, policy.mode,
+                                   decision.sample.pid, profile.name, step_reason)) {
+            fail_after_partial_apply(fail_reason);
+            return false;
+        }
+        remember_applied_key(file, step_reason);
+        return true;
+    };
+
     if (std::strlen(profile.cpuset_cpus) > 0) {
         std::string reason;
         if (!apply_control_file_at(profile.group, apply_target.cgroup_path,
@@ -1513,78 +1619,52 @@ ExecutionAction apply_cgroup_assignment(const RuntimeConfig &config,
         }
     }
 
-    std::string reason;
-    if (!apply_control_file_at(profile.group, apply_target.cgroup_path,
-                               apply_target.target_ref, "cpu.weight",
-                               std::to_string(profile.cpu_weight), policy.mode,
-                               decision.sample.pid, profile.name, reason)) {
-        action.reason = "cpu-weight-write-failed";
+    if (!apply_required_control("cpu.weight", std::to_string(profile.cpu_weight),
+                                "cpu-weight-write-failed")) {
         return action;
     }
 
     if (policy.cpu_max_enabled &&
-        !apply_control_file_at(profile.group, apply_target.cgroup_path,
-                               apply_target.target_ref, "cpu.max", resources.cpu_max,
-                               policy.mode, decision.sample.pid, profile.name, reason)) {
-        action.reason = "cpu-max-write-failed";
+        !apply_required_control("cpu.max", resources.cpu_max, "cpu-max-write-failed")) {
         return action;
     }
 
     if (policy.memory_enabled && policy.memory_low_enabled &&
-        !apply_control_file_at(profile.group, apply_target.cgroup_path,
-                               apply_target.target_ref, "memory.low",
-                               resources.memory_low, policy.mode, decision.sample.pid,
-                               profile.name, reason)) {
-        action.reason = "memory-low-write-failed";
+        !apply_required_control("memory.low", resources.memory_low,
+                                "memory-low-write-failed")) {
         return action;
     }
 
     if (policy.memory_enabled && policy.memory_high_enabled &&
-        !apply_control_file_at(profile.group, apply_target.cgroup_path,
-                               apply_target.target_ref, "memory.high",
-                               resources.memory_high, policy.mode, decision.sample.pid,
-                               profile.name, reason)) {
-        action.reason = "memory-high-write-failed";
+        !apply_required_control("memory.high", resources.memory_high,
+                                "memory-high-write-failed")) {
         return action;
     }
 
     if (policy.memory_enabled && policy.memory_max_enabled &&
-        !apply_control_file_at(profile.group, apply_target.cgroup_path,
-                               apply_target.target_ref, "memory.max",
-                               resources.memory_max, policy.mode, decision.sample.pid,
-                               profile.name, reason)) {
-        action.reason = "memory-max-write-failed";
+        !apply_required_control("memory.max", resources.memory_max,
+                                "memory-max-write-failed")) {
         return action;
     }
 
     if (policy.memory_enabled && policy.memory_reclaim_enabled &&
-        !resources.memory_reclaim.empty() &&
-        !apply_control_file_at(profile.group, apply_target.cgroup_path,
-                               apply_target.target_ref, "memory.reclaim",
-                               resources.memory_reclaim, policy.mode,
-                               decision.sample.pid, profile.name, reason)) {
-        action.reason = "memory-reclaim-write-failed";
+        !resources.memory_reclaim.empty()) {
+        fail_after_partial_apply("memory-reclaim-not-reversible-disabled");
         return action;
     }
 
     if (policy.io_enabled && policy.io_weight_enabled && !action.io_weight.empty() &&
-        !apply_control_file_at(profile.group, apply_target.cgroup_path,
-                               apply_target.target_ref, "io.weight", action.io_weight,
-                               policy.mode, decision.sample.pid, profile.name, reason)) {
-        action.reason = "io-weight-write-failed";
+        !apply_required_control("io.weight", action.io_weight, "io-weight-write-failed")) {
         return action;
     }
 
     if (policy.io_enabled && policy.io_max_enabled && !action.io_max.empty() &&
-        !apply_control_file_at(profile.group, apply_target.cgroup_path,
-                               apply_target.target_ref, "io.max", action.io_max,
-                               policy.mode, decision.sample.pid, profile.name, reason)) {
-        action.reason = "io-max-write-failed";
+        !apply_required_control("io.max", action.io_max, "io-max-write-failed")) {
         return action;
     }
 
     if (!apply_target.explicit_target && !write_pid_to_group(profile.group, decision.sample.pid)) {
-        action.reason = "cgroup-write-failed";
+        fail_after_partial_apply("cgroup-write-failed");
         return action;
     }
 
@@ -1598,43 +1678,17 @@ ExecutionAction apply_cgroup_assignment(const RuntimeConfig &config,
 
 bool rollback_resource_control_state() {
     bool ok = true;
+    std::vector<std::string> restored_keys;
     for (const auto &item : resource_control_snapshots()) {
-        const auto &snapshot = item.second;
-        if (snapshot.restore_value.empty()) {
-            continue;
-        }
-        dev_t current_dev = 0;
-        ino_t current_ino = 0;
-        if (!stat_cgroup_identity(snapshot.cgroup_path, current_dev, current_ino) ||
-            current_dev != snapshot.cgroup_dev ||
-            current_ino != snapshot.cgroup_ino) {
+        if (restore_resource_snapshot(item.second)) {
+            restored_keys.push_back(item.first);
+        } else {
             ok = false;
-            append_resource_audit(snapshot.group, snapshot.cgroup_path,
-                                  snapshot.target_ref, snapshot.file, "", snapshot.restore_value,
-                                  "rollback", "failed", "ownership_mismatch", 0, "rollback");
-            continue;
         }
-        std::string current_value;
-        if (!read_control_file(snapshot.path, current_value) ||
-            !control_value_matches(snapshot.file, snapshot.desired_value, current_value)) {
-            ok = false;
-            append_resource_audit(snapshot.group, snapshot.cgroup_path,
-                                  snapshot.target_ref, snapshot.file, current_value, snapshot.restore_value,
-                                  "rollback", "failed", "compare-before-restore-mismatch", 0, "rollback");
-            continue;
-        }
-        if (!write_file_value(snapshot.path, snapshot.restore_value)) {
-            ok = false;
-            append_resource_audit(snapshot.group, snapshot.cgroup_path,
-                                  snapshot.target_ref, snapshot.file, "", snapshot.restore_value,
-                                  "rollback", "failed", "restore-failed", 0, "rollback");
-            continue;
-        }
-        append_resource_audit(snapshot.group, snapshot.cgroup_path,
-                              snapshot.target_ref, snapshot.file, "", snapshot.restore_value,
-                              "rollback", "restored", "restored-old-value", 0, "rollback");
     }
-    resource_control_snapshots().clear();
+    for (const auto &key : restored_keys) {
+        resource_control_snapshots().erase(key);
+    }
     return ok;
 }
 

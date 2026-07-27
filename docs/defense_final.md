@@ -1,6 +1,6 @@
 # EulerPilot 最终答辩文档
 
-更新时间：`2026-07-24`
+更新时间：`2026-07-26`
 
 ---
 
@@ -67,12 +67,12 @@ Observer (eBPF + PSI)
 - `--list-skills` / `--doctor-skills` 命令行验证
 - 新增 Skill：写 BPF 程序 + Skill 适配器 + YAML 配置，不侵入 core Runtime
 
-### 4. 正式 compare 实验框架
+### 4. compare 实验与封版证据框架
 - 7 种后端组合矩阵
-- RUNS=10 frozen-code 多轮运行
-- 平衡轮换顺序
+- historical RUNS=10 结果已保留并按 v6 状态覆盖降级
+- 新 baseline 将使用 formal `artifact_id`、Candidate Gate 和随机化 block 重新运行
 - `run_manifest.json` 记录实验上下文
-- `invalid_run` 机制
+- `invalid_run` 与 `provisional_result` 机制
 - 自动生成中文报告
 
 ---
@@ -84,10 +84,10 @@ Observer (eBPF + PSI)
 | 项目 | 内容 |
 |------|------|
 | 候选目录 | `results/final/redis-scx-compare-20260612-191543` |
-| SP4 复核目录 | `results/final/redis-scx-compare-20260724-tested-2541464-runs10` |
-| 轮数 | RUNS=10 frozen-code |
+| SP4 历史复核目录 | `results/final/redis-scx-compare-20260724-tested-2541464-runs10` |
+| 当前状态 | provisional historical，不能作为 final positive evidence |
 | 矩阵 | quiet_default / quiet_scx_normal / noisy_default / noisy_cgroup_v2 / noisy_scx_normal / noisy_scx_always_active / noisy_scx_psi |
-| 观察 | noisy_cgroup_v2 在 GET 上吞吐明显提升；noisy_scx_normal 在 GET/INCR/SET 上 RPS 改善 |
+| 观察 | noisy_cgroup_v2 在 GET/INCR 上有正向趋势；正式收益数字等待修复 baseline 和 formal artifact 后重跑 |
 | 图表 | redis_sched_ext_rps.svg / redis_sched_ext_p99.svg / redis_quiet_overhead.svg |
 
 说明：`noisy_scx_psi` 组用于展示 PSI Gate ACTIVE 与 scx map 联动，会额外运行 PSI Redis probe，不作为无 probe 条件下的净性能提升结论。
@@ -97,10 +97,10 @@ Observer (eBPF + PSI)
 | 项目 | 内容 |
 |------|------|
 | 候选目录 | `results/final/nginx-scx-compare-20260612-194018` |
-| SP4 复核目录 | `results/final/nginx-scx-compare-20260724-tested-2541464-runs10` |
-| 轮数 | RUNS=10 frozen-code |
+| SP4 历史复核目录 | `results/final/nginx-scx-compare-20260724-tested-2541464-runs10` |
+| 当前状态 | provisional historical，不能作为 final positive evidence |
 | 矩阵 | 与 Redis 保持一致 |
-| 观察 | cgroup_v2 在 Nginx 场景下更稳；部分 sched_ext 模式存在明显 P99 代价 |
+| 观察 | cgroup_v2 趋势相对更稳；部分 sched_ext 模式存在明显 P99 代价，正式结论等待新实验 |
 | 图表 | nginx_sched_ext_rps.svg / nginx_sched_ext_p99.svg / nginx_quiet_overhead.svg |
 
 ### 关键证据链
@@ -110,7 +110,7 @@ latency + background 场景前提
   -> PsiGate 进入 ACTIVE
   -> cgroup_v2: applied=yes reason=assigned
   -> sched_ext: executor=sched_ext
-  -> 业务结果写入正式候选目录
+  -> 业务结果写入历史候选或 formal artifact 结果目录
 ```
 
 图表：`psigate_timeline.svg`
@@ -186,7 +186,7 @@ cat demo/security_policy_demo/secret.txt  # -> Operation not permitted
 | 可视化 | `reports/dashboard/index.html` 静态 Dashboard + Agent `/metrics` 端点 + `web_console/` |
 | 图表 | `reports/final_figures/`（7 张 SVG） |
 | 实验结果 | `results/final/`、`results/network_policy/`、`results/security_policy/`、`results/resource_control/`、`results/policy_engine/` |
-| 证据压缩入口 | `configs/final_evidence_manifest.json`、`reports/final_evidence_compact.md/json`，41 条核心证据、必需缺失 0、警告 0 |
+| 证据压缩入口 | `configs/final_evidence_manifest.json`、`reports/final_evidence_compact.md/json`，当前 41 条核心证据、必需缺失 0、预期警告 8；警告来自旧结果降级 |
 | 代码仓库 | `https://github.com/shibuchou/EulerPilot` |
 
 ---
@@ -194,9 +194,9 @@ cat demo/security_policy_demo/secret.txt  # -> Operation not permitted
 ## 九、结论边界
 
 **可以说的：**
-- 系统实现完成，双后端均可真实运行
-- Redis/Nginx 双业务线保留 RUNS=5 历史候选结果；当前主结论以 SP4 RUNS=10 frozen-code 复核结果为准
-- SP4 上补充 Redis pressure gradient 与修复后的 manual static vs agent dynamic RUNS=10 frozen-code 重跑，用于解释干扰强度变化、CPU 效率和动态调控价值边界
+- 系统实现主体完成，双后端均有真实运行和历史验证证据
+- Redis/Nginx 双业务线保留 RUNS=5 与 SP4 RUNS=10 历史候选结果；当前主收益结论必须等待 v6 formal artifact 重跑
+- SP4 上保留 Redis pressure gradient 与 manual static vs agent dynamic 历史结果，用于解释趋势和边界；正式数字不能直接沿用
 - Skills 框架可扩展，Network/Security/Resource/Policy Engine 证明 eBPF hook 与系统控制器可统一编排
 - 正式 compare 框架具备可复现性
 
@@ -209,7 +209,6 @@ cat demo/security_policy_demo/secret.txt  # -> Operation not permitted
 
 ## 十、最终结论
 
-> EulerPilot 已完成为一个面向 openEuler 的、可运行、可实验、可解释、可复现、可扩展的系统资源管控 Agent 工程闭环。项目同时覆盖了 resource control、network policy、security policy 三个 OS Agent 扩展方向，并通过 Policy Engine 跨 Skill 联动、SP4 发行环境适配、SP4 官方源码自编译 sched_ext 内核复核、Kubernetes 旁路验证、Web Console 和 41 条 final evidence compact 证明了新增 eBPF hook 与系统控制器可以在统一 Agent 框架下安全编排和回滚。
+> EulerPilot 已形成面向 openEuler 的、可运行、可解释、可复现、可扩展的系统资源管控 Agent 工程闭环。项目同时覆盖 resource control、network policy、security policy 三个 OS Agent 扩展方向，并通过 Policy Engine 跨 Skill 联动、SP4 发行环境适配、SP4 官方源码自编译 sched_ext 内核复核、Kubernetes 旁路验证、Web Console 和 41 条 evidence compact 证明新增 eBPF hook 与系统控制器可以在统一 Agent 框架下安全编排和回滚；最终性能收益数字以 v6 formal artifact 重跑结果为准。
 
-**当前状态：最终收口修复中；static-vs-Agent 证据已用修复脚本 RUNS=10 frozen-code 重跑并恢复到最终提交清单。**
-
+**当前状态：v6 封版阻塞收口中；旧 static-vs-Agent、throughput-first、mixed-adaptive 和 Redis/Nginx RUNS=10 结果均已按 evidence override 降级，等待 Candidate Gate、Formal Artifact Gate 和正式随机化实验。**

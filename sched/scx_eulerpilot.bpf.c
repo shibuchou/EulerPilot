@@ -64,6 +64,8 @@ enum stat_idx {
 	STAT_STARVATION_GUARD = 20,
 	STAT_BG_CONSUMED_SLICE_TOTAL = 21,
 	STAT_DIRECT_LOCAL_LATENCY = 22,
+	STAT_DIRECT_LOCAL_BATCH = 23,
+	STAT_DIRECT_LOCAL_BACKGROUND = 24,
 };
 
 struct bg_ctx {
@@ -75,7 +77,6 @@ struct {
 	__uint(max_entries, 8192);
 	__type(key, u32);
 	__type(value, u32);
-	__uint(pinning, LIBBPF_PIN_BY_NAME);
 } class_map SEC(".maps");
 
 struct {
@@ -83,15 +84,13 @@ struct {
 	__uint(max_entries, 1);
 	__type(key, u32);
 	__type(value, struct gate_state_value);
-	__uint(pinning, LIBBPF_PIN_BY_NAME);
 } gate_state_map SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__uint(key_size, sizeof(u32));
 	__uint(value_size, sizeof(u64));
-	__uint(max_entries, 23);
-	__uint(pinning, LIBBPF_PIN_BY_NAME);
+	__uint(max_entries, 25);
 } stats SEC(".maps");
 
 struct {
@@ -282,6 +281,10 @@ s32 BPF_STRUCT_OPS(eulerpilot_select_cpu, struct task_struct *p, s32 prev_cpu, u
 		klass = lookup_class(p);
 		if (klass == EULERPILOT_CLASS_LATENCY)
 			stat_inc(STAT_DIRECT_LOCAL_LATENCY);
+		else if (klass == EULERPILOT_CLASS_BATCH)
+			stat_inc(STAT_DIRECT_LOCAL_BATCH);
+		else if (klass == EULERPILOT_CLASS_BACKGROUND)
+			stat_inc(STAT_DIRECT_LOCAL_BACKGROUND);
 		scx_bpf_dsq_insert(p, SCX_DSQ_LOCAL, SCX_SLICE_DFL, 0);
 	}
 

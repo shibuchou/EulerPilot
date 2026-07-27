@@ -13,7 +13,7 @@ AGENT_YAML="configs/agent.yaml"
 AGENT_BIN="build/eulerpilot-agent"
 TMPLOG="/tmp/eulerpilot-quality-gate.tmp"
 
-TOTAL=23
+TOTAL=29
 N=1
 SMOKE_ROUNDS="${EULERPILOT_GATE_SMOKE_ROUNDS:-100}"
 DOCTOR_ROUNDS="${EULERPILOT_GATE_DOCTOR_ROUNDS:-5}"
@@ -114,11 +114,59 @@ else
 fi
 
 # 7. config schema/consumption validation
-if run_silent tests/integration/test_config_validation.sh; then
+if run_silent bash tests/integration/test_config_validation.sh; then
     ok "config validation rejects unknown fields and bad values"
 else
     cat "$TMPLOG" >&2
     not_ok "config validation semantic test failed"
+fi
+
+# 8. benchmark baseline/randomization semantics
+if run_silent bash tests/integration/test_benchmark_release_semantics.sh; then
+    ok "benchmark default baseline and randomized block semantics"
+else
+    cat "$TMPLOG" >&2
+    not_ok "benchmark release semantics failed"
+fi
+
+# 9. policy engine transaction model
+if run_silent bash tests/integration/test_policy_engine_transaction_model.sh; then
+    ok "policy engine transaction context is per-request"
+else
+    cat "$TMPLOG" >&2
+    not_ok "policy engine transaction model failed"
+fi
+
+# 10. resource control rollback model
+if run_silent bash tests/integration/test_resource_control_rollback_model.sh; then
+    ok "resource control rollback preserves ownership and snapshots"
+else
+    cat "$TMPLOG" >&2
+    not_ok "resource control rollback model failed"
+fi
+
+# 11. scx loader ownership and safe rollback detach
+if run_silent bash tests/integration/test_scx_loader_ownership.sh; then
+    ok "scx loader ownership and rollback safe detach"
+else
+    cat "$TMPLOG" >&2
+    not_ok "scx loader ownership failed"
+fi
+
+# 12. security policy fail-closed scope and protocol validation
+if run_silent bash tests/integration/test_security_policy_fail_closed.sh; then
+    ok "security policy cgroup scope and socket protocol fail closed"
+else
+    cat "$TMPLOG" >&2
+    not_ok "security policy fail-closed validation failed"
+fi
+
+# 13. evidence semantic validation fixtures
+if run_silent bash tests/integration/test_evidence_validation_fixtures.sh; then
+    ok "evidence validate-run rejects invalid throughput and mixed traces"
+else
+    cat "$TMPLOG" >&2
+    not_ok "evidence validation fixtures failed"
 fi
 
 # 8. list skills

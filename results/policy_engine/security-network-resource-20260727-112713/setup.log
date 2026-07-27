@@ -1,0 +1,7 @@
+[INFO] EulerPilot cgroup v2 hierarchy is ready under /sys/fs/cgroup/eulerpilot
+[INFO]   latency/cpu.weight=1000
+[INFO]   batch/cpu.weight=100
+[INFO]   background/cpu.weight=20
+[INFO]   memory controller requested for latency/batch/background
+[INFO]   io controller requested for latency/batch/background, io.device=253:0
+[INFO]   cpuset_control=disabled (release default; set EULERPILOT_ENABLE_CPUSET=1 for experimental cpuset split)

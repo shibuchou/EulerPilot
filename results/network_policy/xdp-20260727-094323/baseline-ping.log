@@ -1,0 +1,6 @@
+PING 10.89.0.1 (10.89.0.1) 56(84) bytes of data.
+64 bytes from 10.89.0.1: icmp_seq=1 ttl=64 time=0.185 ms
+
+--- 10.89.0.1 ping statistics ---
+1 packets transmitted, 1 received, 0% packet loss, time 0ms
+rtt min/avg/max/mdev = 0.185/0.185/0.185/0.000 ms

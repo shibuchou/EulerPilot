@@ -1,6 +1,6 @@
 # EulerPilot 最终演示视频录制脚本
 
-更新时间：`2026-07-24`
+更新时间：`2026-07-26`
 
 当前状态：正式演示视频尚未录制。本文是 8-10 分钟录制脚本和命令清单，不代表视频文件已经交付。录制完成后，需要在 `docs/submission_checklist.md`、`docs/final_submission_guide.md` 和提交包中补充视频路径或公开链接。
 
@@ -15,7 +15,7 @@ ssh -L 18080:127.0.0.1:18080 openEuler-2403-LTS-SP4
 SP4 主验证仓库启动控制台：
 
 ```bash
-cd /root/EulerPilot
+cd /root/EulerPilot-closeout
 web_console/scripts/run_console.sh --daemon
 ```
 
@@ -28,10 +28,10 @@ web_console/scripts/run_console.sh --daemon
 录制前只读检查：
 
 ```bash
-cd /root/EulerPilot
+cd /root/EulerPilot-closeout
 git rev-parse --short HEAD
 uname -r
-python3 scripts/collect_final_evidence.py --strict
+python3 scripts/collect_final_evidence.py
 curl -s http://127.0.0.1:18080/api/health
 curl -s http://127.0.0.1:18080/api/system | jq .
 curl -s http://127.0.0.1:18080/api/evidence/summary | jq .
@@ -71,16 +71,16 @@ cat docs/final_submission_guide.md | sed -n '1,60p'
 curl -s http://127.0.0.1:18080/api/system | jq '.kernel,.features,.path_roles'
 ```
 
-### 1:40-2:30 Evidence strict pass
+### 1:40-2:30 Evidence compact 与 v6 状态
 
 讲稿：
 
-> 这是最终 evidence 白名单。它不是递归扫描全部结果，而是按提交清单固定 41 条核心证据，覆盖质量门禁、Redis/Nginx、SP4 RUNS=10 frozen-code、Network、Security、Resource Control、Policy Engine、Web Console 和 K8s 旁路验证。strict 模式要求必需证据缺失为 0、警告为 0。
+> 这是 evidence 白名单。它不是递归扫描全部结果，而是按提交清单固定 41 条核心证据。当前必需证据缺失为 0，但预期有 8 条 warning，因为我们把旧 SP4 RUNS=10 性能结果降级为 provisional 或 invalid historical。这样做是为了保证最终答辩的收益数字只来自后续 formal artifact 重跑，而不是复用旧二进制或旧 baseline。
 
 展示命令：
 
 ```bash
-python3 scripts/collect_final_evidence.py --strict
+python3 scripts/collect_final_evidence.py
 sed -n '1,80p' reports/final_evidence_compact.md
 ```
 
@@ -200,4 +200,3 @@ git status --short
 ## 视频收尾口径
 
 > EulerPilot 当前已经完成 Agent Framework、CPU Scheduling/PSI、Network Policy、Security Policy、Resource Control、Policy Engine、Web Console、Kubernetes 旁路验证、rollback/cleanup 和质量门禁闭环。性能结论保持边界：Redis / latency-sensitive 混布场景收益更明确，Nginx 等场景存在 workload 相关差异。项目价值不是承诺所有 workload 无条件提升，而是能观测、决策、执行、回滚，并用 evidence 链条讲清楚收益和代价。
-

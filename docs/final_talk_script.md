@@ -1,6 +1,6 @@
 # EulerPilot 答辩讲稿
 
-更新时间：`2026-07-24`
+更新时间：`2026-07-26`
 
 ## 开场（30秒）
 
@@ -46,22 +46,22 @@
 
 ## Redis 结果（30秒）
 
-最强候选：redis-scx-compare-20260612-191543，RUNS=5，平衡轮换，无 invalid_run。SP4 上追加了 redis-scx-compare-20260724-tested-2541464-runs10，RUNS=10 frozen-code，作为 SP4 发行环境适配与自编译 sched_ext 内核复核。Redis pressure gradient 用来解释干扰增强时的收益/代价变化；manual static vs agent dynamic 已用修复脚本在 SP4 RUNS=10 frozen-code 重跑，manual_static 与 agent_dynamic 均控制同一类 background cgroup worker。noisy_cgroup_v2 和部分 sched_ext 模式在 Redis 场景呈现正向趋势，但结论限定在 latency-sensitive 混布场景，不对所有 workload 做绝对性能提升承诺。
+历史候选：redis-scx-compare-20260612-191543，RUNS=5，平衡轮换，无 invalid_run。SP4 上追加了 redis-scx-compare-20260724-tested-2541464-runs10，用于适配与自编译 sched_ext 内核复核。v6 复审后，这批 SP4 结果被标为 provisional historical：它们说明 Redis 场景存在正向趋势，但 baseline 和 artifact provenance 还不满足封版收益结论。正式答辩数字要等 Candidate Gate、formal artifact 和修正 baseline 后重新随机化运行。
 
 ## Nginx 结果（20秒）
 
-最强候选：nginx-scx-compare-20260612-194018，同样 RUNS=5。SP4 上追加了 nginx-scx-compare-20260724-tested-2541464-runs10，RUNS=10 frozen-code。cgroup_v2 在 Nginx 场景下更稳，sched_ext 部分模式存在明显 P99 代价。这证明框架已成功迁移到第二业务线，也暴露了 workload 差异化策略边界。
+历史候选：nginx-scx-compare-20260612-194018，同样 RUNS=5。SP4 上追加了 nginx-scx-compare-20260724-tested-2541464-runs10，目前也按 provisional historical 保留。Nginx 结果最重要的价值是说明第二条业务线已经跑通，同时暴露 workload 差异化策略边界；正式性能结论同样等待 formal artifact 重跑。
 
 ## 证据链（15秒）
 
-完整证据链：latency+background 场景前提 -> PsiGate 进入 ACTIVE -> cgroup_v2/sched_ext 执行动作确实发生 -> 业务结果写入正式目录。
+完整证据链：latency+background 场景前提 -> PsiGate 进入 ACTIVE -> cgroup_v2/sched_ext 执行动作确实发生 -> 业务结果写入历史候选或 formal artifact 结果目录。当前 evidence compact 为 41 条、缺失 0、预期警告 8；这些警告来自旧证据降级，不代表文件缺失。
 
 ## 结论（20秒）
 
-1. SP3 上完成主闭环，可正式交付。
-2. OLK-6.6 和 SP4 官方源码自编译 sched_ext 内核上完成 Redis/Nginx compare 与复核。
+1. SP3 上完成主闭环，是比赛要求的强制兼容交付环境。
+2. OLK-6.6 和 SP4 官方源码自编译 sched_ext 内核上完成 compare 与功能复核；正式收益数字等待 v6 formal artifact 重跑。
 3. Skills 框架 + Network/Security/Resource/Policy Engine 证明 Agent 可扩展、可联动、可回滚。
-4. 项目已形成 41 条 final evidence compact、Web Console 和最终质量门禁证据。
+4. 项目已形成 41 条 evidence compact、Web Console 和 v6 preflight 证据；最终 release gate 需要在同一 candidate SHA 和 formal artifact 上重新完成。
 
 ## 收尾
 

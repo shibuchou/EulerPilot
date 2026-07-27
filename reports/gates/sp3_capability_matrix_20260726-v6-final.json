@@ -1,0 +1,38 @@
+{
+  "generated_at": "2026-07-26T18:18:03+08:00",
+  "host": "cernet2.net",
+  "os": "openEuler 24.03 (LTS-SP3)",
+  "kernel": "6.6.0-132.0.0.111.oe2403sp3.x86_64",
+  "cgroup_v2_mounted": true,
+  "btf_vmlinux": true,
+  "lsm_list": "lockdown,capability,yama,selinux,bpf",
+  "bpf_lsm_available": true,
+  "sched_ext_available": false,
+  "tools": {
+    "clang": "/usr/bin/clang",
+    "bpftool": "/usr/sbin/bpftool",
+    "tc": "/usr/sbin/tc",
+    "ip": "/usr/sbin/ip",
+    "kubectl": "/usr/bin/kubectl"
+  },
+  "kernel_config": {
+    "CONFIG_BPF": "y",
+    "CONFIG_BPF_SYSCALL": "y",
+    "CONFIG_DEBUG_INFO_BTF": "y",
+    "CONFIG_BPF_LSM": "y",
+    "CONFIG_SCHED_CLASS_EXT": ""
+  },
+  "sp3_compatibility_policy": {
+    "cgroup_v2": "required",
+    "safe_doctor": "required",
+    "network_security_supported_hooks": "smoke if capability is present; otherwise capability detection must report unavailable",
+    "sched_ext": "graceful fallback required when unavailable on official kernel"
+  },
+  "high_risk_defaults": {
+    "external_cgroup_write": "disabled",
+    "memory_reclaim": "disabled",
+    "xdp_dangerous_netdev": "disabled",
+    "tc_existing_qdisc": "disabled",
+    "doctor_live_probe": "disabled"
+  }
+}

@@ -1,0 +1,2 @@
+=== SecurityPolicy credential anomaly integration test ===
+PASS: security_policy observes credential_churn anomaly with lifecycle evidence

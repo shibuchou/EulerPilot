@@ -124,8 +124,10 @@ void apply_agent_yaml_config(eulerpilot::RuntimeConfig &config) {
     }
     if (root["agent"]) {
         const auto agent = root["agent"];
-        require_map_keys(agent, {"name", "mode", "interval_ms", "fallback_enabled"},
-                         "agent");
+        require_map_keys(agent, {"name", "mode", "interval_ms"}, "agent");
+        if (agent["name"]) {
+            config.agent_name = agent["name"].as<std::string>();
+        }
         if (agent["mode"]) {
             const auto mode = agent["mode"].as<std::string>();
             if (mode == "dry-run") {
@@ -143,44 +145,24 @@ void apply_agent_yaml_config(eulerpilot::RuntimeConfig &config) {
                 config.interval_ms = interval_ms;
             }
         }
-        if (agent["fallback_enabled"]) {
-            (void)yaml_bool_value(agent["fallback_enabled"], "agent.fallback_enabled");
-        }
     }
     if (root["observer"]) {
         const auto observer = root["observer"];
         require_map_keys(observer, {"ebpf"}, "observer");
         if (observer["ebpf"]) {
             const auto ebpf = observer["ebpf"];
-            require_map_keys(ebpf,
-                             {"enabled", "collect_sched", "collect_cgroup",
-                              "collect_migration", "collect_psi"},
-                             "observer.ebpf");
-            for (const auto &key : {"enabled", "collect_sched", "collect_cgroup",
-                                    "collect_migration", "collect_psi"}) {
-                if (ebpf[key]) {
-                    (void)yaml_bool_value(ebpf[key],
-                                          std::string("observer.ebpf.") + key);
-                }
-            }
+            require_map_keys(ebpf, {}, "observer.ebpf");
         }
     }
     if (root["scheduler"]) {
         const auto scheduler = root["scheduler"];
-        require_map_keys(scheduler,
-                         {"type", "name", "binary", "default_profile",
-                          "enable_rollback"},
-                         "scheduler");
+        require_map_keys(scheduler, {"type", "binary"}, "scheduler");
         if (scheduler["type"] && !config.backend_cli_set) {
             apply_backend_from_yaml(config, scheduler["type"].as<std::string>());
         }
         if (scheduler["binary"]) {
             config.scheduler_binary_path = scheduler["binary"].as<std::string>();
             config.scheduler_binary_source = "yaml:scheduler.binary";
-        }
-        if (scheduler["enable_rollback"]) {
-            (void)yaml_bool_value(scheduler["enable_rollback"],
-                                  "scheduler.enable_rollback");
         }
     }
     if (root["exporter"]) {
@@ -198,7 +180,9 @@ void apply_agent_yaml_config(eulerpilot::RuntimeConfig &config) {
 }
 
 void print_status_json(const std::vector<eulerpilot::SkillSnapshot> &snapshots) {
-    std::cout << "{\"skills\":[";
+    std::cout << "{\"cpuset_control\":\"disabled\","
+              << "\"cpuset_reason\":\"release-safe-default-cpu-weight-cpu-max\","
+              << "\"skills\":[";
     for (std::size_t i = 0; i < snapshots.size(); ++i) {
         const auto &snapshot = snapshots[i];
         if (i > 0) {
@@ -281,7 +265,7 @@ void print_status_text(const std::vector<eulerpilot::SkillSnapshot> &snapshots) 
 
 void print_banner(const eulerpilot::RuntimeConfig &config, const eulerpilot::EnvironmentStatus &env) {
     std::cout << "\n"
-              << clr::cyan_() << clr::b() << "  * EulerPilot Agent " << clr::r() << "\n"
+              << clr::cyan_() << clr::b() << "  * " << config.agent_name << " Agent " << clr::r() << "\n"
               << clr::dim_() << "  " << bar() << clr::r() << "\n";
 
     auto tick = [](bool ok) -> const char* {

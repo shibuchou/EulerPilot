@@ -31,10 +31,15 @@ function notFound(res) {
   json(res, 404, { error: 'not_found' });
 }
 
-function isAuthorized(req, config) {
+function isAuthorized(req, config, url) {
   if (!config.requiresToken) return true;
   const header = req.headers.authorization || '';
-  return header === `Bearer ${config.token}`;
+  if (header === `Bearer ${config.token}`) return true;
+  if (req.method === 'GET') {
+    const queryToken = url.searchParams.get('token') || url.searchParams.get('access_token') || '';
+    return queryToken === config.token;
+  }
+  return false;
 }
 
 function hasBearerToken(req, config) {
@@ -132,6 +137,13 @@ function originAllowed(req, config) {
   if (!origin) return true;
   try {
     const parsed = new URL(origin);
+    const originHost = parsed.hostname.toLowerCase();
+    const bindHost = String(config.host || '').toLowerCase();
+    const loopbackHosts = new Set(['127.0.0.1', 'localhost', '::1', '[::1]']);
+    const consoleIsLoopback = loopbackHosts.has(bindHost);
+    if (consoleIsLoopback && parsed.protocol === 'http:' && loopbackHosts.has(originHost)) {
+      return true;
+    }
     const allowed = new Set([
       `http://${config.host}:${config.port}`,
       `http://127.0.0.1:${config.port}`,
@@ -233,7 +245,7 @@ function serveStatic(req, res, config, url) {
 }
 
 async function routeApi(req, res, config, actions, jobs, url) {
-  if (!isAuthorized(req, config)) {
+  if (!isAuthorized(req, config, url)) {
     json(res, 401, { error: 'unauthorized' });
     return;
   }

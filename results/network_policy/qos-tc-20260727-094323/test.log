@@ -1,0 +1,3 @@
+=== NetworkQos TC integration test ===
+PASS: network_qos skill is registered
+PASS: lab veth baseline connectivity works

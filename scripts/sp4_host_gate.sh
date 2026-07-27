@@ -21,7 +21,7 @@ if [[ -d /sys/kernel/sched_ext ]]; then ok "sched_ext sysfs available"; else ech
 if command -v scx_eulerpilot >/dev/null 2>&1 || [[ -x /usr/local/bin/scx_eulerpilot ]]; then ok "scx_eulerpilot binary discoverable"; else echo "scx_eulerpilot not found" >"$TMPLOG"; not_ok "scx binary"; fi
 if run_silent make agent observer network-policy network-qos-tc network-xdp security-policy; then ok "agent observer and BPF objects build"; else not_ok "build"; fi
 if run_silent ./build/eulerpilot-agent --doctor-safe --config configs/agent.yaml; then ok "safe doctor"; else not_ok "safe doctor"; fi
-if EULERPILOT_GATE_SMOKE_ROUNDS="${EULERPILOT_GATE_SMOKE_ROUNDS:-1}" EULERPILOT_GATE_DOCTOR_ROUNDS="${EULERPILOT_GATE_DOCTOR_ROUNDS:-1}" scripts/final_quality_gate.sh >"$TMPLOG" 2>&1; then ok "final quality gate reduced/full by env"; else not_ok "final quality gate"; fi
+if EULERPILOT_GATE_SMOKE_ROUNDS="${EULERPILOT_GATE_SMOKE_ROUNDS:-1}" EULERPILOT_GATE_DOCTOR_ROUNDS="${EULERPILOT_GATE_DOCTOR_ROUNDS:-1}" bash scripts/final_quality_gate.sh >"$TMPLOG" 2>&1; then ok "final quality gate reduced/full by env"; else not_ok "final quality gate"; fi
 if ! ip link show ep-veth-qos0 >/dev/null 2>&1 && ! ip link show ep-veth-xdp0 >/dev/null 2>&1; then ok "no lab netdev residue"; else echo "lab netdev residue" >"$TMPLOG"; not_ok "residue check"; fi
 
 echo "sp4_host_gate=complete"

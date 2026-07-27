@@ -1,0 +1,1 @@
+tests/integration/test_security_policy.sh: /tmp/eulerpilot-security-policy.gZIv5T/dynamic-deny-exec.sh: /usr/bin/env: bad interpreter: Operation not permitted

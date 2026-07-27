@@ -29,7 +29,11 @@ STAT_NAMES = {
     20: "starvation_guard",
     21: "bg_consumed_slice_total",
     22: "direct_local_latency",
+    23: "direct_local_batch",
+    24: "direct_local_background",
 }
+
+COUNTER_SCHEMA_VERSION = 2
 
 
 def dump_stats() -> dict[str, int]:
@@ -92,9 +96,27 @@ def main() -> int:
     output = Path(sys.argv[1])
     current = dump_stats()
 
+    current["__counter_schema_version"] = COUNTER_SCHEMA_VERSION
+
     if len(sys.argv) == 3:
         baseline = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
-        delta = {k: current.get(k, 0) - baseline.get(k, 0) for k in STAT_NAMES.values()}
+        delta: dict[str, int | bool | str] = {
+            "__counter_schema_version": COUNTER_SCHEMA_VERSION,
+            "__counter_delta_valid": True,
+            "__counter_delta_invalid_reason": "",
+        }
+        invalid_reasons: list[str] = []
+        for key in STAT_NAMES.values():
+            current_value = int(current.get(key, 0))
+            baseline_value = int(baseline.get(key, 0))
+            if current_value < baseline_value:
+                delta[key] = 0
+                invalid_reasons.append(f"{key}:counter-reset")
+            else:
+                delta[key] = current_value - baseline_value
+        if invalid_reasons:
+            delta["__counter_delta_valid"] = False
+            delta["__counter_delta_invalid_reason"] = ",".join(invalid_reasons)
         output.write_text(json.dumps(delta, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     else:
         output.write_text(json.dumps(current, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")

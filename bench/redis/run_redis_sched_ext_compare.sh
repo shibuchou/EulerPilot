@@ -17,6 +17,11 @@ SNAPSHOT_DELAY="${SNAPSHOT_DELAY:-0.2}"
 PSI_PROBE_CLIENTS="${PSI_PROBE_CLIENTS:-64}"
 PSI_PROBE_REQUESTS="${PSI_PROBE_REQUESTS:-30000}"
 PSI_PROBE_TESTS="${PSI_PROBE_TESTS:-set,get,incr}"
+RUN_RANDOM_SEED="${RUN_RANDOM_SEED:-$STAMP}"
+BENCH_CGROUP_ROOT="${BENCH_CGROUP_ROOT:-/sys/fs/cgroup/eulerpilot-bench}"
+BENCH_RUN_ID="$(basename "$OUTDIR")"
+BENCH_RUN_CGROUP_ROOT="$BENCH_CGROUP_ROOT/$BENCH_RUN_ID"
+export RUN_RANDOM_SEED BENCH_RUN_CGROUP_ROOT
 
 LABELS=(
     "quiet_default"
@@ -42,14 +47,11 @@ declare -A LABEL_TITLES=(
     ["noisy_scx_psi"]="Redis + stress-ng，sched_ext psi"
 )
 
-RUN_ORDERS=(
-    "quiet_default quiet_scx_normal noisy_default noisy_cgroup_v2 noisy_scx_normal noisy_scx_always_active noisy_scx_psi"
-    "noisy_scx_psi quiet_default quiet_scx_normal noisy_default noisy_cgroup_v2 noisy_scx_normal noisy_scx_always_active"
-    "noisy_scx_always_active noisy_scx_psi quiet_default quiet_scx_normal noisy_default noisy_cgroup_v2 noisy_scx_normal"
-)
-
 mkdir -p "$OUTDIR"
 OUTDIR="$(cd "$OUTDIR" && pwd)"
+BENCH_RUN_ID="$(basename "$OUTDIR")"
+BENCH_RUN_CGROUP_ROOT="$BENCH_CGROUP_ROOT/$BENCH_RUN_ID"
+export RUN_RANDOM_SEED BENCH_RUN_CGROUP_ROOT
 
 cleanup() {
     [ -n "${STRESS_PID:-}" ] && kill "$STRESS_PID" 2>/dev/null || true
@@ -57,8 +59,95 @@ cleanup() {
     [ -n "${REDIS_PID:-}" ] && kill "$REDIS_PID" 2>/dev/null || true
     pkill -f 'redis-benchmark' 2>/dev/null || true
     "$ROOT/scripts/rollback.sh" >/dev/null 2>&1 || true
+    if [[ "$BENCH_RUN_CGROUP_ROOT" == "$BENCH_CGROUP_ROOT"/* ]]; then
+        find "$BENCH_RUN_CGROUP_ROOT" -depth -type d -exec rmdir {} \; 2>/dev/null || true
+    fi
 }
 trap cleanup EXIT
+
+write_run_orders() {
+    python3 - "$OUTDIR/planned_run_orders.txt" "$RUNS" "$RUN_RANDOM_SEED" "${LABELS[@]}" <<'PY'
+import random
+import sys
+from pathlib import Path
+
+out = Path(sys.argv[1])
+runs = int(sys.argv[2])
+seed = sys.argv[3]
+labels = sys.argv[4:]
+rng = random.Random(seed)
+
+lines = []
+for run in range(1, runs + 1):
+    order = labels[:]
+    rng.shuffle(order)
+    lines.append(f"run-{run} " + " ".join(order))
+out.write_text("\n".join(lines) + "\n", encoding="utf-8")
+PY
+}
+
+run_order_for_index() {
+    local run_index="$1"
+    awk -v key="run-$run_index" '$1 == key { for (i=2; i<=NF; i++) printf "%s%s", $i, (i<NF ? " " : "\n") }' \
+        "$OUTDIR/planned_run_orders.txt"
+}
+
+sanitize_cgroup_component() {
+    printf '%s' "$1" | sed 's/[^A-Za-z0-9_.-]/_/g'
+}
+
+write_default_bench_cgroup_values() {
+    local dir="$1"
+    [ -w "$dir/cpu.weight" ] && echo 100 > "$dir/cpu.weight"
+    [ -w "$dir/cpu.max" ] && echo max > "$dir/cpu.max"
+    return 0
+}
+
+snapshot_cgroup_state() {
+    local dir="$1"
+    local out="$2"
+    {
+        printf 'path=%s\n' "$dir"
+        for file in cpu.weight cpu.max cpuset.cpus cpuset.cpus.effective cpuset.mems.effective cgroup.procs; do
+            if [ -r "$dir/$file" ]; then
+                printf '%s=' "$file"
+                tr '\n' ' ' < "$dir/$file"
+                printf '\n'
+            else
+                printf '%s=unavailable\n' "$file"
+            fi
+        done
+    } > "$out"
+}
+
+prepare_bench_cgroups() {
+    local rundir="$1"
+    local label="$2"
+    local run_name label_name group_root fg bg
+    run_name="$(sanitize_cgroup_component "$(basename "$rundir")")"
+    label_name="$(sanitize_cgroup_component "$label")"
+    group_root="$BENCH_RUN_CGROUP_ROOT/$run_name/$label_name"
+    fg="$group_root/foreground"
+    bg="$group_root/background"
+
+    mkdir -p "$fg" "$bg"
+    write_default_bench_cgroup_values "$fg"
+    write_default_bench_cgroup_values "$bg"
+    if [ -n "${REDIS_PID:-}" ] && [ -d "/proc/$REDIS_PID" ]; then
+        echo "$REDIS_PID" > "$fg/cgroup.procs" 2>/dev/null || true
+    fi
+    snapshot_cgroup_state "$fg" "$rundir/${label}_foreground_cgroup_pre.env"
+    snapshot_cgroup_state "$bg" "$rundir/${label}_background_cgroup_pre.env"
+    CASE_FOREGROUND_CGROUP="$fg"
+    CASE_BACKGROUND_CGROUP="$bg"
+}
+
+finish_bench_cgroup_snapshots() {
+    local rundir="$1"
+    local label="$2"
+    [ -n "${CASE_FOREGROUND_CGROUP:-}" ] && snapshot_cgroup_state "$CASE_FOREGROUND_CGROUP" "$rundir/${label}_foreground_cgroup_post.env"
+    [ -n "${CASE_BACKGROUND_CGROUP:-}" ] && snapshot_cgroup_state "$CASE_BACKGROUND_CGROUP" "$rundir/${label}_background_cgroup_post.env"
+}
 
 start_psi_redis_probe() {
     local rundir="$1"
@@ -88,11 +177,19 @@ stop_psi_redis_probe() {
 start_stress() {
     local rundir="$1"
     local label="$2"
+    local cgroup_path="${3:-}"
     if [ "$STRESS_WORKERS" -le 0 ]; then
         printf 'stress_skipped_workers=0\n' > "$rundir/${label}_stress.log"
         return 0
     fi
-    stress-ng --cpu "$STRESS_WORKERS" --timeout 20s > "$rundir/${label}_stress.log" 2>&1 &
+    if [ -n "$cgroup_path" ]; then
+        (
+            echo "$BASHPID" > "$cgroup_path/cgroup.procs" 2>> "$rundir/${label}_stress.log" || exit 1
+            exec stress-ng --cpu "$STRESS_WORKERS" --timeout 20s
+        ) > "$rundir/${label}_stress.log" 2>&1 &
+    else
+        stress-ng --cpu "$STRESS_WORKERS" --timeout 20s > "$rundir/${label}_stress.log" 2>&1 &
+    fi
     STRESS_PID=$!
     sleep 1
 }
@@ -254,12 +351,6 @@ assert_sched_ext_state() {
     return 0
 }
 
-run_order_for_index() {
-    local run_index="$1"
-    local idx=$(( (run_index - 1) % ${#RUN_ORDERS[@]} ))
-    printf '%s\n' "${RUN_ORDERS[$idx]}"
-}
-
 filter_run_order() {
     local order="$1"
     local result=()
@@ -282,6 +373,7 @@ run_case() {
     rm -f /tmp/eulerpilot-psi-gate-trace.jsonl /tmp/eulerpilot-scx-session.log /tmp/eulerpilot-scx.log
     "$ROOT/scripts/rollback.sh" > "$rundir/${label}_rollback_before.log" 2>&1 || true
     sleep 1
+    prepare_bench_cgroups "$rundir" "$label"
 
     case "$label" in
         quiet_default)
@@ -295,14 +387,14 @@ run_case() {
             assert_sched_ext_state "disabled"
             ;;
         noisy_default)
-            start_stress "$rundir" "$label"
+            start_stress "$rundir" "$label" "$CASE_BACKGROUND_CGROUP"
             assert_sched_ext_state "disabled"
             run_benchmark_with_snapshot "$rundir" "$label" "" 2 0 cgroup_v2
             stop_stress
             ;;
         noisy_cgroup_v2)
             "$ROOT/scripts/setup_cgroup_v2.sh" > "$rundir/${label}_setup.log" 2>&1 || true
-            start_stress "$rundir" "$label"
+            start_stress "$rundir" "$label" "$CASE_BACKGROUND_CGROUP"
             assert_sched_ext_state "disabled"
             run_benchmark_with_snapshot "$rundir" "$label" --active 6 2 cgroup_v2
             stop_stress
@@ -314,7 +406,7 @@ run_case() {
             elif [ "$label" = "noisy_scx_psi" ]; then
                 gate_mode="psi"
             fi
-            start_stress "$rundir" "$label"
+            start_stress "$rundir" "$label" "$CASE_BACKGROUND_CGROUP"
             assert_sched_ext_state "disabled"
             if [ "$label" = "noisy_scx_psi" ]; then
                 start_psi_redis_probe "$rundir" "$label"
@@ -343,6 +435,7 @@ run_case() {
             ;;
     esac
 
+    finish_bench_cgroup_snapshots "$rundir" "$label"
     write_group_snapshot "$rundir" "$label"
     if ! validate_case_output "$rundir" "$label"; then
         mark_invalid_run "$rundir" "$label" "validation-failed"
@@ -366,6 +459,7 @@ REDIS_PID=$!
 sleep 2
 
 printf '[INFO] Redis sched_ext compare output: %s\n' "$OUTDIR"
+write_run_orders
 
 declare -A SUMMARY_PATHS
 for run in $(seq 1 "$RUNS"); do
@@ -417,6 +511,29 @@ manifest = {
     "sched_ext_switch_mode": "full",
     "labels": labels,
     "label_titles": label_titles,
+    "randomization": {
+        "scheme": "randomized_complete_block",
+        "seed": os.environ.get("RUN_RANDOM_SEED", ""),
+        "planned_run_orders_file": str(result_dir / "planned_run_orders.txt")
+    },
+    "benchmark_cgroup_baseline": {
+        "root": os.environ.get("BENCH_RUN_CGROUP_ROOT", ""),
+        "default_noisy_weight": 100,
+        "default_noisy_cpu_max": "max",
+        "cpuset_control": "disabled"
+    },
+    "formal_artifact": {
+        "tested_code_commit": os.environ.get("EULERPILOT_TESTED_CODE_COMMIT", ""),
+        "artifact_id": os.environ.get("EULERPILOT_ARTIFACT_ID", ""),
+        "build_attempt_id": os.environ.get("EULERPILOT_BUILD_ATTEMPT_ID", ""),
+        "build_manifest_sha256": os.environ.get("EULERPILOT_BUILD_MANIFEST_SHA256", ""),
+        "artifact_manifest": os.environ.get("EULERPILOT_ARTIFACT_MANIFEST", ""),
+        "artifact_dir": os.environ.get("EULERPILOT_ARTIFACT_DIR", ""),
+        "agent_binary_sha256": os.environ.get("EULERPILOT_AGENT_SHA256", ""),
+        "scx_binary_sha256": os.environ.get("EULERPILOT_SCX_SHA256", ""),
+        "observer_bpf_sha256": os.environ.get("EULERPILOT_OBSERVER_BPF_SHA256", ""),
+        "scx_bpf_sha256": os.environ.get("EULERPILOT_SCX_BPF_SHA256", ""),
+    },
     "summary_paths": {},
     "run_orders": {},
 }
@@ -458,11 +575,16 @@ cat > "$OUTDIR/summary.md" <<EOF
 - \`run-*/<label>_scx_stats.json\`
 - \`run-*/<label>_gate_status.txt\`
 - \`run-*/run_order.txt\`
+- \`planned_run_orders.txt\`
+- \`run-*/<label>_foreground_cgroup_pre.env\` / \`post.env\`
+- \`run-*/<label>_background_cgroup_pre.env\` / \`post.env\`
 - \`run-*/<label>_invalid_reason.txt\`（仅在该组失效时出现）
 
 口径说明：
 
 - \`cpu_per_10k_requests\` 来自同窗口全系统 \`/proc/stat\`，对应 env 字段为 \`cpu_metric_scope=system_proc_stat\`，只作为辅助效率指标，不作为目标 cgroup CPU 消耗结论。
+- \`noisy_default\` 使用 \`/sys/fs/cgroup/eulerpilot-bench/<run-id>\` 下的临时前台/后台对等 cgroup，前后台均保持 \`cpu.weight=100\`、\`cpu.max=max\`，不启用 EulerPilot policy，不再使用 \`/sys/fs/cgroup/eulerpilot/background\` 作为默认基线。
+- 执行顺序使用 randomized complete block，随机种子写入 \`run_manifest.json\`，实际顺序写入每轮 \`run_order.txt\`。
 - \`noisy_scx_psi\` 会额外运行 Redis PSI probe 以稳定触发 PSI gate，适合作为门控/调度路径证据；净性能对比应优先看无额外 probe 的 default/cgroup/scx-normal 组。
 EOF
 

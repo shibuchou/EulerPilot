@@ -6,6 +6,7 @@ LATENCY_WEIGHT="${LATENCY_WEIGHT:-1000}"
 BATCH_WEIGHT="${BATCH_WEIGHT:-100}"
 BACKGROUND_WEIGHT="${BACKGROUND_WEIGHT:-20}"
 IO_WEIGHT="${IO_WEIGHT:-100}"
+ENABLE_CPUSET="${EULERPILOT_ENABLE_CPUSET:-0}"
 
 info() { printf '[INFO] %s\n' "$*"; }
 fail() { printf '[FAIL] %s\n' "$*" >&2; exit 1; }
@@ -142,28 +143,36 @@ fi
 # Enable controllers for children when supported. Memory is required by the
 # Resource Control closed loop; failures are tolerated so doctor/test can give
 # a clearer environment-specific error.
-for controller in cpu cpuset memory io; do
+CONTROLLERS="cpu memory io"
+if [ "$ENABLE_CPUSET" = "1" ]; then
+    CONTROLLERS="$CONTROLLERS cpuset"
+fi
+for controller in $CONTROLLERS; do
     enable_controller /sys/fs/cgroup/cgroup.subtree_control "$controller"
     enable_controller "$ROOT/cgroup.subtree_control" "$controller"
 done
 
 IO_DEVICE="${IO_DEVICE:-$(detect_root_io_device)}"
-CPUSET_CPUS="${CPUSET_CPUS:-$(detect_effective_value cpuset.cpus "$(nproc --all 2>/dev/null | awk '{ if ($1 > 1) print "0-" $1 - 1; else print "0" }')")}"
-CPUSET_MEMS="${CPUSET_MEMS:-$(detect_effective_value cpuset.mems 0)}"
-eval "$(compute_dynamic_cpusets "$CPUSET_CPUS")"
-LATENCY_CPUSET="${LATENCY_CPUSET:-$DYNAMIC_LATENCY_CPUSET}"
-BATCH_CPUSET="${BATCH_CPUSET:-$DYNAMIC_BATCH_CPUSET}"
-BACKGROUND_CPUSET="${BACKGROUND_CPUSET:-$DYNAMIC_BACKGROUND_CPUSET}"
+if [ "$ENABLE_CPUSET" = "1" ]; then
+    CPUSET_CPUS="${CPUSET_CPUS:-$(detect_effective_value cpuset.cpus "$(nproc --all 2>/dev/null | awk '{ if ($1 > 1) print "0-" $1 - 1; else print "0" }')")}"
+    CPUSET_MEMS="${CPUSET_MEMS:-$(detect_effective_value cpuset.mems 0)}"
+    eval "$(compute_dynamic_cpusets "$CPUSET_CPUS")"
+    LATENCY_CPUSET="${LATENCY_CPUSET:-$DYNAMIC_LATENCY_CPUSET}"
+    BATCH_CPUSET="${BATCH_CPUSET:-$DYNAMIC_BATCH_CPUSET}"
+    BACKGROUND_CPUSET="${BACKGROUND_CPUSET:-$DYNAMIC_BACKGROUND_CPUSET}"
 
-write_cgroup_value_or_fallback "$ROOT/cpuset.mems" "$CPUSET_MEMS" 0
-write_cgroup_value_or_fallback "$ROOT/cpuset.cpus" "$CPUSET_CPUS" "$CPUSET_CPUS"
-write_cgroup_value_or_fallback "$ROOT/latency/cpuset.mems" "$CPUSET_MEMS" 0
-write_cgroup_value_or_fallback "$ROOT/batch/cpuset.mems" "$CPUSET_MEMS" 0
-write_cgroup_value_or_fallback "$ROOT/background/cpuset.mems" "$CPUSET_MEMS" 0
+    write_cgroup_value_or_fallback "$ROOT/cpuset.mems" "$CPUSET_MEMS" 0
+    write_cgroup_value_or_fallback "$ROOT/cpuset.cpus" "$CPUSET_CPUS" "$CPUSET_CPUS"
+    write_cgroup_value_or_fallback "$ROOT/latency/cpuset.mems" "$CPUSET_MEMS" 0
+    write_cgroup_value_or_fallback "$ROOT/batch/cpuset.mems" "$CPUSET_MEMS" 0
+    write_cgroup_value_or_fallback "$ROOT/background/cpuset.mems" "$CPUSET_MEMS" 0
 
-write_cgroup_value_or_fallback "$ROOT/latency/cpuset.cpus" "$LATENCY_CPUSET" "$CPUSET_CPUS"
-write_cgroup_value_or_fallback "$ROOT/batch/cpuset.cpus" "$BATCH_CPUSET" "$CPUSET_CPUS"
-write_cgroup_value_or_fallback "$ROOT/background/cpuset.cpus" "$BACKGROUND_CPUSET" "$CPUSET_CPUS"
+    write_cgroup_value_or_fallback "$ROOT/latency/cpuset.cpus" "$LATENCY_CPUSET" "$CPUSET_CPUS"
+    write_cgroup_value_or_fallback "$ROOT/batch/cpuset.cpus" "$BATCH_CPUSET" "$CPUSET_CPUS"
+    write_cgroup_value_or_fallback "$ROOT/background/cpuset.cpus" "$BACKGROUND_CPUSET" "$CPUSET_CPUS"
+else
+    CPUSET_DEGRADED=0
+fi
 
 echo "$LATENCY_WEIGHT" > "$ROOT/latency/cpu.weight"
 echo "$BATCH_WEIGHT" > "$ROOT/batch/cpu.weight"
@@ -187,9 +196,14 @@ info "  batch/cpu.weight=$BATCH_WEIGHT"
 info "  background/cpu.weight=$BACKGROUND_WEIGHT"
 info '  memory controller requested for latency/batch/background'
 info "  io controller requested for latency/batch/background, io.device=${IO_DEVICE:-unknown}"
-info "  latency/cpuset.cpus=$(cat "$ROOT/latency/cpuset.cpus" 2>/dev/null || true)"
-info "  batch/cpuset.cpus=$(cat "$ROOT/batch/cpuset.cpus" 2>/dev/null || true)"
-info "  background/cpuset.cpus=$(cat "$ROOT/background/cpuset.cpus" 2>/dev/null || true)"
-if [ "${CPUSET_DEGRADED:-0}" = "1" ]; then
-    info '  cpuset split degraded: using full effective CPU set for one or more groups'
+if [ "$ENABLE_CPUSET" = "1" ]; then
+    info "  cpuset_control=enabled"
+    info "  latency/cpuset.cpus=$(cat "$ROOT/latency/cpuset.cpus" 2>/dev/null || true)"
+    info "  batch/cpuset.cpus=$(cat "$ROOT/batch/cpuset.cpus" 2>/dev/null || true)"
+    info "  background/cpuset.cpus=$(cat "$ROOT/background/cpuset.cpus" 2>/dev/null || true)"
+    if [ "${CPUSET_DEGRADED:-0}" = "1" ]; then
+        info '  cpuset split degraded: using full effective CPU set for one or more groups'
+    fi
+else
+    info '  cpuset_control=disabled (release default; set EULERPILOT_ENABLE_CPUSET=1 for experimental cpuset split)'
 fi

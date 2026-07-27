@@ -1,0 +1,130 @@
+schema_version: 2
+skills:
+- name: resource_control
+  kind: runtime
+  enabled: true
+  config:
+    mode: audit
+    controllers:
+      cpu:
+        max:
+          enabled: true
+      memory:
+        enabled: true
+        high:
+          enabled: true
+        low:
+          enabled: true
+        max:
+          enabled: true
+        reclaim:
+          enabled: false
+      io:
+        enabled: false
+        weight:
+          enabled: false
+        max:
+          enabled: false
+- name: network_qos
+  kind: runtime
+  enabled: true
+  config:
+    mode: audit
+    targets:
+      lab_netdev:
+        type: netdev
+        ifname: ep-veth-pe0
+    rules:
+      - name: policy_engine_lab_qos_guard
+        hook: tc_egress
+        target_ref: lab_netdev
+        protocol: any
+        dst_port: '0'
+        rate: 2mbit
+        burst: 32kb
+        latency: 50ms
+        action: limit
+- name: security_policy
+  kind: runtime
+  enabled: true
+  config:
+    mode: audit
+    targets:
+      demo_secret:
+        type: path
+        path: /sys/fs/cgroup/eulerpilot/demo/security_policy_demo/secret.txt
+        exec_path: /sys/fs/cgroup/eulerpilot/demo/security_policy_demo/deny_exec.sh
+      lab_connect:
+        type: path
+        dst_ip: 127.0.0.1
+        dst_port: '65000'
+    rules:
+      - name: observe_demo_secret_open
+        hook: lsm_file_open
+        target_ref: demo_secret
+        action: deny
+      - name: observe_lab_connect
+        hook: lsm_socket_connect
+        target_ref: lab_connect
+        action: deny
+    anomaly_rules:
+      - name: burst_connect
+        type: rate
+        syscall: connect
+        threshold: 3
+        window_ms: 1000
+        severity: high
+      - name: burst_openat_sensitive
+        type: rate
+        syscall: openat
+        path_prefix: /etc
+        threshold: 3
+        window_ms: 1000
+        severity: medium
+      - name: capability_abuse
+        type: rate
+        syscall: capability
+        threshold: 3
+        window_ms: 1000
+        severity: high
+- name: policy_engine
+  kind: runtime
+  enabled: true
+  config:
+    mode: enforce
+    policy_id: security_network_resource_response
+    source:
+      audit_path: reports/events/security_policy.jsonl
+    watch:
+      skill: security_policy
+      operation: anomaly
+      rule_id: burst_connect
+      result: observed
+    dependencies:
+      security_policy: true
+      resource_control: true
+      network_qos: true
+    guards:
+      memory_high: true
+    targets:
+      demo_cgroup:
+        type: cgroup
+        path: /sys/fs/cgroup/eulerpilot/policy-engine-v3-resource
+      lab_netdev:
+        type: netdev
+        ifname: ep-veth-pe0
+    actions:
+      - name: throttle_demo_cgroup_cpu
+        target_ref: demo_cgroup
+        file: cpu.max
+        value: '20000 100000'
+      - name: cap_demo_cgroup_memory
+        target_ref: demo_cgroup
+        file: memory.high
+        value: '134217728'
+      - name: limit_lab_netdev
+        target_ref: lab_netdev
+        file: network_qos.rate
+        value: 2mbit
+        burst: 32kb
+        latency: 50ms

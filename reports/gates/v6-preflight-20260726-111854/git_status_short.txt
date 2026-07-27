@@ -1,0 +1,91 @@
+ M .github/workflows/ci.yml
+ M README.md
+ M agent/include/eulerpilot.hpp
+ M agent/include/psi_gate.hpp
+ M agent/skills/cgroup_control/README.md
+ M agent/src/builtin_skills/common.hpp
+ M agent/src/builtin_skills/network_policy.cpp
+ M agent/src/builtin_skills/policy_engine.cpp
+ M agent/src/builtin_skills/resource_control.cpp
+ M agent/src/builtin_skills/security_policy.cpp
+ M agent/src/executors.cpp
+ M agent/src/main.cpp
+ M agent/src/psi_gate.cpp
+ M bench/mixed/run_mixed_adaptive_closure.sh
+ M bench/nginx/run_nginx_sched_ext_compare.sh
+ M bench/nginx/run_nginx_sched_ext_smoke.sh
+ M bench/psi/run_gate_mode_smoke.sh
+ M bench/psi/run_loader_wiring_smoke.sh
+ M bench/psi/run_psi_agent_smoke.sh
+ M bench/redis/run_redis_sched_ext_compare.sh
+ M bench/redis/run_redis_sched_ext_smoke.sh
+ M bench/redis/run_static_vs_agent_compare.sh
+ M bench/throughput/run_throughput_first_benchmark.sh
+ M bpf/security_policy.bpf.c
+ M configs/agent-metrics.yaml
+ M configs/agent.yaml
+ M configs/final_evidence_manifest.json
+ M configs/policy_engine_security_network_resource.yaml
+ M docs/README.md
+ M docs/architecture.md
+ M docs/defense_final.md
+ M docs/defense_qa.md
+ M docs/defense_slides_outline.md
+ M docs/defense_summary.md
+ M docs/delivery_package_index.md
+ M docs/demo_final_runbook.md
+ M docs/demo_video_recording_script.md
+ M docs/final_delivery_status.md
+ M docs/final_evidence_index.md
+ M docs/final_quality_gate.md
+ M docs/final_report_submission.md
+ M docs/final_results_summary.md
+ M docs/final_security_audit.md
+ M docs/final_submission_guide.md
+ M docs/final_submission_packet.md
+ M docs/final_submission_readme.md
+ M docs/final_talk_script.md
+ M docs/one_page_summary.md
+ M docs/progress_status.md
+ M docs/project_brief.md
+ M docs/release_process.md
+ M docs/resource_control_skill.md
+ M docs/sp4_validation_plan.md
+ M docs/stage_g_benchmark_freeze.md
+ M docs/submission_checklist.md
+ M reports/final_evidence_compact.json
+ M reports/final_evidence_compact.md
+ M sched/README.md
+ M sched/scx_eulerpilot.bpf.c
+ M sched/scx_eulerpilot.c
+ M scripts/README.md
+ M scripts/build_scx_eulerpilot.sh
+ M scripts/collect_final_evidence.py
+ M scripts/collect_scx_stats.py
+ M scripts/create_release_bundle.py
+ M scripts/final_quality_gate.sh
+ M scripts/rollback.sh
+ M scripts/setup_cgroup_v2.sh
+ M scripts/verify_release_bundle.py
+ M submission/build_and_run.md
+ M submission/evidence_summary.md
+ M submission/submission_manifest.md
+ M tests/integration/test_config_validation.sh
+ M web_console/backend/test/jobs.test.js
+?? evidence/
+?? reports/gates/
+?? reports/v6_candidate_file_manifest_20260726.md
+?? reports/v6_candidate_worktree_status_20260726.md
+?? reports/v6_dirty_worktree_intake_20260726.md
+?? reports/v6_preflight_status_20260726.md
+?? scripts/build_formal_artifact.py
+?? scripts/formal_artifact_gate.py
+?? scripts/prepare_v6_candidate_worktree.sh
+?? scripts/v6_preflight_readiness.sh
+?? tests/integration/test_benchmark_release_semantics.sh
+?? tests/integration/test_evidence_validation_fixtures.sh
+?? tests/integration/test_network_policy_cgroup_ownership.sh
+?? tests/integration/test_policy_engine_transaction_model.sh
+?? tests/integration/test_resource_control_rollback_model.sh
+?? tests/integration/test_scx_loader_ownership.sh
+?? tests/integration/test_security_policy_fail_closed.sh

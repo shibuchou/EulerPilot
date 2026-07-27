@@ -1,6 +1,6 @@
 # 项目概述
 
-更新时间：`2026-07-24`
+更新时间：`2026-07-26`
 
 ## 比赛目标
 
@@ -22,7 +22,7 @@ eBPF/PSI 观测
 
 | 环境 | 当前角色 |
 |------|----------|
-| `192.168.1.123:/root/EulerPilot` | SP4 核心验证和最终交付验证仓库 |
+| `192.168.1.123:/root/EulerPilot-closeout` | SP4 核心验证、v6 收口、Candidate Gate 与 formal artifact 准备仓库 |
 | `192.168.1.121:/root/EulerPilot` | SP3 强制兼容交付环境，验证发行环境构建、cgroup v2 主闭环、安全扩展 smoke、rollback、safe doctor 与 sched_ext graceful fallback |
 | `192.168.1.122:/root/EulerPilot` | SP3/OLK 对照验证，保留 sched_ext/scx 对照能力 |
 
@@ -48,12 +48,12 @@ sched_ext/scx 路径基于 SP4 官方源码自编译启用 CONFIG_SCHED_CLASS_EX
 
 ## 当前证据状态
 
-- `scripts/final_quality_gate.sh` 在 SP4 主验证线通过 `22/22 P0`、`100` 轮 Agent smoke、`5` 轮 doctor。
-- `python3 scripts/collect_final_evidence.py --strict` 通过，覆盖 `40` 条核心证据，缺失 `0`、警告 `0`。
-- SP4 Redis RUNS=10 frozen-code：`results/final/redis-scx-compare-20260724-tested-2541464-runs10`
-- SP4 Nginx RUNS=10 frozen-code：`results/final/nginx-scx-compare-20260724-tested-2541464-runs10`
-- SP4 Redis 压力梯度：`results/final/redis-pressure-gradient-20260708-153811`
-- SP4 Redis 静态 vs Agent 动态：`results/final/redis-static-vs-agent-20260724-tested-2541464-runs10`
+- `scripts/final_quality_gate.sh` 在 v6 缩短版 preflight 中通过 `29/29 P0`；正式 final gate 需在同一 candidate SHA 和 formal artifact 上重跑。
+- `python3 scripts/collect_final_evidence.py` 当前覆盖 `41` 条核心证据，缺失 `0`、预期警告 `8`；警告来自旧结果降级。
+- SP4 Redis RUNS=10 historical/provisional：`results/final/redis-scx-compare-20260724-tested-2541464-runs10`
+- SP4 Nginx RUNS=10 historical/provisional：`results/final/nginx-scx-compare-20260724-tested-2541464-runs10`
+- SP4 Redis 压力梯度 historical/provisional：`results/final/redis-pressure-gradient-20260724-tested-2541464-runs3`
+- SP4 Redis 静态 vs Agent 动态 historical/provisional：`results/final/redis-static-vs-agent-20260724-tested-2541464-runs10`
 - SP4/K8s/Web Console 旁路验证：`results/k8s/sp4-validation-20260708-023552`
 
 ## 需要先理解的设计边界

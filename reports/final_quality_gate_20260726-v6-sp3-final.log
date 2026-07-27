@@ -1,0 +1,14 @@
+start=2026-07-26T18:18:03+08:00
+1..10
+ok 1 - SP3 release marker or explicit compatibility dry-run override
+ok 2 - capability matrix generated
+ok 3 - agent and observer build
+ok 4 - network/security objects compile
+ok 5 - default config validates
+ok 6 - safe doctor no side effects
+ok 7 - config schema semantic checks
+ok 8 - cgroup main loop smoke
+ok 9 - sched_ext unavailable graceful status
+ok 10 - no lab netdev residue
+sp3_compatibility_gate=complete
+end=2026-07-26T18:18:03+08:00

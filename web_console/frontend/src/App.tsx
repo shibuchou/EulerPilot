@@ -106,6 +106,40 @@ function boolLabel(value: unknown) {
   return value === true ? '是' : value === false ? '否' : formatUnknown(value);
 }
 
+function recordValue(row: Record<string, unknown>, key: string): unknown {
+  return row[key];
+}
+
+function skillEvidence(row: Record<string, unknown>): Record<string, unknown> {
+  const evidence = recordValue(row, 'evidence');
+  return evidence && typeof evidence === 'object' && !Array.isArray(evidence)
+    ? evidence as Record<string, unknown>
+    : {};
+}
+
+function skillDiagnosticLabel(row: Record<string, unknown>): string {
+  const evidence = skillEvidence(row);
+  const reason = formatUnknown(evidence.reason);
+  const state = formatUnknown(recordValue(row, 'state'));
+  if (recordValue(row, 'running') === true) return '运行中';
+  if (recordValue(row, 'available') === true) return '可用';
+  if (reason === 'ok' || state === 'created') return '诊断就绪';
+  if (reason) return reason;
+  return state || '未知';
+}
+
+function skillDiagnosticTone(row: Record<string, unknown>): 'ok' | 'warn' | 'bad' {
+  const label = skillDiagnosticLabel(row).toLowerCase();
+  if (recordValue(row, 'running') === true || recordValue(row, 'available') === true || label === '诊断就绪') return 'ok';
+  if (label.includes('failed') || label.includes('missing') || label.includes('unavailable') || label.includes('error')) return 'bad';
+  return 'warn';
+}
+
+function skillReason(row: Record<string, unknown>): string {
+  const evidence = skillEvidence(row);
+  return formatUnknown(evidence.reason) || 'status 只读模式未执行 live probe';
+}
+
 function actionTitle(action: ConsoleAction) {
   return actionTitleZh[action.id] || action.title;
 }
@@ -210,8 +244,9 @@ export function App() {
     try {
       const { job } = await api.startAction(action.id, action.requires_confirm);
       setActiveJob(job);
+      setJobLog(job.log_tail || '');
       setJobs((current) => [job, ...current.filter((item) => item.job_id !== job.job_id)].slice(0, 50));
-      const source = new EventSource(`/api/jobs/${job.job_id}/stream`);
+      const source = new EventSource(api.jobStreamUrl(job.job_id));
       source.addEventListener('snapshot', (event) => {
         const data = JSON.parse((event as MessageEvent).data) as { job: Job; tail: string };
         setActiveJob(data.job);
@@ -231,10 +266,23 @@ export function App() {
       });
       source.onerror = () => {
         source.close();
+        void api.job(job.job_id).then(({ job: latest }) => {
+          setActiveJob(latest);
+          setJobLog(latest.log_tail || '');
+          void api.jobs().then((jobInfo) => setJobs(jobInfo.jobs));
+        }).catch((err) => {
+          setError(err instanceof Error ? err.message : String(err));
+        });
       };
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
+  }
+
+  function showJob(job: Job) {
+    setActiveJob(job);
+    setJobLog(job.log_tail || '');
+    setPage('evidence');
   }
 
   async function cancelActiveJob() {
@@ -299,6 +347,7 @@ export function App() {
             mutatingRunning={mutatingRunning}
             onRun={runAction}
             onCancel={cancelActiveJob}
+            onShowJob={showJob}
           />
         )}
       </main>
@@ -393,15 +442,20 @@ function SkillsPage({ status, skills, doctor, onRefreshAgent, onDoctor }: { stat
           <h2>状态 JSON</h2>
           <Braces size={18} />
         </div>
+        <p className="muted">
+          这里读取的是 <code>--status --json</code> 的只读快照：<code>created + reason=ok</code> 表示 Skill 已注册且配置诊断就绪；
+          “运行中”只有启动对应 live/lab Agent 后才会显示“是”。
+        </p>
         <table className="data-table">
-          <thead><tr><th>Skill</th><th>可用</th><th>运行中</th><th>状态</th></tr></thead>
+          <thead><tr><th>Skill</th><th>诊断状态</th><th>运行中</th><th>生命周期</th><th>原因</th></tr></thead>
           <tbody>
             {skillRows.map((row, index) => (
               <tr key={`${formatUnknown(row.name)}-${index}`}>
                 <td>{formatUnknown(row.name)}</td>
-                <td><StatusPill label={boolLabel(row.available)} tone={statusTone(Boolean(row.available))} /></td>
+                <td><StatusPill label={skillDiagnosticLabel(row)} tone={skillDiagnosticTone(row)} /></td>
                 <td><StatusPill label={boolLabel(row.running)} tone={statusTone(Boolean(row.running))} /></td>
                 <td>{formatUnknown(row.state)}</td>
+                <td>{skillReason(row)}</td>
               </tr>
             ))}
           </tbody>
@@ -495,7 +549,7 @@ function PolicyPage({ transactions }: { transactions: PolicyTransaction[] }) {
   );
 }
 
-function EvidenceDemoPage({ evidence, actions, jobs, activeJob, jobLog, mutatingRunning, onRun, onCancel }: {
+function EvidenceDemoPage({ evidence, actions, jobs, activeJob, jobLog, mutatingRunning, onRun, onCancel, onShowJob }: {
   evidence: EvidenceSummary | null;
   actions: ConsoleAction[];
   jobs: Job[];
@@ -504,6 +558,7 @@ function EvidenceDemoPage({ evidence, actions, jobs, activeJob, jobLog, mutating
   mutatingRunning: boolean;
   onRun: (action: ConsoleAction) => Promise<void>;
   onCancel: () => Promise<void>;
+  onShowJob: (job: Job) => void;
 }) {
   const actionMap = useMemo(() => new Map(actions.map((action) => [action.id, action])), [actions]);
   return (
@@ -575,7 +630,7 @@ function EvidenceDemoPage({ evidence, actions, jobs, activeJob, jobLog, mutating
                 <td>{kindLabelZh[job.kind]}</td>
                 <td><StatusPill label={jobStatusZh[job.status]} tone={statusTone(job.status)} /></td>
                 <td>{job.exit_code ?? '-'}</td>
-                <td>{job.log_file}</td>
+                <td><button className="inline-button" onClick={() => onShowJob(job)}>查看结果</button></td>
               </tr>
             ))}
           </tbody>

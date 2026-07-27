@@ -6,7 +6,8 @@
 
 - `resource_control` 是正式 Skill 名称；`cgroup_control` 作为目录名保留历史语义。
 - 已支持 `/sys/fs/cgroup/eulerpilot/{latency,batch,background}` 三组实验 cgroup。
-- 已支持 `cpu.weight`、`cpu.max`、`cpuset.cpus`、`cpuset.mems`。
+- 封版稳定路径支持 `cpu.weight`、`cpu.max`。
+- `cpuset.cpus`、`cpuset.mems` 保留为显式实验开关，默认关闭，不进入当前 release 的完整能力和性能主结论。
 - 已支持 `memory.high`、`memory.low`、`memory.max`。
 - 已支持 `io.weight`、`io.max`。
 - `memory.reclaim` 预留为 one-shot 动作，默认关闭。
@@ -26,7 +27,7 @@
 - `agent/src/executors.cpp`：cgroup v2 执行与事务化写入。
 - `agent/src/builtin_skills.cpp`：`resource_control` YAML 配置解析与 gate pressure 模式接入。
 - `configs/skills.yaml`：默认 CPU/Memory/IO 策略。
-- `scripts/setup_cgroup_v2.sh`：初始化 CPU/cpuset/memory/io controller 与实验 cgroup。
+- `scripts/setup_cgroup_v2.sh`：初始化 CPU/memory/io controller 与实验 cgroup；仅在 `EULERPILOT_ENABLE_CPUSET=1` 时启用实验性 cpuset 分组。
 - `scripts/rollback.sh`：恢复 CPU/Memory/IO 控制器默认值并清理实验 cgroup。
 - `tests/integration/test_resource_control.sh`：CPU+Memory 自动闭环集成测试。
 - `tests/integration/test_resource_control_io.sh`：IO controller 集成测试。

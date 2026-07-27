@@ -1,0 +1,9 @@
+result=pass
+case=success
+transaction_id=pe-v3-1-1-1785117736
+source_rule=burst_connect
+resource_cpu_max=20000 100000
+resource_memory_high=134217728
+network_qos_rate=2mbit
+old_cpu_max=max 100000
+old_memory_high=max

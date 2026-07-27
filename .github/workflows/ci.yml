@@ -20,8 +20,11 @@ jobs:
           sudo apt-get install -y \
             build-essential \
             clang \
+            clang-format \
             llvm \
             pkg-config \
+            shellcheck \
+            python3 \
             libbpf-dev \
             libelf-dev \
             zlib1g-dev \
@@ -60,8 +63,30 @@ jobs:
       - name: Run config schema semantic checks
         run: tests/integration/test_config_validation.sh
 
+      - name: Run benchmark release semantic checks
+        run: tests/integration/test_benchmark_release_semantics.sh
+
+      - name: Check C/C++ formatting
+        run: make format-check
+
       - name: Check shell script syntax
         run: find scripts tests bench demo -type f -name '*.sh' -print0 | xargs -0 -r bash -n
+
+      - name: Run ShellCheck
+        run: find scripts tests bench demo -type f -name '*.sh' -print0 | xargs -0 -r shellcheck
+
+      - name: Check Python scripts
+        run: |
+          python3 -m py_compile \
+            scripts/collect_final_evidence.py \
+            scripts/collect_scx_stats.py \
+            scripts/build_formal_artifact.py \
+            scripts/formal_artifact_gate.py \
+            scripts/create_release_bundle.py \
+            scripts/verify_release_bundle.py
+
+      - name: Run evidence validation fixtures
+        run: tests/integration/test_evidence_validation_fixtures.sh
 
   web-console:
     runs-on: ubuntu-24.04

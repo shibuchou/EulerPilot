@@ -1,12 +1,12 @@
 # EulerPilot 最终提交指南
 
-更新时间：`2026-07-24`
+更新时间：`2026-07-26`
 
 本文是最终提交和答辩前的主入口。评审如果只看一份文档，应先看本文，再按链接进入代码、实验、证据和演示材料。
 
 ## 1. 项目定位
 
-EulerPilot 是面向 openEuler 的自适应资源管控 Agent。项目以 openEuler 24.03 LTS SP4 作为当前核心验证和最终交付验证仓库，以 cgroup v2 作为发行内核稳定控制路径；sched_ext/scx 路径基于 SP4 官方源码自编译启用 `CONFIG_SCHED_CLASS_EXT` 的内核完成复核，不声称 SP4 发行默认内核直接支持 sched_ext。Agent 通过 eBPF/PSI 感知 workload，经过 Policy Engine 与 Skills 框架做策略决策，最终由 Resource、Network、Security 等 Skill 执行可审计、可回滚的控制动作。
+EulerPilot 是面向 openEuler 的自适应资源管控 Agent。项目以 openEuler 24.03 LTS SP4 作为当前核心验证和 v6 收口仓库，以 SP3/121 作为比赛要求的强制兼容交付环境，以 cgroup v2 作为发行内核稳定控制路径；sched_ext/scx 路径基于 SP4 官方源码自编译启用 `CONFIG_SCHED_CLASS_EXT` 的内核完成复核，不声称 SP4 发行默认内核直接支持 sched_ext。Agent 通过 eBPF/PSI 感知 workload，经过 Policy Engine 与 Skills 框架做策略决策，最终由 Resource、Network、Security 等 Skill 执行可审计、可回滚的控制动作。
 
 核心闭环：
 
@@ -35,7 +35,7 @@ eBPF/PSI 观测
 在 openEuler 主机上执行：
 
 ```bash
-cd /root/EulerPilot
+cd /root/EulerPilot-closeout
 make agent
 make unit-tests
 make network-policy network-qos-tc network-xdp security-policy
@@ -44,13 +44,13 @@ make network-policy network-qos-tc network-xdp security-policy
 ./build/eulerpilot-agent --doctor-skills --config configs/agent.yaml
 ```
 
-最终质量门禁：
+v6 preflight 质量门禁：
 
 ```bash
 scripts/final_quality_gate.sh
 ```
 
-当前最终门禁口径：`22/22 P0`、`100` 轮 smoke、`5` 轮 doctor 通过。
+当前 v6 缩短版 preflight：`29/29 P0` 通过。最终 release gate 需要在同一 `tested_candidate_commit`、formal `artifact_id` 和修正 baseline 后正式实验上重新执行。
 
 ## 4. 实验复现入口
 

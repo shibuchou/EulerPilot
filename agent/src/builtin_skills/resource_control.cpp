@@ -104,12 +104,15 @@ public:
         if (ctx.resource_ops == this) ctx.resource_ops = nullptr;
         stop_scx_session(ctx.scx_session);
         close_scx_map(ctx.scx_session);
-        rollback_resource_control_state();
+        const bool rollback_ok = rollback_resource_control_state();
         ctx.scx_ready = false;
-        ctx.scx_reason = "rolled-back";
+        ctx.scx_reason = rollback_ok ? "rolled-back" : "rollback-failed";
         running_ = false;
-        state_ = "rolled-back";
-        return true;
+        state_ = rollback_ok ? "rolled-back" : "rollback-failed";
+        if (!rollback_ok) {
+            last_error_ = "resource-control-rollback-failed";
+        }
+        return rollback_ok;
     }
 
     void stop() override {
@@ -117,10 +120,13 @@ public:
         if (ctx.resource_ops == this) ctx.resource_ops = nullptr;
         stop_scx_session(ctx.scx_session);
         close_scx_map(ctx.scx_session);
-        rollback_resource_control_state();
+        const bool rollback_ok = rollback_resource_control_state();
         ctx.scx_ready = false;
         running_ = false;
-        state_ = "stopped";
+        state_ = rollback_ok ? "stopped" : "rollback-failed";
+        if (!rollback_ok) {
+            last_error_ = "resource-control-rollback-failed";
+        }
     }
 
     std::string last_error() const override { return last_error_; }

@@ -1,6 +1,6 @@
 # EulerPilot 最终演示 Runbook
 
-更新时间：`2026-07-24`
+更新时间：`2026-07-26`
 
 本文用于现场答辩和本地复现。演示脚本入口为 `demo/demo_all_final.sh`，支持 live、offline 和 cleanup 三种模式。
 
@@ -48,11 +48,13 @@ SP4 增强验证链路已经完成，现场默认作为证据展示，不作为�
 
 ```text
 SP4 / 123 sched_ext kernel
-  -> Redis RUNS=10 frozen-code sched_ext compare
-  -> Nginx RUNS=10 frozen-code sched_ext compare
-  -> final_quality_gate.sh 22/22 P0 + 100 smoke + 5 doctor
-  -> final evidence compact 41 entries / missing 0 / warnings 0
+  -> Redis/Nginx RUNS=10 historical/provisional evidence 展示
+  -> throughput-first / mixed-adaptive old evidence 按 invalid historical 展示
+  -> v6 preflight final_quality_gate.sh 29/29 P0
+  -> evidence compact 41 entries / missing 0 / warnings 8
 ```
+
+当前视频演示中不要朗读旧 RUNS=10 的具体收益数字作为最终结论。正确说法是：早期实验显示部分 Redis 场景存在正向趋势，但最终收益以修正 default baseline、绑定 formal artifact 后的新一轮随机化实验为准。
 
 ## 演示视频状态
 
@@ -98,4 +100,3 @@ curl http://127.0.0.1:9108/metrics
 - 只监听 `127.0.0.1:9108`，不绑定公网或生产网卡。
 - 演示结束后停止 Agent，metrics exporter 会随进程退出。
 - 默认 `configs/agent.yaml` 保持 `exporter.prometheus.enabled: false`。
-

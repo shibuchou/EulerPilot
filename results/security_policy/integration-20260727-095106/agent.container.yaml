@@ -1,0 +1,4 @@
+skills_config_path: skills.container.yaml
+exporter:
+  prometheus:
+    enabled: false

@@ -1,14 +1,14 @@
 # EulerPilot 提交清单
 
-更新时间：`2026-07-24`
+更新时间：`2026-07-26`
 
 ## 已完成
 
 - [x] SP3 + cgroup v2 主闭环
 - [x] OLK-6.6 + sched_ext 正式对照线
 - [x] PsiGate v1 闭环验证
-- [x] Redis `RUNS=10` frozen-code 正式结果
-- [x] Nginx `RUNS=10` frozen-code 正式结果
+- [x] Redis/Nginx `RUNS=10` 历史结果已保留并降级为 provisional evidence
+- [ ] 修复 baseline 后基于 formal `artifact_id` 重新生成 Redis/Nginx 正式收益结果
 - [x] Skills 插件化框架：`Skill / SkillRegistry / SkillManager / builtin_skills`
 - [x] YAML v2 驱动 Skills 启停与配置：`targets + rules + target_ref`
 - [x] `--list-skills / --doctor-skills / --verbose / --jsonl` 命令行
@@ -57,7 +57,7 @@
 - [x] `security_policy_demo` BPF LSM attach/deny/rollback 集成测试 121/122 均通过
 - [x] Runtime 生命周期收拢与 ActionJournal/AuditBus 最小接入；SIGINT/SIGTERM 通过 graceful shutdown 标志触发主循环提前退出，仍走 `stop_all()` 清理路径
 - [x] 121 SP3 编译、集成测试和兼容门禁通过，作为比赛要求的强制兼容交付环境；SP4/123 作为主验证和性能实验环境
-- [x] SP4 sched_ext 自编译内核复核通过：Redis/Nginx `RUNS=10` frozen-code 对照、Redis PSI ACTIVE probe、Redis pressure gradient、双环境 gate 和 evidence strict
+- [x] SP4 sched_ext 自编译内核功能复核通过；旧 Redis/Nginx、pressure gradient、throughput-first、mixed-adaptive 等结果已按 v6 复审降级为 provisional 或 invalid historical
 - [x] 静态 Dashboard：`reports/dashboard/index.html`
 - [x] Prometheus `/metrics` 端点：默认关闭，监听 `127.0.0.1:9108`
 - [x] 中文最终报告主稿与答辩材料
@@ -174,17 +174,17 @@
 ## 质量与安全审计
 
 - `scripts/final_quality_gate.sh`：TAP 风格 22 项 P0 质量门禁脚本，新增 `make unit-tests`
-- `reports/final_quality_gate_20260720-stage3-performance.log`：SP4 最终门禁通过记录，22/22 P0 通过，100 轮 smoke 与 5 轮 doctor 通过
+- `reports/final_quality_gate_20260720-stage3-performance.log`：SP4 历史门禁记录；v6 收口后需对同一 `tested_candidate_commit` 重新执行 Candidate Gate、Formal Artifact Gate 与 final gate
 - `reports/final_quality_gate_20260706-quality-121.log`：121 历史门禁通过记录，22/22 P0 通过，100 轮 smoke 与 5 轮 doctor 通过
 - `configs/final_evidence_manifest.json`：最终证据压缩白名单清单
 - `scripts/collect_final_evidence.py`：最终证据压缩报告生成脚本
-- `reports/final_evidence_compact.md`：答辩入口压缩报告，当前覆盖 40 个核心证据条目
-- `reports/final_evidence_compact.json`：机器可读证据状态，当前 `--strict` 检查必需缺失 0、警告 0
+- `reports/final_evidence_compact.md`：答辩入口压缩报告，当前覆盖 41 个核心证据条目，v6 覆盖文件会阻止旧 provisional/invalid 结果进入 final positive evidence
+- `reports/final_evidence_compact.json`：机器可读证据状态，当前缺失 0、预期警告 8；最终 `--validate-release` 必须等待 formal artifact 重跑后再通过
 - `docs/final_security_audit.md`：最终安全与质量审计报告
 
 ## 当前结论
 
-项目已进入最终 release/tag 前收口阶段。当前已完成 Security anomaly -> Policy Engine -> Resource Control 降级、Security anomaly -> Policy Engine -> Network+Resource 联动，以及真实 Pod 版 Network+Resource 联动。121/122 的真实 Podman container target、k3s Pod target、Network QoS Pod host veth、Network XDP Pod host veth、真实 Pod Policy Engine 跨 Skill 联动、服务联动 Security anomaly 规则、anomaly 进程过滤、anomaly 组合 scope 过滤、credential 生命周期 anomaly、credential deep hook scoped attach 评估、isolated-veth XDP ICMP/TCP/UDP + UDP tuple 四规则、real Pod host veth XDP ICMP/TCP/UDP + UDP tuple 四规则均已转为 pass；SP4/123 的 sched_ext 自编译内核、Redis/Nginx RUNS=10 frozen-code workload 对照、Redis pressure gradient、修复后的 static-vs-Agent RUNS=10、throughput-first RUNS=10、mixed-adaptive RUNS=10、Agent overhead RUNS=10、Web Console、K8s 旁路验证和双环境门禁也已转为 pass。当前唯一仍未完成的提交材料是正式演示视频文件或公开链接；代码、文档和 evidence 已具备 release/tag 前复核条件。
+项目已进入 v6 封版阻塞收口阶段。当前已完成多 Skill 主体能力、SP3 强制兼容历史验证、SP4 自编译 sched_ext 功能复核、Web Console 和 K8s 旁路验证；但旧 SP4 RUNS=10 性能结果因 baseline、artifact provenance、throughput validity 和 mixed-adaptive 单 Agent 连续性问题，已降级为 provisional 或 invalid historical。正式 release/tag 之前仍需完成 Candidate Gate、formal artifact out-of-tree build、Formal Artifact Gate、修正 baseline 后的正式随机化实验、`--validate-suite`、`--validate-release` 和双环境 final gate。
 
 ## v3.1 提交前新增检查
 
@@ -207,7 +207,7 @@
 - [x] `tests/integration/test_resource_control_runtime_readiness.sh` 输出 `isula_command/isulad_service/isulad_socket/isula_ps_rc`。
 - [x] 真实 runtime target 在 Podman 可用时从 blocked 转 pass，121/122 双机通过。
 - [x] Podman/systemd cgroup v2 真实容器 cgroup 解析修正为 PID cgroup fallback，定位 `.../libpod-*.scope/container`。
-- [x] SP4 最新 `scripts/final_quality_gate.sh` 通过 22/22 P0、100 轮 smoke、5 轮 doctor；121 同项结果作为历史回归对照保留。
+- [x] SP4 历史 `scripts/final_quality_gate.sh` 已通过；v6 当前缩短版 preflight 为 29/29 P0，最终 release 需在同一 candidate SHA 上重跑完整 gate。
 - [x] 真实 Kubernetes Pod target 在 `kubectl + eulerpilot-lab` 可用时从 blocked 转 pass，121/122 已通过。
 - [x] Network QoS 真实 Pod host veth 演示 121/122 通过。
 - [x] Network XDP 真实 Pod host veth 演示 121/122 通过。
@@ -216,8 +216,7 @@
 - [x] Security anomaly 组合 scope 过滤 121/122 通过。
 - [x] Network XDP isolated-veth tuple 字段演示 121/122 通过。
 - [x] Network XDP real Pod host veth tuple 字段演示 121/122 通过。
-- [x] `python3 scripts/collect_final_evidence.py --strict` 通过，最终证据压缩报告覆盖 40 个核心条目，必需缺失 0、警告 0。
+- [x] `python3 scripts/collect_final_evidence.py` 当前覆盖 41 个核心条目，必需缺失 0、预期警告 8；这些警告来自旧证据降级，最终 release 需由 formal artifact 重跑结果清零。
 - [ ] 正式演示视频录制与链接填写。当前已准备 `docs/demo_video_recording_script.md`，但仓库内未包含正式视频文件。
-- [x] SP4 Redis/Nginx `RUNS=10` frozen-code sched_ext workload 复核通过，Redis pressure gradient 已纳入 `configs/final_evidence_manifest.json` 和 `reports/final_evidence_compact.*`；Redis static-vs-agent 已用修复脚本 RUNS=10 重跑后再回补。
-- [x] Stage G Benchmark 与冻结材料已完成：主 Benchmark 结论冻结，现场演示日志仅作为追加彩排记录。
-
+- [x] SP4 Redis/Nginx `RUNS=10` 历史结果、Redis pressure gradient、static-vs-agent、throughput-first、mixed-adaptive 和 Agent overhead 已纳入 manifest 并通过 override 标记状态。
+- [ ] Stage G Benchmark 与冻结材料需在 v6 修复后重新完成：正式主 Benchmark 结论尚未冻结，当前结果只作历史/趋势/缺陷定位证据。

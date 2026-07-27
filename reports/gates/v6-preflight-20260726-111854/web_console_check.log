@@ -1,0 +1,98 @@
+10.8.2
+v20.18.2
+
+added 74 packages in 7s
+
+10 packages are looking for funding
+  run `npm fund` for details
+
+> eulerpilot-web-console@0.1.0 test
+> node --test backend/test/*.test.js
+
+TAP version 13
+# Subtest: loads frozen action whitelist
+ok 1 - loads frozen action whitelist
+  ---
+  duration_ms: 77.292956
+  ...
+# Subtest: rejects path traversal command items
+ok 2 - rejects path traversal command items
+  ---
+  duration_ms: 1.476896
+  ...
+# Subtest: rejects absolute command paths
+ok 3 - rejects absolute command paths
+  ---
+  duration_ms: 0.64453
+  ...
+# Subtest: rejects unknown action kind
+ok 4 - rejects unknown action kind
+  ---
+  duration_ms: 0.627717
+  ...
+# Subtest: demo/lab/cleanup actions share a single mutating job slot
+ok 5 - demo/lab/cleanup actions share a single mutating job slot
+  ---
+  duration_ms: 123.253633
+  ...
+# Subtest: readonly actions can run while a demo job is active
+ok 6 - readonly actions can run while a demo job is active
+  ---
+  duration_ms: 133.7648
+  ...
+# Subtest: cleanup_action runs after failed mutating job
+ok 7 - cleanup_action runs after failed mutating job
+  ---
+  duration_ms: 432.479038
+  ...
+# Subtest: cancel status is not overwritten by process exit
+ok 8 - cancel status is not overwritten by process exit
+  ---
+  duration_ms: 56.175088
+  ...
+# Subtest: confirmed actions require a backend confirmation token
+ok 9 - confirmed actions require a backend confirmation token
+  ---
+  duration_ms: 136.581032
+  ...
+# Subtest: confirmation tokens are one-shot and bound to cancel action
+ok 10 - confirmation tokens are one-shot and bound to cancel action
+  ---
+  duration_ms: 52.909617
+  ...
+# Subtest: loopback mutating actions require an explicit console token
+ok 11 - loopback mutating actions require an explicit console token
+  ---
+  duration_ms: 34.402698
+  ...
+# Subtest: POST requests with bodies must use JSON content type
+ok 12 - POST requests with bodies must use JSON content type
+  ---
+  duration_ms: 30.654925
+  ...
+1..12
+# tests 12
+# suites 0
+# pass 12
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 2646.852505
+
+> eulerpilot-web-console@0.1.0 lint
+> tsc -b --pretty false
+
+
+> eulerpilot-web-console@0.1.0 build
+> tsc -b && vite build
+
+vite v6.4.3 building for production...
+transforming...
+✓ 1578 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.41 kB │ gzip:  0.28 kB
+dist/assets/index-CSyCPgeE.css    7.39 kB │ gzip:  2.22 kB
+dist/assets/index-C61PKoyP.js   173.35 kB │ gzip: 54.88 kB
+✓ built in 7.66s

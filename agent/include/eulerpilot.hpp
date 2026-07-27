@@ -34,6 +34,7 @@ enum class GateState : std::uint32_t {
 
 struct RuntimeConfig {
     std::string config_path;
+    std::string agent_name = "EulerPilot";
     std::uint32_t interval_ms = 1000;
     std::uint32_t duration_s = 1;
     std::uint32_t warmup_cycles = 0;

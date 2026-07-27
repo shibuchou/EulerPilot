@@ -3,8 +3,12 @@
 #include <bpf/bpf.h>
 
 #include <chrono>
+#include <cctype>
 #include <cstring>
 #include <fcntl.h>
+#include <fstream>
+#include <random>
+#include <sstream>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -39,6 +43,29 @@ std::string getenv_or(const char *name, const std::string &fallback) {
     return value;
 }
 
+std::string make_agent_instance_id() {
+    std::random_device rd;
+    const auto now = now_ns();
+    std::ostringstream out;
+    out << std::hex << now << "-" << getpid() << "-" << rd();
+    return out.str();
+}
+
+std::string trim_phase(std::string value) {
+    while (!value.empty() && std::isspace(static_cast<unsigned char>(value.back()))) {
+        value.pop_back();
+    }
+    std::size_t start = 0;
+    while (start < value.size() && std::isspace(static_cast<unsigned char>(value[start]))) {
+        ++start;
+    }
+    value = value.substr(start);
+    if (value.empty()) {
+        return "unset";
+    }
+    return value;
+}
+
 int getenv_int(const char *name, int fallback) {
     const char *value = std::getenv(name);
     if (!value || !*value) {
@@ -57,6 +84,9 @@ bool PsiGateSkill::init(ExecutorBackend backend, GateMode mode) {
     activation_streak_ = 0;
     recovery_streak_ = 0;
     cooldown_started_at_ns_ = 0;
+    agent_instance_id_ = make_agent_instance_id();
+    phase_ = getenv_or("EULERPILOT_PHASE", "unset");
+    phase_control_path_ = getenv_or("EULERPILOT_PHASE_FILE", "");
     trace_path_ = getenv_or("EULERPILOT_PSI_GATE_TRACE", "/tmp/eulerpilot-psi-gate-trace.jsonl");
     trace_.open(trace_path_, std::ios::out | std::ios::app);
     if (!trace_.good()) {
@@ -72,6 +102,7 @@ bool PsiGateSkill::init(ExecutorBackend backend, GateMode mode) {
             return false;
         }
     }
+    emit_phase_marker(phase_);
     return true;
 }
 
@@ -128,7 +159,14 @@ void PsiGateSkill::emit_trace(const GateDecision &decision) {
     if (!trace_.good()) {
         return;
     }
-    trace_ << "{\"timestamp_ns\":" << decision.timestamp_ns
+    const auto seq = ++event_seq_;
+    trace_ << "{\"event_type\":\"gate\""
+           << ",\"agent_instance_id\":\"" << agent_instance_id_ << "\""
+           << ",\"event_seq\":" << seq
+           << ",\"monotonic_timestamp_ns\":" << decision.timestamp_ns
+           << ",\"timestamp_ns\":" << decision.timestamp_ns
+           << ",\"phase\":\"" << phase_ << "\""
+           << ",\"gate_state\":\"" << to_string(decision.next_state) << "\""
            << ",\"previous_state\":\"" << to_string(decision.previous_state) << "\""
            << ",\"next_state\":\"" << to_string(decision.next_state) << "\""
            << ",\"cpu_psi_triggered\":" << (decision.cpu_psi_triggered ? "true" : "false")
@@ -141,7 +179,43 @@ void PsiGateSkill::emit_trace(const GateDecision &decision) {
     trace_.flush();
 }
 
+void PsiGateSkill::emit_phase_marker(const std::string &phase) {
+    if (!trace_.good()) {
+        return;
+    }
+    const auto timestamp = now_ns();
+    const auto seq = ++event_seq_;
+    trace_ << "{\"event_type\":\"phase_marker\""
+           << ",\"agent_instance_id\":\"" << agent_instance_id_ << "\""
+           << ",\"event_seq\":" << seq
+           << ",\"monotonic_timestamp_ns\":" << timestamp
+           << ",\"timestamp_ns\":" << timestamp
+           << ",\"phase\":\"" << phase << "\""
+           << ",\"gate_state\":\"" << to_string(state_) << "\""
+           << ",\"generation\":" << generation_ << "}\n";
+    trace_.flush();
+}
+
+void PsiGateSkill::poll_phase_control() {
+    if (phase_control_path_.empty()) {
+        return;
+    }
+    std::ifstream phase_file(phase_control_path_);
+    if (!phase_file.good()) {
+        return;
+    }
+    std::stringstream buffer;
+    buffer << phase_file.rdbuf();
+    const std::string next_phase = trim_phase(buffer.str());
+    if (next_phase != phase_) {
+        phase_ = next_phase;
+        emit_phase_marker(phase_);
+    }
+}
+
 GateDecision PsiGateSkill::tick(const TriggerContext &ctx) {
+    poll_phase_control();
+
     GateDecision decision;
     decision.previous_state = state_;
     decision.next_state = state_;

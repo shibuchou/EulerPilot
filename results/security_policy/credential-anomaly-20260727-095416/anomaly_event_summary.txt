@@ -1,0 +1,8 @@
+credential_churn hook=lsm_task_fix_setuid stage=setuid threshold=3 window_ms=2000 hit_count=3 uid=65534 cred_gfp=None
+credential_churn hook=lsm_task_fix_setuid stage=setuid threshold=3 window_ms=2000 hit_count=3 uid=65534 cred_gfp=None
+credential_churn hook=lsm_task_fix_setuid stage=setuid threshold=3 window_ms=2000 hit_count=3 uid=65534 cred_gfp=None
+credential_churn hook=lsm_task_fix_setuid stage=setuid threshold=3 window_ms=2000 hit_count=3 uid=65534 cred_gfp=None
+credential_churn hook=lsm_task_fix_setuid stage=setuid threshold=3 window_ms=2000 hit_count=3 uid=65534 cred_gfp=None
+credential_churn hook=lsm_task_fix_setuid stage=setuid threshold=3 window_ms=2000 hit_count=3 uid=65534 cred_gfp=None
+credential_churn hook=lsm_task_fix_setuid stage=setuid threshold=3 window_ms=2000 hit_count=3 uid=65534 cred_gfp=None
+credential_churn hook=lsm_task_fix_setuid stage=setuid threshold=3 window_ms=2000 hit_count=3 uid=65534 cred_gfp=None

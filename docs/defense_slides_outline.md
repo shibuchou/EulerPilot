@@ -1,6 +1,6 @@
 # EulerPilot 答辩页提纲
 
-更新时间：`2026-07-24`
+更新时间：`2026-07-26`
 
 ## 第 1 页：作品概述
 - 面向 openEuler 的自适应资源管控 Agent
@@ -44,21 +44,21 @@
 - `192.168.1.123` — SP4 核心验证仓库 + 官方源码自编译 sched_ext 内核复核
 - GitHub `shibuchou/EulerPilot` — 代码仓库
 
-## 第 7 页：Redis 正式结果
+## 第 7 页：Redis 历史结果与 v6 待重跑计划
 引用：`results/final/redis-scx-compare-20260612-191543`
-SP4 复核：`results/final/redis-scx-compare-20260724-tested-2541464-runs10`
-图表：redis_sched_ext_rps / p99 / quiet_overhead
+SP4 historical/provisional：`results/final/redis-scx-compare-20260724-tested-2541464-runs10`
+说明：旧图表只展示趋势；正式收益等待修复 baseline 与 formal artifact 后重跑。
 
-## 第 8 页：Nginx 正式结果
+## 第 8 页：Nginx 历史结果与 workload 边界
 引用：`results/final/nginx-scx-compare-20260612-194018`
-SP4 复核：`results/final/nginx-scx-compare-20260724-tested-2541464-runs10`
-图表：nginx_sched_ext_rps / p99 / quiet_overhead
+SP4 historical/provisional：`results/final/nginx-scx-compare-20260724-tested-2541464-runs10`
+说明：用于展示第二业务线和策略边界；不锁定最终性能收益数字。
 
 ## 第 9 页：关键证据链
 1. latency + background 场景前提成立
 2. PsiGate 进入 ACTIVE
 3. cgroup_v2 applied=yes / sched_ext executor=sched_ext
-4. 业务结果写入正式候选目录
+4. 业务结果写入历史候选目录；formal artifact 重跑后写入正式目录
 图表：psigate_timeline.svg
 
 ## 第 10 页：结论边界
@@ -68,7 +68,6 @@ SP4 复核：`results/final/nginx-scx-compare-20260724-tested-2541464-runs10`
 
 ## 第 11 页：最终结论
 1. 发行内核 cgroup v2 稳定闭环可正式交付
-2. OLK-6.6 与 SP4 官方源码自编译 sched_ext 内核上完成 Redis/Nginx compare / RUNS=10 frozen-code 复核
+2. OLK-6.6 与 SP4 官方源码自编译 sched_ext 内核上完成 Redis/Nginx compare / RUNS=10 historical 复核，正式收益待 v6 重跑
 3. Skills 框架 + Network/Security/Resource/Policy Engine 证明 Agent 可扩展、可联动、可回滚
-4. 41 条 final evidence compact + Web Console + 最终质量门禁完成争奖证据收口
-
+4. 41 条 evidence compact + Web Console + v6 preflight 已完成；最终 release gate 需绑定同一 candidate SHA 与 formal artifact

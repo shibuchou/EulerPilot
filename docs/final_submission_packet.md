@@ -22,7 +22,7 @@ EulerPilot 是一个面向 openEuler 的自适应资源管控 Agent。与依赖�
 - 能运行
 - 能测试
 - 能演示
-- 能产出正式结果
+- 能产出可复现结果
 - 能写进中文技术报告
 
 的完整系统闭环。
@@ -139,7 +139,7 @@ hostname：cernet2.net
 
 ---
 
-## 5. 正式实验设计
+## 5. 实验设计与 v6 状态
 
 ### 5.1 Redis
 
@@ -157,17 +157,18 @@ Redis 正式 compare 矩阵包括：
 
 - `/root/EulerPilot/results/final/redis-scx-compare-20260612-191543`
 
-当前主交付结果目录：
+当前 historical/provisional 结果目录：
 
 - `/root/EulerPilot/results/final/redis-scx-compare-20260724-tested-2541464-runs10`
 
-当前已满足：
+当前保留价值：
 
-- `RUNS=10 frozen-code`
-- 平衡轮换
+- `RUNS=10` 历史复核
+- 固定候选轮换
 - `run_manifest.json`
 - 中文报告
-- 无 `invalid_run`
+
+限制：该目录因 default baseline 与 artifact provenance 问题被 v6 降级为 provisional historical，不能作为 final positive evidence。正式 Redis 结论必须从 formal `artifact_id` 重跑。
 
 ### 5.2 Nginx
 
@@ -177,17 +178,18 @@ Nginx 正式 compare 矩阵与 Redis 保持一致。
 
 - `/root/EulerPilot/results/final/nginx-scx-compare-20260612-194018`
 
-当前主交付结果目录：
+当前 historical/provisional 结果目录：
 
 - `/root/EulerPilot/results/final/nginx-scx-compare-20260724-tested-2541464-runs10`
 
-当前已满足：
+当前保留价值：
 
-- `RUNS=10 frozen-code`
-- 平衡轮换
+- `RUNS=10` 历史复核
+- 固定候选轮换
 - `run_manifest.json`
 - 中文报告
-- 无 `invalid_run`
+
+限制：该目录当前为 provisional historical，不能作为 final positive evidence。正式 Nginx 结论必须从 formal `artifact_id` 重跑。
 
 ---
 
@@ -195,11 +197,10 @@ Nginx 正式 compare 矩阵与 Redis 保持一致。
 
 ### 6.1 Redis
 
-当前结果表明：
+当前 historical/provisional 结果表明：
 
-- `noisy_cgroup_v2` 在部分关键操作上表现出明显正向趋势
-- `noisy_scx_normal` 在 `GET / INCR / SET` 上出现了较明显的吞吐改善趋势
-- `noisy_scx_psi` 在部分操作上具有一定正向效果
+- `noisy_cgroup_v2` 在部分关键操作上表现出正向趋势
+- `noisy_scx_normal` 和 `noisy_scx_psi` 只能作为历史策略边界证据
 - `noisy_scx_always_active` 并不稳定优于其他模式
 
 当前建议直接引用的 Redis 图表为：
@@ -210,7 +211,7 @@ Nginx 正式 compare 矩阵与 Redis 保持一致。
 
 ### 6.2 Nginx
 
-当前结果表明：
+当前 historical/provisional 结果表明：
 
 - `noisy_cgroup_v2` 在当前 Nginx 场景下表现更稳
 - `noisy_scx_psi` 吞吐接近 `noisy_default`
@@ -251,7 +252,7 @@ Nginx 正式 compare 矩阵与 Redis 保持一致。
 
 更稳的结论应是：
 
-> EulerPilot 已经完成从系统实现到正式 compare 的工程收口，当前结果表明 `sched_ext` 在不同 workload 上的收益与代价具有明显场景差异，项目已经具备系统创新与工程实现两方面的展示价值。
+> EulerPilot 已经完成从系统实现到 compare 框架的工程收口，当前 historical/provisional 结果表明 `sched_ext` 在不同 workload 上的收益与代价具有明显场景差异。最终性能收益必须等待 Candidate Gate、formal artifact 和修正 baseline 后的正式随机化实验。
 
 ---
 
@@ -261,22 +262,23 @@ Nginx 正式 compare 矩阵与 Redis 保持一致。
 
 - 统一 Agent 主体
 - 双执行后端
-- Redis `RUNS=10 frozen-code` 正式结果，历史 `RUNS=5` 候选结果保留为对照
-- Nginx `RUNS=10 frozen-code` 正式结果，历史 `RUNS=5` 候选结果保留为对照
+- Redis `RUNS=10` historical/provisional 结果，历史 `RUNS=5` 候选结果保留为对照
+- Nginx `RUNS=10` historical/provisional 结果，历史 `RUNS=5` 候选结果保留为对照
 - 中文结果摘要
 - 中文最终报告主稿
 - 图表材料
 - 答辩提纲
 
-也就是说，当前主交付目录已经同时包含：
+也就是说，当前目录已经同时包含：
 
 - 代码与脚本
-- 最终候选结果
+- 历史候选结果与 v6 evidence 状态覆盖
 - 最终图表材料
 - 中文提交文档
 
-因此，当前剩余工作已经不再是功能实现，而是：
+因此，当前剩余工作不是扩展新功能，而是：
 
+- Candidate Gate、Formal Artifact Gate、修正 baseline 后正式实验
 - 最终文字润色
 - 图表排版
 - 答辩展示页美化

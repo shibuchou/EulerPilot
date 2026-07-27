@@ -196,7 +196,10 @@ static __always_inline __u32 clamp_target_count(const struct security_policy_con
 static __always_inline int target_scope_matches(const struct security_policy_target *target,
                                                 __u64 current_cgroup_id)
 {
-    return target->cgroup_id == 0 || target->cgroup_id == current_cgroup_id;
+    if (target->cgroup_id == current_cgroup_id)
+        return 1;
+    /* Global matching is audit-only. Enforce targets must be cgroup scoped. */
+    return target->cgroup_id == 0 && target->enforce == 0;
 }
 
 static __always_inline int file_access_matches(__u32 required_access,
@@ -258,6 +261,7 @@ static __always_inline int exec_path_match_index(const char *path,
 
 static __always_inline int connect_match_index(__u32 daddr,
                                                __u16 dport,
+                                               __u16 protocol,
                                                __u32 target_count,
                                                __u64 current_cgroup_id)
 {
@@ -269,6 +273,7 @@ static __always_inline int connect_match_index(__u32 daddr,
         struct security_policy_target *target = bpf_map_lookup_elem(&target_map, &key);
         if (target && target->connect_daddr != 0 && target->connect_dport != 0 &&
             target_scope_matches(target, current_cgroup_id) &&
+            (target->connect_protocol == 0 || target->connect_protocol == protocol) &&
             target->connect_daddr == daddr && target->connect_dport == dport)
             return i;
     }
@@ -456,12 +461,16 @@ int BPF_PROG(security_policy_socket_connect, struct socket *sock,
     struct sockaddr_in *addr = (struct sockaddr_in *)address;
     __u32 daddr = BPF_CORE_READ(addr, sin_addr.s_addr);
     __u16 dport = BPF_CORE_READ(addr, sin_port);
+    struct sock *sk = BPF_CORE_READ(sock, sk);
+    __u16 protocol = sk ? BPF_CORE_READ(sk, sk_protocol) : 0;
+    if (protocol == 0)
+        return 0;
 
     __u32 key = 0;
     struct security_policy_config *config = bpf_map_lookup_elem(&policy_map, &key);
     __u32 target_count = clamp_target_count(config);
     __u64 current_cgroup_id = bpf_get_current_cgroup_id();
-    int target_index = connect_match_index(daddr, dport, target_count,
+    int target_index = connect_match_index(daddr, dport, protocol, target_count,
                                            current_cgroup_id);
     if (target_index < 0)
         return 0;
@@ -477,7 +486,7 @@ int BPF_PROG(security_policy_socket_connect, struct socket *sock,
         __builtin_memcpy(event->path, "socket_connect", sizeof("socket_connect"));
         event->daddr = daddr;
         event->dport = dport;
-        event->protocol = 6;
+        event->protocol = protocol;
         bpf_ringbuf_submit(event, 0);
     }
 

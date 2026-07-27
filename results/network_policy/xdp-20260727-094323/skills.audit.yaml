@@ -1,0 +1,190 @@
+schema_version: 2
+skills:
+- name: resource_control
+  kind: runtime
+  enabled: true
+  config:
+    mode: enforce
+    controllers:
+      cpu:
+        max:
+          enabled: true
+      memory:
+        enabled: true
+        high:
+          enabled: true
+        low:
+          enabled: true
+        max:
+          enabled: true
+        reclaim:
+          enabled: false
+      io:
+        enabled: true
+        device: auto
+        weight:
+          enabled: true
+        max:
+          enabled: true
+    targets: {}
+    profiles:
+      latency:
+        cpu_max: max
+        memory_low: '67108864'
+        memory_high: max
+        memory_max: max
+        io_weight: 'default 100'
+        io_max: ''
+      batch:
+        cpu_max: max
+        memory_low: '0'
+        memory_high: max
+        memory_max: max
+        io_weight: 'default 100'
+        io_max: ''
+      background:
+        normal:
+          cpu_max: max
+          memory_high: max
+          io_weight: 'default 100'
+          io_max: ''
+        pressure:
+          cpu_max: '20000 100000'
+          memory_high: '134217728'
+          memory_low: '0'
+          memory_max: max
+          memory_reclaim: ''
+          io_weight: 'default 50'
+          io_max: 'auto rbps=max wbps=1048576'
+- name: psi_gate
+  kind: runtime
+  enabled: true
+  config: {}
+- name: policy_engine
+  kind: runtime
+  enabled: false
+  config:
+    mode: enforce
+    source:
+      audit_path: reports/events/security_policy.jsonl
+    watch:
+      skill: security_policy
+      operation: anomaly
+      rule_id: burst_execve
+      result: observed
+    targets:
+      anomaly_background:
+        type: cgroup
+        path: /sys/fs/cgroup/eulerpilot/policy-engine-background
+    actions:
+      - name: throttle_anomaly_background_cpu
+        target_ref: anomaly_background
+        file: cpu.max
+        value: '10000 100000'
+      - name: cap_anomaly_background_memory
+        target_ref: anomaly_background
+        file: memory.high
+        value: '1048576'
+- name: network_policy
+  kind: runtime
+  enabled: false
+  config:
+    mode: audit
+    targets:
+      demo_cgroup:
+        type: cgroup
+        path: /sys/fs/cgroup/eulerpilot/demo-net
+    rules:
+      - name: deny_demo_port
+        hook: cgroup_connect4
+        target_ref: demo_cgroup
+        protocol: tcp
+        dst_port: '18080'
+        action: deny
+- name: network_policy_demo
+  kind: runtime
+  enabled: false
+  config:
+    cgroup_path: /sys/fs/cgroup/eulerpilot/demo-net
+    dst_port: '18080'
+    hook: cgroup_connect4
+    mode: enforce
+- name: network_qos
+  kind: runtime
+  enabled: false
+  config:
+    mode: audit
+    targets:
+      lab_veth:
+        type: netdev
+        ifname: ep-veth-qos0
+    rules:
+      - name: limit_lab_egress
+        hook: tc_egress
+        target_ref: lab_veth
+        protocol: any
+        dst_port: '0'
+        rate: 1mbit
+        burst: 32kb
+        latency: 50ms
+        action: limit
+- name: network_xdp
+  kind: runtime
+  enabled: true
+  config:
+    mode: audit
+    targets:
+      lab_xdp_veth:
+        type: netdev
+        ifname: ep-veth-xdp0
+    rules:
+      - name: drop_icmp_lab
+        hook: xdp
+        target_ref: lab_xdp_veth
+        protocol: icmp
+        dst_port: '0'
+        action: drop
+      - name: drop_tcp_probe_lab
+        hook: xdp
+        target_ref: lab_xdp_veth
+        protocol: tcp
+        dst_port: '19092'
+        action: drop
+      - name: drop_udp_probe_lab
+        hook: xdp
+        target_ref: lab_xdp_veth
+        protocol: udp
+        dst_port: '19093'
+        action: drop
+      - name: drop_udp_tuple_lab
+        hook: xdp
+        target_ref: lab_xdp_veth
+        protocol: udp
+        src_ip: 10.89.0.2
+        dst_ip: 10.89.0.1
+        src_port: '39094'
+        dst_port: '19094'
+        action: drop
+- name: security_policy
+  kind: runtime
+  enabled: false
+  config:
+    mode: audit
+    targets:
+      demo_secret:
+        type: path
+        path: ${EULERPILOT_ROOT}/demo/security_policy_demo/secret.txt
+        exec_path: ${EULERPILOT_ROOT}/demo/security_policy_demo/deny_exec.sh
+    rules:
+      - name: deny_demo_secret_open
+        hook: lsm_file_open
+        target_ref: demo_secret
+        action: deny
+- name: security_policy_demo
+  kind: runtime
+  enabled: false
+  config:
+    hook: lsm_file_open
+    mode: enforce
+    target_path: ${EULERPILOT_ROOT}/demo/security_policy_demo/secret.txt
+    target_exec_path: ${EULERPILOT_ROOT}/demo/security_policy_demo/deny_exec.sh

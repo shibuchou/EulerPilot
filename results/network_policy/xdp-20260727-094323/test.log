@@ -1,0 +1,3 @@
+=== NetworkXDP integration test ===
+PASS: network_xdp skill is registered
+PASS: lab veth baseline connectivity works

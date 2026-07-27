@@ -1,6 +1,6 @@
 # 提交清单
 
-更新时间：`2026-07-20`
+更新时间：`2026-07-26`
 
 ## 代码
 
@@ -40,13 +40,15 @@
 - `results/resource_control/`
 - `results/k8s/sp4-validation-20260708-023552/`
 
-当前 strict 证据口径：
+当前 v6 evidence compact 口径：
 
 ```text
-entries=40
+entries=41
 missing_required=0
-warnings=0
+warnings=8
 ```
+
+8 条 warning 来自旧 SP4 RUNS=10 证据降级，不是文件缺失。正式 release 需要 `--validate-release` 在 formal artifact 重跑后通过。
 
 ## 现场演示
 

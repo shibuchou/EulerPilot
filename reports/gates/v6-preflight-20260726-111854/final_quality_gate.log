@@ -1,0 +1,39 @@
+1..29
+ok 1 - make agent
+ok 2 - make network-policy
+ok 3 - make network-qos-tc
+ok 4 - make network-xdp
+ok 5 - make security-policy
+ok 6 - make unit-tests
+ok 7 - config validation rejects unknown fields and bad values
+ok 8 - benchmark default baseline and randomized block semantics
+ok 9 - policy engine transaction context is per-request
+ok 10 - resource control rollback preserves ownership and snapshots
+ok 11 - scx loader ownership and rollback safe detach
+ok 12 - security policy cgroup scope and socket protocol fail closed
+ok 13 - evidence validate-run rejects invalid throughput and mixed traces
+ok 14 - --list-skills outputs formal network and security policy skills
+ok 15 - --doctor-safe exit 0
+  metrics config:   prometheus:
+    enabled: false
+    listen:  127.0.0.1:9108
+ok 16 - agent 15s smoke
+ok 17 - network_policy default disabled
+ok 18 - network_qos default disabled
+ok 19 - network_xdp default disabled
+ok 20 - security_policy default disabled
+ok 21 - security_policy_demo default disabled
+ok 22 - metrics default disabled on 127.0.0.1
+ok 23 - dashboard index.html exists and non-empty
+ok 24 - frozen result dirs exist (Redis=17, Nginx=7)
+ok 25 - resource_control CPU+Memory+IO evidence
+ok 26 - resource_control target_ref evidence
+ok 27 - resource_control runtime target evidence
+ok 28 - resource_control CPU quota effect evidence
+ok 29 - no BPF/LSM/TC/XDP residue
+
+# optional checks
+ok - agent 1-round stress smoke
+ok - doctor 1-round stable (--doctor-safe --config configs/agent.yaml)
+
+quality gate complete

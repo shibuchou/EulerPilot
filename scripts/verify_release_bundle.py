@@ -65,10 +65,26 @@ def main() -> int:
         "release_candidate_commit",
         "release_commit",
         "core_tree_hash",
+        "tested_core_tree_hash",
+        "release_core_tree_hash",
         "source_archive",
     ]:
         if not manifest.get(field):
             raise RuntimeError(f"missing manifest field: {field}")
+    if manifest.get("core_code_equivalent") is not True:
+        raise RuntimeError("release manifest core_code_equivalent is not true")
+    artifact = manifest.get("formal_artifact", {})
+    for field in [
+        "artifact_id",
+        "build_attempt_id",
+        "build_manifest_sha256",
+        "artifact_purpose",
+        "selected_for_formal_experiments",
+    ]:
+        if not artifact.get(field):
+            raise RuntimeError(f"missing formal_artifact field: {field}")
+    if artifact.get("artifact_purpose") != "formal" or artifact.get("selected_for_formal_experiments") is not True:
+        raise RuntimeError("formal_artifact is not marked selected formal")
     if not (bundle_dir / manifest["source_archive"]).exists():
         raise RuntimeError("missing source archive")
 

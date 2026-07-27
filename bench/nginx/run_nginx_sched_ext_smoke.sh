@@ -12,11 +12,6 @@ WRK_CONNECTIONS="${WRK_CONNECTIONS:-32}"
 WRK_DURATION="${WRK_DURATION:-10s}"
 SCX_BIN="${SCX_BIN:-$(command -v scx_eulerpilot 2>/dev/null || true)}"
 SCX_BIN="${SCX_BIN:-/usr/local/bin/scx_eulerpilot}"
-LEGACY_SCX_BIN="${LEGACY_SCX_BIN:-/root/olk/kernel-OLK-6.6-atomgit/tools/sched_ext/build/bin/scx_eulerpilot}"
-if [ ! -x "$SCX_BIN" ] && [ "${ALLOW_LEGACY_SCX_FALLBACK:-0}" = "1" ] && [ -x "$LEGACY_SCX_BIN" ]; then
-    printf '[WARN] using legacy scx fallback: %s\n' "$LEGACY_SCX_BIN" >&2
-    SCX_BIN="$LEGACY_SCX_BIN"
-fi
 
 mkdir -p "$OUTDIR"
 

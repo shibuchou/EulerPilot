@@ -1,14 +1,14 @@
 # openEuler 24.03 LTS SP4 验证计划
 
-更新时间：`2026-07-24`
+更新时间：`2026-07-26`
 
-SP4 已接入为 EulerPilot 后续完整能力验证平台。本文件记录 SP4 初始验证结果、sched_ext/scx 自编译内核验证结果和后续复核入口；121/122 的 SP3 双机结果仍作为既有稳定证据保留。
+SP4 已接入为 EulerPilot 后续完整能力验证平台。本文件记录 SP4 初始验证结果、sched_ext/scx 自编译内核验证结果和 v6 封版收口入口；121 的 SP3 结果作为比赛强制兼容环境继续保留，122 只作为历史 OLK/sched_ext 对照。
 
 ## 当前结果
 
 - SP4 主机：`openEuler-2403-LTS-SP4` / `192.168.1.123`
-- 仓库路径：`/root/EulerPilot`
-- 验证基线：`d5ba000` 起，已追加 SP4 `scx_eulerpilot` 构建与 workload 对照修复
+- 仓库路径：`/root/EulerPilot-closeout`
+- 验证基线：v6 收口分支需重新形成 `tested_candidate_commit`，并通过 Candidate Gate 后确认 `tested_code_commit`
 - 系统版本：`openEuler 24.03 LTS SP4`
 - 初始发行内核：`6.6.0-159.4.3.154.oe2403sp4.x86_64`
 - sched_ext 验证内核：`6.6.0-159.4.3.154.oe2403sp4.x86_64-eulerpilot-scx`
@@ -16,10 +16,10 @@ SP4 已接入为 EulerPilot 后续完整能力验证平台。本文件记录 SP4
 - cgroup v2：已挂载，controllers 包含 `cpu io memory`
 - PSI：`cpu/memory/io` 已可用
 - BTF / BPF LSM / TC / XDP / sched_ext：能力探测可用
-- Web Console：已通过 `npm ci/test/lint/build/audit`；Evidence 显示 41 条、必需缺失 0、警告 0
-- 质量门禁：`scripts/final_quality_gate.sh` 已在 SP4 sched_ext 内核通过 22/22 P0、100 轮 smoke、5 轮 doctor；最新日志为 `results/k8s/sp4-validation-20260708-023552/final_quality_gate.log`
+- Web Console：历史构建已通过 `npm ci/test/lint/build/audit`；v6 当前 Evidence 为 41 条、必需缺失 0、预期警告 8，警告来自旧结果降级
+- 质量门禁：历史 SP4 日志保留；v6 后已在 `/root/EulerPilot-closeout` 通过缩短版 preflight `29/29 P0`。最终 release gate 必须在 candidate-bound gates 和 formal artifact 后重跑。
 - v3.1 主链路：`tests/integration/test_policy_engine_security_network_resource.sh --repeat 10` 已在 SP4 sched_ext 内核通过
-- sched_ext workload：Redis smoke、Redis PSI ACTIVE probe、Redis RUNS=10 frozen-code sched_ext compare、Nginx RUNS=10 frozen-code sched_ext compare、Redis pressure gradient 已通过；Redis static-vs-agent 已用修复脚本 RUNS=10 frozen-code 重跑
+- sched_ext workload：旧 Redis/Nginx RUNS=10、pressure gradient、static-vs-agent、throughput-first、mixed-adaptive 和 Agent overhead 已降级为 provisional/invalid historical。后续必须使用 `/root/eulerpilot-artifacts/<tested_code_commit>/<artifact_id>/` 中的 formal artifact 重跑，不能直接使用固定 `/usr/local/bin/scx_eulerpilot`。
 - Kubernetes 旁路验证：已通过 `k8s-master` 只读盘点、独立 namespace 最小写入、Web Console 白名单动作、cleanup 复查；结果目录为 `results/k8s/sp4-validation-20260708-023552`
 
 已保存的 SP4 初始验证与 sched_ext 复核证据：
@@ -64,7 +64,7 @@ CONFIG_EXT_GROUP_SCHED=y
 
 当前 SP4 已验证主路径为 `cgroup v2 + PSI + eBPF + Policy Engine + Web Console`，增强路径为 `sched_ext/scx available`。Web Console 在 SP4 页面中应显示为路径分工，而不是把发行内核默认限制表述为项目失败。
 
-截至 `2026-07-06`，`scx_eulerpilot` 已通过项目脚本构建并安装到 `/usr/local/bin/scx_eulerpilot`，启动后会额外 pin 到 EulerPilot 命名空间：
+截至 `2026-07-06`，`scx_eulerpilot` 曾通过项目脚本构建并安装到 `/usr/local/bin/scx_eulerpilot`，启动后会额外 pin 到 EulerPilot 命名空间：
 
 ```text
 /sys/fs/bpf/eulerpilot/scx_eulerpilot/v1/class_map
@@ -72,7 +72,7 @@ CONFIG_EXT_GROUP_SCHED=y
 /sys/fs/bpf/eulerpilot/scx_eulerpilot/v1/stats
 ```
 
-Agent 的 `--backend sched_ext --active` 已可直接读取这些 pinned map。Redis/Nginx 对照脚本已适配当前 CLI 表格输出格式，Redis PSI ACTIVE 触发证据由独立 probe 固化，避免短性能对照窗口与 gate 状态验证互相影响。
+这条 `/usr/local/bin` 路径现在只作为历史环境说明。v6 封版实验必须从通过 Candidate Gate 的 `tested_code_commit` 进行 out-of-tree formal build，记录 Agent/SCX/BPF 对象 SHA256 和 `artifact_id`，并让实验脚本显式使用该 artifact 目录下的二进制。
 
 ## 已修复的 SP4 环境兼容问题
 
@@ -138,12 +138,14 @@ make agent
 sudo tests/integration/test_policy_engine_security_network_resource.sh
 sudo tests/integration/test_policy_engine_security_network_resource.sh --repeat 10
 sudo scripts/final_quality_gate.sh
-SCX_BIN=/usr/local/bin/scx_eulerpilot sudo bench/redis/run_redis_sched_ext_psi_probe.sh
-SCX_BIN=/usr/local/bin/scx_eulerpilot RUNS=10 sudo bench/redis/run_redis_sched_ext_compare.sh
-SCX_BIN=/usr/local/bin/scx_eulerpilot RUNS=10 sudo bench/nginx/run_nginx_sched_ext_compare.sh
+SCX_BIN=/root/eulerpilot-artifacts/<tested_code_commit>/<artifact_id>/bin/scx_eulerpilot sudo bench/redis/run_redis_sched_ext_psi_probe.sh
+SCX_BIN=/root/eulerpilot-artifacts/<tested_code_commit>/<artifact_id>/bin/scx_eulerpilot RUNS=10 sudo bench/redis/run_redis_sched_ext_compare.sh
+SCX_BIN=/root/eulerpilot-artifacts/<tested_code_commit>/<artifact_id>/bin/scx_eulerpilot RUNS=10 sudo bench/nginx/run_nginx_sched_ext_compare.sh
 bash bench/redis/run_redis_pressure_gradient.sh
 bash bench/redis/run_static_vs_agent_compare.sh
 ```
+
+上述 RUNS=10 命令只能在 Candidate Gate、formal build 和 Formal Artifact Gate 通过后执行；此前只能运行 RUNS=1 smoke 或脚本语法/语义检查。
 
 ## 结果记录
 
@@ -172,4 +174,3 @@ SP4 正式发布后再补入：
 - SP4 Release Notes：待确认
 - SP4 ISO/镜像源：待确认
 - 对应 kernel、bpftool、clang/llvm 版本：待确认
-

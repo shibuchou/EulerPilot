@@ -151,12 +151,12 @@ static void print_gate_state(void)
 static void read_stats_fd(int fd, __u64 *stats)
 {
 	int nr_cpus = libbpf_num_possible_cpus();
-	__u64 cnts[23][nr_cpus];
+	__u64 cnts[25][nr_cpus];
 	__u32 idx;
 
-	memset(stats, 0, sizeof(stats[0]) * 23);
+	memset(stats, 0, sizeof(stats[0]) * 25);
 
-	for (idx = 0; idx < 23; idx++) {
+	for (idx = 0; idx < 25; idx++) {
 		int ret, cpu;
 
 		ret = bpf_map_lookup_elem(fd, &idx, cnts[idx]);
@@ -169,7 +169,7 @@ static void read_stats_fd(int fd, __u64 *stats)
 
 static void print_stats_fd(int fd)
 {
-	__u64 stats[23];
+	__u64 stats[25];
 
 	read_stats_fd(fd, stats);
 	printf("class_hits normal=%llu latency=%llu batch=%llu background=%llu ",
@@ -182,8 +182,9 @@ static void print_stats_fd(int fd)
 	       stats[11], stats[12], stats[13], stats[14]);
 	printf("running shared=%llu latency=%llu batch=%llu background=%llu ",
 	       stats[15], stats[16], stats[17], stats[18]);
-	printf("shared_fallback=%llu starvation_guard=%llu bg_consumed_slice_total=%llu bg_wait_total_legacy=%llu direct_local_latency=%llu\n",
-	       stats[19], stats[20], stats[21], stats[21], stats[22]);
+	printf("shared_fallback=%llu starvation_guard=%llu bg_consumed_slice_total=%llu bg_wait_total_legacy=%llu direct_local_latency=%llu direct_local_batch=%llu direct_local_background=%llu\n",
+	       stats[19], stats[20], stats[21], stats[21], stats[22],
+	       stats[23], stats[24]);
 }
 
 static void print_stats(struct scx_eulerpilot *skel)

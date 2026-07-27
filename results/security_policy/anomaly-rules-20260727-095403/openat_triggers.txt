@@ -1,0 +1,8 @@
+openat_sensitive_1=ok
+openat_sensitive_2=ok
+openat_sensitive_3=ok
+openat_sensitive_4=ok
+openat_sensitive_5=ok
+openat_sensitive_6=ok
+openat_sensitive_7=ok
+openat_sensitive_8=ok

@@ -1,0 +1,2 @@
+_: /tmp/eulerpilot-security-policy.gZIv5T/dynamic-scoped-deny-exec.sh: /usr/bin/env: bad interpreter: Operation not permitted
+_: line 1: /tmp/eulerpilot-security-policy.gZIv5T/dynamic-scoped-deny-exec.sh: Success

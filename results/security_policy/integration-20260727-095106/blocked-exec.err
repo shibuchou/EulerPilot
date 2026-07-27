@@ -1,0 +1,1 @@
+tests/integration/test_security_policy.sh: /root/EulerPilot/demo/security_policy_demo/deny_exec.sh: /usr/bin/env: bad interpreter: Operation not permitted

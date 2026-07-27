@@ -1,0 +1,2 @@
+=== NetworkPolicySkill integration test ===
+PASS: formal network_policy skill is registered

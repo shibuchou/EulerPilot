@@ -1,6 +1,6 @@
 # EulerPilot
 
-> 面向 openEuler 的自适应资源管控 Agent。文档更新时间：`2026-07-24`；最新验证批次：`2026-07-24`。
+> 面向 openEuler 的自适应资源管控 Agent。文档更新时间：`2026-07-26`；当前处于 v6 封版收口阶段。
 
 EulerPilot 不是单一调度器 demo，而是一套围绕“观测 -> 决策 -> 执行 -> 反馈 -> 证据”的系统级 Agent 框架。项目使用 eBPF/PSI 感知 workload 和系统压力，在用户态完成分类、策略决策和 Skill 编排，并通过 `cgroup v2`、`sched_ext/scx`、TC/XDP、BPF LSM 等系统控制器完成可审计、可回滚的资源管控。
 
@@ -12,11 +12,11 @@ EulerPilot 不是单一调度器 demo，而是一套围绕“观测 -> 决策 ->
 | SP3 强制兼容线 | `192.168.1.121:/root/EulerPilot`，openEuler 24.03 LTS SP3，验证比赛要求的发行环境兼容、cgroup v2 主闭环、安全扩展 smoke、rollback 与 sched_ext graceful fallback |
 | 历史对照线 | `192.168.1.122` 仅保留为历史 OLK/sched_ext 对照，不作为最终 release 来源 |
 | SP4 / sched_ext | SP4 发行环境已完成适配；`sched_ext/scx` 基于 SP4 官方源码自编译启用 `CONFIG_SCHED_CLASS_EXT` 的内核完成复核，不声称发行默认内核直接支持 |
-| 质量门禁 | frozen-code preflight、SP4 Host Gate、SP3 Compatibility Gate 已通过；release candidate 形成后需按双环境矩阵重跑 |
-| 最终证据 | `python3 scripts/collect_final_evidence.py --strict` 覆盖 `41` 条核心证据，缺失 `0`、警告 `0`；新增 frozen-code 正式实验 manifest |
-| 性能复核 | SP4 frozen-code Redis/Nginx `RUNS=10`，Redis static-vs-Agent `RUNS=10`，throughput-first/mixed-adaptive/Agent overhead `RUNS=10`，Redis pressure gradient `RUNS=3`；SCX 结果按 valid/improved、valid/regressed、invalid 分离报告 |
+| 质量门禁 | SP4 closeout 缩短版 preflight 已通过 `29/29 P0`；Candidate Gate、Formal Artifact Gate、SP4/SP3 final gate 仍需按 v6 流程执行 |
+| 最终证据 | 当前 compact 覆盖 `41` 条核心证据，缺失 `0`、警告 `8`；旧性能结果由 `evidence/evidence_status_overrides.json` 降级，`--strict`/`--validate-release` 要等替换正式证据后再作为封版门禁 |
+| 性能复核 | 现有 SP4 Redis/Nginx、throughput-first、mixed-adaptive、Agent overhead 等结果已保留为 provisional/historical evidence；封版收益数字必须等待修复 default baseline、formal `artifact_id` 和 `tested_code_commit` 后重新随机化运行 |
 | Kubernetes | 已在真实 k3s Pod 环境完成隔离验证，使用独立 namespace、独立 label、有限 resources，验证后无 EulerPilot 残留 |
-| Web Console | `web_console/` 旁路展示控制台已落地，Evidence-first + 白名单 Demo + SSE 日志 + 单任务锁 |
+| Web Console | `web_console/` 演示控制台已落地，集中展示 Agent 状态、Evidence、白名单 Demo、SSE 日志和单任务锁 |
 | 仓库入口 | GitHub：`https://github.com/shibuchou/EulerPilot`；GitLink：`https://gitlink.org.cn/HxQj0tp0pG/mxoedzsyzygka` |
 | 演示视频 | 仓库已准备 `docs/demo_video_recording_script.md`，正式视频文件/链接仍需提交前人工补齐 |
 
@@ -47,11 +47,11 @@ Workloads / Pods / cgroups
 |------|------------|--------------|
 | Agent Framework | Runtime、SkillRegistry、SkillManager、YAML 配置、`--list-skills`、`--doctor-skills`、status JSON | `agent/`、`configs/`、`docs/architecture.md` |
 | CPU Scheduling / PSI | eBPF 调度观测、PSI Gate、cgroup v2 主路径、ScxExecutor/scx 增强路径 | `docs/final_results_summary.md`、`docs/sp4_validation_plan.md` |
-| Resource Control | CPU + Memory + IO，`target_ref`，container/Pod cgroup 解析，事务写入和 rollback | `docs/resource_control_skill.md` |
+| Resource Control | CPU + Memory + IO，`target_ref`，container/Pod cgroup 解析，事务写入和 rollback；封版默认使用 `cpu.weight/cpu.max`，cpuset 为安全关闭的实验开关 | `docs/resource_control_skill.md` |
 | Network Policy | cgroup/connect4、TC QoS、XDP、真实 Pod host veth，安全白名单和 cleanup | `docs/network_policy_skill.md`、`docs/network_pod_veth_target.md` |
 | Security Policy | BPF LSM、syscall tracing、服务联动 anomaly、credential anomaly、target scope | `docs/security_policy_skill.md` |
 | Policy Engine | Security anomaly -> Resource / Network 联动，统一 `transaction_id`，失败回滚 | `docs/policy_engine_skill.md` |
-| Web Console | 只读证据展示、白名单动作、SSE job 日志、单任务锁、cleanup | `web_console/README.md`、`docs/web_console_design.md` |
+| Web Console | Agent 状态展示、证据清单、白名单动作、SSE job 日志、单任务锁、cleanup | `web_console/README.md`、`docs/web_console_design.md` |
 
 ## 快速验证
 
@@ -65,19 +65,27 @@ make agent
 ./build/eulerpilot-agent --status --json
 ```
 
-最终证据完整性检查：
+`--status --json` 会显式输出 `cpuset_control=disabled`。当前 release 的稳定资源执行路径是 `cpu.weight/cpu.max + memory + io`；动态 cpuset topology 作为后续增强能力保留，不计入封版性能主结论。
+
+当前 evidence compact 预览：
 
 ```bash
-python3 scripts/collect_final_evidence.py --strict
+python3 scripts/collect_final_evidence.py
 ```
 
-最终质量门禁：
+最终 release 前的 strict/release gate 必须在 Candidate Gate、formal artifact 和修正基线实验完成后执行：
+
+```bash
+python3 scripts/collect_final_evidence.py --validate-release
+```
+
+当前 preflight 质量门禁：
 
 ```bash
 scripts/final_quality_gate.sh
 ```
 
-Web Console：
+Web Console 演示界面：
 
 ```bash
 cd web_console
@@ -94,13 +102,13 @@ npm run build
 
 | 证据类型 | 结果目录 |
 |----------|----------|
-| SP4 Redis RUNS=10 frozen-code | `results/final/redis-scx-compare-20260724-tested-2541464-runs10` |
-| SP4 Nginx RUNS=10 frozen-code | `results/final/nginx-scx-compare-20260724-tested-2541464-runs10` |
-| SP4 Redis 压力梯度 | `results/final/redis-pressure-gradient-20260724-tested-2541464-runs3` |
-| SP4 Redis 静态 vs Agent 动态 | `results/final/redis-static-vs-agent-20260724-tested-2541464-runs10` |
-| SP4 throughput-first 批处理 | `results/final/throughput-first-20260724-tested-2541464-runs10` |
-| SP4 mixed-adaptive 闭环 | `results/final/mixed-adaptive-20260724-tested-2541464-runs10-lite` |
-| SP4 Agent 控制面开销 | `results/final/agent-overhead-20260724-tested-2541464-runs10` |
+| SP4 Redis RUNS=10 历史结果 | `results/final/redis-scx-compare-20260724-tested-2541464-runs10`，当前按 `evidence/evidence_status_overrides.json` 标记为 provisional/historical |
+| SP4 Nginx RUNS=10 历史结果 | `results/final/nginx-scx-compare-20260724-tested-2541464-runs10`，当前按 `evidence/evidence_status_overrides.json` 标记为 provisional/historical |
+| SP4 Redis 压力梯度历史结果 | `results/final/redis-pressure-gradient-20260724-tested-2541464-runs3`，当前标记为 provisional |
+| SP4 Redis 静态 vs Agent 动态历史结果 | `results/final/redis-static-vs-agent-20260724-tested-2541464-runs10`，当前标记为 provisional |
+| SP4 throughput-first 批处理历史结果 | `results/final/throughput-first-20260724-tested-2541464-runs10`，当前标记为 invalid historical |
+| SP4 mixed-adaptive 闭环历史结果 | `results/final/mixed-adaptive-20260724-tested-2541464-runs10-lite`，当前标记为 invalid historical |
+| SP4 Agent 控制面开销历史结果 | `results/final/agent-overhead-20260724-tested-2541464-runs10`，当前标记为 provisional |
 | SP4/K8s/Web Console 旁路验证 | `results/k8s/sp4-validation-20260708-023552` |
 | Policy Engine SP4 repeat 10 | `results/policy_engine/security-network-resource-20260705-211407` |
 | 最终 evidence compact | `reports/final_evidence_compact.md`、`reports/final_evidence_compact.json` |

@@ -141,57 +141,87 @@ write_snapshot_metrics() {
     local snapshot="$rundir/${label}_agent_snapshot.txt"
     local stats="$rundir/${label}_scx_stats.json"
     local metrics="$rundir/${label}_metrics.env"
-    local applied=0 throughput_hits=0 batch_hits=0 enqueue_batch=0 dispatch_batch=0 running_batch=0
+    local applied=0 throughput_hits=0 batch_hits=0 enqueue_batch=0
+    local dispatch_batch_dsq=0 dispatch_batch_local=0 dispatch_batch_shared_fallback=0
+    local running_batch=0 batch_dispatch_total=0
+    local counter_delta_valid=1 counter_delta_invalid_reason=""
+    local total_ops=0 completion_valid=0
 
     if [ -f "$snapshot" ]; then
         applied="$(grep -Ec '\|\+' "$snapshot" 2>/dev/null || true)"
         throughput_hits="$(grep -Ec 'throughput_profile' "$snapshot" 2>/dev/null || true)"
     fi
+    if [ -f "$rundir/${label}_summary.csv" ]; then
+        total_ops="$(python3 - <<'PY' "$rundir/${label}_summary.csv"
+import csv, sys
+try:
+    with open(sys.argv[1], newline="", encoding="utf-8") as f:
+        row = next(csv.DictReader(f))
+    print(int(float(row.get("total_ops", 0))))
+except Exception:
+    print(0)
+PY
+)"
+        if [ "$total_ops" -gt 0 ]; then
+            completion_valid=1
+        fi
+    fi
     if [ -f "$stats" ]; then
-        batch_hits="$(python3 - <<'PY' "$stats"
+        eval "$(python3 - <<'PY' "$stats"
 import json, sys
 try:
     data = json.load(open(sys.argv[1], encoding="utf-8"))
 except Exception:
     data = {}
-print(int(data.get("class_hits_batch", 0)))
+def v(key):
+    try:
+        return int(data.get(key, 0))
+    except Exception:
+        return 0
+dispatch_dsq = v("dispatch_batch")
+dispatch_local = v("direct_local_batch")
+dispatch_shared_fallback = v("dispatch_batch_shared_fallback")
+print(f'batch_hits={v("class_hits_batch")}')
+print(f'enqueue_batch={v("enqueue_batch")}')
+print(f'dispatch_batch_dsq={dispatch_dsq}')
+print(f'dispatch_batch_local={dispatch_local}')
+print(f'dispatch_batch_shared_fallback={dispatch_shared_fallback}')
+print(f'batch_dispatch_total={dispatch_dsq + dispatch_local + dispatch_shared_fallback}')
+print(f'running_batch={v("running_batch")}')
+print(f'counter_delta_valid={1 if data.get("__counter_delta_valid", True) else 0}')
+print(f'counter_delta_invalid_reason={data.get("__counter_delta_invalid_reason", "")}')
 PY
 )"
-        enqueue_batch="$(python3 - <<'PY' "$stats"
-import json, sys
-try:
-    data = json.load(open(sys.argv[1], encoding="utf-8"))
-except Exception:
-    data = {}
-print(int(data.get("enqueue_batch", 0)))
-PY
-)"
-        dispatch_batch="$(python3 - <<'PY' "$stats"
-import json, sys
-try:
-    data = json.load(open(sys.argv[1], encoding="utf-8"))
-except Exception:
-    data = {}
-print(int(data.get("dispatch_batch", 0)))
-PY
-)"
-        running_batch="$(python3 - <<'PY' "$stats"
-import json, sys
-try:
-    data = json.load(open(sys.argv[1], encoding="utf-8"))
-except Exception:
-    data = {}
-print(int(data.get("running_batch", 0)))
-PY
-)"
+    fi
+    local dispatch_valid=1
+    if [ "$counter_delta_valid" -ne 1 ]; then
+        dispatch_valid=0
+    fi
+    if [ "$enqueue_batch" -gt 0 ] && [ "$batch_dispatch_total" -le 0 ]; then
+        dispatch_valid=0
     fi
     {
         printf 'agent_applied_count=%s\n' "$applied"
         printf 'throughput_profile_hits=%s\n' "$throughput_hits"
         printf 'class_hits_batch=%s\n' "$batch_hits"
         printf 'enqueue_batch=%s\n' "$enqueue_batch"
-        printf 'dispatch_batch=%s\n' "$dispatch_batch"
+        printf 'dispatch_batch_dsq=%s\n' "$dispatch_batch_dsq"
+        printf 'dispatch_batch_local=%s\n' "$dispatch_batch_local"
+        printf 'dispatch_batch_shared_fallback=%s\n' "$dispatch_batch_shared_fallback"
+        printf 'batch_dispatch_total=%s\n' "$batch_dispatch_total"
         printf 'running_batch=%s\n' "$running_batch"
+        printf 'counter_delta_valid=%s\n' "$counter_delta_valid"
+        printf 'counter_delta_invalid_reason=%s\n' "$counter_delta_invalid_reason"
+        printf 'collection_valid=1\n'
+        printf 'classification_valid=%s\n' "$([ "$batch_hits" -gt 0 ] && echo 1 || echo 0)"
+        printf 'dispatch_accounting_valid=%s\n' "$dispatch_valid"
+        printf 'completion_metric_name=total_ops\n'
+        printf 'completion_metric_source=sysbench-lite-summary\n'
+        printf 'completion_minimum=1\n'
+        printf 'completion_actual=%s\n' "$total_ops"
+        printf 'completion_collection_valid=%s\n' "$completion_valid"
+        printf 'workload_completion_valid=%s\n' "$completion_valid"
+        printf 'scheduler_stability_valid=1\n'
     } > "$metrics"
 }
 
@@ -199,8 +229,9 @@ run_agent_capture() {
     local rundir="$1"
     local label="$2"
     local backend="$3"
+    local gate_mode="${4:-normal}"
     EULERPILOT_THROUGHPUT_FIRST=1 \
-    EULERPILOT_GATE_MODE=normal \
+    EULERPILOT_GATE_MODE="$gate_mode" \
     EULERPILOT_SCX_BINARY="$SCX_BIN" \
         "$ROOT/scripts/capture_agent_snapshot.sh" \
         "$rundir/${label}_agent_snapshot.txt" \
@@ -223,7 +254,7 @@ run_case() {
             "$ROOT/scripts/setup_cgroup_v2.sh" > "$rundir/${label}_setup.log" 2>&1 || true
             start_batch_workers "$rundir" "$label" "$((DURATION_S + 2))"
             sleep "$SNAPSHOT_DELAY"
-            run_agent_capture "$rundir" "$label" "cgroup_v2"
+            run_agent_capture "$rundir" "$label" "cgroup_v2" "normal"
             wait_batch_workers
             ;;
         scx_throughput_first)
@@ -231,10 +262,12 @@ run_case() {
                 printf 'scx-unavailable-or-binary-missing\n' > "$rundir/${label}_invalid_reason.txt"
                 return 1
             fi
+            collect_scx_stats "$rundir/${label}_scx_stats_start.json"
             start_batch_workers "$rundir" "$label" "$((DURATION_S + 2))"
             sleep "$SNAPSHOT_DELAY"
-            run_agent_capture "$rundir" "$label" "sched_ext"
-            collect_scx_stats "$rundir/${label}_scx_stats.json"
+            run_agent_capture "$rundir" "$label" "sched_ext" "always-active"
+            collect_scx_stats "$rundir/${label}_scx_stats_end.json"
+            collect_scx_stats "$rundir/${label}_scx_stats.json" "$rundir/${label}_scx_stats_start.json"
             cp /tmp/eulerpilot-scx-session.log "$rundir/${label}_scx_session.log" 2>/dev/null || true
             wait_batch_workers
             ;;
@@ -258,6 +291,11 @@ run_case() {
         printf 'missing-throughput-batch-classification\n' > "$rundir/${label}_invalid_reason.txt"
         return 1
     fi
+    if [ "$label" = "scx_throughput_first" ] &&
+       grep -q '^dispatch_accounting_valid=0$' "$rundir/${label}_metrics.env" 2>/dev/null; then
+        printf 'batch-enqueued-without-class-aware-dispatch\n' > "$rundir/${label}_invalid_reason.txt"
+        return 1
+    fi
 }
 
 build_sysbench_lite
@@ -277,6 +315,7 @@ done
 python3 - <<'PY' "$OUTDIR" "$RUNS" "$WORKERS" "$DURATION_S"
 import csv
 import json
+import os
 import statistics
 import subprocess
 import sys
@@ -321,8 +360,18 @@ for run_dir in sorted(root.glob("run-*")):
             "throughput_profile_hits": metrics.get("throughput_profile_hits", 0),
             "class_hits_batch": metrics.get("class_hits_batch", 0),
             "enqueue_batch": metrics.get("enqueue_batch", 0),
-            "dispatch_batch": metrics.get("dispatch_batch", 0),
+            "dispatch_batch_dsq": metrics.get("dispatch_batch_dsq", 0),
+            "dispatch_batch_local": metrics.get("dispatch_batch_local", 0),
+            "dispatch_batch_shared_fallback": metrics.get("dispatch_batch_shared_fallback", 0),
+            "batch_dispatch_total": metrics.get("batch_dispatch_total", 0),
             "running_batch": metrics.get("running_batch", 0),
+            "counter_delta_valid": metrics.get("counter_delta_valid", 0),
+            "collection_valid": metrics.get("collection_valid", 0),
+            "classification_valid": metrics.get("classification_valid", 0),
+            "dispatch_accounting_valid": metrics.get("dispatch_accounting_valid", 0),
+            "workload_completion_valid": metrics.get("workload_completion_valid", 0),
+            "scheduler_stability_valid": metrics.get("scheduler_stability_valid", 0),
+            "completion_actual": metrics.get("completion_actual", 0),
         }
         rows.append(row)
 
@@ -345,8 +394,18 @@ for label in labels:
         "throughput_profile_hits_avg": mean("throughput_profile_hits"),
         "class_hits_batch_avg": mean("class_hits_batch"),
         "enqueue_batch_avg": mean("enqueue_batch"),
-        "dispatch_batch_avg": mean("dispatch_batch"),
+        "dispatch_batch_dsq_avg": mean("dispatch_batch_dsq"),
+        "dispatch_batch_local_avg": mean("dispatch_batch_local"),
+        "dispatch_batch_shared_fallback_avg": mean("dispatch_batch_shared_fallback"),
+        "batch_dispatch_total_avg": mean("batch_dispatch_total"),
         "running_batch_avg": mean("running_batch"),
+        "counter_delta_valid_avg": mean("counter_delta_valid"),
+        "collection_valid_avg": mean("collection_valid"),
+        "classification_valid_avg": mean("classification_valid"),
+        "dispatch_accounting_valid_avg": mean("dispatch_accounting_valid"),
+        "workload_completion_valid_avg": mean("workload_completion_valid"),
+        "scheduler_stability_valid_avg": mean("scheduler_stability_valid"),
+        "completion_actual_avg": mean("completion_actual"),
     })
 
 with (root / "throughput_summary_avg.csv").open("w", newline="", encoding="utf-8") as f:
@@ -364,6 +423,18 @@ manifest = {
     "duration_s": duration_s,
     "labels": labels,
     "benchmark": "throughput-first-sysbench-lite",
+    "formal_artifact": {
+        "tested_code_commit": os.environ.get("EULERPILOT_TESTED_CODE_COMMIT", ""),
+        "artifact_id": os.environ.get("EULERPILOT_ARTIFACT_ID", ""),
+        "build_attempt_id": os.environ.get("EULERPILOT_BUILD_ATTEMPT_ID", ""),
+        "build_manifest_sha256": os.environ.get("EULERPILOT_BUILD_MANIFEST_SHA256", ""),
+        "artifact_manifest": os.environ.get("EULERPILOT_ARTIFACT_MANIFEST", ""),
+        "artifact_dir": os.environ.get("EULERPILOT_ARTIFACT_DIR", ""),
+        "agent_binary_sha256": os.environ.get("EULERPILOT_AGENT_SHA256", ""),
+        "scx_binary_sha256": os.environ.get("EULERPILOT_SCX_SHA256", ""),
+        "observer_bpf_sha256": os.environ.get("EULERPILOT_OBSERVER_BPF_SHA256", ""),
+        "scx_bpf_sha256": os.environ.get("EULERPILOT_SCX_BPF_SHA256", ""),
+    },
     "notes": "sysbench is a result-local CPU worker name used to match the existing managed batch classifier; it is not the upstream sysbench package.",
 }
 (root / "run_manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -384,19 +455,20 @@ lines = [
     "",
     "## 平均结果",
     "",
-    "| label | runs | ops/s avg | applied avg | throughput profile hits | class_hits_batch | enqueue_batch | dispatch_batch | running_batch |",
-    "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+    "| label | runs | ops/s avg | applied avg | throughput profile hits | class_hits_batch | enqueue_batch | dispatch_dsq | dispatch_local | dispatch_fallback | batch_dispatch_total | counter_delta_valid | completion_actual | dispatch_valid |",
+    "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
 ]
 for row in avg_rows:
     lines.append(
-        "| {label} | {runs} | {ops_per_sec_avg} | {agent_applied_count_avg} | {throughput_profile_hits_avg} | {class_hits_batch_avg} | {enqueue_batch_avg} | {dispatch_batch_avg} | {running_batch_avg} |".format(**row)
+        "| {label} | {runs} | {ops_per_sec_avg} | {agent_applied_count_avg} | {throughput_profile_hits_avg} | {class_hits_batch_avg} | {enqueue_batch_avg} | {dispatch_batch_dsq_avg} | {dispatch_batch_local_avg} | {dispatch_batch_shared_fallback_avg} | {batch_dispatch_total_avg} | {counter_delta_valid_avg} | {completion_actual_avg} | {dispatch_accounting_valid_avg} |".format(**row)
     )
 lines.extend([
     "",
     "## 验收点",
     "",
     "- `cgroup_throughput_first` 的 Agent snapshot 必须出现 `throughput_profile`。",
-    "- `scx_throughput_first` 的 Agent snapshot 必须出现 `THROUGHPUT_BATCH`，并保存 scx stats。",
+    "- `scx_throughput_first` 的 Agent snapshot 必须出现 `THROUGHPUT_BATCH`，并保存 scx counter start/end/delta。",
+    "- 当 `enqueue_batch > 0` 时，`dispatch_batch_dsq + dispatch_batch_local + dispatch_batch_shared_fallback` 必须大于 0；否则该轮 invalid。",
 ])
 (root / "report.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 PY

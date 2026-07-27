@@ -24,6 +24,7 @@
 #include <cstring>
 #include <deque>
 #include <iterator>
+#include <optional>
 
 #include <arpa/inet.h>
 #include <cstdlib>
@@ -37,6 +38,8 @@
 #include <netinet/in.h>
 #include <sstream>
 #include <sys/stat.h>
+#include <sys/syscall.h>
+#include <linux/openat2.h>
 #include <unistd.h>
 #include <string>
 #include <thread>
@@ -941,45 +944,341 @@ std::uint8_t protocol_id(const std::string &protocol) {
     return 0;
 }
 
-bool ensure_cgroup(const fs::path &path) {
-    if (!fs::exists("/sys/fs/cgroup") || access("/sys/fs/cgroup", W_OK) != 0) {
-        return false;
-    }
-    std::error_code ec;
-    fs::create_directories(path.parent_path(), ec);
-    if (ec) {
-        return false;
-    }
-    // Enable controllers on parent cgroup so child cgroups can accept processes
-    auto parent = path.parent_path();
-    if (parent != "/sys/fs/cgroup") {
-        auto sc_path = parent / "cgroup.subtree_control";
-        if (fs::exists(sc_path)) {
-            std::ofstream sc(sc_path);
-            if (sc.good()) {
-                sc << "+memory +pids";
-            }
-        }
-    }
-    fs::create_directories(path, ec);
-    return !ec;
+struct CgroupIdentity {
+    fs::path canonical_path;
+    dev_t mount_dev = 0;
+    ino_t inode = 0;
+    bool exists = false;
+    std::string reason;
+};
+
+struct TaskMoveRecord {
+    int pid = -1;
+    std::uint64_t process_starttime = 0;
+    fs::path original_cgroup;
+    fs::path destination_cgroup;
+};
+
+struct CgroupLease {
+    fs::path canonical_path;
+    fs::path parent_canonical_path;
+    dev_t mount_dev = 0;
+    ino_t inode = 0;
+    dev_t parent_dev = 0;
+    ino_t parent_inode = 0;
+    bool existed_before = false;
+    bool created_by_transaction = false;
+    std::string transaction_id;
+    std::vector<TaskMoveRecord> moved_tasks;
+    bool valid = false;
+    std::string reason;
+};
+
+struct RollbackResult {
+    bool success = false;
+    std::string status = "not_attempted";
+    std::string reason;
+};
+
+fs::path eulerpilot_cgroup_root() {
+    return fs::path("/sys/fs/cgroup/eulerpilot");
 }
 
-void cleanup_cgroup(const fs::path &path) {
-    if (!fs::exists(path)) {
-        return;
+bool is_safe_relative_cgroup_path(const fs::path &relative_path) {
+    if (relative_path.empty() || relative_path.is_absolute()) {
+        return false;
     }
+    for (const auto &part : relative_path) {
+        const std::string name = part.string();
+        if (name.empty() || name == "." || name == "..") {
+            return false;
+        }
+    }
+    return true;
+}
+
+CgroupIdentity identity_from_fd(int fd, const fs::path &canonical_path) {
+    CgroupIdentity identity;
+    struct stat st {};
+    if (fstat(fd, &st) != 0) {
+        identity.reason = std::string("fstat-failed:") + std::strerror(errno);
+        return identity;
+    }
+    identity.exists = true;
+    identity.canonical_path = canonical_path;
+    identity.mount_dev = st.st_dev;
+    identity.inode = st.st_ino;
+    return identity;
+}
+
+CgroupIdentity inspect_cgroup(const fs::path &path) {
+    CgroupIdentity identity;
+    std::error_code ec;
+    if (!fs::exists(path, ec)) {
+        identity.reason = "missing";
+        return identity;
+    }
+    const fs::path canonical = fs::weakly_canonical(path, ec);
+    if (ec) {
+        identity.reason = "canonicalize-failed";
+        return identity;
+    }
+    const int fd = open(canonical.c_str(), O_RDONLY | O_DIRECTORY | O_CLOEXEC | O_NOFOLLOW);
+    if (fd < 0) {
+        identity.reason = std::string("open-failed:") + std::strerror(errno);
+        return identity;
+    }
+    identity = identity_from_fd(fd, canonical);
+    close(fd);
+    return identity;
+}
+
+bool path_is_under(const fs::path &path, const fs::path &root) {
+    const auto path_string = path.lexically_normal().string();
+    const auto root_string = root.lexically_normal().string();
+    return path_string == root_string ||
+           (path_string.size() > root_string.size() &&
+            path_string.compare(0, root_string.size(), root_string) == 0 &&
+            path_string[root_string.size()] == '/');
+}
+
+std::optional<fs::path> relative_to_eulerpilot_cgroup_root(const fs::path &path) {
+    const fs::path root = eulerpilot_cgroup_root().lexically_normal();
+    const fs::path normalized = path.lexically_normal();
+    if (!path_is_under(normalized, root)) {
+        return std::nullopt;
+    }
+    fs::path relative;
+    auto root_it = root.begin();
+    auto path_it = normalized.begin();
+    while (root_it != root.end() && path_it != normalized.end() && *root_it == *path_it) {
+        ++root_it;
+        ++path_it;
+    }
+    for (; path_it != normalized.end(); ++path_it) {
+        relative /= *path_it;
+    }
+    if (!is_safe_relative_cgroup_path(relative)) {
+        return std::nullopt;
+    }
+    return relative;
+}
+
+int open_or_create_eulerpilot_cgroup_root() {
+    const fs::path root = eulerpilot_cgroup_root();
+    std::error_code ec;
+    fs::create_directories(root, ec);
+    if (ec) {
+        return -1;
+    }
+    return open(root.c_str(), O_RDONLY | O_DIRECTORY | O_CLOEXEC | O_NOFOLLOW);
+}
+
+int openat2_beneath(int dirfd, const char *path, int flags, mode_t mode) {
+#if defined(SYS_openat2)
+    struct open_how how {};
+    how.flags = static_cast<std::uint64_t>(flags);
+    how.mode = static_cast<std::uint64_t>(mode);
+    how.resolve = RESOLVE_BENEATH | RESOLVE_NO_SYMLINKS | RESOLVE_NO_MAGICLINKS;
+    return static_cast<int>(syscall(SYS_openat2, dirfd, path, &how, sizeof(how)));
+#else
+    (void)dirfd;
+    (void)path;
+    (void)flags;
+    (void)mode;
+    errno = ENOSYS;
+    return -1;
+#endif
+}
+
+CgroupLease create_owned_cgroup(int root_fd,
+                                const fs::path &relative_path,
+                                const std::string &transaction_id) {
+    CgroupLease lease;
+    lease.transaction_id = transaction_id;
+    if (root_fd < 0) {
+        lease.reason = "invalid-root-fd";
+        return lease;
+    }
+    if (!is_safe_relative_cgroup_path(relative_path)) {
+        lease.reason = "unsafe-relative-cgroup-path";
+        return lease;
+    }
+
+    const CgroupIdentity root_identity = identity_from_fd(root_fd, eulerpilot_cgroup_root());
+    if (!root_identity.exists) {
+        lease.reason = "root-identity-unavailable";
+        return lease;
+    }
+
+    int current_fd = dup(root_fd);
+    if (current_fd < 0) {
+        lease.reason = "dup-root-fd-failed";
+        return lease;
+    }
+
+    fs::path current_path = eulerpilot_cgroup_root();
+    bool final_existed_before = false;
+    bool final_created = false;
+    int parent_fd = -1;
+    fs::path parent_path;
+    for (auto it = relative_path.begin(); it != relative_path.end(); ++it) {
+        const bool is_final = std::next(it) == relative_path.end();
+        const std::string component = it->string();
+        parent_path = current_path;
+        if (is_final) {
+            parent_fd = dup(current_fd);
+        }
+        if (mkdirat(current_fd, component.c_str(), 0755) == 0) {
+            if (is_final) {
+                final_created = true;
+            }
+        } else if (errno == EEXIST) {
+            if (is_final) {
+                final_existed_before = true;
+            }
+        } else {
+            lease.reason = std::string("mkdirat-failed:") + std::strerror(errno);
+            close(current_fd);
+            if (parent_fd >= 0) {
+                close(parent_fd);
+            }
+            return lease;
+        }
+
+        int next_fd = openat2_beneath(current_fd, component.c_str(),
+                                      O_RDONLY | O_DIRECTORY | O_CLOEXEC, 0);
+        if (next_fd < 0 && (errno == ENOSYS || errno == EINVAL)) {
+            next_fd = openat(current_fd, component.c_str(),
+                             O_RDONLY | O_DIRECTORY | O_CLOEXEC | O_NOFOLLOW);
+        }
+        if (next_fd < 0) {
+            lease.reason = std::string("openat-cgroup-failed:") + std::strerror(errno);
+            close(current_fd);
+            if (parent_fd >= 0) {
+                close(parent_fd);
+            }
+            return lease;
+        }
+        close(current_fd);
+        current_fd = next_fd;
+        current_path /= component;
+    }
+
+    lease.canonical_path = current_path.lexically_normal();
+    lease.existed_before = final_existed_before;
+    lease.created_by_transaction = final_created && !final_existed_before;
+    struct stat st {};
+    if (fstat(current_fd, &st) != 0) {
+        lease.reason = std::string("final-fstat-failed:") + std::strerror(errno);
+        close(current_fd);
+        if (parent_fd >= 0) {
+            close(parent_fd);
+        }
+        return lease;
+    }
+    lease.mount_dev = st.st_dev;
+    lease.inode = st.st_ino;
+    lease.parent_canonical_path = parent_path.lexically_normal();
+    if (parent_fd >= 0) {
+        struct stat parent_st {};
+        if (fstat(parent_fd, &parent_st) == 0) {
+            lease.parent_dev = parent_st.st_dev;
+            lease.parent_inode = parent_st.st_ino;
+        }
+        close(parent_fd);
+    }
+    close(current_fd);
+    lease.valid = true;
+    return lease;
+}
+
+bool cgroup_procs_empty(const fs::path &path) {
     std::ifstream procs(path / "cgroup.procs");
     std::string pid;
     while (std::getline(procs, pid)) {
-        if (pid.empty()) {
-            continue;
+        if (!pid.empty()) {
+            return false;
         }
-        std::ofstream root_procs("/sys/fs/cgroup/cgroup.procs");
-        root_procs << pid;
     }
-    std::error_code ec;
-    fs::remove(path, ec);
+    return true;
+}
+
+RollbackResult cleanup_owned_cgroup(const CgroupLease &lease,
+                                    const std::string &transaction_context) {
+    (void)transaction_context;
+    RollbackResult result;
+    if (!lease.valid) {
+        result.status = "ownership_mismatch";
+        result.reason = "missing-valid-cgroup-lease";
+        return result;
+    }
+    if (!lease.created_by_transaction) {
+        result.success = true;
+        result.status = "not_owned_noop";
+        return result;
+    }
+    if (!path_is_under(lease.canonical_path, eulerpilot_cgroup_root())) {
+        result.status = "ownership_mismatch";
+        result.reason = "lease-outside-eulerpilot-root";
+        return result;
+    }
+
+    const int fd = open(lease.canonical_path.c_str(),
+                        O_RDONLY | O_DIRECTORY | O_CLOEXEC | O_NOFOLLOW);
+    if (fd < 0) {
+        result.status = "ownership_mismatch";
+        result.reason = std::string("open-failed:") + std::strerror(errno);
+        return result;
+    }
+    struct stat st {};
+    if (fstat(fd, &st) != 0 || st.st_dev != lease.mount_dev || st.st_ino != lease.inode) {
+        close(fd);
+        result.status = "ownership_mismatch";
+        result.reason = "cgroup-identity-changed";
+        return result;
+    }
+    close(fd);
+
+    if (!cgroup_procs_empty(lease.canonical_path)) {
+        result.status = "cgroup_not_empty_or_foreign_tasks";
+        result.reason = "cgroup.procs-not-empty";
+        return result;
+    }
+
+    const int parent_fd = open(lease.parent_canonical_path.c_str(),
+                               O_RDONLY | O_DIRECTORY | O_CLOEXEC | O_NOFOLLOW);
+    if (parent_fd < 0) {
+        result.status = "ownership_mismatch";
+        result.reason = std::string("parent-open-failed:") + std::strerror(errno);
+        return result;
+    }
+    struct stat parent_st {};
+    if (fstat(parent_fd, &parent_st) != 0 ||
+        parent_st.st_dev != lease.parent_dev ||
+        parent_st.st_ino != lease.parent_inode) {
+        close(parent_fd);
+        result.status = "ownership_mismatch";
+        result.reason = "parent-identity-changed";
+        return result;
+    }
+    const std::string leaf = lease.canonical_path.filename().string();
+    if (leaf.empty() || leaf == "." || leaf == "..") {
+        close(parent_fd);
+        result.status = "ownership_mismatch";
+        result.reason = "invalid-cgroup-leaf";
+        return result;
+    }
+    if (unlinkat(parent_fd, leaf.c_str(), AT_REMOVEDIR) != 0) {
+        result.status = "rollback_failed";
+        result.reason = std::string("unlinkat-failed:") + std::strerror(errno);
+        close(parent_fd);
+        return result;
+    }
+    close(parent_fd);
+    result.success = true;
+    result.status = "rolled_back";
+    return result;
 }
 
 

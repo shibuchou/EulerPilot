@@ -8,7 +8,7 @@
 
 当前已落地能力：
 
-- CPU：`cpu.weight`、`cpu.max`、`cpuset.cpus`、`cpuset.mems`
+- CPU：`cpu.weight`、`cpu.max`
 - Memory：`memory.high`、`memory.low`、`memory.max`
 - IO：`io.weight`、`io.max`
 - Target：`target_ref` 可解析 cgroup、PID、container ID、runtime container name 和 Kubernetes Pod cgroup
@@ -17,6 +17,7 @@
 - 自动模式：`GateState::Active/Cooldown` 或非 `normal_profile` 时进入 pressure 模式
 - 事务化执行：读取旧值、校验新值、写入控制器、复读验证、写 `AuditBus`、写 `ActionJournal`、停止时恢复旧值
 - CPU quota 效果证据：使用 `cpu.stat usage_usec`、`nr_throttled`、`throttled_usec` 对比不限额和 `cpu.max=10000 100000` 窗口，验证实际 CPU 使用率下降和 throttling 生效；Redis compare benchmark 进一步拆分 `default_noisy`、`eulerpilot_no_quota` 和 `eulerpilot_quota`，避免混淆 Agent 放置影响与 quota 影响
+- cpuset 口径：当前 release 明确采用安全降级方案，默认不启用动态 cpuset topology，不把 `cpuset.cpus/cpuset.mems` 计入封版完整功能和性能主结论。`scripts/setup_cgroup_v2.sh` 只有在显式设置 `EULERPILOT_ENABLE_CPUSET=1` 时才尝试实验性 cpuset 分组。
 
 当前安全边界：
 

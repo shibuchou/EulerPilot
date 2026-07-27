@@ -1,0 +1,18 @@
+read only directory target
+outside readonly dir write
+inside scoped readonly dir write
+outside readonly dir write
+inside scoped readonly dir write
+outside readonly dir write
+inside scoped readonly dir write
+outside readonly dir write
+inside scoped readonly dir write
+outside readonly dir write
+inside scoped readonly dir write
+outside readonly dir write
+inside scoped readonly dir write
+outside readonly dir write
+inside scoped readonly dir write
+outside readonly dir write
+inside scoped readonly dir write
+outside readonly dir write

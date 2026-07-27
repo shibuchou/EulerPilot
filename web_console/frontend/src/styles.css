@@ -165,6 +165,14 @@ h2 {
   cursor: pointer;
 }
 
+.icon-button:disabled,
+.primary-button:disabled,
+.secondary-button:disabled,
+.danger-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
 .primary-button {
   background: var(--teal);
   border-color: var(--teal);
@@ -174,6 +182,22 @@ h2 {
 .danger-button {
   border-color: #e3b3ad;
   color: var(--red);
+}
+
+.inline-button {
+  min-height: 30px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #f8faf9;
+  color: var(--teal);
+  padding: 4px 9px;
+  cursor: pointer;
+}
+
+.inline-button:hover,
+.inline-button:focus-visible {
+  border-color: var(--teal);
+  outline: none;
 }
 
 .icon-button {
@@ -249,6 +273,17 @@ h2 {
 .panel {
   padding: 18px;
   overflow: hidden;
+}
+
+.notice-panel {
+  color: #24383c;
+  background: #fbfcfc;
+}
+
+.notice-panel p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  line-height: 1.65;
 }
 
 .panel-heading {

@@ -110,6 +110,14 @@ public:
                         return false;
                     }
                     rule.connect_dport = htons(host_port);
+                    const std::string protocol =
+                        normalize_protocol_token(config_value_or(spec, target_prefix + "protocol",
+                                                                 config_value_or(spec, rule_prefix + "protocol",
+                                                                                 "tcp")));
+                    if (protocol != "tcp" && protocol != "6") {
+                        last_error_ = "security-policy-v2-socket-protocol-unavailable";
+                        return false;
+                    }
                     rule.connect_protocol = 6;
                     rule.connect_port = std::to_string(host_port);
                 } else if (hook == "lsm_bprm_check_security") {
@@ -314,6 +322,10 @@ public:
             }
             if (!is_supported_security_hook(rule.hook)) {
                 last_error_ = "unsupported-hook";
+                return false;
+            }
+            if (spec.enabled && rule.mode == "enforce" && rule.cgroup_id == 0) {
+                last_error_ = "security-policy-enforce-rule-scope-missing";
                 return false;
             }
             if (!rule.file_path.empty() && !valid_security_path(rule.file_path)) {
@@ -593,6 +605,13 @@ private:
             }
         }
         return true;
+    }
+
+    static std::string normalize_protocol_token(std::string protocol) {
+        for (auto &ch : protocol) {
+            ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+        }
+        return protocol;
     }
 
     bool has_security_target_ref(const std::string &target_ref) const {

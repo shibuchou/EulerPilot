@@ -41,12 +41,117 @@
     },
     {
       "category": "repo_status",
-      "name": "Formal frozen-code experiment manifest 20260724",
+      "name": "v6 formal artifact experiment suite summary",
       "host": "123",
-      "path": "results/final/formal_run_manifest_20260724_tested_2541464.json",
+      "path": "reports/v6_formal_experiment_suite_20260726.md",
       "kind": "file",
       "required": true,
-      "notes": "Records tested_code_commit 2541464, output root, formal result directories and source_tree_clean_at_end for the frozen-code experiment batch."
+      "notes": "Formal RUNS=10 suite summary bound to tested_code_commit 7a99d87048f4f2040377354bfe0ce21401664642 and artifact_id ef1baebec7ac138acd0eb1a59fc3880ca550330ef89f87615e8579a0ef264240. Raw outputs stay outside the repository under /root/eulerpilot-runs."
+    },
+    {
+      "category": "cpu_sched_ext",
+      "name": "SP4 Redis sched_ext comparison RUNS=10 formal artifact",
+      "host": "123",
+      "path": "/root/eulerpilot-runs/7a99d87048f4f2040377354bfe0ce21401664642/formal-experiments/20260726-162050/redis-scx-compare-runs10",
+      "kind": "result_dir",
+      "summary": "report.md",
+      "files": [
+        "compare_summary_avg.csv",
+        "run_manifest.json",
+        "report.md"
+      ],
+      "required": true,
+      "notes": "Corrected default noisy baseline, RUNS=10, paired CI computed in reports/v6_formal_experiment_suite_20260726.md."
+    },
+    {
+      "category": "cpu_sched_ext",
+      "name": "SP4 Nginx sched_ext comparison RUNS=10 formal artifact",
+      "host": "123",
+      "path": "/root/eulerpilot-runs/7a99d87048f4f2040377354bfe0ce21401664642/formal-experiments/20260726-162050/nginx-scx-compare-runs10",
+      "kind": "result_dir",
+      "summary": "report.md",
+      "files": [
+        "compare_summary_avg.csv",
+        "run_manifest.json",
+        "report.md"
+      ],
+      "required": true,
+      "notes": "Corrected default noisy baseline, RUNS=10, paired CI computed in reports/v6_formal_experiment_suite_20260726.md."
+    },
+    {
+      "category": "cpu_sched_ext",
+      "name": "SP4 throughput-first RUNS=10 formal artifact",
+      "host": "123",
+      "path": "/root/eulerpilot-runs/7a99d87048f4f2040377354bfe0ce21401664642/formal-experiments/20260726-162050/throughput-first-runs10",
+      "kind": "result_dir",
+      "summary": "report.md",
+      "files": [
+        "throughput_summary_avg.csv",
+        "throughput_summary.csv",
+        "run_manifest.json",
+        "report.md"
+      ],
+      "required": true,
+      "notes": "Class-aware batch dispatch accounting fixed; validate-suite reports throughput_first_validity=pass."
+    },
+    {
+      "category": "cpu_sched_ext",
+      "name": "SP4 mixed-adaptive RUNS=10 formal artifact",
+      "host": "123",
+      "path": "/root/eulerpilot-runs/7a99d87048f4f2040377354bfe0ce21401664642/formal-experiments/20260726-162050/mixed-adaptive-runs10",
+      "kind": "result_dir",
+      "summary": "report.md",
+      "files": [
+        "mixed_adaptive_summary.csv",
+        "mixed_adaptive_timeline.csv",
+        "run_manifest.json",
+        "report.md"
+      ],
+      "required": true,
+      "notes": "Single Agent instance and single writer trace verify NORMAL->ARMED->ACTIVE->COOLDOWN->NORMAL."
+    },
+    {
+      "category": "quality_gate",
+      "name": "SP4 Agent overhead RUNS=10 formal artifact",
+      "host": "123",
+      "path": "/root/eulerpilot-runs/7a99d87048f4f2040377354bfe0ce21401664642/formal-experiments/20260726-162050/agent-overhead-runs10",
+      "kind": "result_dir",
+      "summary": "report.md",
+      "files": [
+        "agent_overhead_summary_avg.csv",
+        "agent_overhead_summary.csv",
+        "run_manifest.json",
+        "report.md"
+      ],
+      "required": true,
+      "notes": "Agent control-plane overhead bound to formal artifact."
+    },
+    {
+      "category": "quality_gate",
+      "name": "SP4 v6 release candidate final quality gate",
+      "host": "123",
+      "path": "reports/final_quality_gate_20260726-v6-sp4-final.log",
+      "kind": "quality_gate",
+      "required": true,
+      "notes": "Release candidate d1c777d SP4 final gate: 29/29 P0, 100-round Agent smoke, 5-round doctor-safe, quality gate complete."
+    },
+    {
+      "category": "quality_gate",
+      "name": "SP3 v6 capability matrix",
+      "host": "121",
+      "path": "reports/gates/sp3_capability_matrix_20260726-v6-final.json",
+      "kind": "file",
+      "required": true,
+      "notes": "Capability matrix used by SP3 compatibility gate to distinguish supported smoke from unavailable hooks."
+    },
+    {
+      "category": "quality_gate",
+      "name": "SP3 v6 release candidate compatibility final gate",
+      "host": "121",
+      "path": "reports/final_quality_gate_20260726-v6-sp3-final.log",
+      "kind": "file",
+      "required": true,
+      "notes": "Release candidate 70525d3 SP3 compatibility gate: 10/10 pass, including cgroup main loop, safe doctor, network/security supported-object build and sched_ext graceful fallback."
     },
     {
       "category": "cpu_sched_ext",
@@ -80,65 +185,6 @@
     },
     {
       "category": "cpu_sched_ext",
-      "name": "SP4 Redis sched_ext comparison RUNS=10 frozen-code formal run",
-      "host": "123",
-      "path": "results/final/redis-scx-compare-20260724-tested-2541464-runs10",
-      "kind": "result_dir",
-      "summary": "summary.md",
-      "files": [
-        "compare_summary_avg.csv",
-        "run_manifest.json",
-        "report.md"
-      ],
-      "required": true,
-      "notes": "Formal RUNS=10 Redis comparison from tested_code_commit 2541464. cgroup v2 is the strongest Redis noisy-path evidence; scx results are retained as valid workload-boundary data and must not be described as stable performance improvement."
-    },
-    {
-      "category": "cpu_sched_ext",
-      "name": "SP4 Nginx sched_ext comparison RUNS=10 frozen-code formal run",
-      "host": "123",
-      "path": "results/final/nginx-scx-compare-20260724-tested-2541464-runs10",
-      "kind": "result_dir",
-      "summary": "summary.md",
-      "files": [
-        "compare_summary_avg.csv",
-        "run_manifest.json",
-        "report.md"
-      ],
-      "required": true,
-      "notes": "Formal RUNS=10 Nginx comparison from tested_code_commit 2541464. Results are workload-boundary evidence; sched_ext/psi paths are valid but regressed in this workload and are reported as such."
-    },
-    {
-      "category": "cpu_sched_ext",
-      "name": "SP4 Redis pressure gradient comparison frozen-code formal run",
-      "host": "123",
-      "path": "results/final/redis-pressure-gradient-20260724-tested-2541464-runs3",
-      "kind": "result_dir",
-      "summary": "report.md",
-      "files": [
-        "pressure_gradient_summary.csv",
-        "report.md"
-      ],
-      "required": true,
-      "notes": "Formal pressure gradient from tested_code_commit 2541464 across STRESS_WORKERS=0/1/2/4/8. Shows Redis cgroup v2 benefit under increasing interference; scx_psi includes PSI probe load and is not used as net performance proof."
-    },
-    {
-      "category": "cpu_sched_ext",
-      "name": "SP4 Redis manual static vs Agent dynamic comparison RUNS=10 frozen-code formal run",
-      "host": "123",
-      "path": "results/final/redis-static-vs-agent-20260724-tested-2541464-runs10",
-      "kind": "result_dir",
-      "summary": "summary.md",
-      "files": [
-        "compare_summary_avg.csv",
-        "report.md",
-        "summary.md"
-      ],
-      "required": true,
-      "notes": "Formal RUNS=10 fixed Redis comparison from tested_code_commit 2541464. stress-ng parent and worker PIDs are started inside /eulerpilot/background; strict checks cover controlled_pid_cgroups, throttling, and cpu_metric_scope."
-    },
-    {
-      "category": "cpu_sched_ext",
       "name": "SP4 Redis PSI gate ACTIVE probe",
       "host": "123",
       "path": "results/final/redis-scx-psi-probe-20260706-100857",
@@ -152,54 +198,6 @@
       ],
       "required": true,
       "notes": "SP4 sched_ext kernel PSI gate NORMAL to ARMED to ACTIVE transition evidence."
-    },
-    {
-      "category": "cpu_sched_ext",
-      "name": "SP4 throughput-first batch benchmark RUNS=10 frozen-code formal run",
-      "host": "123",
-      "path": "results/final/throughput-first-20260724-tested-2541464-runs10",
-      "kind": "result_dir",
-      "summary": "summary.md",
-      "files": [
-        "throughput_summary_avg.csv",
-        "throughput_summary.csv",
-        "run_manifest.json",
-        "report.md"
-      ],
-      "required": true,
-      "notes": "Formal RUNS=10 throughput-first evidence from tested_code_commit 2541464. cgroup throughput profile is valid; scx batch stats are retained with explicit validity/performance boundaries."
-    },
-    {
-      "category": "cpu_sched_ext",
-      "name": "SP4 mixed-adaptive closure benchmark RUNS=10 frozen-code formal run",
-      "host": "123",
-      "path": "results/final/mixed-adaptive-20260724-tested-2541464-runs10-lite",
-      "kind": "result_dir",
-      "summary": "summary.md",
-      "files": [
-        "mixed_adaptive_summary.csv",
-        "mixed_adaptive_timeline.csv",
-        "run_manifest.json",
-        "report.md"
-      ],
-      "required": true,
-      "notes": "Formal RUNS=10 mixed-adaptive closure from tested_code_commit 2541464. Demonstrates same Agent process across quiet -> pressure -> recovery with NORMAL -> ARMED -> ACTIVE -> COOLDOWN -> NORMAL evidence; PSI probe is not a net performance claim."
-    },
-    {
-      "category": "quality_gate",
-      "name": "SP4 Agent control-plane overhead benchmark RUNS=10 frozen-code formal run",
-      "host": "123",
-      "path": "results/final/agent-overhead-20260724-tested-2541464-runs10",
-      "kind": "result_dir",
-      "summary": "summary.md",
-      "files": [
-        "agent_overhead_summary_avg.csv",
-        "agent_overhead_summary.csv",
-        "run_manifest.json",
-        "report.md"
-      ],
-      "required": true,
-      "notes": "Formal RUNS=10 Agent CPU/RSS overhead from tested_code_commit 2541464 across observe-only cgroup, active cgroup and active sched_ext modes. This is user-space control-plane overhead evidence."
     },
     {
       "category": "network",

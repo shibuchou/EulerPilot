@@ -1,0 +1,128 @@
+{
+  "version": 1,
+  "reviewed_at": "2026-07-24",
+  "description": "Status overlays for preserved historical evidence. The original result directories and files are not modified; collectors and demos must use this file to decide whether an artifact can be used as final positive evidence.",
+  "overrides": [
+    {
+      "evidence_id": "sp4_redis_scx_runs10_tested_2541464",
+      "original_path": "results/final/redis-scx-compare-20260724-tested-2541464-runs10",
+      "original_sha256": "2a3045cf5708e16374bd20c2a154cb904590d942420ae9db4913bff7cdcd2fc5",
+      "original_tested_commit": "2541464",
+      "new_status": "provisional_result",
+      "invalid_reason": "historical_controlled_baseline; scx_artifact_provenance_not_bound_to_fixed_source",
+      "superseded_by": "sp4_redis_scx_runs10_tested_7a99d87_artifact_ef1baebe",
+      "usable_for_final_positive_evidence": false,
+      "metadata": {
+        "artifact_provenance_valid": false,
+        "usable_for_fixed_source_claim": false,
+        "baseline_status": "historical_controlled_baseline",
+        "superseded_by_formal_artifact_id": "ef1baebec7ac138acd0eb1a59fc3880ca550330ef89f87615e8579a0ef264240",
+        "superseded_by_tested_code_commit": "7a99d87048f4f2040377354bfe0ce21401664642"
+      }
+    },
+    {
+      "evidence_id": "sp4_nginx_scx_runs10_tested_2541464",
+      "original_path": "results/final/nginx-scx-compare-20260724-tested-2541464-runs10",
+      "original_sha256": "20d589a941fa93858d176d2d3bcfd15957d46a5b1885aff69ffcd6c2d16ba916",
+      "original_tested_commit": "2541464",
+      "new_status": "provisional_result",
+      "invalid_reason": "historical_controlled_baseline; scx_artifact_provenance_not_bound_to_fixed_source",
+      "superseded_by": "sp4_nginx_scx_runs10_tested_7a99d87_artifact_ef1baebe",
+      "usable_for_final_positive_evidence": false,
+      "metadata": {
+        "artifact_provenance_valid": false,
+        "usable_for_fixed_source_claim": false,
+        "baseline_status": "historical_controlled_baseline",
+        "superseded_by_formal_artifact_id": "ef1baebec7ac138acd0eb1a59fc3880ca550330ef89f87615e8579a0ef264240",
+        "superseded_by_tested_code_commit": "7a99d87048f4f2040377354bfe0ce21401664642"
+      }
+    },
+    {
+      "evidence_id": "sp4_throughput_first_runs10_tested_2541464",
+      "original_path": "results/final/throughput-first-20260724-tested-2541464-runs10",
+      "original_sha256": "89a975b90836aa431346166417e19e49b70c5be6239d5d36e0fdf42b02c34a17",
+      "original_tested_commit": "2541464",
+      "new_status": "invalid",
+      "invalid_reason": "enqueue_batch_gt_zero_without_class_aware_batch_dispatch",
+      "superseded_by": "sp4_throughput_first_runs10_tested_7a99d87_artifact_ef1baebe",
+      "usable_for_final_positive_evidence": false,
+      "metadata": {
+        "artifact_provenance_valid": false,
+        "throughput_first_validity": "invalid",
+        "dispatch_accounting_valid": false,
+        "superseded_by_formal_artifact_id": "ef1baebec7ac138acd0eb1a59fc3880ca550330ef89f87615e8579a0ef264240",
+        "superseded_by_tested_code_commit": "7a99d87048f4f2040377354bfe0ce21401664642"
+      }
+    },
+    {
+      "evidence_id": "sp4_mixed_adaptive_runs10_tested_2541464",
+      "original_path": "results/final/mixed-adaptive-20260724-tested-2541464-runs10-lite",
+      "original_sha256": "40a4b68ea5a3fcf453179e55642e644773897b328c5a8f25202d8effb500a77c",
+      "original_tested_commit": "2541464",
+      "new_status": "invalid",
+      "invalid_reason": "same_agent_process_across_quiet_pressure_recovery_not_proven",
+      "superseded_by": "sp4_mixed_adaptive_runs10_tested_7a99d87_artifact_ef1baebe",
+      "usable_for_final_positive_evidence": false,
+      "metadata": {
+        "same_agent_process_valid": false,
+        "mixed_adaptive_validity": "invalid",
+        "superseded_by_formal_artifact_id": "ef1baebec7ac138acd0eb1a59fc3880ca550330ef89f87615e8579a0ef264240",
+        "superseded_by_tested_code_commit": "7a99d87048f4f2040377354bfe0ce21401664642"
+      }
+    },
+    {
+      "evidence_id": "sp4_redis_pressure_gradient_runs3_tested_2541464",
+      "original_path": "results/final/redis-pressure-gradient-20260724-tested-2541464-runs3",
+      "original_sha256": "80d7b8aff65f019e96cec91d3395bceb096db6d1787be8bfd5958b27c04b2162",
+      "original_tested_commit": "2541464",
+      "new_status": "provisional_result",
+      "invalid_reason": "default_noisy_baseline_uses_controlled_background_cgroup",
+      "superseded_by": "",
+      "usable_for_final_positive_evidence": false,
+      "metadata": {
+        "baseline_status": "historical_controlled_baseline"
+      }
+    },
+    {
+      "evidence_id": "sp4_static_vs_agent_runs10_tested_2541464",
+      "original_path": "results/final/redis-static-vs-agent-20260724-tested-2541464-runs10",
+      "original_sha256": "05a662f88b93f70c733fa6319aca2a91ba6f7adc165ba6b838674232a6a10f0c",
+      "original_tested_commit": "2541464",
+      "new_status": "provisional_result",
+      "invalid_reason": "default_noisy_baseline_uses_controlled_background_cgroup",
+      "superseded_by": "",
+      "usable_for_final_positive_evidence": false,
+      "metadata": {
+        "baseline_status": "historical_controlled_baseline"
+      }
+    },
+    {
+      "evidence_id": "sp4_agent_overhead_runs10_tested_2541464",
+      "original_path": "results/final/agent-overhead-20260724-tested-2541464-runs10",
+      "original_sha256": "85b435d1dabbcde8159a110374c33b3f799c7b97822e1d040dc05b9aa90b8fb0",
+      "original_tested_commit": "2541464",
+      "new_status": "provisional_result",
+      "invalid_reason": "formal_artifact_provenance_and_release_candidate_gate_not_yet_bound",
+      "superseded_by": "sp4_agent_overhead_runs10_tested_7a99d87_artifact_ef1baebe",
+      "usable_for_final_positive_evidence": false,
+      "metadata": {
+        "artifact_provenance_valid": false,
+        "superseded_by_formal_artifact_id": "ef1baebec7ac138acd0eb1a59fc3880ca550330ef89f87615e8579a0ef264240",
+        "superseded_by_tested_code_commit": "7a99d87048f4f2040377354bfe0ce21401664642"
+      }
+    },
+    {
+      "evidence_id": "formal_run_manifest_20260724_tested_2541464",
+      "original_path": "results/final/formal_run_manifest_20260724_tested_2541464.json",
+      "original_sha256": "2c69bd0620a15f374e82e97519ad6d7bd921bfd4660e98a37e1913a9d98a4000",
+      "original_tested_commit": "2541464",
+      "new_status": "provisional_manifest",
+      "invalid_reason": "formal_artifact_gate_and_candidate_bound_gate_not_recorded",
+      "superseded_by": "",
+      "usable_for_final_positive_evidence": false,
+      "metadata": {
+        "tested_commit_gate_bound": false
+      }
+    }
+  ]
+}

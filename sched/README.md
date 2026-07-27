@@ -22,9 +22,9 @@
 scripts/build_scx_eulerpilot.sh
 ```
 
-构建并安装到 `/usr/local/bin/scx_eulerpilot`。脚本默认使用
-`/root/kernel-build/src-scx/tools/sched_ext`，可通过 `KERNEL_SRC`、
-`SCHED_EXT_DIR`、`SCX_BUILD_DIR` 和 `INSTALL_BIN` 覆盖。
+构建并安装到 `/usr/local/bin/scx_eulerpilot`。脚本要求显式传入
+`KERNEL_SRC`；`SCHED_EXT_DIR`、`SCX_BUILD_DIR` 和 `INSTALL_BIN` 可按环境覆盖。
+封版质量门禁止命中历史 `/root/kernel-build` 或 `/root/olk` fallback。
 
 截至 `2026-06-11`，独立 `OLK-6.6` 验证线已经推进到第一版类映射原型：
 

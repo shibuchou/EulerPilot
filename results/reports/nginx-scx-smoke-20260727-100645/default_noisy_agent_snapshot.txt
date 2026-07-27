@@ -1,0 +1,26 @@
+
+  * EulerPilot Agent 
+  --------------------------------------------------
+  config:     /root/EulerPilot/configs/agent.yaml
+  interval:   1000ms  duration:   2s  warmup: 0
+  mode:       dry-run  backend:    cgroup_v2
+  scx binary: auto (auto)
+  gate:       always-active
+  env:         psi:ok  cg:ok  scx:ok
+  --------------------------------------------------
+
+  --- legend ---
+  mark: . UNKNOWN  L LATENCY_SENSITIVE  B BACKGROUND_NOISY  T THROUGHPUT_BATCH
+  act:  + applied  ~ managed  - none
+  --- observing ---
+  mark name             pid  class        act profile    w:weight reason
+  B stress-ng-cpu     368628 BACKGROUND_NOISY |~ normal_profile w:100 no-group-for-class
+  B stress-ng-cpu     368629 BACKGROUND_NOISY |~ normal_profile w:100 no-group-for-class
+  L nginx             368574 LATENCY_SENSITIVE |~ normal_profile w:100 no-group-for-class
+  B sleep             368657 BACKGROUND_NOISY |- mixed_profile w:5 dry-run
+  B stress-ng-cpu     368628 BACKGROUND_NOISY |~ mixed_profile w:5 dry-run
+  B stress-ng-cpu     368629 BACKGROUND_NOISY |~ mixed_profile w:5 dry-run
+  L nginx             368574 LATENCY_SENSITIVE |~ latency_profile w:1000 dry-run
+  --------------------------------------------------
+  DONE  total=55  applied=0  L=2  T=0  B=5  U=48
+

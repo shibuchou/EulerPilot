@@ -1,6 +1,8 @@
 #include "common.hpp"
 #include "factories.hpp"
 
+#include <yaml-cpp/yaml.h>
+
 #include <functional>
 #include <sstream>
 #include <unordered_set>
@@ -29,6 +31,22 @@ struct PolicyEngineAction {
     std::string skip_reason;
     bool memory_high_guard = true;
     bool applied = false;
+};
+
+struct PolicySourceEvent {
+    std::string skill;
+    std::string operation;
+    std::string rule_id;
+    std::string result;
+    std::string event_id;
+};
+
+struct TransactionContext {
+    std::string request_id;
+    std::string transaction_id;
+    std::string trigger_event_id;
+    std::vector<PolicyEngineAction> actions;
+    bool has_side_effect = false;
 };
 
 class PolicyEngineSkill final : public Skill {
@@ -216,7 +234,7 @@ public:
 
     bool rollback() override {
         stop_thread();
-        restore_actions(last_transaction_id_, last_trigger_event_id_);
+        restore_actions(active_actions_, last_transaction_id_, last_trigger_event_id_);
         running_ = false;
         state_ = "rolled-back";
         return true;
@@ -224,7 +242,7 @@ public:
 
     void stop() override {
         stop_thread();
-        restore_actions(last_transaction_id_, last_trigger_event_id_);
+        restore_actions(active_actions_, last_transaction_id_, last_trigger_event_id_);
         running_ = false;
         state_ = "stopped";
     }
@@ -398,38 +416,44 @@ private:
         return ec ? 0 : static_cast<std::uint64_t>(size);
     }
 
-    bool line_matches(const std::string &line) const {
-        return contains_json_string(line, "skill", watch_skill_) &&
-               contains_json_string(line, "operation", watch_operation_) &&
-               contains_json_string(line, "rule_id", watch_rule_id_) &&
-               contains_json_string(line, "result", watch_result_);
-    }
-
-    bool contains_json_string(const std::string &line,
-                              const std::string &key,
-                              const std::string &value) const {
-        return line.find("\"" + key + "\":\"" + value + "\"") != std::string::npos;
-    }
-
-    std::string extract_json_string(const std::string &line,
-                                    const std::string &key) const {
-        const std::string marker = "\"" + key + "\":\"";
-        const auto start = line.find(marker);
-        if (start == std::string::npos) {
+    static std::string scalar_field(const YAML::Node &node,
+                                    const std::string &key) {
+        const YAML::Node value = node[key];
+        if (!value || !value.IsScalar()) {
             return "";
         }
-        const auto value_start = start + marker.size();
-        const auto value_end = line.find('"', value_start);
-        if (value_end == std::string::npos) {
-            return "";
-        }
-        return line.substr(value_start, value_end - value_start);
+        return value.as<std::string>();
     }
 
-    std::string request_id_for_source(const std::string &source_line) const {
-        const std::string event_id = extract_json_string(source_line, "event_id");
-        if (!event_id.empty()) {
-            return event_id;
+    std::optional<PolicySourceEvent> parse_source_event(const std::string &line) const {
+        try {
+            YAML::Node node = YAML::Load(line);
+            if (!node || !node.IsMap()) {
+                return std::nullopt;
+            }
+            PolicySourceEvent event;
+            event.skill = scalar_field(node, "skill");
+            event.operation = scalar_field(node, "operation");
+            event.rule_id = scalar_field(node, "rule_id");
+            event.result = scalar_field(node, "result");
+            event.event_id = scalar_field(node, "event_id");
+            return event;
+        } catch (const YAML::Exception &) {
+            return std::nullopt;
+        }
+    }
+
+    bool source_event_matches(const PolicySourceEvent &event) const {
+        return event.skill == watch_skill_ &&
+               event.operation == watch_operation_ &&
+               event.rule_id == watch_rule_id_ &&
+               event.result == watch_result_;
+    }
+
+    std::string request_id_for_source(const std::string &source_line,
+                                      const PolicySourceEvent &event) const {
+        if (!event.event_id.empty()) {
+            return event.event_id;
         }
         return "source-hash-" + std::to_string(std::hash<std::string>{}(source_line));
     }
@@ -456,9 +480,10 @@ private:
                     in.seekg(static_cast<std::streamoff>(source_offset_));
                     std::string line;
                     while (std::getline(in, line)) {
-                        if (line_matches(line)) {
+                        const auto event = parse_source_event(line);
+                        if (event && source_event_matches(*event)) {
                             trigger_count_.fetch_add(1);
-                            apply_actions(line);
+                            apply_actions(line, *event);
                         }
                     }
                     source_offset_ = current_source_size();
@@ -613,12 +638,13 @@ private:
             last_error_ = "policy-engine-write-failed:" + action.file;
             return "failed";
         }
+        action.applied = true;
+        action.applied_value = action.value;
         std::string verify_value;
         if (!read_value(control_path, verify_value) || verify_value != action.value) {
             last_error_ = "policy-engine-verify-failed:" + action.file;
             return "failed";
         }
-        action.applied = true;
         return "applied";
     }
 
@@ -647,18 +673,21 @@ private:
             return "failed";
         }
         const std::string after = tc_qdisc_show(action.target_ifname);
+        action.applied_value = after;
+        action.applied = true;
         if (after.find("tbf") == std::string::npos) {
             last_error_ = "policy-engine-network-qos-verify-failed:" + action.target_ifname;
             return "failed";
         }
-        action.applied_value = after;
-        action.applied = true;
         return "applied";
     }
 
-    void apply_actions(const std::string &source_line) {
-        const std::string request_id = request_id_for_source(source_line);
-        if (successful_request_ids_.find(request_id) != successful_request_ids_.end()) {
+    void apply_actions(const std::string &source_line,
+                       const PolicySourceEvent &source_event) {
+        TransactionContext transaction;
+        transaction.actions = actions_;
+        transaction.request_id = request_id_for_source(source_line, source_event);
+        if (successful_request_ids_.find(transaction.request_id) != successful_request_ids_.end()) {
             write_policy_event("decision", policy_id_, "deduplicated", source_line,
                                last_transaction_id_, last_trigger_event_id_, nullptr);
             return;
@@ -666,50 +695,68 @@ private:
         // The transaction id is written to Policy Engine, child Skill audit
         // events, and ActionJournal entries. This gives the Web Console and
         // final evidence scripts one stable key for cross-Skill reconstruction.
-        const std::string trigger_event_id = extract_json_string(source_line, "event_id");
-        const std::string transaction_id = "pe-v3-1-" +
+        transaction.transaction_id = "pe-v3-1-" +
             std::to_string(trigger_count_.load()) + "-" + now_event_timestamp();
-        last_transaction_id_ = transaction_id;
-        last_trigger_event_id_ = trigger_event_id;
+        transaction.trigger_event_id = source_event.event_id;
+        last_transaction_id_ = transaction.transaction_id;
+        last_trigger_event_id_ = transaction.trigger_event_id;
         write_policy_event("decision", policy_id_, "decision", source_line,
-                           transaction_id, trigger_event_id, nullptr);
+                           transaction.transaction_id, transaction.trigger_event_id, nullptr);
 
-        for (auto &action : actions_) {
+        for (auto &action : transaction.actions) {
             std::string result;
             const std::string desired_key = desired_state_key(action);
             if (effective_desired_states_.find(desired_key) != effective_desired_states_.end()) {
                 result = "converged";
             } else {
-                result = apply_action(action, transaction_id, trigger_event_id, source_line);
+                result = apply_action(action, transaction.transaction_id,
+                                      transaction.trigger_event_id, source_line);
             }
             write_policy_event("apply", action.name, result, source_line,
-                               transaction_id, trigger_event_id, &action);
-            write_skill_action_event(action, "apply", result, transaction_id,
-                                     trigger_event_id, source_line);
+                               transaction.transaction_id, transaction.trigger_event_id, &action);
+            write_skill_action_event(action, "apply", result, transaction.transaction_id,
+                                     transaction.trigger_event_id, source_line);
             if (result == "applied" || result == "observed" || result == "skipped") {
-                write_policy_journal(action, "apply", false,
-                                     transaction_id, trigger_event_id);
+                if (!write_policy_journal(action, "apply", false,
+                                          transaction.transaction_id,
+                                          transaction.trigger_event_id)) {
+                    last_error_ = "policy-engine-journal-write-failed:" + action.name;
+                    restore_actions(transaction.actions, transaction.transaction_id,
+                                    transaction.trigger_event_id);
+                    active_actions_ = transaction.actions;
+                    state_ = "failed";
+                    return;
+                }
             }
             if (result == "applied" || result == "converged") {
                 effective_desired_states_.insert(desired_key);
             }
+            if (result == "applied") {
+                transaction.has_side_effect = true;
+            }
             if (result == "failed") {
-                restore_actions(transaction_id, trigger_event_id);
+                restore_actions(transaction.actions, transaction.transaction_id,
+                                transaction.trigger_event_id);
+                active_actions_ = transaction.actions;
                 state_ = "failed";
                 return;
             }
         }
-        successful_request_ids_.insert(request_id);
+        if (transaction.has_side_effect) {
+            active_actions_ = transaction.actions;
+        }
+        successful_request_ids_.insert(transaction.request_id);
         state_ = "applied";
     }
 
-    void restore_actions(const std::string &transaction_id,
+    void restore_actions(std::vector<PolicyEngineAction> &transaction_actions,
+                         const std::string &transaction_id,
                          const std::string &trigger_event_id) {
         // Restore in reverse order so dependent actions unwind like a stack:
         // network qdisc changes are removed before the cgroup controls that
         // may have narrowed the same workload.
-        for (std::size_t i = actions_.size(); i > 0; --i) {
-            auto &action = actions_[i - 1];
+        for (std::size_t i = transaction_actions.size(); i > 0; --i) {
+            auto &action = transaction_actions[i - 1];
             if (!action.applied) {
                 continue;
             }
@@ -745,8 +792,8 @@ private:
                                    transaction_id, trigger_event_id, &action);
                 write_skill_action_event(action, "rollback", "restored",
                                          transaction_id, trigger_event_id, "");
-                write_policy_journal(action, "rollback", true,
-                                     transaction_id, trigger_event_id);
+                (void)write_policy_journal(action, "rollback", true,
+                                           transaction_id, trigger_event_id);
                 action.applied = false;
             } else {
                 last_error_ = "policy-engine-restore-failed:" + action.name;
@@ -908,7 +955,7 @@ private:
         append_audit_event(path.string(), event, &error);
     }
 
-    void write_policy_journal(const PolicyEngineAction &action,
+    bool write_policy_journal(const PolicyEngineAction &action,
                               const std::string &operation,
                               bool restored,
                               const std::string &transaction_id,
@@ -945,7 +992,10 @@ private:
         }
         entry.restored = restored;
         std::string error;
-        append_journal_action(journal_path_, entry, &error);
+        if (!append_journal_action(journal_path_, entry, &error)) {
+            return false;
+        }
+        return true;
     }
 
     bool available_ = false;
@@ -966,6 +1016,7 @@ private:
     bool require_network_qos_ = false;
     std::uint32_t poll_interval_ms_ = 100;
     std::vector<PolicyEngineAction> actions_;
+    std::vector<PolicyEngineAction> active_actions_;
     std::atomic<bool> event_thread_stop_{false};
     std::atomic<std::uint64_t> trigger_count_{0};
     std::thread event_thread_;

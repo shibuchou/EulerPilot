@@ -22,6 +22,8 @@ private:
     bool open_trigger();
     bool poll_trigger();
     void emit_trace(const GateDecision &decision);
+    void emit_phase_marker(const std::string &phase);
+    void poll_phase_control();
     std::string gate_state_map_path() const;
 
     ExecutorBackend backend_ = ExecutorBackend::CgroupV2;
@@ -34,6 +36,10 @@ private:
     std::uint32_t recovery_streak_ = 0;
     std::uint64_t cooldown_started_at_ns_ = 0;
     std::string trace_path_ = "/tmp/eulerpilot-psi-gate-trace.jsonl";
+    std::string phase_control_path_;
+    std::string phase_ = "unset";
+    std::string agent_instance_id_;
+    std::uint64_t event_seq_ = 0;
     std::string last_error_;
     std::ofstream trace_;
 };

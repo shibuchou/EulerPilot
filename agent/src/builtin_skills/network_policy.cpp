@@ -93,15 +93,24 @@ public:
             return false;
         }
 
-        const fs::path probe_path = fs::path("/sys/fs/cgroup/eulerpilot") / (".probe-net-" + std::to_string(getpid()));
-        if (!ensure_cgroup(probe_path)) {
+        const fs::path probe_relative = fs::path(".probe-net-" + std::to_string(getpid()));
+        const int root_fd = open_or_create_eulerpilot_cgroup_root();
+        if (root_fd < 0) {
+            last_error_ = "probe-cgroup-root-open-failed";
+            return false;
+        }
+        CgroupLease probe_lease = create_owned_cgroup(root_fd, probe_relative,
+                                                      "probe-" + std::to_string(getpid()));
+        close(root_fd);
+        const fs::path probe_path = probe_lease.canonical_path;
+        if (!probe_lease.valid) {
             last_error_ = "probe-cgroup-create-failed";
             return false;
         }
 
         int probe_fd = open(probe_path.c_str(), O_RDONLY | O_DIRECTORY);
         if (probe_fd < 0) {
-            cleanup_cgroup(probe_path);
+            cleanup_owned_cgroup(probe_lease, "probe-open-failed");
             last_error_ = "probe-cgroup-open-failed";
             return false;
         }
@@ -109,14 +118,14 @@ public:
         bpf_object *obj = bpf_object__open_file(object_path.c_str(), nullptr);
         if (!obj) {
             close(probe_fd);
-            cleanup_cgroup(probe_path);
+            cleanup_owned_cgroup(probe_lease, "probe-bpf-open-failed");
             last_error_ = "probe-bpf-open-failed";
             return false;
         }
         if (bpf_object__load(obj) != 0) {
             bpf_object__close(obj);
             close(probe_fd);
-            cleanup_cgroup(probe_path);
+            cleanup_owned_cgroup(probe_lease, "probe-bpf-load-failed");
             last_error_ = "probe-bpf-load-failed";
             return false;
         }
@@ -126,7 +135,7 @@ public:
         if (!link) {
             bpf_object__close(obj);
             close(probe_fd);
-            cleanup_cgroup(probe_path);
+            cleanup_owned_cgroup(probe_lease, "probe-bpf-attach-failed");
             last_error_ = "probe-bpf-attach-failed";
             return false;
         }
@@ -134,7 +143,7 @@ public:
         bpf_link__destroy(link);
         bpf_object__close(obj);
         close(probe_fd);
-        cleanup_cgroup(probe_path);
+        cleanup_owned_cgroup(probe_lease, "probe-success");
         available_ = true;
         last_error_.clear();
         return true;
@@ -146,16 +155,67 @@ public:
     }
 
     bool start() override {
-        if (!available_ && !probe()) {
-            return false;
-        }
         if (hook_ != "cgroup_connect4") {
             last_error_ = "unsupported-hook";
             return false;
         }
-        if (!ensure_cgroup(cgroup_path_)) {
-            last_error_ = "network-policy-cgroup-create-failed";
-            return false;
+        CgroupIdentity existing_identity = inspect_cgroup(cgroup_path_);
+        if (mode_ == "audit") {
+            if (!existing_identity.exists) {
+                last_error_ = "audit_target_missing";
+                write_audit_event("start", "inspect-cgroup-connect4", "audit_target_missing");
+                return false;
+            }
+            auto target = resolve_cgroup_target(skill_name_, cgroup_path_);
+            if (!target.resolved) {
+                last_error_ = "target-resolve-failed:" + target.reason;
+                return false;
+            }
+            cgroup_id_ = target.cgroup_id;
+            // Audit mode is intentionally read-only: it inspects an existing
+            // target cgroup and never creates, deletes, attaches, or migrates
+            // anything.
+            running_ = true;
+            state_ = "audit-only";
+            available_ = true;
+            write_audit_event("start", "audit-only", "success");
+            write_journal_action("start-audit", "audit-only", "none");
+            return true;
+        } else {
+            if (!available_ && !probe()) {
+                return false;
+            }
+            const auto relative_path = relative_to_eulerpilot_cgroup_root(cgroup_path_);
+            if (!relative_path) {
+                last_error_ = "external-cgroup-readonly";
+                return false;
+            }
+            if (!write_journal_action("prepare-cgroup", "planned-create-owned-cgroup",
+                                      relative_path->string())) {
+                last_error_ = "network-policy-journal-prepare-failed";
+                return false;
+            }
+            const int root_fd = open_or_create_eulerpilot_cgroup_root();
+            if (root_fd < 0) {
+                last_error_ = "network-policy-cgroup-root-open-failed";
+                return false;
+            }
+            cgroup_lease_ = create_owned_cgroup(root_fd, *relative_path,
+                                                skill_name_ + "-" + now_event_timestamp());
+            close(root_fd);
+            if (!cgroup_lease_.valid) {
+                last_error_ = "network-policy-cgroup-create-failed:" + cgroup_lease_.reason;
+                return false;
+            }
+            has_cgroup_lease_ = true;
+            cgroup_path_ = cgroup_lease_.canonical_path.string();
+            if (!write_journal_action("lease-cgroup", "created-owned-cgroup",
+                                      cgroup_lease_.canonical_path.string())) {
+                cleanup_owned_cgroup(cgroup_lease_, "lease-journal-failed");
+                has_cgroup_lease_ = false;
+                last_error_ = "network-policy-journal-lease-failed";
+                return false;
+            }
         }
         auto target = resolve_cgroup_target(skill_name_, cgroup_path_);
         if (!target.resolved) {
@@ -164,20 +224,13 @@ public:
         }
         cgroup_id_ = target.cgroup_id;
 
-        if (mode_ == "audit") {
-            // In audit mode, the NetworkPolicySkill only records that the policy
-            // matched configuration. It intentionally does not attach BPF, so it
-            // cannot block traffic or affect SSH/host networking.
-            running_ = true;
-            state_ = "audit-only";
-            write_audit_event("start", "audit-only", "success");
-            write_journal_action("start-audit", "audit-only", "none");
-            return true;
-        }
-
         cgroup_fd_ = open(cgroup_path_.c_str(), O_RDONLY | O_DIRECTORY);
         if (cgroup_fd_ < 0) {
-            cleanup_cgroup(cgroup_path_);
+            const auto cleanup = cleanup_owned_cgroup(cgroup_lease_, "enforce-open-failed");
+            if (!cleanup.success) {
+                last_error_ = "network-policy-cgroup-open-failed;cleanup:" + cleanup.status;
+                return false;
+            }
             last_error_ = "network-policy-cgroup-open-failed";
             return false;
         }
@@ -240,6 +293,8 @@ public:
     }
 
     bool rollback() override {
+        bool rollback_ok = true;
+        std::string rollback_reason;
         update_cached_stats();
         if (running_) {
             write_audit_event("rollback", "detach-cgroup-connect4", "success");
@@ -258,12 +313,22 @@ public:
             close(cgroup_fd_);
             cgroup_fd_ = -1;
         }
-        if (!cgroup_path_.empty()) {
-            cleanup_cgroup(cgroup_path_);
+        if (has_cgroup_lease_) {
+            const auto cleanup = cleanup_owned_cgroup(cgroup_lease_, "network-policy-rollback");
+            if (!cleanup.success) {
+                rollback_ok = false;
+                rollback_reason = cleanup.status + ":" + cleanup.reason;
+                write_audit_event("rollback", "cleanup-owned-cgroup", cleanup.status);
+                write_journal_action("rollback-failed", "cleanup-owned-cgroup", rollback_reason);
+            }
+            has_cgroup_lease_ = false;
         }
         running_ = false;
-        state_ = "rolled-back";
-        return true;
+        state_ = rollback_ok ? "rolled-back" : "rollback-failed";
+        if (!rollback_ok) {
+            last_error_ = rollback_reason;
+        }
+        return rollback_ok;
     }
 
     void stop() override {
@@ -372,7 +437,7 @@ private:
         append_audit_event(audit_path.string(), event, &error);
     }
 
-    void write_journal_action(const std::string &operation,
+    bool write_journal_action(const std::string &operation,
                               const std::string &action,
                               const std::string &handle) const {
         const fs::path journal_path = "run/eulerpilot/action_journal.jsonl";
@@ -395,9 +460,24 @@ private:
             {"cgroup_path", cgroup_path_},
             {"bpf_link", handle},
         };
+        if (has_cgroup_lease_) {
+            entry.handles["cgroup_lease_path"] = cgroup_lease_.canonical_path.string();
+            entry.handles["cgroup_lease_parent"] = cgroup_lease_.parent_canonical_path.string();
+            entry.handles["cgroup_lease_dev"] = std::to_string(static_cast<unsigned long long>(cgroup_lease_.mount_dev));
+            entry.handles["cgroup_lease_inode"] = std::to_string(static_cast<unsigned long long>(cgroup_lease_.inode));
+            entry.handles["cgroup_lease_parent_dev"] = std::to_string(static_cast<unsigned long long>(cgroup_lease_.parent_dev));
+            entry.handles["cgroup_lease_parent_inode"] = std::to_string(static_cast<unsigned long long>(cgroup_lease_.parent_inode));
+            entry.new_values["cgroup_transaction_id"] = cgroup_lease_.transaction_id;
+            entry.new_values["cgroup_created_by_transaction"] =
+                cgroup_lease_.created_by_transaction ? "true" : "false";
+            entry.new_values["cgroup_existed_before"] =
+                cgroup_lease_.existed_before ? "true" : "false";
+            entry.new_values["cgroup_moved_tasks"] =
+                std::to_string(cgroup_lease_.moved_tasks.size());
+        }
         entry.restored = operation == "rollback";
         std::string error;
-        append_journal_action(journal_path.string(), entry, &error);
+        return append_journal_action(journal_path.string(), entry, &error);
     }
 
     std::string skill_name_;
@@ -418,6 +498,8 @@ private:
     std::uint64_t allow_count_ = 0;
     std::uint64_t deny_count_ = 0;
     int cgroup_fd_ = -1;
+    bool has_cgroup_lease_ = false;
+    CgroupLease cgroup_lease_;
     bpf_object *bpf_object_ = nullptr;
     bpf_link *link_ = nullptr;
 };

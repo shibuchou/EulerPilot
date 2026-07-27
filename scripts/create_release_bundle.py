@@ -19,6 +19,7 @@ from pathlib import Path
 
 
 CORE_PATHS = [
+    "Makefile",
     "agent",
     "bpf",
     "sched",
@@ -28,10 +29,14 @@ CORE_PATHS = [
     "configs/psi_gate.yaml",
     "configs/policy_engine_security_network_resource.yaml",
     "bench",
+    "scripts/build_formal_artifact.py",
+    "scripts/build_scx_eulerpilot.sh",
+    "scripts/formal_artifact_gate.py",
 ]
 
 OPTIONAL_EVIDENCE_FILES = [
     "configs/final_evidence_manifest.json",
+    "evidence/evidence_status_overrides.json",
     "reports/final_evidence_compact.json",
     "reports/final_evidence_compact.md",
     "submission/submission_manifest.md",
@@ -111,6 +116,32 @@ def copy_optional_files(root: Path, bundle_dir: Path) -> list[str]:
     return copied
 
 
+def load_artifact_manifest(path: str, tested: str) -> dict:
+    if not path:
+        return {}
+    manifest_path = Path(path).expanduser().resolve()
+    if not manifest_path.exists():
+        raise RuntimeError(f"artifact manifest not found: {manifest_path}")
+    payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if payload.get("tested_code_commit") != tested:
+        raise RuntimeError("artifact manifest tested_code_commit differs from release tested commit")
+    if payload.get("artifact_purpose") != "formal" or payload.get("selected_for_formal_experiments") is not True:
+        raise RuntimeError("artifact manifest is not selected formal artifact")
+    required = ["artifact_id", "build_attempt_id", "file_hashes", "artifact_id_inputs"]
+    missing = [field for field in required if not payload.get(field)]
+    if missing:
+        raise RuntimeError(f"artifact manifest missing fields: {', '.join(missing)}")
+    return {
+        "artifact_id": payload.get("artifact_id"),
+        "build_attempt_id": payload.get("build_attempt_id"),
+        "artifact_dir": payload.get("artifact_dir"),
+        "build_manifest_path": str(manifest_path),
+        "build_manifest_sha256": sha256_file(manifest_path),
+        "artifact_purpose": payload.get("artifact_purpose"),
+        "selected_for_formal_experiments": payload.get("selected_for_formal_experiments"),
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--version", required=True)
@@ -119,6 +150,8 @@ def main() -> int:
     parser.add_argument("--release-commit", default="")
     parser.add_argument("--tag", default="")
     parser.add_argument("--output-root", default="/root/eulerpilot-release")
+    parser.add_argument("--artifact-manifest", default="",
+                        help="Path to formal artifact build_manifest.json.")
     parser.add_argument("--force", action="store_true")
     ns = parser.parse_args()
 
@@ -135,6 +168,9 @@ def main() -> int:
         for path in changed_core:
             print(f"  {path}", file=sys.stderr)
         return 2
+    tested_core_hash = core_tree_hash(root, tested)
+    release_core_hash = core_tree_hash(root, release)
+    artifact = load_artifact_manifest(ns.artifact_manifest, tested)
 
     output_root = Path(ns.output_root).expanduser().resolve()
     bundle_dir = output_root / f"eulerpilot-{ns.version}"
@@ -169,12 +205,18 @@ def main() -> int:
         "release_candidate_commit": candidate,
         "release_commit": release,
         "tag_commit": "",
-        "core_tree_hash": core_tree_hash(root, tested),
+        "tested_core_tree_hash": tested_core_hash,
+        "release_core_tree_hash": release_core_hash,
+        "core_tree_hash": tested_core_hash,
+        "core_code_equivalent": tested_core_hash == release_core_hash,
+        "formal_artifact": artifact,
         "allowed_post_test_paths": [
             "docs/",
+            "evidence/",
             "reports/",
             "results/",
             "dashboard/",
+            "release/",
             "submission/",
             "configs/final_evidence_manifest.json",
             "VERSION",

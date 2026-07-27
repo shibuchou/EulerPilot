@@ -134,6 +134,13 @@ function consoleToken(): string {
   return window.localStorage.getItem('eulerpilot_console_token') || '';
 }
 
+function authQuery(): string {
+  const token = consoleToken();
+  if (!token) return '';
+  const params = new URLSearchParams({ token });
+  return `?${params.toString()}`;
+}
+
 function authHeaders(): Record<string, string> {
   const token = consoleToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
@@ -197,6 +204,8 @@ export const api = {
   system: () => getJson<SystemInfo>('/api/system'),
   actions: () => getJson<{ actions: ConsoleAction[] }>('/api/actions'),
   jobs: () => getJson<{ jobs: Job[] }>('/api/jobs'),
+  job: (id: string) => getJson<{ job: Job }>(`/api/jobs/${encodeURIComponent(id)}`),
+  jobStreamUrl: (id: string) => `/api/jobs/${encodeURIComponent(id)}/stream${authQuery()}`,
   status: () => getJson<AgentStatus>('/api/agent/status'),
   skills: () => getJson<AgentSkills>('/api/agent/skills'),
   doctor: () => getJson<{ ok: boolean; raw: string }>('/api/agent/doctor'),

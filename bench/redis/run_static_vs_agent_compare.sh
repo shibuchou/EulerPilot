@@ -13,15 +13,21 @@ BENCH_REQUESTS="${BENCH_REQUESTS:-20000}"
 INTERVAL_MS="${INTERVAL_MS:-1000}"
 SNAPSHOT_DELAY="${SNAPSHOT_DELAY:-0.2}"
 BACKGROUND_CGROUP="/sys/fs/cgroup/eulerpilot/background"
+BENCH_CGROUP_ROOT="${BENCH_CGROUP_ROOT:-/sys/fs/cgroup/eulerpilot-bench}"
 
 mkdir -p "$OUTDIR"
 OUTDIR="$(cd "$OUTDIR" && pwd)"
+BENCH_RUN_ID="$(basename "$OUTDIR")"
+BENCH_RUN_CGROUP_ROOT="$BENCH_CGROUP_ROOT/$BENCH_RUN_ID"
 
 cleanup() {
     [ -n "${STRESS_PID:-}" ] && kill "$STRESS_PID" 2>/dev/null || true
     [ -n "${REDIS_PID:-}" ] && kill "$REDIS_PID" 2>/dev/null || true
     pkill -f 'redis-benchmark' 2>/dev/null || true
     "$ROOT/scripts/rollback.sh" >/dev/null 2>&1 || true
+    if [[ "$BENCH_RUN_CGROUP_ROOT" == "$BENCH_CGROUP_ROOT"/* ]]; then
+        find "$BENCH_RUN_CGROUP_ROOT" -depth -type d -exec rmdir {} \; 2>/dev/null || true
+    fi
 }
 trap cleanup EXIT
 
@@ -37,8 +43,9 @@ read_cpu_stat_file() {
 
 snapshot_background_cpu() {
     local out="$1"
-    if [ -r "$BACKGROUND_CGROUP/cpu.stat" ]; then
-        cp "$BACKGROUND_CGROUP/cpu.stat" "$out"
+    local cgroup_path="${2:-$BACKGROUND_CGROUP}"
+    if [ -r "$cgroup_path/cpu.stat" ]; then
+        cp "$cgroup_path/cpu.stat" "$out"
     else
         : > "$out"
     fi
@@ -75,6 +82,62 @@ write_cpu_usage() {
             printf("cpu_metric_warning=auxiliary_only_not_target_cgroup\n");
             printf("requests_total=%d\n", requests);
         }' > "$rundir/${label}_cpu_usage.env"
+}
+
+sanitize_cgroup_component() {
+    printf '%s' "$1" | sed 's/[^A-Za-z0-9_.-]/_/g'
+}
+
+write_default_bench_cgroup_values() {
+    local dir="$1"
+    [ -w "$dir/cpu.weight" ] && echo 100 > "$dir/cpu.weight"
+    [ -w "$dir/cpu.max" ] && echo max > "$dir/cpu.max"
+}
+
+snapshot_cgroup_state() {
+    local dir="$1"
+    local out="$2"
+    {
+        printf 'path=%s\n' "$dir"
+        for file in cpu.weight cpu.max cpuset.cpus cpuset.cpus.effective cpuset.mems.effective cgroup.procs cpu.stat; do
+            if [ -r "$dir/$file" ]; then
+                printf '%s=' "$file"
+                tr '\n' ' ' < "$dir/$file"
+                printf '\n'
+            else
+                printf '%s=unavailable\n' "$file"
+            fi
+        done
+    } > "$out"
+}
+
+prepare_bench_cgroups() {
+    local rundir="$1"
+    local label="$2"
+    local run_name label_name group_root fg bg
+    run_name="$(sanitize_cgroup_component "$(basename "$rundir")")"
+    label_name="$(sanitize_cgroup_component "$label")"
+    group_root="$BENCH_RUN_CGROUP_ROOT/$run_name/$label_name"
+    fg="$group_root/foreground"
+    bg="$group_root/background"
+
+    mkdir -p "$fg" "$bg"
+    write_default_bench_cgroup_values "$fg"
+    write_default_bench_cgroup_values "$bg"
+    if [ -n "${REDIS_PID:-}" ] && [ -d "/proc/$REDIS_PID" ]; then
+        echo "$REDIS_PID" > "$fg/cgroup.procs" 2>/dev/null || true
+    fi
+    snapshot_cgroup_state "$fg" "$rundir/${label}_foreground_cgroup_pre.env"
+    snapshot_cgroup_state "$bg" "$rundir/${label}_background_cgroup_pre.env"
+    CASE_FOREGROUND_CGROUP="$fg"
+    CASE_BACKGROUND_CGROUP="$bg"
+}
+
+finish_bench_cgroup_snapshots() {
+    local rundir="$1"
+    local label="$2"
+    [ -n "${CASE_FOREGROUND_CGROUP:-}" ] && snapshot_cgroup_state "$CASE_FOREGROUND_CGROUP" "$rundir/${label}_foreground_cgroup_post.env"
+    [ -n "${CASE_BACKGROUND_CGROUP:-}" ] && snapshot_cgroup_state "$CASE_BACKGROUND_CGROUP" "$rundir/${label}_background_cgroup_post.env"
 }
 
 snapshot_pid_cgroups() {
@@ -156,7 +219,11 @@ start_stress() {
     sleep 1
     snapshot_stress_pids "$STRESS_PID" "$rundir/${label}_controlled_pids.txt"
     snapshot_pid_cgroups "$rundir/${label}_controlled_pids.txt" "$rundir/${label}_controlled_pid_cgroups.txt"
-    cat "$BACKGROUND_CGROUP/cgroup.procs" > "$rundir/${label}_background_cgroup_procs.txt" 2>/dev/null || true
+    if [ -n "$cgroup_path" ]; then
+        cat "$cgroup_path/cgroup.procs" > "$rundir/${label}_background_cgroup_procs.txt" 2>/dev/null || true
+    else
+        : > "$rundir/${label}_background_cgroup_procs.txt"
+    fi
 }
 
 stop_stress() {
@@ -242,24 +309,33 @@ run_case() {
     local label="$2"
     "$ROOT/scripts/rollback.sh" > "$rundir/${label}_rollback_before.log" 2>&1 || true
     sleep 1
-    snapshot_background_cpu "$rundir/${label}_cpu_stat_before.txt"
+    prepare_bench_cgroups "$rundir" "$label"
+    local expected_cgroup="$CASE_BACKGROUND_CGROUP"
+    local throttle_cgroup="$CASE_BACKGROUND_CGROUP"
 
     case "$label" in
         default_noisy)
-            "$ROOT/scripts/setup_cgroup_v2.sh" > "$rundir/${label}_setup.log" 2>&1
-            start_stress "$rundir" "$label" "$BACKGROUND_CGROUP"
+            printf 'baseline_control=none\nforeground_cgroup=%s\nbackground_cgroup=%s\n' \
+                "$CASE_FOREGROUND_CGROUP" "$CASE_BACKGROUND_CGROUP" > "$rundir/${label}_baseline.env"
+            snapshot_background_cpu "$rundir/${label}_cpu_stat_before.txt" "$throttle_cgroup"
+            start_stress "$rundir" "$label" "$CASE_BACKGROUND_CGROUP"
             run_redis_benchmark "$rundir" "$label"
             stop_stress
             ;;
         agent_observe_only)
-            "$ROOT/scripts/setup_cgroup_v2.sh" > "$rundir/${label}_setup.log" 2>&1
-            start_stress "$rundir" "$label" "$BACKGROUND_CGROUP"
+            printf 'baseline_control=agent_observe_only\nforeground_cgroup=%s\nbackground_cgroup=%s\n' \
+                "$CASE_FOREGROUND_CGROUP" "$CASE_BACKGROUND_CGROUP" > "$rundir/${label}_baseline.env"
+            snapshot_background_cpu "$rundir/${label}_cpu_stat_before.txt" "$throttle_cgroup"
+            start_stress "$rundir" "$label" "$CASE_BACKGROUND_CGROUP"
             run_agent_observe_benchmark "$rundir" "$label"
             stop_stress
             ;;
         manual_static)
             "$ROOT/scripts/setup_cgroup_v2.sh" > "$rundir/${label}_setup.log" 2>&1
             echo "10000 100000" > "$BACKGROUND_CGROUP/cpu.max"
+            expected_cgroup="$BACKGROUND_CGROUP"
+            throttle_cgroup="$BACKGROUND_CGROUP"
+            snapshot_background_cpu "$rundir/${label}_cpu_stat_before.txt" "$throttle_cgroup"
             start_stress "$rundir" "$label" "$BACKGROUND_CGROUP"
             cat "$BACKGROUND_CGROUP/cpu.max" > "$rundir/${label}_cpu_max.txt"
             run_redis_benchmark "$rundir" "$label"
@@ -267,6 +343,9 @@ run_case() {
             ;;
         agent_dynamic)
             "$ROOT/scripts/setup_cgroup_v2.sh" > "$rundir/${label}_setup.log" 2>&1
+            expected_cgroup="$BACKGROUND_CGROUP"
+            throttle_cgroup="$BACKGROUND_CGROUP"
+            snapshot_background_cpu "$rundir/${label}_cpu_stat_before.txt" "$throttle_cgroup"
             start_stress "$rundir" "$label" "$BACKGROUND_CGROUP"
             run_agent_benchmark "$rundir" "$label"
             stop_stress
@@ -277,7 +356,8 @@ run_case() {
             ;;
     esac
 
-    snapshot_background_cpu "$rundir/${label}_cpu_stat_after.txt"
+    snapshot_background_cpu "$rundir/${label}_cpu_stat_after.txt" "$throttle_cgroup"
+    finish_bench_cgroup_snapshots "$rundir" "$label"
     local before="$rundir/${label}_cpu_stat_before.txt"
     local after="$rundir/${label}_cpu_stat_after.txt"
     local before_throttled after_throttled before_usec after_usec
@@ -294,7 +374,7 @@ run_case() {
     rm -f "$invalid"
     if [ "$label" = "default_noisy" ] || [ "$label" = "agent_observe_only" ] ||
        [ "$label" = "manual_static" ] || [ "$label" = "agent_dynamic" ]; then
-        validate_controlled_pids_in_cgroup "$rundir" "$label" "$BACKGROUND_CGROUP" || true
+        validate_controlled_pids_in_cgroup "$rundir" "$label" "$expected_cgroup" || true
     fi
     if [ "$label" = "manual_static" ]; then
         if [ ! -f "$rundir/${label}_cpu_max.txt" ] ||
@@ -436,15 +516,15 @@ lines = [
     "",
     "## 组别",
     "",
-    "- `default_noisy`：Redis + stress-ng，干扰线程进入 background cgroup，但不写限额、不启动 Agent。",
-    "- `agent_observe_only`：Redis + stress-ng，干扰线程进入 background cgroup，启动 EulerPilot observe-only，不执行控制动作。",
+    "- `default_noisy`：Redis + stress-ng，前后台位于 `/sys/fs/cgroup/eulerpilot-bench/<run-id>` 下的对等临时 cgroup，均保持 `cpu.weight=100`、`cpu.max=max`，不启动 Agent、不使用 EulerPilot 控制 cgroup。",
+    "- `agent_observe_only`：同一 bench 对等 cgroup 基线，启动 EulerPilot observe-only，不执行控制动作。",
     "- `manual_static`：在后台 cgroup 内启动 stress-ng 及其 worker，手动写入 `cpu.max=10000 100000`，不启动 Agent。",
     "- `agent_dynamic`：在同一后台 cgroup 内启动 stress-ng 及其 worker，启动 EulerPilot cgroup_v2 active，由 Agent 自动观测、决策和回滚。",
     "",
     "## 有效性门禁",
     "",
     "- 每组均保存 `controlled_pids.txt`、`controlled_pid_cgroups.txt` 与 `background_cgroup_procs.txt`。",
-    "- 四组 stress-ng 父进程和 worker 必须位于同一 background cgroup。",
+    "- `default_noisy` / `agent_observe_only` 的 stress-ng 父进程和 worker 必须位于 bench background cgroup；`manual_static` / `agent_dynamic` 必须位于 EulerPilot background cgroup。",
     "- `manual_static` 必须出现 `nr_throttled_delta > 0`，否则该轮生成 `invalid_reason.txt` 并失败退出。",
     "- `cpu_per_10k_requests` 当前来自全系统 `/proc/stat` 同窗口采样，字段 `cpu_metric_scope=system_proc_stat`，只作为辅助指标，不作为目标 cgroup CPU 消耗结论。",
     "",
