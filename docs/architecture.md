@@ -4,6 +4,12 @@
 
 EulerPilot 采用“观测 - 决策 - 执行 - 反馈”的闭环架构。当前实现已经从早期 CPU 资源控制扩展为统一 OS Agent 框架，覆盖 Resource Control、Network Policy、Security Policy、Policy Engine、Web Console 和最终证据链。
 
+![EulerPilot 主架构图](assets/architecture/eulerpilot_main_architecture.svg)
+
+主运行闭环：Workload -> Kernel Observation -> Runtime/Analyzer -> PsiGate/Policy Engine -> Skill Manager -> Kernel Execution -> Workload。实线表示运行时数据流、决策流和执行反馈，虚线表示能力检测、安全约束和验证关系。
+
+`cgroup v2` 是当前稳定资源治理主路径；`sched_ext/scx` 是比赛核心增强调度路径；Network、Security 和 Resource Control 均通过统一 Skill Framework 管理。
+
 ```text
 Workloads / Containers / Kubernetes Pods
   -> eBPF Observer / PSI / LSM / TC / XDP / sched_ext maps

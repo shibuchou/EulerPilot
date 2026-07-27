@@ -26,8 +26,11 @@
 
 ## 图示入口
 
-- `assets/eulerpilot_architecture_board.svg`：推荐放入 README 和答辩材料的分层项目架构总览图。
-- `assets/eulerpilot_architecture_detailed.drawio`：可编辑 Draw.io 架构图。
+- `assets/architecture/eulerpilot_main_architecture.svg`：README、用户手册、技术报告和答辩 PPT 推荐使用的主架构图。
+- `assets/architecture/eulerpilot_main_architecture.drawio`：可编辑 Draw.io 主架构图。
+- `assets/architecture/eulerpilot_main_architecture.spec.yaml`：主架构图结构化说明。
+- `assets/eulerpilot_architecture_board.svg`：历史分层项目架构总览图。
+- `assets/eulerpilot_architecture_detailed.drawio`：历史可编辑 Draw.io 架构图。
 - `assets/eulerpilot_architecture_detailed.mmd`：Mermaid 架构图源。
 - `assets/eulerpilot_closed_loop_flow.mmd`：Agent 观测、决策、执行、回滚闭环流程图源。
 

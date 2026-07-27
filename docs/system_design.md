@@ -4,20 +4,24 @@
 
 ## 推荐图示
 
-### 1. 分层项目架构总览
+### 1. 主架构图
 
-![EulerPilot 分层项目架构总览](assets/eulerpilot_architecture_board.svg)
+![EulerPilot 主架构图](assets/architecture/eulerpilot_main_architecture.svg)
 
 用途：README、答辩材料和项目快速介绍。
 
 特点：
 
-- 按七层展示：业务负载、openEuler 内核能力、eBPF Hook、用户态 Agent、Skills、执行效果、证据交付。
-- 明确 `Resource / Network / Security / Policy Engine / Web Console` 的位置。
-- 在图底部固定写明环境口径，避免把 SP4 发行默认内核误写成直接支持 `sched_ext`。
+- 按主闭环展示：Workload -> Kernel Observation -> Runtime/Analyzer -> PsiGate/Policy Engine -> Skill Manager -> Kernel Execution -> Workload。
+- 明确 `cgroup v2` 稳定主路径、`sched_ext/scx` 增强调度路径，以及 Resource / Network / Security 三类 Skill 的位置。
+- 把 Capability、Ownership、Transaction、Audit 和 Evidence 作为横切能力展示，便于答辩说明安全边界和证据链。
+- 将 SP4 主验证与 SP3 强制兼容放在验证矩阵中，避免把环境差异误写成业务处理链路。
 
 ### 2. 可编辑 draw.io 架构图
 
+- `docs/assets/architecture/eulerpilot_main_architecture.drawio`
+- `docs/assets/architecture/eulerpilot_main_architecture.spec.yaml`
+- `docs/assets/architecture/eulerpilot_main_architecture.arch.json`
 - `docs/assets/eulerpilot_architecture_detailed.drawio`
 - `docs/assets/eulerpilot_architecture_detailed.spec.yaml`
 - `docs/assets/eulerpilot_architecture_detailed.drawio.svg`
