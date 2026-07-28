@@ -1,0 +1,140 @@
+{
+  "version": 1,
+  "title": "EulerPilot 简化架构图：观测、决策、执行与反馈闭环",
+  "type": "engineering-diagram",
+  "source": "edited",
+  "profile": "engineering-review",
+  "theme": "academic-color",
+  "layout": "horizontal",
+  "counts": {
+    "nodes": 9,
+    "edges": 11,
+    "modules": 0
+  },
+  "nodes": [
+    {
+      "id": "workload",
+      "label": "业务负载\nRedis / Nginx / Batch Jobs\nContainers / K8s Pods",
+      "type": "service",
+      "size": "xl"
+    },
+    {
+      "id": "obs",
+      "label": "内核观测\neBPF / PSI\ncgroup state",
+      "type": "service",
+      "size": "xl"
+    },
+    {
+      "id": "core",
+      "label": "Agent Core\nRuntime / Observer Reader\nWorkload Analyzer",
+      "type": "service",
+      "size": "xl"
+    },
+    {
+      "id": "decision",
+      "label": "自适应决策\nPsiGate\nPolicy Engine",
+      "type": "service",
+      "size": "xl"
+    },
+    {
+      "id": "manager",
+      "label": "Skill Manager\n统一注册与编排\n生命周期 / 状态管理",
+      "type": "service",
+      "size": "xl"
+    },
+    {
+      "id": "skills",
+      "label": "执行 Skills\nResource Control / Scheduling\nNetwork / Security",
+      "type": "service",
+      "size": "xl"
+    },
+    {
+      "id": "kernel",
+      "label": "内核执行面\ncgroup v2 / sched_ext\nNetwork / Security Hooks",
+      "type": "service",
+      "size": "xl"
+    },
+    {
+      "id": "user",
+      "label": "用户入口\nCLI / Web Console\nConfig / Policy",
+      "type": "user",
+      "size": "xl"
+    },
+    {
+      "id": "safety",
+      "label": "横切安全、事务与恢复\nCapability Detection / Ownership Guard / Transaction\nVerify / Rollback / Audit",
+      "type": "service",
+      "size": "xl"
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-1",
+      "from": "workload",
+      "to": "obs",
+      "type": "primary"
+    },
+    {
+      "id": "edge-2",
+      "from": "obs",
+      "to": "core",
+      "type": "primary"
+    },
+    {
+      "id": "edge-3",
+      "from": "core",
+      "to": "decision",
+      "type": "primary"
+    },
+    {
+      "id": "edge-4",
+      "from": "decision",
+      "to": "manager",
+      "type": "primary"
+    },
+    {
+      "id": "edge-5",
+      "from": "manager",
+      "to": "skills",
+      "type": "primary"
+    },
+    {
+      "id": "edge-6",
+      "from": "skills",
+      "to": "kernel",
+      "type": "primary"
+    },
+    {
+      "id": "edge-7",
+      "from": "kernel",
+      "to": "workload",
+      "type": "optional",
+      "label": "资源调度、网络与安全策略反馈"
+    },
+    {
+      "id": "edge-8",
+      "from": "user",
+      "to": "core",
+      "type": "primary"
+    },
+    {
+      "id": "edge-9",
+      "from": "safety",
+      "to": "decision",
+      "type": "optional"
+    },
+    {
+      "id": "edge-10",
+      "from": "safety",
+      "to": "manager",
+      "type": "optional"
+    },
+    {
+      "id": "edge-11",
+      "from": "safety",
+      "to": "skills",
+      "type": "optional"
+    }
+  ],
+  "modules": []
+}

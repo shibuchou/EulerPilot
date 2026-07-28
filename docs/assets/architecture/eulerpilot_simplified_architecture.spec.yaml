@@ -1,0 +1,195 @@
+meta:
+  profile: engineering-review
+  theme: academic-color
+  source: edited
+  layout: horizontal
+  routing: rounded
+  canvas: 1920x1080
+  title: EulerPilot 简化架构图：观测、决策、执行与反馈闭环
+  description: 面向比赛评委的运行时主架构图，仅展示 EulerPilot 的观测、决策、Skill 编排、内核执行与反馈闭环，以及横切安全、事务与恢复基础层。
+  legend: 实线表示运行时数据流、决策流、执行流；虚线表示安全约束与反馈关系。
+nodes:
+  - id: workload
+    label: |-
+      业务负载
+      Redis / Nginx / Batch Jobs
+      Containers / K8s Pods
+    type: service
+    size: xl
+    position:
+      x: 60
+      'y': 300
+    style:
+      fillColor: '#DBEAFE'
+      strokeColor: '#2563EB'
+      fontColor: '#1E3A8A'
+      strokeWidth: 2
+  - id: obs
+    label: |-
+      内核观测
+      eBPF / PSI
+      cgroup state
+    type: service
+    size: xl
+    position:
+      x: 315
+      'y': 300
+    style:
+      fillColor: '#ECFEFF'
+      strokeColor: '#0891B2'
+      fontColor: '#155E75'
+      strokeWidth: 2
+  - id: core
+    label: |-
+      Agent Core
+      Runtime / Observer Reader
+      Workload Analyzer
+    type: service
+    size: xl
+    position:
+      x: 570
+      'y': 300
+    style:
+      fillColor: '#FFF7ED'
+      strokeColor: '#EA580C'
+      fontColor: '#9A3412'
+      strokeWidth: 2
+  - id: decision
+    label: |-
+      自适应决策
+      PsiGate
+      Policy Engine
+    type: service
+    size: xl
+    position:
+      x: 825
+      'y': 300
+    style:
+      fillColor: '#FEF3C7'
+      strokeColor: '#D97706'
+      fontColor: '#92400E'
+      strokeWidth: 2
+  - id: manager
+    label: |-
+      Skill Manager
+      统一注册与编排
+      生命周期 / 状态管理
+    type: service
+    size: xl
+    position:
+      x: 1080
+      'y': 300
+    style:
+      fillColor: '#FFEDD5'
+      strokeColor: '#F97316'
+      fontColor: '#9A3412'
+      strokeWidth: 2
+  - id: skills
+    label: |-
+      执行 Skills
+      Resource Control / Scheduling
+      Network / Security
+    type: service
+    size: xl
+    position:
+      x: 1335
+      'y': 300
+    style:
+      fillColor: '#DCFCE7'
+      strokeColor: '#16A34A'
+      fontColor: '#166534'
+      strokeWidth: 2
+  - id: kernel
+    label: |-
+      内核执行面
+      cgroup v2 / sched_ext
+      Network / Security Hooks
+    type: service
+    size: xl
+    position:
+      x: 1590
+      'y': 300
+    style:
+      fillColor: '#EEF2FF'
+      strokeColor: '#4F46E5'
+      fontColor: '#312E81'
+      strokeWidth: 2
+  - id: user
+    label: |-
+      用户入口
+      CLI / Web Console
+      Config / Policy
+    type: user
+    size: xl
+    position:
+      x: 570
+      'y': 120
+    style:
+      fillColor: '#F8FAFC'
+      strokeColor: '#475569'
+      fontColor: '#0F172A'
+      strokeWidth: 2
+  - id: safety
+    label: |-
+      横切安全、事务与恢复
+      Capability Detection / Ownership Guard / Transaction
+      Verify / Rollback / Audit
+    type: service
+    size: xl
+    position:
+      x: 810
+      'y': 560
+    style:
+      fillColor: '#FFF1F2'
+      strokeColor: '#E11D48'
+      fontColor: '#9F1239'
+      strokeWidth: 2
+edges:
+  - from: workload
+    to: obs
+    type: primary
+  - from: obs
+    to: core
+    type: primary
+  - from: core
+    to: decision
+    type: primary
+  - from: decision
+    to: manager
+    type: primary
+  - from: manager
+    to: skills
+    type: primary
+  - from: skills
+    to: kernel
+    type: primary
+  - from: kernel
+    to: workload
+    type: optional
+    label: 资源调度、网络与安全策略反馈
+    waypoints:
+      - x: 1848
+        'y': 805
+      - x: 168
+        'y': 805
+    style:
+      strokeColor: '#1E3A8A'
+  - from: user
+    to: core
+    type: primary
+  - from: safety
+    to: decision
+    type: optional
+    style:
+      strokeColor: '#EA580C'
+  - from: safety
+    to: manager
+    type: optional
+    style:
+      strokeColor: '#EA580C'
+  - from: safety
+    to: skills
+    type: optional
+    style:
+      strokeColor: '#EA580C'
+modules: []

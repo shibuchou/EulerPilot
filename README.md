@@ -28,11 +28,22 @@ EulerPilot 不是单一调度器 demo，而是一套围绕“观测 -> 决策 ->
 
 `cgroup v2` 是当前稳定资源治理主路径；`sched_ext/scx` 是比赛核心增强调度路径；Network、Security 和 Resource Control 均通过统一 Skill Framework 管理。
 
+### 运行时流程简图
+
+![EulerPilot 运行时流程简图](docs/assets/architecture/eulerpilot_simplified_architecture.svg)
+
+这张简图只展示运行时 Agent 主逻辑：业务负载经过内核观测进入 Agent Core，由 PsiGate 与 Policy Engine 完成自适应决策，再通过统一 Skill Manager 编排 Resource Control、Scheduling、Network 和 Security 四类执行能力，最终作用到内核执行面并反馈到业务负载。
+
+横切安全、事务与恢复层用于说明 Capability Detection、Ownership Guard、Transaction、Verify、Rollback 和 Audit 是执行前、执行中、失败后的共同保障，不是独立业务流程。
+
 可编辑图源和流程图：
 
 - `docs/assets/architecture/eulerpilot_main_architecture.drawio`
 - `docs/assets/architecture/eulerpilot_main_architecture.spec.yaml`
 - `docs/assets/architecture/eulerpilot_main_architecture.arch.json`
+- `docs/assets/architecture/eulerpilot_simplified_architecture.drawio`
+- `docs/assets/architecture/eulerpilot_simplified_architecture.spec.yaml`
+- `docs/assets/architecture/eulerpilot_simplified_architecture.arch.json`
 - `docs/assets/eulerpilot_architecture_detailed.drawio`
 - `docs/assets/eulerpilot_architecture_detailed.mmd`
 - `docs/assets/eulerpilot_closed_loop_flow.mmd`

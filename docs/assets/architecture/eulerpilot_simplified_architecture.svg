@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+<defs>
+  <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#0F172A" flood-opacity="0.12"/></filter>
+  <filter id="softShadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="6" stdDeviation="7" flood-color="#7F1D1D" flood-opacity="0.10"/></filter>
+  <marker id="arrow" markerWidth="14" markerHeight="14" refX="12" refY="7" orient="auto" markerUnits="strokeWidth"><path d="M 0 0 L 14 7 L 0 14 z" fill="#1F2937"/></marker>
+  <marker id="arrowBlue" markerWidth="14" markerHeight="14" refX="12" refY="7" orient="auto" markerUnits="strokeWidth"><path d="M 0 0 L 14 7 L 0 14 z" fill="#1E3A8A"/></marker>
+  <marker id="arrowOrange" markerWidth="14" markerHeight="14" refX="12" refY="7" orient="auto" markerUnits="strokeWidth"><path d="M 0 0 L 14 7 L 0 14 z" fill="#EA580C"/></marker>
+</defs>
+<rect width="1920" height="1080" fill="#F8FAFC"/>
+<text x="960" y="62" text-anchor="middle" font-family="Microsoft YaHei, SimHei, Arial, sans-serif" font-size="36" font-weight="800" fill="#0F172A">EulerPilot 简化架构图：观测、决策、执行与反馈闭环</text>
+<text x="960" y="104" text-anchor="middle" font-family="Microsoft YaHei, SimHei, Arial, sans-serif" font-size="20" font-weight="500" fill="#475569">Workload → Kernel Observation → Agent Core → Adaptive Decision → Skill Manager → Kernel Execution → Workload</text>
+<rect x="40" y="270" width="1840" height="185" rx="28" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.5"/>
+<path d="M 275.0 362.0 L 315.0 362.0" fill="none" stroke="#1F2937" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M 530.0 362.0 L 570.0 362.0" fill="none" stroke="#1F2937" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M 785.0 362.0 L 825.0 362.0" fill="none" stroke="#1F2937" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M 1040.0 362.0 L 1080.0 362.0" fill="none" stroke="#1F2937" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M 1295.0 362.0 L 1335.0 362.0" fill="none" stroke="#1F2937" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M 1550.0 362.0 L 1590.0 362.0" fill="none" stroke="#1F2937" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M 677.5 244.0 L 677.5 300.0" fill="none" stroke="#1F2937" stroke-width="3.0" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M 932.5 560.0 L 932.5 424.0" fill="none" stroke="#EA580C" stroke-width="3.0" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="9 8" marker-end="url(#arrowOrange)"/>
+<path d="M 1187.5 560.0 L 1187.5 424.0" fill="none" stroke="#EA580C" stroke-width="3.0" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="9 8" marker-end="url(#arrowOrange)"/>
+<path d="M 1442.5 560.0 L 1442.5 424.0" fill="none" stroke="#EA580C" stroke-width="3.0" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="9 8" marker-end="url(#arrowOrange)"/>
+<path d="M 1805.0 362.0 L 1848.0 362.0 L 1848.0 805.0 L 167.5 805.0 L 167.5 424.0" fill="none" stroke="#1E3A8A" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="9 8" marker-end="url(#arrowBlue)"/>
+<rect x="675" y="778" width="570" height="38" rx="19" fill="#EFF6FF" stroke="#BFDBFE"/>
+<text x="960" y="803" text-anchor="middle" font-family="Microsoft YaHei, SimHei, Arial, sans-serif" font-size="18" font-weight="700" fill="#1E3A8A">资源调度、网络与安全策略反馈</text>
+<g id="user">
+  <rect x="570" y="120" width="215" height="124" rx="16" fill="#F8FAFC" stroke="#475569" stroke-width="2.5" filter="url(#shadow)"/>
+  <text x="677.5" y="155" text-anchor="middle" font-family="Microsoft YaHei, SimHei, Arial, sans-serif" dominant-baseline="middle">
+<tspan x="677.5" dy="0" font-size="24" font-weight="700" fill="#0F172A">用户入口</tspan>
+<tspan x="677.5" dy="30" font-size="17" font-weight="500" fill="#111827">CLI / Web Console</tspan>
+<tspan x="677.5" dy="30" font-size="17" font-weight="500" fill="#111827">Config / Policy</tspan>
+</text>
+</g>
+<g id="workload">
+  <rect x="60" y="300" width="215" height="124" rx="16" fill="#DBEAFE" stroke="#2563EB" stroke-width="2.5" filter="url(#shadow)"/>
+  <text x="167.5" y="335" text-anchor="middle" font-family="Microsoft YaHei, SimHei, Arial, sans-serif" dominant-baseline="middle">
+<tspan x="167.5" dy="0" font-size="24" font-weight="700" fill="#1E3A8A">业务负载</tspan>
+<tspan x="167.5" dy="30" font-size="17" font-weight="500" fill="#111827">Redis / Nginx / Batch Jobs</tspan>
+<tspan x="167.5" dy="30" font-size="17" font-weight="500" fill="#111827">Containers / K8s Pods</tspan>
+</text>
+</g>
+<g id="obs">
+  <rect x="315" y="300" width="215" height="124" rx="16" fill="#ECFEFF" stroke="#0891B2" stroke-width="2.5" filter="url(#shadow)"/>
+  <text x="422.5" y="335" text-anchor="middle" font-family="Microsoft YaHei, SimHei, Arial, sans-serif" dominant-baseline="middle">
+<tspan x="422.5" dy="0" font-size="24" font-weight="700" fill="#155E75">内核观测</tspan>
+<tspan x="422.5" dy="30" font-size="17" font-weight="500" fill="#111827">eBPF / PSI</tspan>
+<tspan x="422.5" dy="30" font-size="17" font-weight="500" fill="#111827">cgroup state</tspan>
+</text>
+</g>
+<g id="core">
+  <rect x="570" y="300" width="215" height="124" rx="16" fill="#FFF7ED" stroke="#EA580C" stroke-width="2.5" filter="url(#shadow)"/>
+  <text x="677.5" y="335" text-anchor="middle" font-family="Microsoft YaHei, SimHei, Arial, sans-serif" dominant-baseline="middle">
+<tspan x="677.5" dy="0" font-size="24" font-weight="700" fill="#9A3412">Agent Core</tspan>
+<tspan x="677.5" dy="30" font-size="17" font-weight="500" fill="#111827">Runtime / Observer Reader</tspan>
+<tspan x="677.5" dy="30" font-size="17" font-weight="500" fill="#111827">Workload Analyzer</tspan>
+</text>
+</g>
+<g id="decision">
+  <rect x="825" y="300" width="215" height="124" rx="16" fill="#FEF3C7" stroke="#D97706" stroke-width="2.5" filter="url(#shadow)"/>
+  <text x="932.5" y="335" text-anchor="middle" font-family="Microsoft YaHei, SimHei, Arial, sans-serif" dominant-baseline="middle">
+<tspan x="932.5" dy="0" font-size="24" font-weight="700" fill="#92400E">自适应决策</tspan>
+<tspan x="932.5" dy="30" font-size="17" font-weight="500" fill="#111827">PsiGate</tspan>
+<tspan x="932.5" dy="30" font-size="17" font-weight="500" fill="#111827">Policy Engine</tspan>
+</text>
+</g>
+<g id="manager">
+  <rect x="1080" y="300" width="215" height="124" rx="16" fill="#FFEDD5" stroke="#F97316" stroke-width="2.5" filter="url(#shadow)"/>
+  <text x="1187.5" y="335" text-anchor="middle" font-family="Microsoft YaHei, SimHei, Arial, sans-serif" dominant-baseline="middle">
+<tspan x="1187.5" dy="0" font-size="24" font-weight="700" fill="#9A3412">Skill Manager</tspan>
+<tspan x="1187.5" dy="30" font-size="17" font-weight="500" fill="#111827">统一注册与编排</tspan>
+<tspan x="1187.5" dy="30" font-size="17" font-weight="500" fill="#111827">生命周期 / 状态管理</tspan>
+</text>
+</g>
+<g id="skills">
+  <rect x="1335" y="300" width="215" height="124" rx="16" fill="#DCFCE7" stroke="#16A34A" stroke-width="2.5" filter="url(#shadow)"/>
+  <text x="1442.5" y="335" text-anchor="middle" font-family="Microsoft YaHei, SimHei, Arial, sans-serif" dominant-baseline="middle">
+<tspan x="1442.5" dy="0" font-size="24" font-weight="700" fill="#166534">执行 Skills</tspan>
+<tspan x="1442.5" dy="30" font-size="17" font-weight="500" fill="#111827">Resource Control / Scheduling</tspan>
+<tspan x="1442.5" dy="30" font-size="17" font-weight="500" fill="#111827">Network / Security</tspan>
+</text>
+</g>
+<g id="kernel">
+  <rect x="1590" y="300" width="215" height="124" rx="16" fill="#EEF2FF" stroke="#4F46E5" stroke-width="2.5" filter="url(#shadow)"/>
+  <text x="1697.5" y="335" text-anchor="middle" font-family="Microsoft YaHei, SimHei, Arial, sans-serif" dominant-baseline="middle">
+<tspan x="1697.5" dy="0" font-size="24" font-weight="700" fill="#312E81">内核执行面</tspan>
+<tspan x="1697.5" dy="30" font-size="17" font-weight="500" fill="#111827">cgroup v2 / sched_ext</tspan>
+<tspan x="1697.5" dy="30" font-size="17" font-weight="500" fill="#111827">Network / Security Hooks</tspan>
+</text>
+</g>
+<g id="safety">
+  <rect x="810" y="560" width="780" height="124" rx="18" fill="#FFF1F2" stroke="#E11D48" stroke-width="2.5" filter="url(#softShadow)"/>
+  <text x="1200.0" y="595" text-anchor="middle" font-family="Microsoft YaHei, SimHei, Arial, sans-serif" dominant-baseline="middle">
+<tspan x="1200.0" dy="0" font-size="24" font-weight="700" fill="#9F1239">横切安全、事务与恢复</tspan>
+<tspan x="1200.0" dy="30" font-size="18" font-weight="500" fill="#111827">Capability Detection / Ownership Guard / Transaction</tspan>
+<tspan x="1200.0" dy="30" font-size="18" font-weight="500" fill="#111827">Verify / Rollback / Audit</tspan>
+</text>
+</g>
+<g id="legend"><rect x="460" y="945" width="1000" height="70" rx="18" fill="#FFFFFF" stroke="#E2E8F0"/><path d="M 520 982 L 610 982" stroke="#1F2937" stroke-width="4" stroke-linecap="round" marker-end="url(#arrow)"/><text x="625" y="988" font-family="Microsoft YaHei, SimHei, Arial, sans-serif" font-size="18" fill="#334155">实线：运行时数据流、决策流、执行流</text><path d="M 965 982 L 1055 982" stroke="#EA580C" stroke-width="4" stroke-linecap="round" stroke-dasharray="9 8" marker-end="url(#arrowOrange)"/><text x="1070" y="988" font-family="Microsoft YaHei, SimHei, Arial, sans-serif" font-size="18" fill="#334155">虚线：安全约束与反馈关系</text></g>
+</svg>
