@@ -1,24 +1,48 @@
 # EulerPilot
 
-> 面向 openEuler 的自适应资源管控 Agent。文档更新时间：`2026-07-27`；当前进入最终交付收口阶段，代码、证据、Web Console、用户手册和答辩材料按 SP4 主验证 + SP3 强制兼容矩阵收口。
+<div align="center">
 
-EulerPilot 不是单一调度器 demo，而是一套围绕“观测 -> 决策 -> 执行 -> 反馈 -> 证据”的系统级 Agent 框架。项目使用 eBPF/PSI 感知 workload 和系统压力，在用户态完成分类、策略决策和 Skill 编排，并通过 `cgroup v2`、`sched_ext/scx`、TC/XDP、BPF LSM 等系统控制器完成可审计、可回滚的资源管控。
+**面向 openEuler 的自适应资源管控 Agent**
 
-## 当前最强状态
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![OpenEuler](https://img.shields.io/badge/openEuler-24.03%20LTS%20SP3%2FSP4-2e5dac.svg)](https://www.openeuler.org/)
+[![Language](https://img.shields.io/badge/language-C%2FC%2B%2B%2C%20eBPF%2C%20Shell%2C%20Python-orange.svg)]()
+[![Competition](https://img.shields.io/badge/第三届中国研究生操作系统开源创新大赛-系统创新赛道-red.svg)]()
+[![Version](https://img.shields.io/badge/version-v1.0-green.svg)](VERSION)
 
-| 项目 | 当前口径 |
-|------|----------|
-| 核心验证线 | `192.168.1.123:/root/EulerPilot`，openEuler 24.03 LTS SP4 |
-| SP3 强制兼容线 | `192.168.1.121:/root/EulerPilot`，openEuler 24.03 LTS SP3，验证比赛要求的发行环境兼容、cgroup v2 主闭环、安全扩展 smoke、rollback 与 sched_ext graceful fallback |
-| 历史对照线 | `192.168.1.122` 仅保留为历史 OLK/sched_ext 对照，不作为最终 release 来源 |
-| SP4 / sched_ext | SP4 发行环境已完成适配；`sched_ext/scx` 基于 SP4 官方源码自编译启用 `CONFIG_SCHED_CLASS_EXT` 的内核完成复核，不声称发行默认内核直接支持 |
-| 质量门禁 | SP4 final gate 已通过 `29/29 P0 + 100 smoke + 5 doctor-safe`；SP3 compatibility final gate 已通过 `10/10` |
-| 最终证据 | `reports/final_evidence_compact.md/json` 覆盖 `42` 条核心证据，缺失 `0`、警告 `0`；`collect_final_evidence.py --validate-release` 已作为最终证据入口 |
-| 性能复核 | 已基于同一 `tested_code_commit` 与 formal `artifact_id` 完成 Redis、Nginx、throughput-first、mixed-adaptive 和 Agent overhead 的 RUNS=10 套件；性能结论以 formal artifact 结果为准 |
-| Kubernetes | 已在真实 k3s Pod 环境完成隔离验证，使用独立 namespace、独立 label、有限 resources，验证后无 EulerPilot 残留 |
-| Web Console | `web_console/` 演示控制台已落地，集中展示 Agent 状态、Evidence、白名单 Demo、SSE 日志和单任务锁 |
-| 仓库入口 | GitHub：`https://github.com/shibuchou/EulerPilot`；GitLink：`https://gitlink.org.cn/HxQj0tp0pG/mxoedzsyzygka` |
-| 演示视频 | 已准备 `docs/demo_video_recording_script.md`、`docs/demo_video_5min_script.md` 和 `docs/答辩提交材料/项目演示视频.mp4` |
+</div>
+
+## 项目简介
+
+EulerPilot 是**第三届中国研究生操作系统开源创新大赛（系统创新赛道）**参赛作品，围绕赛题「面向 openEuler 的自适应资源管控 Agent」构建。项目不是单一调度器 demo，而是一套围绕"观测 -> 决策 -> 执行 -> 反馈 -> 证据"的系统级 Agent 框架：使用 eBPF/PSI 感知 workload 和系统压力，在用户态完成分类、策略决策和 Skill 编排，并通过 `cgroup v2`、`sched_ext/scx`、TC/XDP、BPF LSM 等系统控制器完成可审计、可回滚的资源管控。
+
+**一句话定位**：让系统先"看懂"当前跑的 workload 是什么，再自动选择合适的资源控制方式，保护关键服务性能。
+
+## 赛题背景
+
+- **比赛名称**：第三届中国研究生操作系统开源创新大赛
+- **赛题方向**：系统创新
+- **赛题名称**：面向 openEuler 的自适应资源管控 Agent（社区赛题）
+- **交付要求**：代码需在 openEuler 24.03-LTS-SP3 上正常编译、运行和测试，鼓励在更多发行版上验证
+
+评分细则对照：
+
+| 评分项 | 满分 | 项目对应能力 |
+|--------|------|--------------|
+| 创新性 | 30 | OS Agent 框架、跨 Skill 联动 Policy Engine、sched_ext/scx 增强路径 |
+| 功能完整性 | 25 | workload 感知、调度调整、Network/Security/Resource 扩展能力 |
+| 性能提升 | 25 | Redis/Nginx RUNS=10 正式对照、Agent overhead 评估 |
+| 代码质量 | 10 | C++ 单元测试、GitHub Actions CI、29/29 质量门禁 |
+| 演示效果 | 10 | Web Console、演示视频、证据压缩报告 |
+
+## 项目亮点
+
+- **统一 Skill 框架**：Resource Control / Network / Security / Policy Engine 全部实现为标准化 Skill，YAML 驱动启停，支持 `--list-skills` / `--doctor-skills` 诊断
+- **跨 Skill 联动**：Security anomaly 触发 Policy Engine 决策，联动 Resource Control（CPU/Memory/IO 降级）与 Network QoS（TC/XDP 限速），统一 `transaction_id`，失败事务化回滚
+- **双执行后端**：`cgroup v2` 作为 SP3 稳定主路径，`sched_ext/scx` 作为 SP4 增强调度路径（基于 SP4 官方源码自编译启用 `CONFIG_SCHED_CLASS_EXT` 的内核完成复核）
+- **低开销观测**：eBPF 采集 sched_wakeup/sched_switch/sched_migrate_task，PSI 感知系统压力，PsiGate 状态机（NORMAL -> ARMED -> ACTIVE -> COOLDOWN -> NORMAL）防抖决策
+- **安全设计**：默认 disabled、fail-open、target 限定（cgroup/PID/container/k8s_pod）、lab 设备白名单、rollback 幂等、AuditBus + ActionJournal 全程审计
+- **真实环境验证**：SP4 主验证 + SP3 强制兼容 + k3s 真实 Pod 验证，42 条核心证据，缺失 0、警告 0
 
 ## 架构总览
 
@@ -49,6 +73,24 @@ EulerPilot 不是单一调度器 demo，而是一套围绕“观测 -> 决策 ->
 - `docs/assets/eulerpilot_closed_loop_flow.mmd`
 - `docs/system_design.md`
 
+## 交付材料
+
+仓库根目录与 `submission/` 目录提供完整的比赛交付材料：
+
+| 材料 | 位置 |
+|------|------|
+| 技术报告 | `技术报告.md` |
+| 设计文档 | `设计文档.md` |
+| 用户手册 | `用户手册.md` |
+| 作品介绍 PPT | `EulerPilot_作品介绍PPT.pptx` |
+| 项目演示视频 | `项目演示视频.mp4` |
+| 项目说明书 | `项目说明书.docx` / `项目说明书.pdf` |
+| 提交包入口 | `submission/README.md` |
+| 编译与运行 | `submission/build_and_run.md` |
+| 证据摘要 | `submission/evidence_summary.md` |
+| 已知限制 | `submission/known_limits.md` |
+| 提交清单 | `submission/submission_manifest.md` |
+
 ## 功能模块
 
 | 模块 | 已完成能力 | 主要证据入口 |
@@ -57,19 +99,28 @@ EulerPilot 不是单一调度器 demo，而是一套围绕“观测 -> 决策 ->
 | CPU Scheduling / PSI | eBPF 调度观测、PSI Gate、cgroup v2 主路径、ScxExecutor/scx 增强路径 | `docs/final_results_summary.md`、`docs/sp4_validation_plan.md` |
 | Resource Control | CPU + Memory + IO，`target_ref`，container/Pod cgroup 解析，事务写入和 rollback；封版默认使用 `cpu.weight/cpu.max`，cpuset 为安全关闭的实验开关 | `docs/resource_control_skill.md` |
 | Network Policy | cgroup/connect4、TC QoS、XDP、真实 Pod host veth，安全白名单和 cleanup | `docs/network_policy_skill.md`、`docs/network_pod_veth_target.md` |
-| Security Policy | BPF LSM、syscall tracing、服务联动 anomaly、credential anomaly、target scope | `docs/security_policy_skill.md` |
+| Security Policy | BPF LSM（9 类 hook）、syscall tracing（4 类）、服务联动 anomaly（5 类规则）、credential anomaly、target scope | `docs/security_policy_skill.md` |
 | Policy Engine | Security anomaly -> Resource / Network 联动，统一 `transaction_id`，失败回滚 | `docs/policy_engine_skill.md` |
-| Web Console | Agent 状态展示、证据清单、白名单动作、SSE job 日志、单任务锁、cleanup | `web_console/README.md`、`docs/web_console_design.md` |
+| Web Console | Agent 状态展示、证据清单、白名单动作、SSE job 日志、单任务锁、cleanup，全中文界面 | `web_console/README.md`、`docs/web_console_design.md` |
 
-## 主 Agent 使用
+## 快速开始
 
-构建 Agent：
+### 环境要求
+
+- openEuler 24.03 LTS SP3（强制兼容环境）/ SP4（主验证环境）
+- `gcc/g++`、`clang`、`bpftool`、`libbpf`、`yaml-cpp`
+- 涉及 BPF/TC/XDP/LSM/cgroup 的实验需要 root 权限
+
+### 构建
 
 ```bash
-make agent
+cd EulerPilot
+make agent                # 构建 Agent
+make unit-tests           # C++ 单元测试
+make network-policy network-qos-tc network-xdp security-policy
 ```
 
-常用只读命令：
+### 常用只读命令
 
 ```bash
 ./build/eulerpilot-agent --validate-config configs/agent.yaml
@@ -80,7 +131,7 @@ make agent
 
 `--list-skills` 用于查看已注册 Skill；`--status --json` 输出 Agent 与 Skill 的只读状态快照；`--doctor-safe` 严格只读，不创建 cgroup，不加载 BPF/TC/XDP/LSM，不做 live probe。
 
-启动一次 dry-run 观测：
+### 启动一次 dry-run 观测
 
 ```bash
 ./build/eulerpilot-agent --config configs/agent.yaml --duration-s 10 --interval-ms 1000
@@ -184,6 +235,22 @@ npm run build
 - `docs/sp4_validation_plan.md`
 - `docs/sp4_k8s_validation_plan.md`
 
+## 仓库状态
+
+| 项目 | 当前口径 |
+|------|----------|
+| 核心验证线 | `192.168.1.123:/root/EulerPilot`，openEuler 24.03 LTS SP4 |
+| SP3 强制兼容线 | `192.168.1.121:/root/EulerPilot`，openEuler 24.03 LTS SP3，验证比赛要求的发行环境兼容、cgroup v2 主闭环、安全扩展 smoke、rollback 与 sched_ext graceful fallback |
+| 历史对照线 | `192.168.1.122` 仅保留为历史 OLK/sched_ext 对照，不作为最终 release 来源 |
+| SP4 / sched_ext | SP4 发行环境已完成适配；`sched_ext/scx` 基于 SP4 官方源码自编译启用 `CONFIG_SCHED_CLASS_EXT` 的内核完成复核，不声称发行默认内核直接支持 |
+| 质量门禁 | SP4 final gate 已通过 `29/29 P0 + 100 smoke + 5 doctor-safe`；SP3 compatibility final gate 已通过 `10/10` |
+| 最终证据 | `reports/final_evidence_compact.md/json` 覆盖 `42` 条核心证据，缺失 `0`、警告 `0`；`collect_final_evidence.py --validate-release` 已作为最终证据入口 |
+| 性能复核 | 已基于同一 `tested_code_commit` 与 formal `artifact_id` 完成 Redis、Nginx、throughput-first、mixed-adaptive 和 Agent overhead 的 RUNS=10 套件；性能结论以 formal artifact 结果为准 |
+| Kubernetes | 已在真实 k3s Pod 环境完成隔离验证，使用独立 namespace、独立 label、有限 resources，验证后无 EulerPilot 残留 |
+| Web Console | `web_console/` 演示控制台已落地，集中展示 Agent 状态、Evidence、白名单 Demo、SSE 日志和单任务锁 |
+| 仓库入口 | GitHub：`https://github.com/shibuchou/EulerPilot`；GitLink：`https://gitlink.org.cn/HxQj0tp0pG/mxoedzsyzygka` |
+| 演示视频 | 已准备 `docs/demo_video_recording_script.md`、`docs/demo_video_5min_script.md` 和 `docs/答辩提交材料/项目演示视频.mp4` |
+
 ## 结论边界
 
 EulerPilot 的价值不是声称所有 workload 永远优于默认调度器，而是证明：
@@ -193,3 +260,11 @@ EulerPilot 的价值不是声称所有 workload 永远优于默认调度器，�
 - Resource / Network / Security / Policy Engine 能在统一 Skill 框架下联动。
 - Redis 等 latency-sensitive 混布场景收益更明确，Nginx 等场景存在 workload 相关边界。
 - SP3 稳定主路径、OLK-6.6 对照线和 SP4 自编译 sched_ext 复核线共同支撑可交付、可迁移、可复现的比赛证据链。
+
+## 贡献与安全
+
+- 贡献指南：`CONTRIBUTING.md`
+- 安全策略：`SECURITY.md`
+- 变更记录：`CHANGELOG.md`
+- 版本：`VERSION`
+- 许可证：[MIT](LICENSE)，第三方声明见 `NOTICE`
