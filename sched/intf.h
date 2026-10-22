@@ -13,7 +13,7 @@
 #include <linux/types.h>
 #endif
 
-#define SP_INTF_VERSION 2
+#define SP_INTF_VERSION 3
 
 /* control modes */
 #define SP_MODE_BASIC    0 /* B: single shared DSQ (basic sched_ext) */
@@ -67,6 +67,11 @@ struct sp_cfg {
 	__u32 bg_vtime_pct;
 	__u32 klass_update_epoch;
 	__u32 reserved1;
+	/* Fairness budget (software protection, not a hard RT bound). */
+	__u32 lat_budget_pct;    /* 1..95, default 60 */
+	__u32 budget_window_ms;  /* 10..10000, default 100 */
+	__u32 aging_ms;          /* 1..5000, default 20 */
+	__u32 reserved2;
 };
 
 struct sp_task_class {
@@ -120,6 +125,9 @@ struct sp_tg_stats {
 #define SP_STAT_DSQ_CACHE_TRY        31
 #define SP_STAT_DSQ_CACHE_HIT        32
 #define SP_STAT_CLASSMAP_EXPIRED     33
+#define SP_STAT_LAT_BUDGET_THROTTLE  34
+#define SP_STAT_LAT_IDLE_BORROW      35
+#define SP_STAT_AGING_FORCE          36
 #define SP_NR_STATS                  40
 
 #endif /* __SCHEDPILOT_INTF_H */

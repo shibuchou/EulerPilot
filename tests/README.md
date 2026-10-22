@@ -14,9 +14,12 @@
 | SLO 门控 | `tests/integration_fd.sh` | 已通过（2 样本时 `slo.evaluate` 拒绝 FEATURES_INSUFFICIENT） |
 | 非人工来源 SLO 否决 | `tests/integration_fd.sh` | 已通过（`llm-proposal` apply 返回 SLO_DENIED，状态不变） |
 | A/B/C liveness | `experiments/abc_nostall.sh` | 已通过（fair/basic/class 三臂 utime 均推进、状态干净；非性能比较） |
-| WAL 故障 | unit（Journal fault injection） | 已通过（PREPARED/VERIFYING/ROLLBACK_PREPARED/ROLLED_BACK 失败路径；无假 ROLLED_BACK） |\n| FD/helper 故障 | unit + integration_fd | 已通过（link fd CLOEXEC；整轮刷新 204ms、EOF 208ms；正常清理与外来 pin 保留/恢复） |
+| BPF 公平性 pilot（manual） | tests/fairness_sp3.sh + fairness_probe.c | 已跑 SP3：各类有进度、最长间隔~34ms；LAT 31% 未达 60% 预算、throttle=0，结论未收口 |
+| WAL 故障 | unit（Journal fault injection） | 已通过（PREPARED/VERIFYING/ROLLBACK_PREPARED/ROLLED_BACK 失败路径；无假 ROLLED_BACK） |
+| FD/helper 故障 | unit + integration_fd | 已通过（link fd CLOEXEC；整轮刷新 204ms、EOF 208ms；正常清理与外来 pin 保留/恢复） |
 | 一键验收 | `scripts/accept_sp3.sh` | 旧版SP3日志通过；新版要求6必测项无SKIP及严格收尾断言，离线回归通过，尚待SP3重跑 |
-| active 绑定/撤销 | unit + integration_fd | 已通过（cgroup FD/路径替换拒绝；成员迁出 class-del；真实 sleep 退出后 class-get=false） |\n| class_map BACKGROUND | `tests/integration_fd.sh` | 已通过（pid 直接写 + cgroup.procs 展开；BG/EXTERN，class-get 验证） |
+| active 绑定/撤销 | unit + integration_fd | 已通过（cgroup FD/路径替换拒绝；成员迁出 class-del；真实 sleep 退出后 class-get=false） |
+| class_map BACKGROUND | `tests/integration_fd.sh` | 已通过（pid 直接写 + cgroup.procs 展开；BG/EXTERN，class-get 验证） |
 | 调度 loader 构建 | `sched/loader.c` → `ep-sched-loader` | 已通过（需内核树静态 libbpf ≥1.3） |
 | 性能 | 按 `docs/EXPERIMENT_PROTOCOL.md` | 未开始 |
 | 故障恢复 | 目前只有控制面故障 | 部分 |

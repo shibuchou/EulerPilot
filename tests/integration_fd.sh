@@ -255,9 +255,38 @@ assert cfg["cache_slice_ns"] == 4000000, cfg
 assert cfg["bg_slice_ns"] == 2000000, cfg
 assert cfg["preempt_threshold_ns"] == 500000, cfg
 assert cfg["bg_vtime_pct"] == 200, cfg
+assert cfg["lat_budget_pct"] == 60, cfg
+assert cfg["budget_window_ms"] == 100, cfg
+assert cfg["aging_ms"] == 20, cfg
 assert cfg["llc_affinity"] is False, cfg
 assert cfg["generation"] >= 2, cfg
 print("[integration-fd] cfg generation", cfg["generation"])
+PY
+
+echo "[integration-fd] fairness cfg fields"
+setcfg="$("$CTL" set --pin-dir "$PINDIR" --json '{"lat_budget_pct":50,"budget_window_ms":50,"aging_ms":10}')" ||
+  fail "fairness cfg set failed"
+python3 - "$setcfg" <<'PY'
+import json, sys
+reply = json.loads(sys.argv[1])
+assert reply.get("ok") is True, reply
+cfg = reply["cfg"]
+assert cfg["lat_budget_pct"] == 50, cfg
+assert cfg["budget_window_ms"] == 50, cfg
+assert cfg["aging_ms"] == 10, cfg
+print("[integration-fd] fairness cfg set", cfg["lat_budget_pct"], cfg["budget_window_ms"], cfg["aging_ms"])
+PY
+restorecfg="$("$CTL" set --pin-dir "$PINDIR" --json '{"lat_budget_pct":60,"budget_window_ms":100,"aging_ms":20}')" ||
+  fail "fairness cfg restore failed"
+python3 - "$restorecfg" <<'PY'
+import json, sys
+reply = json.loads(sys.argv[1])
+assert reply.get("ok") is True, reply
+cfg = reply["cfg"]
+assert cfg["lat_budget_pct"] == 60, cfg
+assert cfg["budget_window_ms"] == 100, cfg
+assert cfg["aging_ms"] == 20, cfg
+print("[integration-fd] fairness cfg restored")
 PY
 
 python3 - "$resp" <<'PY'

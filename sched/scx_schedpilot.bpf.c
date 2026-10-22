@@ -31,6 +31,9 @@ UEI_DEFINE(uei);
 #define SP_DEF_MIGRATE_PEN_NS  2000000ULL
 #define SP_MAX_MIG_PEN_NS      8000000ULL
 #define SP_DEF_BG_VTIME_PCT         200u
+#define SP_DEF_LAT_BUDGET_PCT        60u
+#define SP_DEF_BUDGET_WINDOW_MS     100u
+#define SP_DEF_AGING_MS              20u
 #define SP_MAX_RUN_DELAY_NS  1000000000ULL
 #define SP_CLASS_TTL_NS       5000000000ULL
 
@@ -93,6 +96,22 @@ struct {
 	__uint(max_entries, 2);
 } pcpu_state SEC(".maps");
 
+/* Per-CPU fairness window. Runtime is charged in stopping(), so direct
+ * SCX_DSQ_LOCAL dispatches are covered as well. */
+struct sp_cpu_budget {
+	u64 window_start_ns;
+	u64 lat_runtime_ns;
+	u64 other_runtime_ns;
+	u64 last_other_ns;
+};
+
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__uint(key_size, sizeof(u32));
+	__uint(value_size, sizeof(struct sp_cpu_budget));
+	__uint(max_entries, 1);
+} fair_budget SEC(".maps");
+
 static u64 vtime_now_comp;
 static u64 vtime_now_cache;
 
@@ -121,50 +140,105 @@ static bool cfg_heartbeat_alive(struct sp_cfg *c)
 }
 
 /*
- * Effective flags per mode:
- *  - BASIC ignores class routing and uses the shared DSQ only.
- *  - CLASS/ADAPTIVE use the class DSQs. In ADAPTIVE mode a stale daemon
- *    heartbeat degrades to the static flag set.
+ * One effective policy for every hook. In ADAPTIVE mode a stale heartbeat
+ * falls back to the complete static defaults, including slices and budget;
+ * otherwise CLASS/ADAPTIVE keep using the daemon cfg.
  */
-static u32 effective_flags(struct sp_cfg *c)
-{
-	if (!c)
-		return SP_FLAG_CLASS_DSQ | SP_FLAG_PREEMPT;
+struct sp_effective {
+	u32 flags;
+	u32 bg_vtime_pct;
+	u32 lat_budget_pct;
+	u64 lat_slice_ns;
+	u64 comp_slice_ns;
+	u64 cache_slice_ns;
+	u64 bg_slice_ns;
+	u64 preempt_thresh_ns;
+	u64 migrate_penalty_ns;
+	u64 budget_window_ns;
+	u64 aging_ns;
+};
 
-	switch (c->mode) {
-	case SP_MODE_BASIC:
-		return 0;
-	case SP_MODE_CLASS:
-		return c->flags | SP_FLAG_CLASS_DSQ;
-	case SP_MODE_ADAPTIVE:
-		if (!cfg_heartbeat_alive(c)) {
-			stat_inc(SP_STAT_CFG_STALE);
-			return SP_FLAG_CLASS_DSQ | SP_FLAG_PREEMPT;
-		}
-		stat_inc(SP_STAT_CFG_ALIVE);
-		return c->flags | SP_FLAG_CLASS_DSQ;
-	default:
-		return SP_FLAG_CLASS_DSQ | SP_FLAG_PREEMPT;
-	}
+static u32 clamp_u32(u32 value, u32 low, u32 high)
+{
+	if (value < low)
+		return low;
+	if (value > high)
+		return high;
+	return value;
 }
 
-static u64 pick_slice(struct sp_cfg *c, u32 klass)
+static void effective_policy(struct sp_cfg *c, struct sp_effective *e)
 {
-	u64 v;
+	bool stale = false;
+	u32 flags;
 
+	if (!c) {
+		stale = true;
+		flags = SP_FLAG_CLASS_DSQ | SP_FLAG_PREEMPT;
+	} else {
+		switch (c->mode) {
+		case SP_MODE_BASIC:
+			flags = 0;
+			break;
+		case SP_MODE_CLASS:
+			flags = c->flags | SP_FLAG_CLASS_DSQ;
+			break;
+		case SP_MODE_ADAPTIVE:
+			if (!cfg_heartbeat_alive(c)) {
+				stat_inc(SP_STAT_CFG_STALE);
+				stale = true;
+				flags = SP_FLAG_CLASS_DSQ | SP_FLAG_PREEMPT;
+			} else {
+				stat_inc(SP_STAT_CFG_ALIVE);
+				flags = c->flags | SP_FLAG_CLASS_DSQ;
+			}
+			break;
+		default:
+			stale = true;
+			flags = SP_FLAG_CLASS_DSQ | SP_FLAG_PREEMPT;
+			break;
+		}
+	}
+
+	e->flags = flags;
+	e->lat_slice_ns = (!stale && c && c->lat_slice_ns) ?
+				  c->lat_slice_ns : SP_DEF_LAT_SLICE_NS;
+	e->comp_slice_ns = (!stale && c && c->comp_slice_ns) ?
+				   c->comp_slice_ns : SP_DEF_COMP_SLICE_NS;
+	e->cache_slice_ns = (!stale && c && c->cache_slice_ns) ?
+				    c->cache_slice_ns : SP_DEF_CACHE_SLICE_NS;
+	e->bg_slice_ns = (!stale && c && c->bg_slice_ns) ?
+				 c->bg_slice_ns : SP_DEF_BG_SLICE_NS;
+	e->preempt_thresh_ns = (!stale && c && c->preempt_thresh_ns) ?
+				   c->preempt_thresh_ns : SP_DEF_PREEMPT_NS;
+	e->migrate_penalty_ns = (!stale && c && c->migrate_penalty_ns) ?
+				    c->migrate_penalty_ns : SP_DEF_MIGRATE_PEN_NS;
+	e->bg_vtime_pct = (!stale && c && c->bg_vtime_pct) ?
+				  c->bg_vtime_pct : SP_DEF_BG_VTIME_PCT;
+	e->lat_budget_pct = clamp_u32((!stale && c && c->lat_budget_pct) ?
+				      c->lat_budget_pct : SP_DEF_LAT_BUDGET_PCT,
+				      1, 95);
+	e->budget_window_ns =
+		(u64)clamp_u32((!stale && c && c->budget_window_ms) ?
+			       c->budget_window_ms : SP_DEF_BUDGET_WINDOW_MS,
+			       10, 10000) * 1000000ULL;
+	e->aging_ns =
+		(u64)clamp_u32((!stale && c && c->aging_ms) ?
+			       c->aging_ms : SP_DEF_AGING_MS,
+			       1, 5000) * 1000000ULL;
+}
+
+static u64 slice_for(struct sp_effective *e, u32 klass)
+{
 	switch (klass) {
 	case SP_CLASS_LAT:
-		v = c ? c->lat_slice_ns : 0;
-		return v ? v : SP_DEF_LAT_SLICE_NS;
+		return e->lat_slice_ns;
 	case SP_CLASS_CACHE:
-		v = c ? c->cache_slice_ns : 0;
-		return v ? v : SP_DEF_CACHE_SLICE_NS;
+		return e->cache_slice_ns;
 	case SP_CLASS_BG:
-		v = c ? c->bg_slice_ns : 0;
-		return v ? v : SP_DEF_BG_SLICE_NS;
+		return e->bg_slice_ns;
 	default:
-		v = c ? c->comp_slice_ns : 0;
-		return v ? v : SP_DEF_COMP_SLICE_NS;
+		return e->comp_slice_ns;
 	}
 }
 
@@ -305,10 +379,12 @@ s32 BPF_STRUCT_OPS(schedpilot_select_cpu, struct task_struct *p, s32 prev_cpu,
 		   u64 wake_flags)
 {
 	struct sp_cfg *c = get_cfg();
-	u32 flags = effective_flags(c);
+	struct sp_effective e;
 	u32 klass = lookup_class(p);
 	bool is_idle = false;
 	s32 cpu;
+
+	effective_policy(c, &e);
 
 	/*
 	 * select_cpu is the wakeup path (including direct local dispatch,
@@ -320,16 +396,15 @@ s32 BPF_STRUCT_OPS(schedpilot_select_cpu, struct task_struct *p, s32 prev_cpu,
 	cpu = scx_bpf_select_cpu_dfl(p, prev_cpu, wake_flags, &is_idle);
 	if (is_idle) {
 		stat_direct(klass);
-		scx_bpf_dsq_insert(p, SCX_DSQ_LOCAL, pick_slice(c, klass), 0);
+		scx_bpf_dsq_insert(p, SCX_DSQ_LOCAL, slice_for(&e, klass), 0);
 		return cpu;
 	}
 
-	if ((flags & SP_FLAG_PREEMPT) && cpu >= 0 && klass != SP_CLASS_BG) {
+	if ((e.flags & SP_FLAG_PREEMPT) && cpu >= 0 && klass != SP_CLASS_BG) {
 		u32 zero = 0;
 		u64 *last_kick = bpf_map_lookup_elem(&pcpu_state, &zero);
 		u64 now = bpf_ktime_get_ns();
-		u64 thr = (c && c->preempt_thresh_ns) ? c->preempt_thresh_ns
-						      : SP_DEF_PREEMPT_NS;
+		u64 thr = e.preempt_thresh_ns;
 
 		/* LAT wakes preempt aggressively; other classes use a wider
 		 * threshold so throughput-oriented tasks (DB sync threads)
@@ -352,10 +427,13 @@ s32 BPF_STRUCT_OPS(schedpilot_select_cpu, struct task_struct *p, s32 prev_cpu,
 void BPF_STRUCT_OPS(schedpilot_enqueue, struct task_struct *p, u64 enq_flags)
 {
 	struct sp_cfg *c = get_cfg();
-	u32 flags = effective_flags(c);
+	struct sp_effective e;
 	u32 klass = lookup_class(p);
-	u64 slice = pick_slice(c, klass);
+	u64 slice;
 	struct sp_task_ctx *tc;
+
+	effective_policy(c, &e);
+	slice = slice_for(&e, klass);
 
 	tc = get_task_ctx(p, true);
 	if (tc) {
@@ -366,7 +444,7 @@ void BPF_STRUCT_OPS(schedpilot_enqueue, struct task_struct *p, u64 enq_flags)
 		tc->enq_depth++;
 	}
 
-	if (!(flags & SP_FLAG_CLASS_DSQ)) {
+	if (!(e.flags & SP_FLAG_CLASS_DSQ)) {
 		stat_inc(SP_STAT_ENQ_SHARED);
 		stat_inc(SP_STAT_ENQ_VTIME_SHARED);
 		vtime_floor(p, vtime_now_comp, slice);
@@ -385,7 +463,7 @@ void BPF_STRUCT_OPS(schedpilot_enqueue, struct task_struct *p, u64 enq_flags)
 
 		stat_inc(SP_STAT_ENQ_CACHE);
 		stat_inc(SP_STAT_ENQ_VTIME_CACHE);
-		if (flags & SP_FLAG_LLC_AFFINITY)
+		if (e.flags & SP_FLAG_LLC_AFFINITY)
 			dsq = cache_dsq_for_cpu(bpf_get_smp_processor_id());
 		else
 			dsq = SP_DSQ_CACHE_BASE;
@@ -414,11 +492,12 @@ void BPF_STRUCT_OPS(schedpilot_enqueue, struct task_struct *p, u64 enq_flags)
 void BPF_STRUCT_OPS(schedpilot_running, struct task_struct *p)
 {
 	struct sp_cfg *c = get_cfg();
-	u32 flags = effective_flags(c);
+	struct sp_effective e;
 	u32 klass = lookup_class(p);
 	u32 cpu = bpf_get_smp_processor_id();
 	struct sp_task_ctx *tc;
 
+	effective_policy(c, &e);
 	stat_running(klass);
 
 	tc = get_task_ctx(p, false);
@@ -431,11 +510,9 @@ void BPF_STRUCT_OPS(schedpilot_running, struct task_struct *p)
 					    now - tc->enq_ns);
 			tc->enq_depth = 0;
 		}
-		if (klass == SP_CLASS_CACHE && (flags & SP_FLAG_LLC_AFFINITY) &&
+		if (klass == SP_CLASS_CACHE && (e.flags & SP_FLAG_LLC_AFFINITY) &&
 		    tc->last_cpu >= 0 && tc->last_cpu != (s32)cpu) {
-			u64 pen = (c && c->migrate_penalty_ns) ?
-					  c->migrate_penalty_ns :
-					  SP_DEF_MIGRATE_PEN_NS;
+			u64 pen = e.migrate_penalty_ns;
 
 			p->scx.dsq_vtime += pen * 100 / task_weight(p);
 			/* Cap accumulated migration penalty: a frequently
@@ -459,24 +536,48 @@ void BPF_STRUCT_OPS(schedpilot_running, struct task_struct *p)
 	}
 }
 
+static void budget_account(u32 klass, u64 consumed, u64 window_ns)
+{
+	u32 zero = 0;
+	struct sp_cpu_budget *b = bpf_map_lookup_elem(&fair_budget, &zero);
+	u64 now;
+
+	if (!b || !window_ns)
+		return;
+	now = bpf_ktime_get_ns();
+	if (!b->window_start_ns || now - b->window_start_ns >= window_ns) {
+		b->window_start_ns = now;
+		b->lat_runtime_ns = 0;
+		b->other_runtime_ns = 0;
+	}
+	if (klass == SP_CLASS_LAT)
+		b->lat_runtime_ns += consumed;
+	else
+		b->other_runtime_ns += consumed;
+}
+
 void BPF_STRUCT_OPS(schedpilot_stopping, struct task_struct *p, bool runnable)
 {
 	struct sp_cfg *c = get_cfg();
+	struct sp_effective e;
 	u32 klass = lookup_class(p);
 	struct sp_task_ctx *tc = get_task_ctx(p, false);
-	u64 slice = (tc && tc->slice_ns) ? tc->slice_ns : pick_slice(c, klass);
-	u64 consumed = slice > p->scx.slice ? slice - p->scx.slice : 0;
+	u64 slice;
+	u64 consumed;
 	u64 weight = task_weight(p);
 	u64 cost;
 
+	effective_policy(c, &e);
+	slice = (tc && tc->slice_ns) ? tc->slice_ns : slice_for(&e, klass);
+	consumed = slice > p->scx.slice ? slice - p->scx.slice : 0;
+
 	tg_stat_add(p->tgid, SP_TG_SWITCHES, 1);
 	tg_stat_add(p->tgid, SP_TG_RUNTIME, consumed);
+	budget_account(klass, consumed, e.budget_window_ns);
 
 	cost = consumed * 100 / weight;
-	if (klass == SP_CLASS_BG && c && (c->flags & SP_FLAG_BG_CONTAIN)) {
-		u32 pct = c->bg_vtime_pct ? c->bg_vtime_pct : SP_DEF_BG_VTIME_PCT;
-
-		cost = cost * pct / 100;
+	if (klass == SP_CLASS_BG && (e.flags & SP_FLAG_BG_CONTAIN)) {
+		cost = cost * e.bg_vtime_pct / 100;
 		stat_inc(SP_STAT_BG_VTIME_PENALTY);
 	}
 	p->scx.dsq_vtime += cost;
@@ -507,31 +608,12 @@ static int dispatch_cache(s32 this_cpu)
 	return 0;
 }
 
-void BPF_STRUCT_OPS(schedpilot_dispatch, s32 cpu, struct task_struct *prev)
+static bool dispatch_other(s32 this_cpu, bool cache_first)
 {
-	u32 one = 1;
-	u64 *toggle = bpf_map_lookup_elem(&pcpu_state, &one);
-	bool cache_first = !toggle || ((*toggle & 1) == 0);
 	bool moved = false;
 
-	stat_inc(SP_STAT_DISPATCH_CALLS);
-
-	/*
-	 * Invariant: LAT dispatches before all throughput classes. A former
-	 * anti-starvation guard that served BG/COMP before LAT was removed
-	 * after formal-3 regression analysis: a rate-limited LAT wake can
-	 * only preempt the victim at its next scheduling point, so LAT p99
-	 * is bounded by the victim's slice. That is why the default BG slice
-	 * was reduced from 10ms to 2ms (see SP_DEF_BG_SLICE_NS): BG stays
-	 * contained via its vtime penalty while LAT waits stay short.
-	 */
-	if (scx_bpf_dsq_move_to_local(SP_DSQ_LAT)) {
-		stat_inc(SP_STAT_DSP_LAT);
-		return;
-	}
-
 	if (cache_first)
-		moved = dispatch_cache(cpu);
+		moved = dispatch_cache(this_cpu);
 	else if (scx_bpf_dsq_move_to_local(SP_DSQ_COMP)) {
 		stat_inc(SP_STAT_DSP_COMP);
 		moved = true;
@@ -539,21 +621,77 @@ void BPF_STRUCT_OPS(schedpilot_dispatch, s32 cpu, struct task_struct *prev)
 
 	if (!moved) {
 		if (!cache_first)
-			moved = dispatch_cache(cpu);
+			moved = dispatch_cache(this_cpu);
 		else if (scx_bpf_dsq_move_to_local(SP_DSQ_COMP)) {
 			stat_inc(SP_STAT_DSP_COMP);
 			moved = true;
 		}
 	}
+	return moved;
+}
 
+void BPF_STRUCT_OPS(schedpilot_dispatch, s32 cpu, struct task_struct *prev)
+{
+	struct sp_cfg *c = get_cfg();
+	struct sp_effective e;
+	u32 one = 1;
+	u32 zero = 0;
+	u64 *toggle = bpf_map_lookup_elem(&pcpu_state, &one);
+	struct sp_cpu_budget *b = bpf_map_lookup_elem(&fair_budget, &zero);
+	bool cache_first = !toggle || ((*toggle & 1) == 0);
+	bool moved = false;
+	u64 now = bpf_ktime_get_ns();
+	bool over = false;
+	bool aged = false;
+
+	effective_policy(c, &e);
+	stat_inc(SP_STAT_DISPATCH_CALLS);
+
+	if (b && (!b->window_start_ns ||
+		  now - b->window_start_ns >= e.budget_window_ns)) {
+		b->window_start_ns = now;
+		b->lat_runtime_ns = 0;
+		b->other_runtime_ns = 0;
+	}
+	if (b && b->lat_runtime_ns * 100 >=
+			 e.budget_window_ns * e.lat_budget_pct)
+		over = true;
+	if (b && b->last_other_ns &&
+	    now - b->last_other_ns >= e.aging_ns)
+		aged = true;
+	if (over)
+		stat_inc(SP_STAT_LAT_BUDGET_THROTTLE);
+
+	/* Under budget LAT is a bounded priority. Over budget (or when a
+	 * non-LAT group has aged) the other classes are served first. */
+	if (!over && !aged && scx_bpf_dsq_move_to_local(SP_DSQ_LAT)) {
+		stat_inc(SP_STAT_DSP_LAT);
+		return;
+	}
+
+	moved = dispatch_other(cpu, cache_first);
 	if (moved) {
+		if (b)
+			b->last_other_ns = now;
+		if (aged)
+			stat_inc(SP_STAT_AGING_FORCE);
 		if (toggle)
 			*toggle ^= 1;
 		return;
 	}
 
-	if (scx_bpf_dsq_move_to_local(SP_DSQ_SHARED))
+	if ((over || aged) && scx_bpf_dsq_move_to_local(SP_DSQ_LAT)) {
+		stat_inc(SP_STAT_DSP_LAT);
+		if (over)
+			stat_inc(SP_STAT_LAT_IDLE_BORROW);
+		return;
+	}
+
+	if (scx_bpf_dsq_move_to_local(SP_DSQ_SHARED)) {
 		stat_inc(SP_STAT_DSP_SHARED);
+		if (b)
+			b->last_other_ns = now;
+	}
 }
 
 s32 BPF_STRUCT_OPS_SLEEPABLE(schedpilot_init)

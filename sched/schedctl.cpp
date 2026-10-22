@@ -36,6 +36,12 @@ constexpr std::uint64_t kMinPreemptNs = 100000;
 constexpr std::uint64_t kMaxPreemptNs = 2000000;
 constexpr std::uint64_t kMinBgVtime = 50;
 constexpr std::uint64_t kMaxBgVtime = 400;
+constexpr std::uint64_t kMinLatBudget = 1;
+constexpr std::uint64_t kMaxLatBudget = 95;
+constexpr std::uint64_t kMinBudgetWindowMs = 10;
+constexpr std::uint64_t kMaxBudgetWindowMs = 10000;
+constexpr std::uint64_t kMinAgingMs = 1;
+constexpr std::uint64_t kMaxAgingMs = 5000;
 
 int fail(const std::string& message) {
   std::cout << Json{{"ok", false}, {"error", message}}.dump() << "\n";
@@ -85,6 +91,9 @@ Json cfg_json(const sp_cfg& cfg, const std::string& pin_dir) {
               {"migrate_penalty_ns", cfg.migrate_penalty_ns},
               {"lat_vtime_pct", cfg.lat_vtime_pct},
               {"bg_vtime_pct", cfg.bg_vtime_pct},
+              {"lat_budget_pct", cfg.lat_budget_pct},
+              {"budget_window_ms", cfg.budget_window_ms},
+              {"aging_ms", cfg.aging_ms},
               {"llc_affinity", (cfg.flags & SP_FLAG_LLC_AFFINITY) != 0}};
 }
 
@@ -121,6 +130,9 @@ bool params_match(const sp_cfg& left, const sp_cfg& right) {
          left.bg_slice_ns == right.bg_slice_ns &&
          left.preempt_thresh_ns == right.preempt_thresh_ns &&
          left.bg_vtime_pct == right.bg_vtime_pct &&
+         left.lat_budget_pct == right.lat_budget_pct &&
+         left.budget_window_ms == right.budget_window_ms &&
+         left.aging_ms == right.aging_ms &&
          ((left.flags ^ right.flags) & SP_FLAG_LLC_AFFINITY) == 0;
 }
 
@@ -198,6 +210,32 @@ int cmd_set(const std::string& pin_dir, const Json& parameters) {
     updated.bg_vtime_pct = static_cast<std::uint32_t>(value);
     ++changed;
   }
+  if (parameters.contains("lat_budget_pct")) {
+    if (!get_u64(parameters, "lat_budget_pct", kMinLatBudget, kMaxLatBudget, &value,
+                 &error)) {
+      ::close(fd);
+      return fail(error);
+    }
+    updated.lat_budget_pct = static_cast<std::uint32_t>(value);
+    ++changed;
+  }
+  if (parameters.contains("budget_window_ms")) {
+    if (!get_u64(parameters, "budget_window_ms", kMinBudgetWindowMs, kMaxBudgetWindowMs,
+                 &value, &error)) {
+      ::close(fd);
+      return fail(error);
+    }
+    updated.budget_window_ms = static_cast<std::uint32_t>(value);
+    ++changed;
+  }
+  if (parameters.contains("aging_ms")) {
+    if (!get_u64(parameters, "aging_ms", kMinAgingMs, kMaxAgingMs, &value, &error)) {
+      ::close(fd);
+      return fail(error);
+    }
+    updated.aging_ms = static_cast<std::uint32_t>(value);
+    ++changed;
+  }
   if (parameters.contains("llc_affinity")) {
     if (!get_bool(parameters, "llc_affinity", &boolean, &error)) {
       ::close(fd);
@@ -256,6 +294,9 @@ int cmd_restore(const std::string& pin_dir, const Json& snapshot) {
     restored.bg_slice_ns = saved.at("bg_slice_ns").get<std::uint64_t>();
     restored.preempt_thresh_ns = saved.at("preempt_threshold_ns").get<std::uint64_t>();
     restored.bg_vtime_pct = saved.at("bg_vtime_pct").get<std::uint32_t>();
+    restored.lat_budget_pct = saved.at("lat_budget_pct").get<std::uint32_t>();
+    restored.budget_window_ms = saved.at("budget_window_ms").get<std::uint32_t>();
+    restored.aging_ms = saved.at("aging_ms").get<std::uint32_t>();
   } catch (const std::exception&) {
     ::close(fd);
     return fail("restore snapshot is missing cfg fields");

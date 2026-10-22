@@ -1,0 +1,39 @@
+{
+  "cpu": 7,
+  "window": {
+    "LAT": {
+      "pid": 50781,
+      "iters": 29210700,
+      "max_gap_ns": 15963087,
+      "runtime_ns": 974057396,
+      "share_pct": 30.5
+    },
+    "COMP": {
+      "pid": 50782,
+      "iters": 25142635,
+      "max_gap_ns": 18028956,
+      "runtime_ns": 841651939,
+      "share_pct": 26.35
+    },
+    "NORMAL": {
+      "pid": 50783,
+      "iters": 25429546,
+      "max_gap_ns": 17014745,
+      "runtime_ns": 843472734,
+      "share_pct": 26.41
+    },
+    "BG": {
+      "pid": 50784,
+      "iters": 15909458,
+      "max_gap_ns": 30026350,
+      "runtime_ns": 534969260,
+      "share_pct": 16.75
+    }
+  },
+  "runtime_share_pct": {
+    "LAT": 30.5,
+    "COMP": 26.35,
+    "NORMAL": 26.41,
+    "BG": 16.75
+  }
+}

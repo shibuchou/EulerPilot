@@ -1,0 +1,50 @@
+EulerPilot v2 — BPF fairness pilot — SP3 evidence
+Recorded 2026-10-22 on schedpilot-sp3 (<SP3-IP>)
+
+Implemented first version
+  - struct sp_cfg v3 adds lat_budget_pct (60%), budget_window_ms (100ms),
+    aging_ms (20ms); loader defaults and ep-schedctl get/set/restore updated.
+  - One effective_policy() is used by select_cpu/enqueue/running/stopping/
+    dispatch; ADAPTIVE with stale heartbeat falls back to complete static
+    defaults for flags, slices, preempt/migration and budget.
+  - Per-CPU fair_budget window accounts runtime in stopping(), so direct
+    SCX_DSQ_LOCAL dispatches are charged as well.
+  - dispatch: under budget LAT runs first; over budget or when non-LAT aged,
+    CACHE/COMP (vtime, includes NORMAL/BG) run first; if no other runnable,
+    LAT may borrow the idle budget. COMP/CACHE alternate; BG keeps its vtime
+    penalty and made progress.
+  - A repeatable probe is in tests/fairness_sp3.sh + tests/fairness_probe.c.
+
+SP3 stress (4 CPU-bound probes pinned to CPU 7, 4s, LAT budget 60%)
+  LAT     runtime 1.03s  share 31.0%  max gap 20.4ms
+  COMP    runtime 0.88s  share 26.3%  max gap 30.0ms
+  NORMAL  runtime 0.87s  share 26.2%  max gap 31.0ms
+  BG      runtime 0.55s  share 16.6%  max gap 34.0ms
+  BPF stats: DSP_LAT 209, DSP_COMP 84, LAT_BUDGET_THROTTLE 0,
+             LAT_IDLE_BORROW 0, AGING_FORCE 46,
+             CLASSMAP_HIT 14, CLASSMAP_MISS 1080
+
+Interpretation / not closed
+  - All classes made progress and longest observed gap was ~34ms, but LAT did
+    not reach its 60% budget and the throttle counter never fired. This pilot
+    therefore does NOT validate "LAT bounded priority + reserved shares"; the
+    class_map hit ratio and/or slice/runtime accounting need diagnosis first.
+  - No performance, SLO or starvation claim is made from this run.
+
+Config field test (integration_fd)
+  get: lat_budget_pct=60, budget_window_ms=100, aging_ms=20
+  set 50/50/10 then get; restored 60/100/20.
+
+SP3 strict acceptance
+  ctest 6/6 passed, 0 skipped; A/B/C liveness; final disabled, 0 pins.
+  ACCEPTANCE OK
+
+Artifacts (SP3)
+  ep               6b33142a7114c8df6b80c2bf1ea73a0b08072e09e0edbc15722f178415222c81
+  ep-executord     04163c9020fc8feae2062fdb0a1ee564fce22d4d6dd5c71c3c25186536cd18a9
+  ep-sched-loader  7e896f4071410bca9c79589312457448855f86b5485cb0b60719e6d9de809829
+  ep-schedctl      af759004d5581ce1e6956525c88bf2cc73e8f5646b4c54deeecf8ca080d3227b
+
+Next
+  - diagnose why LAT share stays ~31% while throttle=0 (class_map hit/slice
+    accounting), then recalibrate pilot values and freeze before formal runs.

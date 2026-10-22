@@ -7,11 +7,11 @@
 
 | 文件 | 来源 | 原 SHA256 | 当前 SHA256 | 修改 |
 |---|---|---|---|---|
-| `scx_schedpilot.bpf.c` | SchedPilot `0aeca0c` `bpf/scx_schedpilot.bpf.c` | `3d057e6f…` | `119e1964…` | struct_ops 名改为 `eulerpilot` |
-| `intf.h` | SchedPilot `0aeca0c` `bpf/intf.h` | `c72e7eec…` | 同左 | 无 |
-| `loader.c` | SchedPilot `0aeca0c` `loader/scx_schedpilot.c` | `0fe906c7…` | `e3feedb5…` | 见下 |
-| `scx_schedpilot.bpf.skel.h` | 由上述 BPF 源在 SP3 内核树构建后 `bpftool gen skeleton` 生成 | - | `67e7228f…` | 生成物 |
-| `schedctl.cpp` | 新增（EulerPilot v2），包含 GPL-2.0 `intf.h` | - | `ba0b01ea…` | cfg/class_map 控制工具 |
+| `scx_schedpilot.bpf.c` | SchedPilot `0aeca0c` `bpf/scx_schedpilot.bpf.c` | `3d057e6f…` | `f568b0e8…` | struct_ops 名改为 `eulerpilot`；v2 公平性预算 |
+| `intf.h` | SchedPilot `0aeca0c` `bpf/intf.h` | `c72e7eec…` | `431c5719…` | cfg v3 预算字段 |
+| `loader.c` | SchedPilot `0aeca0c` `loader/scx_schedpilot.c` | `0fe906c7…` | `d32730af…` | 见下 |
+| `scx_schedpilot.bpf.skel.h` | 由上述 BPF 源在 SP3 构建后 `bpftool gen skeleton` 生成 | - | `4617297c…` | 生成物 |
+| `schedctl.cpp` | 新增（EulerPilot v2），包含 GPL-2.0 `intf.h` | - | `7b030a53…` | cfg/class_map 控制工具 |
 | `scx/*.h` | SP3 内核树 `tools/sched_ext/include/scx/`（上游 scx，GPL-2.0） | - | 见各文件 | 无 |
 
 BPF 源的修改：仅 struct_ops 的 `.name` 从 `"schedpilot"` 改为 `"eulerpilot"`；
@@ -26,7 +26,7 @@ BPF 源的修改：仅 struct_ops 的 `.name` 从 `"schedpilot"` 改为 `"eulerp
 5. 新增 `--fd-socket PATH`：attach 后把 struct_ops link FD 经 SCM_RIGHTS 交给执行服务并退出；
 6. 帮助文本与 provenance 注释更新。
 
-**未修改**：DSQ/分类逻辑、BPF 函数名。struct_ops 已注册为 `eulerpilot`，
+**v2 修改**：新增 cfg v3 预算字段、统一 `effective_policy`、per-CPU 运行时间预算/aging/撤销路径；DSQ id 与 BPF 函数名不变。struct_ops 已注册为 `eulerpilot`，
 `SchedSkill` 以 ops `eulerpilot` 识别调度器。
 
 ## 构建
@@ -50,7 +50,7 @@ cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug \
 
 ```bash
 # 以 SchedPilot scripts/build.sh --kernel-src <tree> 构建出 scx_schedpilot.bpf.o
-bpftool gen skeleton scx_schedpilot.bpf.o name scx_schedpilot > scx_schedpilot.bpf.skel.h
+bpftool gen skeleton scx_schedpilot.bpf.o name scx_schedpilot > scx_schedpilot.bpf.skel.h\n# v2 实测：clang -g -O2 -mcpu=v3 -target bpf -D__TARGET_ARCH_x86 -D__SCHEDPILOT_BPF__\n#   -I sched -I sched/scx -I <vmlinux+bpf headers>；需 bpftool >= 7.3 生成 struct_ops skeleton。
 ```
 
 ## 使用

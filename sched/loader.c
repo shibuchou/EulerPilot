@@ -211,6 +211,9 @@ static void init_cfg_defaults(int fd, __u32 mode)
 		.migrate_penalty_ns = 2000000ULL,
 		.lat_vtime_pct = 100,
 		.bg_vtime_pct = 200,
+		.lat_budget_pct = 60,
+		.budget_window_ms = 100,
+		.aging_ms = 20,
 	};
 	__u32 zero = 0;
 
