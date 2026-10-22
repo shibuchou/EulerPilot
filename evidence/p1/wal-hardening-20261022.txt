@@ -1,0 +1,46 @@
+EulerPilot v2 — WAL recovery hardening — SP3 evidence
+Recorded 2026-10-22 on schedpilot-sp3 (<SP3-IP>)
+
+Changes
+  - Journal::append no longer advances seq before success. A write/fsync failure
+    marks the journal broken, rewinds the file to the last complete record and
+    refuses further appends until restart/reconcile.
+  - Executor tracks the active effect immediately after skill.apply succeeds,
+    before VERIFYING/COMMITTED/state persistence. A state.json persist failure
+    can no longer lose the recovery context.
+  - Compensation and explicit rollback clear active only after rollback and
+    post-rollback verification succeed.
+  - WAL failure paths still perform the restricted emergency detach. If the
+    effect is restored but the audit record cannot be written, the response is
+    DEGRADED / AUDIT_PENDING, not a false ROLLED_BACK.
+  - auto_fallback keeps active until the effect is verified gone; a failed
+    rollback/verify is retried with a 2s backoff, and a broken WAL no longer
+    skips the detach.
+  - New apply requests are refused with RECOVERY_REQUIRED while the journal is
+    broken.
+
+Unit fault matrix (test-only Journal fault injection)
+  PREPARED append fails            -> no effect, journal broken, next apply refused
+  VERIFYING append fails after effect -> effect rolled back, DEGRADED/AUDIT_PENDING
+  ROLLBACK_PREPARED append fails   -> effect detached, DEGRADED/AUDIT_PENDING
+  ROLLED_BACK append fails         -> effect detached, DEGRADED/AUDIT_PENDING
+  Journal reopen after a failed append -> prior records intact, appends work
+
+SP3 strict acceptance
+  ctest 6/6 passed, 0 skipped
+  A/B/C liveness: all arms progressed
+  final: disabled, 0 pins, no loader/executor
+  ACCEPTANCE OK
+
+Artifacts (SP3)
+  ep               6b33142a7114c8df6b80c2bf1ea73a0b08072e09e0edbc15722f178415222c81
+  ep-executord     40d7f4f50e6c9c0ad5c4fc9d52bdf1a9844ba2e047ba02b8577a8e84d20ce183
+  ep-sched-loader  3aa11a6b23990cc9bd61aff4163491623e8898a60f858f46e607925a9cc67f52
+  ep-schedctl      9bd709df8ed48fe03893bd7a70a7cf11e74966b73636da94ba77453f41da76cd
+
+Still open
+  - state.json persist fault injection and restart-reconcile of a broken journal
+  - active target identity (pidfd/cgroup lifetime, member revocation)
+  - BPF effective policy/fairness
+  These are software recovery semantics, not a claim that every disk/IO fault is
+  bounded by the kernel.

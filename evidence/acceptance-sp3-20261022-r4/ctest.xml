@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="(empty)"
+	tests="6"
+	failures="0"
+	disabled="0"
+	skipped="0"
+	hostname=""
+	time="24"
+	timestamp="2026-10-22T06:37:23"
+	>
+	<testcase name="unit" classname="unit" time="3.70366" status="run">
+		<system-out>cgroup_id=1
+deadline exceeded after apply -&gt; compensated
+[executor] reconciled txn-crash-0001: applied value detected and rolled back to snapshot
+[executor] ROLLBACK_PREPARED append failed: injected journal append failure
+refresh_budget_ms=204
+eof_budget_ms=208
+all unit checks passed
+</system-out>
+	</testcase>
+	<testcase name="integration" classname="integration" time="2.69289" status="run">
+		<system-out>[integration] state=/tmp/ep-integration.jf6L5Q/state
+[integration] restart persistence
+[integration] second instance must be rejected
+[integration] synthetic crash reconcile
+[integration] all checks passed
+</system-out>
+	</testcase>
+	<testcase name="integration_sched" classname="integration_sched" time="2.02154" status="run">
+		<system-out>[integration-sched] loader=/root/epv2-build/ep-sched-loader
+[integration-sched] instance=inst-1ddba790fd36809c pin_dir=/sys/fs/bpf/eulerpilot-v2/inst-1ddba790fd36809c
+[integration-sched] validate policy
+[integration-sched] apply
+[integration-sched] cfg parameters
+[integration-sched] cfg generation 2
+[integration-sched] rollback
+[integration-sched] crash + orphan recovery
+[integration-sched] all checks passed
+</system-out>
+	</testcase>
+	<testcase name="integration_fd" classname="integration_fd" time="3.55085" status="run">
+		<system-out>[integration-fd] loader=/root/epv2-build/ep-sched-loader
+[integration-fd] instance=inst-a5cedc2e8731271c pin_dir=/sys/fs/bpf/eulerpilot-v2/inst-a5cedc2e8731271c
+[integration-fd] validate policy
+[integration-fd] non-human SLO veto
+[integration-fd] non-human apply denied: SLO_DENIED
+[integration-fd] apply
+[integration-fd] executor holds a CLOEXEC bpf link fd; loader has exited
+[integration-fd] cfg parameters
+[integration-fd] cfg generation 2
+[integration-fd] cgroup_id 69
+[integration-fd] pid target 1 19
+[integration-fd] background class map
+[integration-fd] background pid class BG
+[integration-fd] feature window
+[integration-fd] features samples 2
+[integration-fd] route safe-basic degraded True
+[integration-fd] slo denied: FEATURES_INSUFFICIENT
+[integration-fd] rollback
+[integration-fd] crash + orphan recovery
+[integration-fd] all checks passed
+</system-out>
+	</testcase>
+	<testcase name="integration_lease" classname="integration_lease" time="2.0543" status="run">
+		<system-out>[integration-lease] loader=/root/epv2-build/ep-sched-loader
+[integration-lease] instance=inst-1b103d5dd7f3dfdd pin_dir=/sys/fs/bpf/eulerpilot-v2/inst-1b103d5dd7f3dfdd
+[integration-lease] validate policy
+[integration-lease] apply
+[integration-lease] executor holds a bpf link fd; loader has exited
+[integration-lease] cfg parameters
+[integration-lease] cfg generation 2
+[integration-lease] cgroup_id 69
+[integration-lease] pid target 1 19
+[integration-lease] waiting for lease expiry fallback
+[integration-lease] lease expiry detached the scheduler and cleaned pins
+[integration-lease] all checks passed
+</system-out>
+	</testcase>
+	<testcase name="integration_ttl" classname="integration_ttl" time="10.9255" status="run">
+		<system-out>[integration-ttl] loader=/root/epv2-build/ep-sched-loader
+[integration-ttl] instance=inst-56c654e64fe2c082 pin_dir=/sys/fs/bpf/eulerpilot-v2/inst-56c654e64fe2c082
+[integration-ttl] validate policy
+[integration-ttl] apply
+[integration-ttl] executor holds a bpf link fd; loader has exited
+[integration-ttl] cfg parameters
+[integration-ttl] cfg generation 2
+[integration-ttl] cgroup_id 69
+[integration-ttl] pid target 1 19
+[integration-ttl] waiting for policy TTL fallback
+[integration-ttl] policy TTL detached the scheduler and cleaned pins
+[integration-ttl] all checks passed
+</system-out>
+	</testcase>
+</testsuite>

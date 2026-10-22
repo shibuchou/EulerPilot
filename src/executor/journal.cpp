@@ -125,6 +125,14 @@ bool Journal::open(std::string* error) {
     records_.push_back(*record);
   }
   next_seq_ = records_.empty() ? 1 : records_.back().seq + 1;
+  last_good_size_ = static_cast<std::uint64_t>(content.size());
+  return true;
+}
+
+bool Journal::rewind_to_last_good() {
+  if (::ftruncate(fd_, static_cast<off_t>(last_good_size_)) != 0) return false;
+  if (::lseek(fd_, 0, SEEK_END) < 0) return false;
+  ::fsync(fd_);
   return true;
 }
 
@@ -133,15 +141,33 @@ bool Journal::append(JournalRecord record, std::string* error) {
     if (error != nullptr) *error = "journal is not open";
     return false;
   }
-  record.seq = next_seq_++;
+  if (broken_) {
+    if (error != nullptr) *error = "journal is broken; restart and reconcile before appending";
+    return false;
+  }
+  if (fault_after_ >= 0 && append_attempts_ >= fault_after_) {
+    broken_ = true;
+    if (error != nullptr) *error = "injected journal append failure";
+    return false;
+  }
+  ++append_attempts_;
+  record.seq = next_seq_;
   if (record.ts.empty()) record.ts = now_iso8601();
   std::string line = record.to_json().dump();
   line.push_back('\n');
-  if (!write_all(fd_, line, error)) return false;
-  if (::fsync(fd_) != 0) {
-    if (error != nullptr) *error = std::string("fsync failed: ") + std::strerror(errno);
+  if (!write_all(fd_, line, error)) {
+    broken_ = true;
+    rewind_to_last_good();
     return false;
   }
+  if (::fsync(fd_) != 0) {
+    if (error != nullptr) *error = std::string("fsync failed: ") + std::strerror(errno);
+    broken_ = true;
+    rewind_to_last_good();
+    return false;
+  }
+  ++next_seq_;
+  last_good_size_ += line.size();
   records_.push_back(std::move(record));
   return true;
 }

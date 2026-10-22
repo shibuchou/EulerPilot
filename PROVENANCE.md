@@ -71,7 +71,7 @@
   `evidence/p2/feature-window-host.txt`、`evidence/p2/rule-router.txt`、
   `evidence/p2/slo-gate.txt`、`evidence/p2/slo-veto.txt`、
   `evidence/p2/classmap-bg.txt`、`evidence/p2/classmap-bg-cgroup.txt`、
-  `evidence/acceptance-sp3-20261021.txt`、`evidence/acceptance-sp3-strict-20261022.txt`、`evidence/acceptance-sp3-20261022/`、`evidence/acceptance-sp3-strict-20261022-r3.txt`、`evidence/acceptance-sp3-20261022-r3/`、`evidence/p1/helper-budget-20261022.txt`。
+  `evidence/acceptance-sp3-20261021.txt`、`evidence/acceptance-sp3-strict-20261022.txt`、`evidence/acceptance-sp3-20261022/`、`evidence/acceptance-sp3-strict-20261022-r3.txt`、`evidence/acceptance-sp3-20261022-r3/`、`evidence/p1/helper-budget-20261022.txt`、`evidence/acceptance-sp3-strict-20261022-r4.txt`、`evidence/acceptance-sp3-20261022-r4/`、`evidence/p1/wal-hardening-20261022.txt`。
 - `--skill sched` 采用 FD 传递：loader 一次性 attach 后把 struct_ops link FD 通过
   SCM_RIGHTS 交给执行服务并退出；执行服务崩溃时 FD 关闭即 detach。`sched-ref` 保留
   子进程模式用于对照与测试。

@@ -40,6 +40,13 @@ class Journal {
   bool open(std::string* error);
   bool append(JournalRecord record, std::string* error);
 
+  // Once an append fails the on-disk tail may be partial. Further appends are
+  // refused until the process restarts and re-opens/repairs the journal.
+  bool broken() const { return broken_; }
+
+  // Test-only fault injection: fail the Nth append (0-based) and mark broken.
+  void set_fault_after(int appends) { fault_after_ = appends; }
+
   const std::vector<JournalRecord>& records() const { return records_; }
   std::size_t size() const { return records_.size(); }
 
@@ -59,6 +66,12 @@ class Journal {
   int fd_ = -1;
   std::uint64_t next_seq_ = 1;
   std::vector<JournalRecord> records_;
+  bool broken_ = false;
+  std::uint64_t last_good_size_ = 0;
+  int fault_after_ = -1;
+  int append_attempts_ = 0;
+
+  bool rewind_to_last_good();
 };
 
 }  // namespace ep

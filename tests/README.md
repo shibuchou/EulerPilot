@@ -14,7 +14,7 @@
 | SLO 门控 | `tests/integration_fd.sh` | 已通过（2 样本时 `slo.evaluate` 拒绝 FEATURES_INSUFFICIENT） |
 | 非人工来源 SLO 否决 | `tests/integration_fd.sh` | 已通过（`llm-proposal` apply 返回 SLO_DENIED，状态不变） |
 | A/B/C liveness | `experiments/abc_nostall.sh` | 已通过（fair/basic/class 三臂 utime 均推进、状态干净；非性能比较） |
-| FD/helper 故障 | unit + integration_fd | 已通过（link fd CLOEXEC；整轮刷新 204ms、EOF 208ms；正常清理与外来 pin 保留/恢复） |
+| WAL 故障 | unit（Journal fault injection） | 已通过（PREPARED/VERIFYING/ROLLBACK_PREPARED/ROLLED_BACK 失败路径；无假 ROLLED_BACK） |\n| FD/helper 故障 | unit + integration_fd | 已通过（link fd CLOEXEC；整轮刷新 204ms、EOF 208ms；正常清理与外来 pin 保留/恢复） |
 | 一键验收 | `scripts/accept_sp3.sh` | 旧版SP3日志通过；新版要求6必测项无SKIP及严格收尾断言，离线回归通过，尚待SP3重跑 |
 | class_map BACKGROUND | `tests/integration_fd.sh` | 已通过（pid 直接写 + cgroup.procs 展开；BG/EXTERN，class-get 验证） |
 | 调度 loader 构建 | `sched/loader.c` → `ep-sched-loader` | 已通过（需内核树静态 libbpf ≥1.3） |

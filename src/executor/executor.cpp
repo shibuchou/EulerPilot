@@ -72,6 +72,9 @@ Executor::~Executor() {
 bool Executor::init(std::string* error) {
   if (!ownership_.open(error)) return false;
   if (!journal_.open(error)) return false;
+  if (options_.fail_journal_after >= 0) {
+    journal_.set_fault_after(options_.fail_journal_after);
+  }
   skill_->configure(SkillContext{ownership_.instance_id()});
 
   const std::uint64_t journal_generation = journal_.max_committed_generation();
@@ -284,17 +287,27 @@ Json Executor::compensate(const Envelope& envelope, const std::string& action_id
   result.rollback.attempted = true;
 
   if (recovery.ok) {
+    // The effect is gone; release it. If the audit record cannot be written we
+    // keep the executor degraded instead of pretending a complete rollback.
+    if (active_ && active_->action_id == action_id) active_.reset();
     JournalRecord rolled_back = step;
     rolled_back.type = "ROLLED_BACK";
     rolled_back.data = Json{{"cause", cause},
                             {"compensated", true},
                             {"detail", recovery.detail},
                             {"generation_advanced", false}};
-    journal_.append(rolled_back, &error);
-    result.status = Status::kRolledBack;
-    result.rollback.status = "ROLLED_BACK";
-    result.rollback.detail = recovery.detail;
-    result.error = Error{code, cause, recovery.detail};
+    if (!journal_.append(rolled_back, &error)) {
+      degraded_ = true;
+      result.status = Status::kDegraded;
+      result.rollback.status = "AUDIT_PENDING";
+      result.rollback.detail = recovery.detail + "; audit pending: " + error;
+      result.error = Error{code, cause + "; effect restored, audit pending", error};
+    } else {
+      result.status = Status::kRolledBack;
+      result.rollback.status = "ROLLED_BACK";
+      result.rollback.detail = recovery.detail;
+      result.error = Error{code, cause, recovery.detail};
+    }
   } else {
     degraded_ = true;
     JournalRecord recovery_required = step;
@@ -406,6 +419,16 @@ Json Executor::handle_apply(const Json& request) {
                          "run transaction.reconcile"};
     return result.to_json();
   }
+  if (journal_.broken()) {
+    ActionResult result;
+    result.request_id = request_id;
+    result.status = Status::kRecoveryRequired;
+    result.observed_generation = ownership_.generation();
+    result.error = Error{ErrorCode::kRecoveryRequired,
+                         "journal is broken; restart and reconcile before applying",
+                         "journal append failed; effects may need recovery"};
+    return result.to_json();
+  }
 
   // Generated proposals must pass the SLO gate. A human-explicit policy keeps
   // operator authority and bypasses the gate.
@@ -479,6 +502,12 @@ Json Executor::handle_apply(const Json& request) {
     return compensate(envelope, action_id, snapshot, applied, request_hash, error,
                       ErrorCode::kApplyFailed);
   }
+  // The effect exists from here on. Track it before any journal/state write so
+  // a later persistence failure cannot lose the recovery context.
+  active_ = ActiveAction{envelope.transaction_id, action_id, envelope.lease_owner,
+                         envelope.fence_epoch, applied.data, snapshot.data,
+                         snapshot.id, digest, now_epoch_ms(),
+                         policy_summary.safety.value("policy_ttl_ms", 60000LL)};
   if (now_epoch_ms() > envelope.deadline_ms) {
     return compensate(envelope, action_id, snapshot, applied, request_hash,
                       "deadline exceeded after skill.apply", ErrorCode::kDeadlineExceeded);
@@ -552,10 +581,6 @@ Json Executor::handle_apply(const Json& request) {
     journal_.append_result(envelope.idempotency_key, request_hash, degraded_response, &error);
     return degraded_response;
   }
-  active_ = ActiveAction{envelope.transaction_id, action_id, envelope.lease_owner,
-                         envelope.fence_epoch, applied.data, snapshot.data,
-                         snapshot.id, digest, now_epoch_ms(),
-                         policy_summary.safety.value("policy_ttl_ms", 60000LL)};
   if (!journal_.append_result(envelope.idempotency_key, request_hash, response, &error)) {
     degraded_ = true;
     ActionResult degraded = result;
@@ -662,8 +687,10 @@ Json Executor::handle_rollback(const Json& request) {
                    {"snapshot", snapshot.data},
                    {"applied", applied.data},
                    {"generation_before", ownership_.generation()}};
-  if (!journal_.append(step, &error)) {
-    return rejection(request_id, ErrorCode::kInternal, "journal ROLLBACK_PREPARED failed", error);
+  const bool audit_ok = journal_.append(step, &error);
+  if (!audit_ok) {
+    degraded_ = true;
+    std::cerr << "[executor] ROLLBACK_PREPARED append failed: " << error << "\n";
   }
 
   const RecoveryResult recovery = skill_->rollback(applied, snapshot, &error);
@@ -719,11 +746,6 @@ Json Executor::handle_rollback(const Json& request) {
                         {"snapshot_id", snapshot_id},
                         {"generation_advanced", true},
                         {"detail", recovery.detail}};
-  if (!journal_.append(completed, &error)) {
-    degraded_ = true;
-    return rejection(request_id, ErrorCode::kInternal, "journal ROLLED_BACK failed", error);
-  }
-
   ActionResult result;
   result.request_id = request_id;
   result.transaction_id = envelope.transaction_id;
@@ -735,12 +757,25 @@ Json Executor::handle_rollback(const Json& request) {
   result.rollback = RollbackInfo{true, "ROLLED_BACK", recovery.detail};
   result.checks.push_back(Check{"rollback", true, recovery.detail});
   result.checks.push_back(Check{"verify", true, restored.detail});
-  const Json response = result.to_json();
+
+  if (!audit_ok || !journal_.append(completed, &error)) {
+    degraded_ = true;
+    if (active_ && active_->action_id == apply_action_id) active_.reset();
+    result.status = Status::kDegraded;
+    result.rollback.status = "AUDIT_PENDING";
+    result.error = Error{ErrorCode::kInternal,
+                         "effect restored but rollback audit is pending", error};
+    const Json pending = result.to_json();
+    journal_.append_result(envelope.idempotency_key, request_hash, pending, &error);
+    return pending;
+  }
 
   if (!ownership_.commit_generation(new_generation, &error)) {
     degraded_ = true;
+    if (active_ && active_->action_id == apply_action_id) active_.reset();
     ActionResult degraded = result;
     degraded.status = Status::kDegraded;
+    degraded.rollback.status = "EFFECT_RESTORED";
     degraded.error = Error{ErrorCode::kInternal,
                            "rollback committed but state.json persist failed", error};
     const Json degraded_response = degraded.to_json();
@@ -748,6 +783,7 @@ Json Executor::handle_rollback(const Json& request) {
     return degraded_response;
   }
   if (active_ && active_->action_id == apply_action_id) active_.reset();
+  const Json response = result.to_json();
   journal_.append_result(envelope.idempotency_key, request_hash, response, &error);
   return response;
 }
@@ -765,6 +801,7 @@ void Executor::monitor_loop() {
       last_feature_ms_ = now;
     }
     if (!active_) continue;
+    if (now < next_fallback_attempt_ms_) continue;
     if (active_->ttl_ms > 0 && now - active_->applied_at_ms >= active_->ttl_ms) {
       auto_fallback_locked("policy TTL expired");
       continue;
@@ -797,8 +834,9 @@ void Executor::monitor_loop() {
 
 void Executor::auto_fallback_locked(const std::string& reason) {
   if (!active_) return;
+  const std::int64_t now = now_epoch_ms();
+  if (now < next_fallback_attempt_ms_) return;
   const ActiveAction active = *active_;
-  active_.reset();
   const std::string txn = "auto-" + random_hex(12);
   const std::string action_id = "rbk-" + random_hex(12);
   const Json rollback_of{{"original_transaction_id", active.txn},
@@ -823,36 +861,52 @@ void Executor::auto_fallback_locked(const std::string& reason) {
                    {"reason", reason},
                    {"generation_before", ownership_.generation()}};
   std::string error;
-  if (!journal_.append(step, &error)) {
+  const bool audit_ok = journal_.append(step, &error);
+  if (!audit_ok) {
     degraded_ = true;
-    last_fallback_ = reason + ": journal failed: " + error;
-    return;
+    std::cerr << "[executor] auto fallback journal failed: " << error << "\n";
   }
   const RecoveryResult recovery = skill_->rollback(applied, snapshot, &error);
   if (!recovery.ok) {
     degraded_ = true;
     last_fallback_ = reason + ": rollback failed: " + recovery.detail;
-    JournalRecord failed = step;
-    failed.type = "RECOVERY_REQUIRED";
-    failed.data = Json{{"detail", recovery.detail},
-                       {"conflict", recovery.conflict},
-                       {"reason", reason}};
-    journal_.append(failed, &error);
+    next_fallback_attempt_ms_ = now + 2000;
+    if (audit_ok) {
+      JournalRecord failed = step;
+      failed.type = "RECOVERY_REQUIRED";
+      failed.data = Json{{"detail", recovery.detail},
+                         {"conflict", recovery.conflict},
+                         {"reason", reason}};
+      journal_.append(failed, &error);
+    }
     return;
   }
-  const VerifyResult restored =
-      skill_->verify_rolled_back(snapshot, now_epoch_ms() + 5000);
+  const VerifyResult restored = skill_->verify_rolled_back(snapshot, now + 5000);
   if (!restored.ok) {
     degraded_ = true;
     last_fallback_ = reason + ": verify failed: " + restored.detail;
-    JournalRecord failed = step;
-    failed.type = "RECOVERY_REQUIRED";
-    failed.data = Json{{"detail", restored.detail},
-                       {"conflict", true},
-                       {"reason", reason}};
-    journal_.append(failed, &error);
+    next_fallback_attempt_ms_ = now + 2000;
+    if (audit_ok) {
+      JournalRecord failed = step;
+      failed.type = "RECOVERY_REQUIRED";
+      failed.data = Json{{"detail", restored.detail},
+                         {"conflict", true},
+                         {"reason", reason}};
+      journal_.append(failed, &error);
+    }
     return;
   }
+
+  // The effect is verifiably gone; release it even if the audit path failed.
+  if (active_ && active_->action_id == active.action_id) active_.reset();
+  next_fallback_attempt_ms_ = 0;
+
+  if (!audit_ok) {
+    degraded_ = true;
+    last_fallback_ = reason + ": effect restored; audit pending: " + error;
+    return;
+  }
+
   const std::uint64_t new_generation = ownership_.generation() + 1;
   JournalRecord completed = step;
   completed.type = "ROLLED_BACK";
@@ -864,12 +918,12 @@ void Executor::auto_fallback_locked(const std::string& reason) {
                         {"reason", reason}};
   if (!journal_.append(completed, &error)) {
     degraded_ = true;
-    last_fallback_ = reason + ": journal ROLLED_BACK failed: " + error;
+    last_fallback_ = reason + ": effect restored; audit pending: " + error;
     return;
   }
   if (!ownership_.commit_generation(new_generation, &error)) {
     degraded_ = true;
-    last_fallback_ = reason + ": generation persist failed: " + error;
+    last_fallback_ = reason + ": effect restored; generation persist failed: " + error;
     return;
   }
   degraded_ = true;

@@ -840,6 +840,161 @@ while true; do sleep 0.05; done
   std::filesystem::remove_all(dir);
 }
 
+void test_journal_fault() {
+  const auto dir = make_temp_dir("journal-fault");
+  {
+    ep::Journal journal(dir);
+    std::string error;
+    CHECK(journal.open(&error));
+    ep::JournalRecord first;
+    first.txn = "txn-fault";
+    first.type = "PREPARED";
+    CHECK(journal.append(first, &error));
+    journal.set_fault_after(1);
+    ep::JournalRecord second = first;
+    second.type = "APPLYING";
+    CHECK(!journal.append(second, &error));
+    CHECK(journal.broken());
+    ep::JournalRecord third = first;
+    third.type = "VERIFIED";
+    CHECK(!journal.append(third, &error));
+    CHECK(journal.size() == 1);
+  }
+  {
+    ep::Journal reopened(dir);
+    std::string error;
+    CHECK(reopened.open(&error));
+    CHECK(reopened.size() == 1);
+    ep::JournalRecord next;
+    next.txn = "txn-after-restart";
+    next.type = "PREPARED";
+    CHECK(reopened.append(next, &error));
+    CHECK(reopened.size() == 2);
+  }
+  std::filesystem::remove_all(dir);
+}
+
+void test_wal_faults() {
+  // PREPARED append fails: no effect, journal broken, next apply refused.
+  {
+    const auto dir = make_temp_dir("wal-prepared-fail");
+    ep::Executor executor(dir, std::make_unique<ep::MockSkill>(dir / "mock"),
+                          ep::ExecutorOptions{true, 0});
+    std::string error;
+    CHECK(executor.init(&error));
+    ep::Json lease = executor.handle(ep::Json{{"operation", "lease.acquire"},
+                                              {"request_id", "req-wal-1"},
+                                              {"lease_owner", "unit-owner-01"}});
+    const std::uint64_t fence = lease["fence_epoch"].get<std::uint64_t>();
+    const ep::Json intent{{"value", 7}};
+    const ep::Json envelope =
+        make_envelope("policy.apply", intent, "unit-owner-01", fence, 0, "idem-wal-1");
+    ep::Json response = executor.handle(ep::Json{{"operation", "policy.apply"},
+                                                 {"envelope", envelope},
+                                                 {"intent", intent}});
+    CHECK(response["status"] != "VERIFIED");
+    bool exists = true;
+    CHECK(read_mock_value(dir, &exists) == 0);
+    CHECK(!exists);
+    const ep::Json second = make_envelope("policy.apply", intent, "unit-owner-01", fence, 0,
+                                          "idem-wal-1b");
+    ep::Json refused = executor.handle(ep::Json{{"operation", "policy.apply"},
+                                                {"envelope", second},
+                                                {"intent", intent}});
+    CHECK(refused["status"] == "RECOVERY_REQUIRED");
+    std::filesystem::remove_all(dir);
+  }
+
+  // VERIFYING append fails after the effect: compensate rolls it back and the
+  // executor reports audit pending, not VERIFIED.
+  {
+    const auto dir = make_temp_dir("wal-verifying-fail");
+    ep::Executor executor(dir, std::make_unique<ep::MockSkill>(dir / "mock"),
+                          ep::ExecutorOptions{true, 2});
+    std::string error;
+    CHECK(executor.init(&error));
+    ep::Json lease = executor.handle(ep::Json{{"operation", "lease.acquire"},
+                                              {"request_id", "req-wal-2"},
+                                              {"lease_owner", "unit-owner-01"}});
+    const std::uint64_t fence = lease["fence_epoch"].get<std::uint64_t>();
+    const ep::Json intent{{"value", 7}};
+    const ep::Json envelope =
+        make_envelope("policy.apply", intent, "unit-owner-01", fence, 0, "idem-wal-2");
+    ep::Json response = executor.handle(ep::Json{{"operation", "policy.apply"},
+                                                 {"envelope", envelope},
+                                                 {"intent", intent}});
+    CHECK(response["status"] == "DEGRADED");
+    bool exists = true;
+    CHECK(read_mock_value(dir, &exists) == 0);
+    CHECK(!exists);
+    std::filesystem::remove_all(dir);
+  }
+
+  // ROLLBACK_PREPARED append fails: the effect is still detached, audit pending.
+  {
+    const auto dir = make_temp_dir("wal-rb-prepared-fail");
+    ep::Executor executor(dir, std::make_unique<ep::MockSkill>(dir / "mock"),
+                          ep::ExecutorOptions{true, 6});
+    std::string error;
+    CHECK(executor.init(&error));
+    ep::Json lease = executor.handle(ep::Json{{"operation", "lease.acquire"},
+                                              {"request_id", "req-wal-3"},
+                                              {"lease_owner", "unit-owner-01"}});
+    const std::uint64_t fence = lease["fence_epoch"].get<std::uint64_t>();
+    const ep::Json intent{{"value", 7}};
+    const ep::Json envelope =
+        make_envelope("policy.apply", intent, "unit-owner-01", fence, 0, "idem-wal-3");
+    ep::Json applied = executor.handle(ep::Json{{"operation", "policy.apply"},
+                                                 {"envelope", envelope},
+                                                 {"intent", intent}});
+    CHECK(applied["status"] == "VERIFIED");
+    const ep::Json rollback_of{{"apply_action_id", applied["action_id"]},
+                               {"original_transaction_id", applied["transaction_id"]},
+                               {"snapshot_id", applied["snapshot_id"]}};
+    const ep::Json rb = make_envelope("policy.rollback", intent, "unit-owner-01", fence, 1,
+                                      "idem-wal-3rb", rollback_of);
+    ep::Json rolled = executor.handle(ep::Json{{"operation", "policy.rollback"},
+                                                {"envelope", rb}});
+    CHECK(rolled["status"] == "DEGRADED");
+    bool exists = true;
+    CHECK(read_mock_value(dir, &exists) == 0);
+    CHECK(!exists);
+    std::filesystem::remove_all(dir);
+  }
+
+  // ROLLED_BACK append fails after the effect is gone: DEGRADED, no false commit.
+  {
+    const auto dir = make_temp_dir("wal-rb-completed-fail");
+    ep::Executor executor(dir, std::make_unique<ep::MockSkill>(dir / "mock"),
+                          ep::ExecutorOptions{true, 7});
+    std::string error;
+    CHECK(executor.init(&error));
+    ep::Json lease = executor.handle(ep::Json{{"operation", "lease.acquire"},
+                                              {"request_id", "req-wal-4"},
+                                              {"lease_owner", "unit-owner-01"}});
+    const std::uint64_t fence = lease["fence_epoch"].get<std::uint64_t>();
+    const ep::Json intent{{"value", 7}};
+    const ep::Json envelope =
+        make_envelope("policy.apply", intent, "unit-owner-01", fence, 0, "idem-wal-4");
+    ep::Json applied = executor.handle(ep::Json{{"operation", "policy.apply"},
+                                                 {"envelope", envelope},
+                                                 {"intent", intent}});
+    CHECK(applied["status"] == "VERIFIED");
+    const ep::Json rollback_of{{"apply_action_id", applied["action_id"]},
+                               {"original_transaction_id", applied["transaction_id"]},
+                               {"snapshot_id", applied["snapshot_id"]}};
+    const ep::Json rb = make_envelope("policy.rollback", intent, "unit-owner-01", fence, 1,
+                                      "idem-wal-4rb", rollback_of);
+    ep::Json rolled = executor.handle(ep::Json{{"operation", "policy.rollback"},
+                                                {"envelope", rb}});
+    CHECK(rolled["status"] == "DEGRADED");
+    bool exists = true;
+    CHECK(read_mock_value(dir, &exists) == 0);
+    CHECK(!exists);
+    std::filesystem::remove_all(dir);
+  }
+}
+
 void test_feature_window() {
   ep::FeatureWindow window(4);
   window.sample();
@@ -974,6 +1129,7 @@ int main() {
   test_canonical_json();
   test_iso8601();
   test_journal();
+  test_journal_fault();
   test_ownership();
   test_executor_apply_and_rollback();
   test_deadline_exceeded_after_apply();
@@ -982,6 +1138,7 @@ int main() {
   test_slo_gate();
   test_executor_external_change();
   test_executor_reconcile_after_crash();
+  test_wal_faults();
   test_unsupported_skill();
   test_sched_skill_fake_loader();
   test_sched_helper_timeout();

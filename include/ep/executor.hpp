@@ -22,6 +22,8 @@ namespace ep {
 
 struct ExecutorOptions {
   bool test_mode = false;
+  // Test-only WAL fault injection: fail the Nth journal append (0-based).
+  int fail_journal_after = -1;
 };
 
 // Single-process transaction engine. Every mutating request goes through
@@ -103,6 +105,7 @@ class Executor {
   std::thread monitor_;
   std::optional<ActiveAction> active_;
   std::string last_fallback_;
+  std::int64_t next_fallback_attempt_ms_ = 0;
   FeatureWindow features_;
   std::int64_t last_feature_ms_ = 0;
   std::int64_t last_refresh_ms_ = 0;
