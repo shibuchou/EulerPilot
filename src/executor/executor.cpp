@@ -764,19 +764,33 @@ void Executor::monitor_loop() {
       features_.sample();
       last_feature_ms_ = now;
     }
-    if (active_ && now - last_refresh_ms_ >= 2000) {
-      Applied applied;
-      applied.data = active_->applied;
-      skill_->refresh(applied);
-      last_refresh_ms_ = now;
-    }
     if (!active_) continue;
     if (active_->ttl_ms > 0 && now - active_->applied_at_ms >= active_->ttl_ms) {
       auto_fallback_locked("policy TTL expired");
       continue;
     }
     const LeaseState lease = ownership_.lease();
-    if (lease.expires_ms == 0 || now < lease.expires_ms) continue;
+    if (lease.expires_ms == 0 || now < lease.expires_ms) {
+      if (now - last_refresh_ms_ >= 2000) {
+        std::int64_t refresh_deadline = now + 500;
+        if (active_->ttl_ms > 0) {
+          const std::int64_t ttl_deadline = active_->applied_at_ms + active_->ttl_ms;
+          if (ttl_deadline < refresh_deadline) refresh_deadline = ttl_deadline;
+        }
+        if (lease.expires_ms < refresh_deadline) refresh_deadline = lease.expires_ms;
+        if (refresh_deadline > now + 50) {
+          Applied applied;
+          applied.data = active_->applied;
+          RefreshContext context{refresh_deadline};
+          std::string refresh_error;
+          if (!skill_->refresh(applied, context, &refresh_error)) {
+            std::cerr << "[executor] refresh stopped: " << refresh_error << "\n";
+          }
+        }
+        last_refresh_ms_ = now;
+      }
+      continue;
+    }
     auto_fallback_locked("lease expired");
   }
 }

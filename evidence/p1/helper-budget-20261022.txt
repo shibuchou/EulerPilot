@@ -1,0 +1,46 @@
+EulerPilot v2 — helper budget / EOF / pin ownership — SP3 evidence
+Recorded 2026-10-22 on schedpilot-sp3 (<SP3-IP>)
+
+Fixes
+  - refresh now carries an absolute deadline derived from
+    min(now+500ms, lease expiry, policy TTL expiry); each helper call gets
+    min(remaining budget, ctrl_timeout_ms), and the first failure stops the
+    whole round (no 3x200ms serial accumulation).
+  - run_ctrl uses one absolute deadline for output and reap; the old
+    deadline+1s EOF grace is removed. Helpers run in their own process group;
+    timeout kills the group and reaps with a bounded grace.
+  - receive_link_fd bounds the post-accept wait with the same startup deadline
+    and uses MSG_CMSG_CLOEXEC | MSG_DONTWAIT.
+  - abort_attach uses the pin set captured at attach time (not list_pins()),
+    checks detach/stop results, and cleanup_pins preflights every pin before
+    deleting any; a foreign/replaced pin aborts the cleanup and leaves the
+    context for recovery.
+
+Isolated measurements (200ms refresh context)
+  refresh, 3 queued pids:  204ms   (previous probe: 606ms)
+  helper closes stdout then hangs: 208ms (previous probe: 1207ms)
+
+Unit tests
+  refresh_budget_ms=204
+  eof_budget_ms=208
+  helper timeout: apply non-VERIFIED, pins removed, runtime marker absent
+  foreign pin: apply returns RECOVERY_REQUIRED; foreign and owned pins are
+  retained (no partial deletion)
+
+SP3 strict acceptance (new script)
+  ctest 6/6 passed, 0 skipped
+  A/B/C liveness: fair/basic/class all progressed
+  final: disabled, 0 pins, no loader/executor
+  ACCEPTANCE OK
+
+Artifacts (SP3)
+  ep               6b33142a7114c8df6b80c2bf1ea73a0b08072e09e0edbc15722f178415222c81
+  ep-executord     58b3d688b65e49aa91af638e3877c6e35ebfd617bce4c09eb3f026673eb36ff5
+  ep-sched-loader  3aa11a6b23990cc9bd61aff4163491623e8898a60f858f46e607925a9cc67f52
+  ep-schedctl      9bd709df8ed48fe03893bd7a70a7cf11e74966b73636da94ba77453f41da76cd
+
+Still open
+  - dedicated negative test for "accept then no FD"
+  - helper-alive + kill executor detach test
+  - WAL recovery integrity, active target identity, BPF fairness
+  These are software budgets, not hard real-time guarantees.

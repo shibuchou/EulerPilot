@@ -1,0 +1,25 @@
+{
+  "scope": "read-only verification, no loading or test execution",
+  "kernel": "6.6.0-schedpilot-sp3",
+  "state": "disabled",
+  "pins": 0,
+  "processes": {
+    "ep-executord": [],
+    "ep-sched-loader": []
+  },
+  "binaries": {
+    "ep": "6b33142a7114c8df6b80c2bf1ea73a0b08072e09e0edbc15722f178415222c81",
+    "ep-executord": "4e6d6e80538b8e29ae18b2f463e8666dc94eaa25bfbfd037543141d012be6ac3",
+    "ep-sched-loader": "3aa11a6b23990cc9bd61aff4163491623e8898a60f858f46e607925a9cc67f52",
+    "ep-schedctl": "9bd709df8ed48fe03893bd7a70a7cf11e74966b73636da94ba77453f41da76cd"
+  },
+  "source_sha256": {
+    "src/skills/sched_skill.cpp": "18296bec969a8c13757c3ea33704dc7660cad8dbaffa493f479a29e04ec75a64",
+    "src/executor/executor.cpp": "6c5d02489eaed14c7824822270559492d9eaed4f21015a5294f91ee75d7b229f",
+    "include/ep/sched_skill.hpp": "9fe75b72132209c8daafc8aa8e8e54888a75429557da0bfe0787f1599677c155",
+    "tests/integration_fd.sh": "ff8ab9847885acfa48497d3b1a3b44747887b434da80f1efc2dab9cbf7f475a7",
+    "tests/unit/test_main.cpp": "a1be33276e195501e65fe446eaf20186ae3af64b1f655cac5c892a8cda33ae08",
+    "scripts/accept_sp3.sh": "b17305a5152b0bc1dc9811b9be863ae74ae3b9f441c55ce3687fd17b972257da",
+    "scripts/check_sp3_acceptance.py": "3fa8fb4119a2f4cbbb09706d79fc5316e1ce0d8d2da6d49d4a6b310b05806064"
+  }
+}

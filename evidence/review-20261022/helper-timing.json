@@ -1,0 +1,32 @@
+{
+  "scope": "local diagnostic; no real targets or kernel writes",
+  "source_sha256": "18296bec969a8c13757c3ea33704dc7660cad8dbaffa493f479a29e04ec75a64",
+  "observations": [
+    {
+      "calls": 1,
+      "configured_timeout_ms": 200,
+      "elapsed_ms": 203,
+      "scope": "fake-helper refresh only",
+      "case": "one_hanging_helper"
+    },
+    {
+      "calls": 3,
+      "configured_timeout_ms": 200,
+      "elapsed_ms": 606,
+      "scope": "fake-helper refresh only",
+      "case": "three_hanging_helpers"
+    },
+    {
+      "calls": 1,
+      "configured_timeout_ms": 200,
+      "elapsed_ms": 1207,
+      "scope": "fake-helper refresh only",
+      "case": "EOF_then_hang"
+    }
+  ],
+  "claims": {
+    "refresh_has_one_helper_timeout_as_global_budget": false,
+    "EOF_path_uses_exact_same_deadline": false
+  },
+  "limitations": "Timings are observations on WSL, not hard bounds or SP3 measurements."
+}

@@ -1,0 +1,8 @@
+{
+  "state": "disabled",
+  "pins": 0,
+  "loader_pids": [],
+  "executor_pids": [],
+  "phase": "initial",
+  "status": "PASS"
+}

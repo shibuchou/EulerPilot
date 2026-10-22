@@ -226,7 +226,21 @@ fi
 if ! ls -l "/proc/$DAEMON_PID/fd" 2>/dev/null | grep -qi bpf; then
   fail "executor does not hold a bpf link fd"
 fi
-echo "[integration-fd] executor holds a bpf link fd; loader has exited"
+LINK_FD=""
+for f in /proc/"$DAEMON_PID"/fd/*; do
+  target="$(readlink "$f" 2>/dev/null || true)"
+  case "$target" in
+    *bpf*)
+      LINK_FD="$(basename "$f")"
+      break
+      ;;
+  esac
+done
+[ -n "$LINK_FD" ] || fail "cannot identify the executor link fd"
+FLAGS="$(awk '/^flags:/{print $2}' "/proc/$DAEMON_PID/fdinfo/$LINK_FD")"
+[ -n "$FLAGS" ] || fail "cannot read link fd flags"
+[ $((0$FLAGS & 02000000)) -ne 0 ] || fail "executor link fd is not CLOEXEC"
+echo "[integration-fd] executor holds a CLOEXEC bpf link fd; loader has exited"
 
 echo "[integration-fd] cfg parameters"
 cfg_json="$("$CTL" get --pin-dir "$PINDIR")" || fail "schedctl get failed"

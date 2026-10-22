@@ -18,6 +18,9 @@ struct SchedPaths {
   std::string pin_root = "/sys/fs/bpf/eulerpilot-v2";
   // Explicit pin dir; when empty, <pin_root>/<instance_id> is used.
   std::string pin_dir;
+  // Upper bound for one ep-schedctl invocation; used by apply/refresh/rollback.
+  // Deliberately short: a hung helper must not freeze lease/TTL fallback.
+  std::uint64_t ctrl_timeout_ms = 2000;
   // true: the loader attaches once, passes the struct_ops link FD to the
   // executor and exits. false: the loader stays alive as a child process.
   bool fd_passing = false;
@@ -43,8 +46,8 @@ class SchedSkill : public Skill {
 
   void configure(const SkillContext& context) override;
 
-  void refresh(const Applied& applied) override;
-
+  bool refresh(const Applied& applied, const RefreshContext& context,
+               std::string* error) override;
   std::string name() const override { return "sched-ref"; }
 
   SkillProbe probe() override;
@@ -104,12 +107,13 @@ class SchedSkill : public Skill {
   bool wait_enabled(std::int64_t pid, std::string* error) const;
   std::vector<PinEntry> wait_pins_settled(int timeout_ms) const;
   bool run_ctrl(const std::vector<std::string>& args, Json* output,
-                std::string* error) const;
+                std::string* error, std::uint64_t timeout_ms = 0) const;
   bool ctrl_get(Json* cfg, std::string* error) const;
   bool ctrl_set(const Json& parameters, Json* cfg, std::string* error) const;
   bool ctrl_restore(const Json& snapshot, Json* cfg, std::string* error) const;
   bool ctrl_verify(const Json& expected, std::string* error) const;
-  bool ctrl_class_set(std::int64_t pid, std::string* error) const;
+  bool ctrl_class_set(std::int64_t pid, std::string* error,
+                      std::uint64_t timeout_ms = 0) const;
   std::vector<std::int64_t> cgroup_pids(const std::string& path) const;
   bool pid_matches(std::int64_t pid, std::uint64_t starttime) const;
   static std::uint64_t process_starttime(std::int64_t pid);

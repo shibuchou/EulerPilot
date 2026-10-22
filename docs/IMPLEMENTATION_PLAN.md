@@ -81,6 +81,11 @@ P3 的实验协议和解析器可以随 P1 旁路开发，正式矩阵必须等 
 | apply deadline 强制 | 完成 | 入口/apply 后/verify 后检查；超时补偿，不提交；rollback 不中断 |
 | A/B/C 无失速（liveness） | 完成 | `experiments/abc_nostall.sh`：fair/basic/class 三臂 utime 均推进、状态干净；不是性能比较 |
 | `spec.parameters` 写入 cfg map | 完成 | 短命 `ep-schedctl` 写前快照/写后回读，rollback/recover 先恢复 |
+| link FD CLOEXEC | 完成 | MSG_CMSG_CLOEXEC + fcntl；integration_fd 校验 fdinfo |
+| helper 超时 | 完成 | ctrl_timeout_ms=2000；整轮 500ms 绝对预算（min lease/TTL）、失败即停；EOF 同期限；进程组 kill/reap |
+| WAL 失败恢复 | 未完成 | 盘满/fsync 失败时保留 active 并重试/受限紧急 detach |
+| active 绑定身份贯穿 | 未完成 | 生命周期持有真实绑定，刷新逐实例重验 |
+| BPF 有效策略/公平性 | 未完成 | 全模式降级/跨类预算/aging |
 | P2 FeatureWindow（主机切片） | 完成 | CPU/load/PSI；valid/source/samples/age/missing；`feature.snapshot` + `ep features` |
 | P2 规则分类/路由 | 完成（advisory） | 确定性阈值 + 缺指标退化 + 5s 滞回；`route.decide`/`ep route`；不自动写调度器 |
 | P2 SLO 门控 | 完成（advisory） | 缺样本/过期/缺 PSI/PSI 高压拒绝；safe-basic 可退化；`slo.evaluate`/`ep slo` |

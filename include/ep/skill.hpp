@@ -51,6 +51,13 @@ struct SkillContext {
   std::string instance_id;
 };
 
+// Refresh must finish before this absolute monotonic deadline. The executor
+// derives it from the refresh budget, lease expiry and policy TTL so a slow
+// helper cannot delay a safety fallback past those bounds.
+struct RefreshContext {
+  std::int64_t deadline_ms = 0;
+};
+
 // A Skill owns one effect domain. The executor calls it only from the
 // privileged process; plan() must be pure and side-effect free.
 class Skill {
@@ -63,8 +70,15 @@ class Skill {
   virtual std::string name() const = 0;
 
   // Periodic refresh of time-limited kernel state while an action is active.
-  // The default is a no-op; implementations must tolerate repeated calls.
-  virtual void refresh(const Applied& applied) { (void)applied; }
+  // The default is a no-op; implementations must tolerate repeated calls and
+  // return false (with a reason) instead of overrunning the deadline.
+  virtual bool refresh(const Applied& applied, const RefreshContext& context,
+                       std::string* error) {
+    (void)applied;
+    (void)context;
+    (void)error;
+    return true;
+  }
   virtual SkillProbe probe() = 0;
   virtual bool plan(const Json& intent, Plan* out, std::string* error) = 0;
   virtual bool snapshot(const Plan& plan, Snapshot* out, std::string* error) = 0;

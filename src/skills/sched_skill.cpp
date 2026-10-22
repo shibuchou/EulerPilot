@@ -369,8 +369,16 @@ bool SchedSkill::create_listener(const std::string& path, int* listen_fd,
 }
 
 bool SchedSkill::receive_link_fd(int listen_fd, int* link_fd, std::string* error) const {
+  const auto deadline =
+      std::chrono::steady_clock::now() + std::chrono::milliseconds(kStartupTimeoutMs);
+  auto remaining_ms = [&deadline]() -> int {
+    const auto left = std::chrono::duration_cast<std::chrono::milliseconds>(
+                          deadline - std::chrono::steady_clock::now())
+                          .count();
+    return left <= 0 ? 0 : static_cast<int>(left);
+  };
   pollfd descriptor {listen_fd, POLLIN, 0};
-  const int ready = ::poll(&descriptor, 1, kStartupTimeoutMs);
+  const int ready = ::poll(&descriptor, 1, remaining_ms());
   if (ready <= 0) {
     if (error != nullptr) *error = "timed out waiting for the link fd";
     return false;
@@ -378,6 +386,13 @@ bool SchedSkill::receive_link_fd(int listen_fd, int* link_fd, std::string* error
   const int connection = ::accept4(listen_fd, nullptr, nullptr, SOCK_CLOEXEC);
   if (connection < 0) {
     if (error != nullptr) *error = std::string("accept failed: ") + std::strerror(errno);
+    return false;
+  }
+  pollfd payload {connection, POLLIN, 0};
+  const int payload_ready = ::poll(&payload, 1, remaining_ms());
+  if (payload_ready <= 0) {
+    if (error != nullptr) *error = "connection accepted but no link fd arrived";
+    ::close(connection);
     return false;
   }
   char data[1] = {0};
@@ -388,19 +403,37 @@ bool SchedSkill::receive_link_fd(int listen_fd, int* link_fd, std::string* error
   message.msg_iovlen = 1;
   message.msg_control = control;
   message.msg_controllen = sizeof(control);
-  const ssize_t length = ::recvmsg(connection, &message, 0);
+  const ssize_t length = ::recvmsg(connection, &message, MSG_CMSG_CLOEXEC | MSG_DONTWAIT);
   int fd = -1;
   if (length > 0) {
     for (struct cmsghdr* cmsg = CMSG_FIRSTHDR(&message); cmsg != nullptr;
          cmsg = CMSG_NXTHDR(&message, cmsg)) {
       if (cmsg->cmsg_level == SOL_SOCKET && cmsg->cmsg_type == SCM_RIGHTS &&
           cmsg->cmsg_len >= CMSG_LEN(sizeof(int))) {
-        std::memcpy(&fd, CMSG_DATA(cmsg), sizeof(int));
+        int received = -1;
+        std::memcpy(&received, CMSG_DATA(cmsg), sizeof(int));
+        if (received >= 0) {
+          if (fd < 0) {
+            fd = received;
+          } else {
+            ::close(received);  // unexpected extra fd
+          }
+        }
       }
     }
   }
   if (fd < 0) {
     if (error != nullptr) *error = "loader did not send a link fd";
+    ::close(connection);
+    return false;
+  }
+  // MSG_CMSG_CLOEXEC should already set this; make it explicit and fail closed
+  // if the kernel/filesystem did not honour it.
+  if (::fcntl(fd, F_SETFD, FD_CLOEXEC) != 0) {
+    if (error != nullptr) {
+      *error = std::string("cannot set CLOEXEC on link fd: ") + std::strerror(errno);
+    }
+    ::close(fd);
     ::close(connection);
     return false;
   }
@@ -521,7 +554,7 @@ std::vector<SchedSkill::PinEntry> SchedSkill::wait_pins_settled(int timeout_ms) 
 }
 
 bool SchedSkill::run_ctrl(const std::vector<std::string>& args, Json* output,
-                          std::string* error) const {
+                          std::string* error, std::uint64_t timeout_ms) const {
   if (paths_.ctrl.empty() || ::access(paths_.ctrl.c_str(), X_OK) != 0) {
     if (error != nullptr) *error = "ep-schedctl is not executable: " + paths_.ctrl;
     return false;
@@ -531,6 +564,8 @@ bool SchedSkill::run_ctrl(const std::vector<std::string>& args, Json* output,
     if (error != nullptr) *error = std::string("pipe failed: ") + std::strerror(errno);
     return false;
   }
+  ::fcntl(fds[0], F_SETFD, FD_CLOEXEC);
+  ::fcntl(fds[1], F_SETFD, FD_CLOEXEC);
   const pid_t pid = ::fork();
   if (pid < 0) {
     ::close(fds[0]);
@@ -539,6 +574,11 @@ bool SchedSkill::run_ctrl(const std::vector<std::string>& args, Json* output,
     return false;
   }
   if (pid == 0) {
+    // Own process group so a timeout can also stop helper descendants.
+    if (::setpgid(0, 0) != 0) _exit(126);
+    // The helper must never inherit the struct_ops link fd: closing it here is
+    // a second line of defence after FD_CLOEXEC.
+    if (link_fd_ >= 0) ::close(link_fd_);
     ::dup2(fds[1], STDOUT_FILENO);
     ::dup2(fds[1], STDERR_FILENO);
     ::close(fds[0]);
@@ -551,9 +591,33 @@ bool SchedSkill::run_ctrl(const std::vector<std::string>& args, Json* output,
     _exit(127);
   }
   ::close(fds[1]);
+
+  const std::uint64_t budget =
+      timeout_ms == 0 ? (paths_.ctrl_timeout_ms == 0 ? 1 : paths_.ctrl_timeout_ms)
+                      : timeout_ms;
+  const auto deadline =
+      std::chrono::steady_clock::now() + std::chrono::milliseconds(budget);
   std::string data;
   char buffer[4096];
-  while (data.size() < (1u << 20)) {
+  bool timed_out = false;
+  while (true) {
+    if (std::chrono::steady_clock::now() >= deadline) {
+      timed_out = true;
+      break;
+    }
+    const auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(
+                               deadline - std::chrono::steady_clock::now())
+                               .count();
+    pollfd descriptor {fds[0], POLLIN, 0};
+    const int ready = ::poll(&descriptor, 1, static_cast<int>(remaining < 1 ? 1 : remaining));
+    if (ready == 0) {
+      timed_out = true;
+      break;
+    }
+    if (ready < 0) {
+      if (errno == EINTR) continue;
+      break;
+    }
     const ssize_t n = ::read(fds[0], buffer, sizeof(buffer));
     if (n < 0) {
       if (errno == EINTR) continue;
@@ -561,10 +625,51 @@ bool SchedSkill::run_ctrl(const std::vector<std::string>& args, Json* output,
     }
     if (n == 0) break;
     data.append(buffer, static_cast<std::size_t>(n));
+    if (data.size() >= (1u << 20)) break;
   }
   ::close(fds[0]);
+
+  auto kill_and_reap = [&]() {
+    ::kill(-pid, SIGKILL);
+    ::kill(pid, SIGKILL);
+    const auto grace =
+        std::chrono::steady_clock::now() + std::chrono::milliseconds(200);
+    int status = 0;
+    while (std::chrono::steady_clock::now() < grace) {
+      const pid_t result = ::waitpid(pid, &status, WNOHANG);
+      if (result == pid || (result < 0 && errno == ECHILD)) break;
+      std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+  };
+
+  if (timed_out) {
+    kill_and_reap();
+    if (error != nullptr) {
+      *error = "ep-schedctl timed out after " + std::to_string(budget) + "ms";
+    }
+    return false;
+  }
+
+  // EOF does not mean the helper exited. Reap within the same deadline; do not
+  // add a second grace window on top of it.
   int status = 0;
-  ::waitpid(pid, &status, 0);
+  while (true) {
+    const pid_t result = ::waitpid(pid, &status, WNOHANG);
+    if (result == pid) break;
+    if (result < 0 && errno == ECHILD) {
+      status = 0;
+      break;
+    }
+    if (std::chrono::steady_clock::now() >= deadline) {
+      kill_and_reap();
+      if (error != nullptr) {
+        *error = "ep-schedctl did not exit within " + std::to_string(budget) + "ms";
+      }
+      return false;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+  }
+
   if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
     if (error != nullptr) {
       *error = "ep-schedctl failed (exit " + std::to_string(WIFEXITED(status)
@@ -631,11 +736,12 @@ bool SchedSkill::ctrl_restore(const Json& snapshot, Json* cfg, std::string* erro
   return true;
 }
 
-bool SchedSkill::ctrl_class_set(std::int64_t pid, std::string* error) const {
+bool SchedSkill::ctrl_class_set(std::int64_t pid, std::string* error,
+                                std::uint64_t timeout_ms) const {
   Json output;
   if (!run_ctrl({"class-set", "--pin-dir", pin_dir(), "--pid", std::to_string(pid),
                  "--class", "BG", "--confidence", "1000"},
-                &output, error)) {
+                &output, error, timeout_ms)) {
     return false;
   }
   if (!output.value("ok", false)) {
@@ -785,20 +891,31 @@ bool SchedSkill::apply(const Plan& plan, const Snapshot&, const LeaseState&, App
     if (error != nullptr) *error = "cannot read loader starttime";
     return false;
   }
-  auto abort_attach = [&]() {
+  std::vector<PinEntry> owned_pins;
+  auto abort_attach = [&]() -> bool {
     if (paths_.fd_passing) {
       if (link_fd_ >= 0) {
         ::close(link_fd_);
         link_fd_ = -1;
       }
-      wait_disabled(kStopTimeoutMs);
-      bool conflict = false;
-      std::string ignored;
-      cleanup_pins(list_pins(), &conflict, &ignored);
-      remove_runtime();
+      if (!wait_disabled(kStopTimeoutMs)) {
+        if (error != nullptr) *error = "link fd closed but sched_ext is still enabled";
+        return false;
+      }
     } else {
-      stop_pid(pid, starttime, kStopTimeoutMs);
+      if (!stop_pid(pid, starttime, kStopTimeoutMs)) {
+        if (error != nullptr) *error = "loader did not stop during apply abort";
+        return false;
+      }
     }
+    bool conflict = false;
+    std::string cleanup_error;
+    if (!cleanup_pins(owned_pins, &conflict, &cleanup_error)) {
+      if (error != nullptr) *error = cleanup_error;
+      return false;
+    }
+    remove_runtime();
+    return true;
   };
   Runtime runtime;
   runtime.pid = pid;
@@ -806,8 +923,9 @@ bool SchedSkill::apply(const Plan& plan, const Snapshot&, const LeaseState&, App
   runtime.mode = mode;
   runtime.enable_seq = read_enable_seq();
   runtime.pins = wait_pins_settled(3000);
+  owned_pins = runtime.pins;
   if (runtime.pins.empty()) {
-    abort_attach();
+    (void)abort_attach();
     if (error != nullptr) {
       *error = "loader enabled sched_ext but no pins appeared within 3s";
     }
@@ -816,7 +934,7 @@ bool SchedSkill::apply(const Plan& plan, const Snapshot&, const LeaseState&, App
   const Json parameters = plan.params.value("parameters", Json::object());
   if (!parameters.empty()) {
     if (!ctrl_get(&runtime.cfg_before, error)) {
-      abort_attach();
+      (void)abort_attach();
       return false;
     }
     if (!ctrl_set(parameters, &runtime.cfg_after, error)) {
@@ -825,7 +943,7 @@ bool SchedSkill::apply(const Plan& plan, const Snapshot&, const LeaseState&, App
       if (!ctrl_restore(runtime.cfg_before, &ignored, &restore_error) && error != nullptr) {
         *error += "; cfg restore failed: " + restore_error;
       }
-      abort_attach();
+      (void)abort_attach();
       return false;
     }
   }
@@ -838,7 +956,7 @@ bool SchedSkill::apply(const Plan& plan, const Snapshot&, const LeaseState&, App
       const std::int64_t pid = target.value("pid", 0LL);
       if (pid <= 0) continue;
       if (!ctrl_class_set(pid, error)) {
-        abort_attach();
+        (void)abort_attach();
         return false;
       }
       runtime.bg_pids.push_back(pid);
@@ -848,14 +966,14 @@ bool SchedSkill::apply(const Plan& plan, const Snapshot&, const LeaseState&, App
       runtime.bg_cgroups.push_back(path);
       for (const auto pid : cgroup_pids(path)) {
         if (!ctrl_class_set(pid, error)) {
-          abort_attach();
+          (void)abort_attach();
           return false;
         }
       }
     }
   }
   if (!write_runtime(runtime, error)) {
-    abort_attach();
+    (void)abort_attach();
     return false;
   }
   if (out != nullptr) out->data = runtime.to_json();
@@ -878,22 +996,41 @@ std::vector<std::int64_t> SchedSkill::cgroup_pids(const std::string& path) const
   return pids;
 }
 
-void SchedSkill::refresh(const Applied& applied) {
-  if (!applied.data.is_object()) return;
+bool SchedSkill::refresh(const Applied& applied, const RefreshContext& context,
+                         std::string* error) {
+  if (!applied.data.is_object()) return true;
+  if (context.deadline_ms <= 0) return true;
+  auto remaining = [&context]() { return context.deadline_ms - now_epoch_ms(); };
+  auto per_call = [&]() -> std::uint64_t {
+    const std::int64_t left = remaining();
+    if (left <= 0) return 0;
+    const std::uint64_t limit =
+        paths_.ctrl_timeout_ms == 0 ? 1 : paths_.ctrl_timeout_ms;
+    return static_cast<std::uint64_t>(left) < limit
+               ? static_cast<std::uint64_t>(left)
+               : limit;
+  };
+  auto stop = [&](const std::string& message) {
+    if (error != nullptr) *error = message;
+    return false;
+  };
+
   for (const auto& item : applied.data.value("bg_pids", Json::array())) {
     if (!item.is_number_integer() && !item.is_number_unsigned()) continue;
-    const std::int64_t pid = item.get<std::int64_t>();
-    std::string ignored;
-    ctrl_class_set(pid, &ignored);
+    const std::uint64_t budget = per_call();
+    if (budget == 0) return stop("refresh budget exhausted before bg pid refresh");
+    if (!ctrl_class_set(item.get<std::int64_t>(), error, budget)) return false;
   }
   for (const auto& item : applied.data.value("bg_cgroups", Json::array())) {
     if (!item.is_string()) continue;
     const std::string path = item.get<std::string>();
     for (const auto pid : cgroup_pids(path)) {
-      std::string ignored;
-      ctrl_class_set(pid, &ignored);
+      const std::uint64_t budget = per_call();
+      if (budget == 0) return stop("refresh budget exhausted during cgroup refresh");
+      if (!ctrl_class_set(pid, error, budget)) return false;
     }
   }
+  return true;
 }
 
 VerifyResult SchedSkill::verify(const Applied& applied, std::int64_t) {
@@ -934,6 +1071,8 @@ bool SchedSkill::cleanup_pins(const std::vector<PinEntry>& owned, bool* conflict
                               std::string* error) const {
   if (conflict != nullptr) *conflict = false;
   const auto current = list_pins();
+  // Preflight every pin before deleting any: a foreign/replaced pin must not
+  // leave this instance with a half-cleaned set.
   for (const auto& pin : current) {
     bool match = false;
     for (const auto& candidate : owned) {
@@ -950,6 +1089,8 @@ bool SchedSkill::cleanup_pins(const std::vector<PinEntry>& owned, bool* conflict
       }
       return false;
     }
+  }
+  for (const auto& pin : current) {
     const std::filesystem::path path = std::filesystem::path(pin_dir()) / pin.name;
     if (::unlink(path.c_str()) != 0 && errno != ENOENT) {
       if (error != nullptr) *error = "cannot unlink " + path.string() + ": " + std::strerror(errno);

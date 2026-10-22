@@ -1,0 +1,101 @@
+{
+  "date": "2026-10-22",
+  "scope": "independent review, local tests and read-only SP3 verification",
+  "checkpoint_index_tree": "c15916891bdfc88031740034227bef3fb03a00b2",
+  "index_unchanged": true,
+  "existing_unstaged_files": [
+    "PROVENANCE.md",
+    "README.md",
+    "docs/IMPLEMENTATION_PLAN.md",
+    "include/ep/sched_skill.hpp",
+    "src/executor/executor.cpp",
+    "src/skills/sched_skill.cpp",
+    "tests/README.md",
+    "tests/integration_fd.sh",
+    "tests/unit/test_main.cpp"
+  ],
+  "SP3_existing_junit": {
+    "tests": 6,
+    "failures": 0,
+    "skipped": 0
+  },
+  "live_binary_hashes_match": true,
+  "new_remote_test_run": false,
+  "remote_writes": false,
+  "local_test_passes": 2,
+  "helper_probe": [
+    {
+      "calls": 1,
+      "configured_timeout_ms": 200,
+      "elapsed_ms": 203,
+      "scope": "fake-helper refresh only",
+      "case": "one_hanging_helper"
+    },
+    {
+      "calls": 3,
+      "configured_timeout_ms": 200,
+      "elapsed_ms": 606,
+      "scope": "fake-helper refresh only",
+      "case": "three_hanging_helpers"
+    },
+    {
+      "calls": 1,
+      "configured_timeout_ms": 200,
+      "elapsed_ms": 1207,
+      "scope": "fake-helper refresh only",
+      "case": "EOF_then_hang"
+    }
+  ],
+  "runtime_source_modified_by_review": false,
+  "automatic_apply_enabled": false,
+  "inputs": [
+    {
+      "path": "PROVENANCE.md",
+      "sha256": "16a698835a2195c97c4cdc6285eaf5e4a22271e52d40f23a3ca214401afe9ca9"
+    },
+    {
+      "path": "README.md",
+      "sha256": "5017d508f86fbd51efd0f6bd2be7204d64d5e1b3d912c278419753c248eb49ef"
+    },
+    {
+      "path": "docs/IMPLEMENTATION_PLAN.md",
+      "sha256": "f9cc04a6bc1825c07faab5d87b304ac47bbc66eaab5dd2cc066998e29e116c85"
+    },
+    {
+      "path": "include/ep/sched_skill.hpp",
+      "sha256": "9fe75b72132209c8daafc8aa8e8e54888a75429557da0bfe0787f1599677c155"
+    },
+    {
+      "path": "src/executor/executor.cpp",
+      "sha256": "6c5d02489eaed14c7824822270559492d9eaed4f21015a5294f91ee75d7b229f"
+    },
+    {
+      "path": "src/skills/sched_skill.cpp",
+      "sha256": "18296bec969a8c13757c3ea33704dc7660cad8dbaffa493f479a29e04ec75a64"
+    },
+    {
+      "path": "tests/README.md",
+      "sha256": "2aeb6b554221c078d31c330fa0c18c02a85393a167a8dbff2243d824f110dfce"
+    },
+    {
+      "path": "tests/integration_fd.sh",
+      "sha256": "ff8ab9847885acfa48497d3b1a3b44747887b434da80f1efc2dab9cbf7f475a7"
+    },
+    {
+      "path": "tests/unit/test_main.cpp",
+      "sha256": "a1be33276e195501e65fe446eaf20186ae3af64b1f655cac5c892a8cda33ae08"
+    },
+    {
+      "path": "evidence/acceptance-sp3-strict-20261022.txt",
+      "sha256": "ea99b02a733407736dc61724c6be33a2d01848b803d69bb4136bd3334d8525ca"
+    },
+    {
+      "path": "evidence/acceptance-sp3-20261022/ctest.xml",
+      "sha256": "729d56e27506b1f6664da818191756e3786422dd3d22698c77b1067042464c31"
+    },
+    {
+      "path": "evidence/acceptance-sp3-20261022/SHA256SUMS",
+      "sha256": "9be4cf3a85846ffa758a691684d19a92d8aba67aa25fe3d44572db71ab2b65b7"
+    }
+  ]
+}

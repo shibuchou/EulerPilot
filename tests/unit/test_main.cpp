@@ -652,6 +652,194 @@ while true; do sleep 0.05; done
   std::filesystem::remove_all(dir);
 }
 
+void test_sched_helper_timeout() {
+  const auto dir = make_temp_dir("sched-helper-timeout");
+  const auto sched_ext = dir / "sched_ext";
+  const auto pin_dir = dir / "pin";
+  const auto state_dir = dir / "state";
+  const auto run_dir = dir / "exec";
+  std::filesystem::create_directories(sched_ext / "root");
+  std::filesystem::create_directories(pin_dir);
+  std::filesystem::create_directories(state_dir);
+  write_text_file(sched_ext / "state", "disabled\n");
+  write_text_file(sched_ext / "root" / "ops", "\n");
+
+  const auto loader = dir / "fake-loader.sh";
+  write_text_file(loader, R"BASH(#!/usr/bin/env bash
+set -e
+se="${EP_FAKE_SCHED_EXT:?}"
+pin="${EP_FAKE_PIN:?}"
+mkdir -p "$se/root" "$pin"
+: > "$pin/cfg"
+: > "$pin/class_map"
+: > "$pin/stats"
+echo enabled > "$se/state"
+echo eulerpilot > "$se/root/ops"
+trap 'echo disabled > "$se/state"; : > "$se/root/ops"; exit 0' TERM INT
+while true; do sleep 0.05; done
+)BASH");
+  CHECK(::chmod(loader.c_str(), 0755) == 0);
+
+  const auto hang = dir / "hang-ctrl.sh";
+  write_text_file(hang, "#!/usr/bin/env bash\nsleep 30\n");
+  CHECK(::chmod(hang.c_str(), 0755) == 0);
+
+  CHECK(::setenv("EP_FAKE_SCHED_EXT", sched_ext.c_str(), 1) == 0);
+  CHECK(::setenv("EP_FAKE_PIN", pin_dir.c_str(), 1) == 0);
+
+  ep::SchedPaths paths;
+  paths.state_dir = state_dir;
+  paths.loader = loader.string();
+  paths.sched_ext_dir = sched_ext.string();
+  paths.pin_dir = pin_dir.string();
+  paths.ctrl = hang.string();
+  paths.ctrl_timeout_ms = 200;
+
+  ep::Executor executor(run_dir, std::make_unique<ep::SchedSkill>(paths),
+                        ep::ExecutorOptions{true});
+  std::string error;
+  CHECK(executor.init(&error));
+  ep::Json lease = executor.handle(ep::Json{{"operation", "lease.acquire"},
+                                            {"request_id", "req-lease-timeout"},
+                                            {"lease_owner", "unit-owner-01"}});
+  CHECK(lease["status"] == "OK");
+  const std::uint64_t fence = lease["fence_epoch"].get<std::uint64_t>();
+  const ep::Json intent{{"mode", "class"},
+                        {"parameters", ep::Json{{"lat_slice_ns", 2000000}}}};
+  const ep::Json envelope = make_envelope("policy.apply", intent, "unit-owner-01", fence, 0,
+                                          "idem-helper-timeout");
+  const auto start = std::chrono::steady_clock::now();
+  ep::Json response = executor.handle(ep::Json{{"operation", "policy.apply"},
+                                                {"envelope", envelope},
+                                                {"intent", intent}});
+  const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                           std::chrono::steady_clock::now() - start)
+                           .count();
+  CHECK(response["status"] != "VERIFIED");
+  CHECK(response["error"]["message"].get<std::string>().find("timed out") !=
+        std::string::npos);
+  CHECK(elapsed < 2000);
+  CHECK(read_text_file(sched_ext / "state") == "disabled");
+  CHECK(!std::filesystem::exists(pin_dir) || std::filesystem::is_empty(pin_dir));
+  CHECK(!std::filesystem::exists(state_dir / "sched-runtime.json"));
+  std::filesystem::remove_all(dir);
+}
+
+void test_sched_refresh_budget() {
+  const auto dir = make_temp_dir("refresh-budget");
+  const auto hang = dir / "hang.sh";
+  write_text_file(hang, "#!/usr/bin/env bash\nsleep 30\n");
+  CHECK(::chmod(hang.c_str(), 0755) == 0);
+  ep::SchedPaths paths;
+  paths.state_dir = dir / "state";
+  paths.ctrl = hang.string();
+  paths.ctrl_timeout_ms = 2000;
+  ep::SchedSkill skill(paths);
+  ep::Applied applied;
+  applied.data = ep::Json{{"bg_pids", ep::Json::array({1, 2, 3})}};
+  const auto start = std::chrono::steady_clock::now();
+  ep::RefreshContext context{ep::now_epoch_ms() + 200};
+  std::string error;
+  CHECK(!skill.refresh(applied, context, &error));
+  const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                           std::chrono::steady_clock::now() - start)
+                           .count();
+  CHECK(elapsed < 600);
+  CHECK(error.find("timed out") != std::string::npos ||
+        error.find("budget") != std::string::npos);
+  std::cout << "refresh_budget_ms=" << elapsed << "\n";
+  std::filesystem::remove_all(dir);
+}
+
+void test_sched_eof_budget() {
+  const auto dir = make_temp_dir("eof-budget");
+  const auto eof = dir / "eof.sh";
+  write_text_file(eof, "#!/usr/bin/env bash\nexec 1>&- 2>&-\nsleep 30\n");
+  CHECK(::chmod(eof.c_str(), 0755) == 0);
+  ep::SchedPaths paths;
+  paths.state_dir = dir / "state";
+  paths.ctrl = eof.string();
+  paths.ctrl_timeout_ms = 2000;
+  ep::SchedSkill skill(paths);
+  ep::Applied applied;
+  applied.data = ep::Json{{"bg_pids", ep::Json::array({1})}};
+  const auto start = std::chrono::steady_clock::now();
+  ep::RefreshContext context{ep::now_epoch_ms() + 200};
+  std::string error;
+  CHECK(!skill.refresh(applied, context, &error));
+  const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                           std::chrono::steady_clock::now() - start)
+                           .count();
+  CHECK(elapsed < 600);
+  CHECK(error.find("did not exit") != std::string::npos ||
+        error.find("timed out") != std::string::npos);
+  std::cout << "eof_budget_ms=" << elapsed << "\n";
+  std::filesystem::remove_all(dir);
+}
+
+void test_sched_abort_foreign_pin() {
+  const auto dir = make_temp_dir("abort-foreign");
+  const auto sched_ext = dir / "sched_ext";
+  const auto pin_dir = dir / "pin";
+  const auto state_dir = dir / "state";
+  const auto run_dir = dir / "exec";
+  std::filesystem::create_directories(sched_ext / "root");
+  std::filesystem::create_directories(pin_dir);
+  std::filesystem::create_directories(state_dir);
+  write_text_file(sched_ext / "state", "disabled\n");
+  write_text_file(sched_ext / "root" / "ops", "\n");
+
+  const auto loader = dir / "fake-loader.sh";
+  write_text_file(loader, R"BASH(#!/usr/bin/env bash
+set -e
+se="${EP_FAKE_SCHED_EXT:?}"
+pin="${EP_FAKE_PIN:?}"
+mkdir -p "$se/root" "$pin"
+: > "$pin/cfg"
+: > "$pin/class_map"
+: > "$pin/stats"
+( sleep 0.6; : > "$pin/foreign" ) &
+echo enabled > "$se/state"
+echo eulerpilot > "$se/root/ops"
+trap 'echo disabled > "$se/state"; : > "$se/root/ops"; exit 0' TERM INT
+while true; do sleep 0.05; done
+)BASH");
+  CHECK(::chmod(loader.c_str(), 0755) == 0);
+  const auto hang = dir / "hang.sh";
+  write_text_file(hang, "#!/usr/bin/env bash\nsleep 30\n");
+  CHECK(::chmod(hang.c_str(), 0755) == 0);
+  CHECK(::setenv("EP_FAKE_SCHED_EXT", sched_ext.c_str(), 1) == 0);
+  CHECK(::setenv("EP_FAKE_PIN", pin_dir.c_str(), 1) == 0);
+
+  ep::SchedPaths paths;
+  paths.state_dir = state_dir;
+  paths.loader = loader.string();
+  paths.sched_ext_dir = sched_ext.string();
+  paths.pin_dir = pin_dir.string();
+  paths.ctrl = hang.string();
+  paths.ctrl_timeout_ms = 800;
+  ep::Executor executor(run_dir, std::make_unique<ep::SchedSkill>(paths),
+                        ep::ExecutorOptions{true});
+  std::string error;
+  CHECK(executor.init(&error));
+  ep::Json lease = executor.handle(ep::Json{{"operation", "lease.acquire"},
+                                            {"request_id", "req-lease-foreign"},
+                                            {"lease_owner", "unit-owner-01"}});
+  const std::uint64_t fence = lease["fence_epoch"].get<std::uint64_t>();
+  const ep::Json intent{{"mode", "class"},
+                        {"parameters", ep::Json{{"lat_slice_ns", 2000000}}}};
+  const ep::Json envelope = make_envelope("policy.apply", intent, "unit-owner-01", fence, 0,
+                                          "idem-foreign-pin");
+  ep::Json response = executor.handle(ep::Json{{"operation", "policy.apply"},
+                                                {"envelope", envelope},
+                                                {"intent", intent}});
+  CHECK(response["status"] == "RECOVERY_REQUIRED");
+  CHECK(std::filesystem::exists(pin_dir / "foreign"));
+  CHECK(std::filesystem::exists(pin_dir / "cfg"));
+  CHECK(!std::filesystem::exists(state_dir / "sched-runtime.json"));
+  std::filesystem::remove_all(dir);
+}
+
 void test_feature_window() {
   ep::FeatureWindow window(4);
   window.sample();
@@ -796,6 +984,10 @@ int main() {
   test_executor_reconcile_after_crash();
   test_unsupported_skill();
   test_sched_skill_fake_loader();
+  test_sched_helper_timeout();
+  test_sched_refresh_budget();
+  test_sched_eof_budget();
+  test_sched_abort_foreign_pin();
   if (g_failures != 0) {
     std::cerr << g_failures << " check(s) failed\n";
     return 1;
