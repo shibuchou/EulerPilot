@@ -504,10 +504,12 @@ Json Executor::handle_apply(const Json& request) {
   }
   // The effect exists from here on. Track it before any journal/state write so
   // a later persistence failure cannot lose the recovery context.
+  applied.bindings = bindings;
   active_ = ActiveAction{envelope.transaction_id, action_id, envelope.lease_owner,
                          envelope.fence_epoch, applied.data, snapshot.data,
                          snapshot.id, digest, now_epoch_ms(),
-                         policy_summary.safety.value("policy_ttl_ms", 60000LL)};
+                         policy_summary.safety.value("policy_ttl_ms", 60000LL),
+                         applied.bindings};
   if (now_epoch_ms() > envelope.deadline_ms) {
     return compensate(envelope, action_id, snapshot, applied, request_hash,
                       "deadline exceeded after skill.apply", ErrorCode::kDeadlineExceeded);
@@ -818,9 +820,10 @@ void Executor::monitor_loop() {
         if (refresh_deadline > now + 50) {
           Applied applied;
           applied.data = active_->applied;
+          applied.bindings = active_->bindings;
           RefreshContext context{refresh_deadline};
           std::string refresh_error;
-          if (!skill_->refresh(applied, context, &refresh_error)) {
+          if (!skill_->refresh(applied, applied.bindings, context, &refresh_error)) {
             std::cerr << "[executor] refresh stopped: " << refresh_error << "\n";
           }
         }

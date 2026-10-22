@@ -89,6 +89,7 @@ class Executor {
     std::string policy_sha256;
     std::int64_t applied_at_ms = 0;
     std::int64_t ttl_ms = 0;
+    std::vector<TargetBinding> bindings;
   };
 
   void monitor_loop();

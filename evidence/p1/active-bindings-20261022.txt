@@ -1,0 +1,43 @@
+EulerPilot v2 — active target identity and stale BG revocation — SP3 evidence
+Recorded 2026-10-22 on schedpilot-sp3 (<SP3-IP>)
+
+Changes
+  - TargetBinding now holds a cgroup O_PATH directory FD (shared_ptr, closes
+    with the last binding copy) in addition to path/inode/device/boot_id/id.
+  - Applied carries the real bindings; Executor ActiveAction keeps them alive
+    for the active effect (not serialized, not reconstructed from JSON).
+  - refresh revalidates every binding before writing anything:
+      pid: held pidfd alive + starttime;
+      cgroup: held FD identity + current path/inode/device/cgroup_id.
+  - cgroup members are enumerated through the held directory FD
+    (openat cgroup.procs), not by re-authorizing a same-named path.
+  - SchedSkill tracks managed BG pids. On refresh, members no longer present
+    are removed with ep-schedctl class-del; identity-validation failure revokes
+    managed entries before returning error.
+  - ep-schedctl gained class-del.
+
+Tests
+  - Target binding lifetime: held cgroup FD + cgroup.procs; path replacement is
+    rejected by revalidate_binding.
+  - Refresh revocation (fake ctrl): pid 111 class-set, then cgroup.procs changes
+    to 222 -> class-del 111 + class-set 222.
+  - SP3 integration_fd: background sleep exits; within the 2s refresh window
+    class-get(present)=false (stale BG entry revoked), before the 5s BPF TTL.
+
+SP3
+  ctest 6/6 passed, 0 skipped
+  A/B/C liveness: all arms progressed
+  final: disabled, 0 pins, no loader/executor
+  ACCEPTANCE OK
+
+Artifacts (SP3)
+  ep               6b33142a7114c8df6b80c2bf1ea73a0b08072e09e0edbc15722f178415222c81
+  ep-executord     04163c9020fc8feae2062fdb0a1ee564fce22d4d6dd5c71c3c25186536cd18a9
+  ep-sched-loader  3aa11a6b23990cc9bd61aff4163491623e8898a60f858f46e607925a9cc67f52
+  ep-schedctl      82ddadf1ccde8fa84f5f9ce67feaeb883414748db532e4a9b365de7fb7a42098
+
+Still open
+  - bare TGID -> BPF lookup window (needs task storage/start cookie ABI)
+  - restart/reauthorization of same-named targets beyond boot_id/path identity
+  - cgroup/pid FD closure assertions on normal teardown
+  - BPF effective policy/fairness

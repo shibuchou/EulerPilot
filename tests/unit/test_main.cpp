@@ -504,6 +504,10 @@ void test_target_resolution() {
   CHECK(bindings.size() == 1);
   CHECK(bindings[0].inode != 0);
   CHECK(!bindings[0].boot_id.empty());
+  CHECK(bindings[0].cgroup_fd != nullptr);
+  CHECK(*bindings[0].cgroup_fd >= 0);
+  std::vector<std::int64_t> members;
+  CHECK(ep::read_cgroup_members(bindings[0], &members, &error));
   if (bindings[0].cgroup_id == 0) {
     std::cout << "cgroup_id unavailable on this mount (non-root/no exportfs)\n";
   } else {
@@ -542,6 +546,69 @@ void test_target_resolution() {
 
   target.path = "/sys/fs/cgroup/ep-test-missing-cgroup";
   CHECK(!ep::resolve_targets({target}, &bindings, &error));
+}
+
+void test_target_binding_lifetime() {
+  const auto dir = make_temp_dir("target-lifetime");
+  const auto cgroup = dir / "cg";
+  std::filesystem::create_directories(cgroup);
+  write_text_file(cgroup / "cgroup.controllers", "\n");
+  write_text_file(cgroup / "cgroup.procs", "1\n");
+  ep::PolicyTarget target{"cgroup", cgroup.string(), "BACKGROUND", "explicit"};
+  std::vector<ep::TargetBinding> bindings;
+  std::string error;
+  CHECK(ep::resolve_targets({target}, &bindings, &error));
+  CHECK(bindings.size() == 1);
+  CHECK(bindings[0].cgroup_fd != nullptr);
+  std::vector<std::int64_t> members;
+  CHECK(ep::read_cgroup_members(bindings[0], &members, &error));
+  CHECK(members.size() == 1 && members[0] == 1);
+  CHECK(ep::revalidate_binding(bindings[0], &error));
+
+  std::filesystem::rename(cgroup, dir / "cg-old");
+  std::filesystem::create_directories(cgroup);
+  write_text_file(cgroup / "cgroup.controllers", "\n");
+  CHECK(!ep::revalidate_binding(bindings[0], &error));
+  std::filesystem::remove_all(dir);
+}
+
+void test_refresh_revokes_stale_members() {
+  const auto dir = make_temp_dir("refresh-revoke");
+  const auto cgroup = dir / "cg";
+  std::filesystem::create_directories(cgroup);
+  write_text_file(cgroup / "cgroup.controllers", "\n");
+  write_text_file(cgroup / "cgroup.procs", "111\n");
+  ep::PolicyTarget target{"cgroup", cgroup.string(), "BACKGROUND", "explicit"};
+  std::vector<ep::TargetBinding> bindings;
+  std::string error;
+  CHECK(ep::resolve_targets({target}, &bindings, &error));
+
+  const auto log = dir / "ctrl.log";
+  const auto ctrl = dir / "fake-ctrl.sh";
+  write_text_file(ctrl, "#!/usr/bin/env bash\nprintf '%s\\n' \"$*\" >> \"" +
+                            log.string() + "\"\necho '{\"ok\":true}'\n");
+  CHECK(::chmod(ctrl.c_str(), 0755) == 0);
+
+  ep::SchedPaths paths;
+  paths.state_dir = dir / "state";
+  paths.ctrl = ctrl.string();
+  paths.ctrl_timeout_ms = 1000;
+  ep::SchedSkill skill(paths);
+  ep::Applied applied;
+  applied.bindings = bindings;
+  ep::RefreshContext context{ep::now_epoch_ms() + 1000};
+  CHECK(skill.refresh(applied, applied.bindings, context, &error));
+  std::string first = read_text_file(log);
+  CHECK(first.find("class-set") != std::string::npos);
+  CHECK(first.find("--pid 111") != std::string::npos);
+
+  write_text_file(cgroup / "cgroup.procs", "222\n");
+  CHECK(skill.refresh(applied, applied.bindings, context, &error));
+  const std::string second = read_text_file(log);
+  CHECK(second.find("class-del") != std::string::npos);
+  CHECK(second.find("--pid 111") != std::string::npos);
+  CHECK(second.find("--pid 222") != std::string::npos);
+  std::filesystem::remove_all(dir);
 }
 
 void test_sched_skill_fake_loader() {
@@ -740,7 +807,7 @@ void test_sched_refresh_budget() {
   const auto start = std::chrono::steady_clock::now();
   ep::RefreshContext context{ep::now_epoch_ms() + 200};
   std::string error;
-  CHECK(!skill.refresh(applied, context, &error));
+  CHECK(!skill.refresh(applied, {}, context, &error));
   const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
                            std::chrono::steady_clock::now() - start)
                            .count();
@@ -766,7 +833,7 @@ void test_sched_eof_budget() {
   const auto start = std::chrono::steady_clock::now();
   ep::RefreshContext context{ep::now_epoch_ms() + 200};
   std::string error;
-  CHECK(!skill.refresh(applied, context, &error));
+  CHECK(!skill.refresh(applied, {}, context, &error));
   const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
                            std::chrono::steady_clock::now() - start)
                            .count();
@@ -1125,6 +1192,8 @@ void test_deadline_exceeded_after_apply() {
 int main() {
   test_policy_validation();
   test_target_resolution();
+  test_target_binding_lifetime();
+  test_refresh_revokes_stale_members();
   test_sha256();
   test_canonical_json();
   test_iso8601();

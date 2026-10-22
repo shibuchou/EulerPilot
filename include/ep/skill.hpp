@@ -2,8 +2,10 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 #include "ep/ownership.hpp"
+#include "ep/target.hpp"
 #include "ep/util.hpp"
 
 namespace ep {
@@ -25,6 +27,9 @@ struct Snapshot {
 
 struct Applied {
   Json data;
+  // Held identities for the active effect. Not serialized; the executor keeps
+  // this vector alive for refresh/recovery.
+  std::vector<TargetBinding> bindings;
 };
 
 struct VerifyResult {
@@ -72,9 +77,10 @@ class Skill {
   // Periodic refresh of time-limited kernel state while an action is active.
   // The default is a no-op; implementations must tolerate repeated calls and
   // return false (with a reason) instead of overrunning the deadline.
-  virtual bool refresh(const Applied& applied, const RefreshContext& context,
-                       std::string* error) {
+  virtual bool refresh(const Applied& applied, const std::vector<TargetBinding>& bindings,
+                       const RefreshContext& context, std::string* error) {
     (void)applied;
+    (void)bindings;
     (void)context;
     (void)error;
     return true;

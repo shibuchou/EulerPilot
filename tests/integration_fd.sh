@@ -285,6 +285,29 @@ assert reply.get("source") == 2, reply
 print("[integration-fd] background pid class", reply["class"])
 PY
 
+slo="$("$EP" slo --expert latency-balanced --socket "$SOCK")" || fail "slo failed"
+python3 - "$slo" <<'PY'
+import json, sys
+reply = json.loads(sys.argv[1])
+assert reply.get("status") == "OK", reply
+assert reply.get("allowed") is False, reply
+assert reply.get("code") == "FEATURES_INSUFFICIENT", reply
+print("[integration-fd] slo denied:", reply["code"])
+PY
+
+BG_OLD="$BG_PID"
+kill -TERM "$BG_PID" 2>/dev/null || true
+wait "$BG_PID" 2>/dev/null || true
+BG_PID=""
+sleep 2.5
+cls_after="$("$CTL" class-get --pin-dir "$PINDIR" --pid "$BG_OLD")" || fail "class-get after exit failed"
+python3 - "$cls_after" <<'PY'
+import json, sys
+reply = json.loads(sys.argv[1])
+assert reply.get("present") is False, reply
+print("[integration-fd] stale background member revoked")
+PY
+
 echo "[integration-fd] feature window"
 sleep 1.1
 features="$("$EP" features --socket "$SOCK")" || fail "features failed"
@@ -309,16 +332,6 @@ assert reply.get("expert") in {
 }, reply
 assert isinstance(reply.get("degraded"), bool), reply
 print("[integration-fd] route", reply["expert"], "degraded", reply["degraded"])
-PY
-
-slo="$("$EP" slo --expert latency-balanced --socket "$SOCK")" || fail "slo failed"
-python3 - "$slo" <<'PY'
-import json, sys
-reply = json.loads(sys.argv[1])
-assert reply.get("status") == "OK", reply
-assert reply.get("allowed") is False, reply
-assert reply.get("code") == "FEATURES_INSUFFICIENT", reply
-print("[integration-fd] slo denied:", reply["code"])
 PY
 
 echo "[integration-fd] rollback"

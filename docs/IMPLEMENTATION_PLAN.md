@@ -84,7 +84,7 @@ P3 的实验协议和解析器可以随 P1 旁路开发，正式矩阵必须等 
 | link FD CLOEXEC | 完成 | MSG_CMSG_CLOEXEC + fcntl；integration_fd 校验 fdinfo |
 | helper 超时 | 完成 | ctrl_timeout_ms=2000；整轮 500ms 绝对预算（min lease/TTL）、失败即停；EOF 同期限；进程组 kill/reap |
 | WAL 失败恢复 | 部分完成 | append 失败即 broken/回退末条；emergency detach；DEGRADED/AUDIT_PENDING；active 影响前建立 |
-| WAL 重启对账 | 未完成 | broken journal 重启 repair/reconcile、state.json 故障注入 |\n| active 绑定身份贯穿 | 未完成 | 生命周期持有真实绑定，刷新逐实例重验 |
+| WAL 重启对账 | 未完成 | broken journal 重启 repair/reconcile、state.json 故障注入 |\n| active 绑定身份贯穿 | 部分完成 | active 持有 pidfd/cgroup dir FD；refresh 逐绑定重验；成员迁出 class-del；BPF TGID 窗口仍存 |
 | BPF 有效策略/公平性 | 未完成 | 全模式降级/跨类预算/aging |
 | P2 FeatureWindow（主机切片） | 完成 | CPU/load/PSI；valid/source/samples/age/missing；`feature.snapshot` + `ep features` |
 | P2 规则分类/路由 | 完成（advisory） | 确定性阈值 + 缺指标退化 + 5s 滞回；`route.decide`/`ep route`；不自动写调度器 |

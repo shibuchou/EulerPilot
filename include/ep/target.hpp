@@ -25,6 +25,7 @@ struct TargetBinding {
   std::int64_t pid = 0;
   std::uint64_t starttime = 0;
   std::shared_ptr<int> pidfd;  // pid targets; shared by copies, closes on last
+  std::shared_ptr<int> cgroup_fd;  // cgroup targets; O_PATH directory, held
 
   Json to_json() const;
 };
@@ -36,5 +37,13 @@ bool resolve_targets(const std::vector<PolicyTarget>& targets,
 
 // Re-checks boot_id and every path/inode/device before or after a write.
 bool revalidate_targets(const std::vector<TargetBinding>& bindings, std::string* error);
+
+// Re-checks one held binding. A cgroup binding uses the held directory FD for
+// identity and members, and also compares the current path to detect replacement.
+bool revalidate_binding(const TargetBinding& binding, std::string* error);
+
+// Enumerates current pids from the held cgroup directory FD (not the path).
+bool read_cgroup_members(const TargetBinding& binding, std::vector<std::int64_t>* pids,
+                         std::string* error);
 
 }  // namespace ep

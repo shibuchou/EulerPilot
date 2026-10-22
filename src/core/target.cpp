@@ -33,8 +33,8 @@ std::string read_trimmed(const std::string& path) {
 
 std::string boot_id() { return read_trimmed("/proc/sys/kernel/random/boot_id"); }
 
-bool stat_cgroup(const std::string& path, std::uint64_t* inode, std::uint64_t* device,
-                 std::string* error) {
+bool open_cgroup(const std::string& path, std::uint64_t* inode, std::uint64_t* device,
+                 int* out_fd, std::string* error) {
   const int fd = ::open(path.c_str(), O_PATH | O_DIRECTORY | O_CLOEXEC | O_NOFOLLOW);
   if (fd < 0) {
     if (error != nullptr) {
@@ -59,14 +59,22 @@ bool stat_cgroup(const std::string& path, std::uint64_t* inode, std::uint64_t* d
     }
     return false;
   }
-  ::close(fd);
   if (!S_ISDIR(info.st_mode)) {
+    ::close(fd);
     if (error != nullptr) *error = "target '" + path + "' is not a directory";
     return false;
   }
   *inode = static_cast<std::uint64_t>(info.st_ino);
   *device = static_cast<std::uint64_t>(info.st_dev);
+  *out_fd = fd;
   return true;
+}
+
+std::shared_ptr<int> hold_fd(int fd) {
+  return std::shared_ptr<int>(new int(fd), [](int* value) {
+    if (value != nullptr && *value >= 0) ::close(*value);
+    delete value;
+  });
 }
 
 bool read_cgroup_id(const std::string& path, std::uint64_t* cgroup_id) {
@@ -189,7 +197,11 @@ bool resolve_targets(const std::vector<PolicyTarget>& targets,
       }
       binding.pidfd = hold_pidfd(pidfd);
     } else if (target.kind == "cgroup") {
-      if (!stat_cgroup(target.path, &binding.inode, &binding.device, error)) return false;
+      int cgroup_fd = -1;
+      if (!open_cgroup(target.path, &binding.inode, &binding.device, &cgroup_fd, error)) {
+        return false;
+      }
+      binding.cgroup_fd = hold_fd(cgroup_fd);
       read_cgroup_id(target.path, &binding.cgroup_id);
     } else {
       if (error != nullptr) *error = "unsupported target kind: " + target.kind;
@@ -201,52 +213,122 @@ bool resolve_targets(const std::vector<PolicyTarget>& targets,
   return true;
 }
 
-bool revalidate_targets(const std::vector<TargetBinding>& bindings, std::string* error) {
+bool revalidate_binding(const TargetBinding& binding, std::string* error) {
   const std::string current_boot = boot_id();
-  for (const auto& binding : bindings) {
-    if (binding.boot_id != current_boot) {
-      if (error != nullptr) *error = "boot_id changed since the target was resolved";
-      return false;
-    }
-    if (binding.kind == "pid") {
-      if (binding.pidfd != nullptr && *binding.pidfd >= 0) {
-        if (!pidfd_alive(*binding.pidfd)) {
-          if (error != nullptr) {
-            *error = "pid " + std::to_string(binding.pid) + " is gone (held pidfd)";
-          }
-          return false;
-        }
-      } else {
-        int pidfd = -1;
-        if (!open_pidfd(binding.pid, &pidfd, error)) return false;
-        ::close(pidfd);
-      }
-      if (process_starttime(binding.pid) != binding.starttime) {
+  if (binding.boot_id != current_boot) {
+    if (error != nullptr) *error = "boot_id changed since the target was resolved";
+    return false;
+  }
+  if (binding.kind == "pid") {
+    if (binding.pidfd != nullptr && *binding.pidfd >= 0) {
+      if (!pidfd_alive(*binding.pidfd)) {
         if (error != nullptr) {
-          *error = "pid " + std::to_string(binding.pid) +
-                   " was replaced (starttime changed)";
+          *error = "pid " + std::to_string(binding.pid) + " is gone (held pidfd)";
         }
         return false;
       }
-      continue;
+    } else {
+      int pidfd = -1;
+      if (!open_pidfd(binding.pid, &pidfd, error)) return false;
+      ::close(pidfd);
     }
-    std::uint64_t inode = 0;
-    std::uint64_t device = 0;
-    if (!stat_cgroup(binding.path, &inode, &device, error)) return false;
-    if (inode != binding.inode || device != binding.device) {
+    if (process_starttime(binding.pid) != binding.starttime) {
       if (error != nullptr) {
-        *error = "target '" + binding.path + "' was replaced (inode/device changed)";
+        *error = "pid " + std::to_string(binding.pid) +
+                 " was replaced (starttime changed)";
       }
       return false;
     }
-    if (binding.cgroup_id != 0) {
-      std::uint64_t current_id = 0;
-      if (!read_cgroup_id(binding.path, &current_id) || current_id != binding.cgroup_id) {
-        if (error != nullptr) {
-          *error = "target '" + binding.path + "' cgroup_id changed or disappeared";
-        }
-        return false;
-      }
+    return true;
+  }
+  if (binding.cgroup_fd == nullptr || *binding.cgroup_fd < 0) {
+    if (error != nullptr) *error = "cgroup binding has no held directory fd";
+    return false;
+  }
+  struct stat held {};
+  if (::fstat(*binding.cgroup_fd, &held) != 0) {
+    if (error != nullptr) *error = "fstat held cgroup fd failed: " + std::string(std::strerror(errno));
+    return false;
+  }
+  if (static_cast<std::uint64_t>(held.st_ino) != binding.inode ||
+      static_cast<std::uint64_t>(held.st_dev) != binding.device) {
+    if (error != nullptr) *error = "held cgroup fd identity changed";
+    return false;
+  }
+  const int controllers =
+      ::openat(*binding.cgroup_fd, "cgroup.controllers", O_RDONLY | O_CLOEXEC);
+  if (controllers < 0) {
+    if (error != nullptr) *error = "held cgroup fd is no longer a cgroup v2 directory";
+    return false;
+  }
+  ::close(controllers);
+
+  // The held fd proves the original object; reopening the path detects a
+  // replacement that would otherwise receive future writes.
+  int path_fd = -1;
+  std::uint64_t inode = 0;
+  std::uint64_t device = 0;
+  if (!open_cgroup(binding.path, &inode, &device, &path_fd, error)) return false;
+  ::close(path_fd);
+  if (inode != binding.inode || device != binding.device) {
+    if (error != nullptr) *error = "target '" + binding.path + "' was replaced";
+    return false;
+  }
+  if (binding.cgroup_id != 0) {
+    std::uint64_t current_id = 0;
+    if (!read_cgroup_id(binding.path, &current_id) || current_id != binding.cgroup_id) {
+      if (error != nullptr) *error = "target '" + binding.path + "' cgroup_id changed";
+      return false;
+    }
+  }
+  return true;
+}
+
+bool revalidate_targets(const std::vector<TargetBinding>& bindings, std::string* error) {
+  for (const auto& binding : bindings) {
+    if (!revalidate_binding(binding, error)) return false;
+  }
+  return true;
+}
+
+bool read_cgroup_members(const TargetBinding& binding, std::vector<std::int64_t>* pids,
+                         std::string* error) {
+  int fd = -1;
+  if (binding.cgroup_fd != nullptr && *binding.cgroup_fd >= 0) {
+    fd = ::openat(*binding.cgroup_fd, "cgroup.procs", O_RDONLY | O_CLOEXEC);
+  } else {
+    fd = ::open((binding.path + "/cgroup.procs").c_str(), O_RDONLY | O_CLOEXEC);
+  }
+  if (fd < 0) {
+    if (error != nullptr) {
+      *error = "cannot open cgroup.procs for '" + binding.path + "': " +
+               std::strerror(errno);
+    }
+    return false;
+  }
+  std::string text;
+  char buffer[4096];
+  while (text.size() < (1u << 20)) {
+    const ssize_t n = ::read(fd, buffer, sizeof(buffer));
+    if (n < 0) {
+      if (errno == EINTR) continue;
+      ::close(fd);
+      if (error != nullptr) *error = std::string("read cgroup.procs failed: ") + std::strerror(errno);
+      return false;
+    }
+    if (n == 0) break;
+    text.append(buffer, static_cast<std::size_t>(n));
+  }
+  ::close(fd);
+  std::istringstream stream(text);
+  std::string line;
+  pids->clear();
+  while (std::getline(stream, line)) {
+    try {
+      const std::int64_t pid = std::stoll(line);
+      if (pid > 0) pids->push_back(pid);
+    } catch (const std::exception&) {
+      // ignore malformed lines
     }
   }
   return true;

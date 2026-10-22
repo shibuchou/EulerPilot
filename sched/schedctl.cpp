@@ -346,8 +346,21 @@ int cmd_class_set(const std::string& pin_dir, std::int64_t pid, const std::strin
   return 0;
 }
 
-int cmd_class_get(const std::string& pin_dir, std::int64_t pid) {
+int cmd_class_del(const std::string& pin_dir, std::int64_t pid) {
   std::string error;
+  const int fd = open_map(pin_dir, "class_map", &error);
+  if (fd < 0) return fail(error);
+  const std::uint32_t key = static_cast<std::uint32_t>(pid);
+  if (bpf_map_delete_elem(fd, &key) != 0 && errno != ENOENT) {
+    ::close(fd);
+    return fail(std::string("bpf_map_delete_elem failed: ") + std::strerror(errno));
+  }
+  ::close(fd);
+  std::cout << Json{{"ok", true}, {"pid", pid}, {"deleted", true}}.dump() << "\n";
+  return 0;
+}
+
+int cmd_class_get(const std::string& pin_dir, std::int64_t pid) {  std::string error;
   const int fd = open_map(pin_dir, "class_map", &error);
   if (fd < 0) return fail(error);
   const std::uint32_t key = static_cast<std::uint32_t>(pid);
@@ -375,8 +388,8 @@ int cmd_class_get(const std::string& pin_dir, std::int64_t pid) {
 }
 
 void usage() {
-  std::cerr << "usage: ep-schedctl get|set|restore|class-set|class-get --pin-dir DIR "
-               "[--json JSON] [--pid N] [--class NAME] [--confidence N]\n";
+  std::cerr << "usage: ep-schedctl get|set|restore|class-set|class-get|class-del "
+               "--pin-dir DIR [--json JSON] [--pid N] [--class NAME] [--confidence N]\n";
 }
 
 }  // namespace
@@ -420,6 +433,10 @@ int main(int argc, char** argv) {
   if (command == "class-get") {
     if (pid <= 0) return fail("class-get requires --pid");
     return cmd_class_get(pin_dir, pid);
+  }
+  if (command == "class-del") {
+    if (pid <= 0) return fail("class-del requires --pid");
+    return cmd_class_del(pin_dir, pid);
   }
   if (command == "get") return cmd_get(pin_dir);
   if (command == "set") {

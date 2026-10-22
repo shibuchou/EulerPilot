@@ -751,6 +751,31 @@ bool SchedSkill::ctrl_class_set(std::int64_t pid, std::string* error,
   return true;
 }
 
+bool SchedSkill::ctrl_class_del(std::int64_t pid, std::string* error,
+                                std::uint64_t timeout_ms) const {
+  Json output;
+  if (!run_ctrl({"class-del", "--pin-dir", pin_dir(), "--pid", std::to_string(pid)},
+                &output, error, timeout_ms)) {
+    return false;
+  }
+  return output.value("ok", false);
+}
+
+bool SchedSkill::revoke_managed(std::string* error) {
+  bool ok = true;
+  for (auto it = managed_bg_pids_.begin(); it != managed_bg_pids_.end();) {
+    std::string delete_error;
+    if (ctrl_class_del(*it, &delete_error)) {
+      it = managed_bg_pids_.erase(it);
+    } else {
+      ok = false;
+      if (error != nullptr && error->empty()) *error = delete_error;
+      ++it;
+    }
+  }
+  return ok;
+}
+
 bool SchedSkill::ctrl_verify(const Json& expected, std::string* error) const {  Json current;
   if (!ctrl_get(&current, error)) return false;
   static const char* keys[] = {"lat_slice_ns",      "comp_slice_ns", "cache_slice_ns",
@@ -914,6 +939,7 @@ bool SchedSkill::apply(const Plan& plan, const Snapshot&, const LeaseState&, App
       if (error != nullptr) *error = cleanup_error;
       return false;
     }
+    managed_bg_pids_.clear();
     remove_runtime();
     return true;
   };
@@ -960,6 +986,7 @@ bool SchedSkill::apply(const Plan& plan, const Snapshot&, const LeaseState&, App
         return false;
       }
       runtime.bg_pids.push_back(pid);
+      managed_bg_pids_.insert(pid);
     } else if (kind == "cgroup") {
       const std::string path = target.value("path", "");
       if (path.empty()) continue;
@@ -969,6 +996,7 @@ bool SchedSkill::apply(const Plan& plan, const Snapshot&, const LeaseState&, App
           (void)abort_attach();
           return false;
         }
+        managed_bg_pids_.insert(pid);
       }
     }
   }
@@ -996,9 +1024,8 @@ std::vector<std::int64_t> SchedSkill::cgroup_pids(const std::string& path) const
   return pids;
 }
 
-bool SchedSkill::refresh(const Applied& applied, const RefreshContext& context,
-                         std::string* error) {
-  if (!applied.data.is_object()) return true;
+bool SchedSkill::refresh(const Applied& applied, const std::vector<TargetBinding>& bindings,
+                         const RefreshContext& context, std::string* error) {
   if (context.deadline_ms <= 0) return true;
   auto remaining = [&context]() { return context.deadline_ms - now_epoch_ms(); };
   auto per_call = [&]() -> std::uint64_t {
@@ -1015,6 +1042,52 @@ bool SchedSkill::refresh(const Applied& applied, const RefreshContext& context,
     return false;
   };
 
+  if (!bindings.empty()) {
+    for (const auto& binding : bindings) {
+      if (!revalidate_binding(binding, error)) {
+        std::string revoke_error;
+        revoke_managed(&revoke_error);
+        return false;
+      }
+    }
+    std::set<std::int64_t> desired;
+    for (const auto& binding : bindings) {
+      if (binding.role != "BACKGROUND") continue;
+      if (binding.kind == "pid") {
+        const std::uint64_t budget = per_call();
+        if (budget == 0) return stop("refresh budget exhausted before bound pid refresh");
+        if (!ctrl_class_set(binding.pid, error, budget)) return false;
+        desired.insert(binding.pid);
+        managed_bg_pids_.insert(binding.pid);
+      } else if (binding.kind == "cgroup") {
+        std::vector<std::int64_t> pids;
+        if (!read_cgroup_members(binding, &pids, error)) return false;
+        for (const auto pid : pids) {
+          const std::uint64_t budget = per_call();
+          if (budget == 0) return stop("refresh budget exhausted during bound cgroup refresh");
+          if (!ctrl_class_set(pid, error, budget)) return false;
+          desired.insert(pid);
+          managed_bg_pids_.insert(pid);
+        }
+      }
+    }
+    // Members that left the binding (or whose cgroup lost them) must not keep
+    // a stale BG classification.
+    for (auto it = managed_bg_pids_.begin(); it != managed_bg_pids_.end();) {
+      if (desired.count(*it) != 0) {
+        ++it;
+        continue;
+      }
+      const std::uint64_t budget = per_call();
+      if (budget == 0) return stop("refresh budget exhausted during stale member revocation");
+      if (!ctrl_class_del(*it, error, budget)) return false;
+      it = managed_bg_pids_.erase(it);
+    }
+    return true;
+  }
+
+  // Compatibility path for callers/tests without live bindings.
+  if (!applied.data.is_object()) return true;
   for (const auto& item : applied.data.value("bg_pids", Json::array())) {
     if (!item.is_number_integer() && !item.is_number_unsigned()) continue;
     const std::uint64_t budget = per_call();
@@ -1151,6 +1224,7 @@ RecoveryResult SchedSkill::rollback(const Applied& applied, const Snapshot&, std
   if (!cleanup_pins(runtime.pins, &conflict, error)) {
     return RecoveryResult{false, conflict, *error};
   }
+  managed_bg_pids_.clear();
   remove_runtime();
   return RecoveryResult{true, false, "detached and removed " + std::to_string(runtime.pins.size()) +
                                          " owned pin(s)" + cfg_warning};

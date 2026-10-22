@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -46,8 +47,8 @@ class SchedSkill : public Skill {
 
   void configure(const SkillContext& context) override;
 
-  bool refresh(const Applied& applied, const RefreshContext& context,
-               std::string* error) override;
+  bool refresh(const Applied& applied, const std::vector<TargetBinding>& bindings,
+               const RefreshContext& context, std::string* error) override;
   std::string name() const override { return "sched-ref"; }
 
   SkillProbe probe() override;
@@ -114,6 +115,9 @@ class SchedSkill : public Skill {
   bool ctrl_verify(const Json& expected, std::string* error) const;
   bool ctrl_class_set(std::int64_t pid, std::string* error,
                       std::uint64_t timeout_ms = 0) const;
+  bool ctrl_class_del(std::int64_t pid, std::string* error,
+                      std::uint64_t timeout_ms = 0) const;
+  bool revoke_managed(std::string* error);
   std::vector<std::int64_t> cgroup_pids(const std::string& path) const;
   bool pid_matches(std::int64_t pid, std::uint64_t starttime) const;
   static std::uint64_t process_starttime(std::int64_t pid);
@@ -124,6 +128,7 @@ class SchedSkill : public Skill {
   SchedPaths paths_;
   std::string resolved_pin_dir_;
   int link_fd_ = -1;
+  std::set<std::int64_t> managed_bg_pids_;
 };
 
 }  // namespace ep
