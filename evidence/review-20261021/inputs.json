@@ -1,0 +1,22 @@
+[
+  {
+    "path": "scripts/accept_sp3.sh",
+    "sha256": "6e2166525bcbdbfcfb2d5bf644987ad9c673e1a215c07a1dbc6826ccb73f593a"
+  },
+  {
+    "path": "experiments/abc_nostall.sh",
+    "sha256": "e50c8bd106695f4382698ad4b57288dbfb882fcda715b8a8bc14cf278c32987d"
+  },
+  {
+    "path": "README.md",
+    "sha256": "a34fdc19236ee0220b16f6e3069c5010412896519671fc128ac30353340068df"
+  },
+  {
+    "path": "docs/IMPLEMENTATION_PLAN.md",
+    "sha256": "0e57c3b12516cf8078f50cc01ab1f321736db98a4d8a482c55f93d0995ea7ee2"
+  },
+  {
+    "path": "src/core/slo.cpp",
+    "sha256": "3109d9d3216f86d82dacbc6849cb95d61d6445ad768d62ddf9f51b9d135c933b"
+  }
+]

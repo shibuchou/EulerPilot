@@ -1,0 +1,4 @@
+[schedpilot] starting scx_schedpilot --mode class
+[schedpilot] sched_ext state=enabled ops=schedpilot 
+[schedpilot] starting schedpilotd --config /root/p0/schedpilot-0aeca0c/configs/redis.conf
+[schedpilot] started (mode=class)

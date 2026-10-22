@@ -1,0 +1,137 @@
+{
+  "recorded_at_utc": "2026-10-21T03:35:00Z",
+  "recorded_at_local": "2026-10-21T11:35:00+08:00",
+  "layer": "p0-reference-baseline",
+  "purpose": "reproducible manifest for the SchedPilot reference data plane used in P0 smoke",
+  "source": {
+    "repository": "D:\\code\\Ubuntu\\schedpilot",
+    "commit": "0aeca0cba2b4c9b4d4292847d71018981a04b552",
+    "branch": "main",
+    "bundle_sha256": "88e79a93e5c89ee25d66f7b51be8fabb2e734d4eeffba487990add34fef8c885",
+    "guest_path": "/root/p0/schedpilot-0aeca0c",
+    "guest_git_head": "0aeca0cba2b4c9b4d4292847d71018981a04b552",
+    "guest_dirty_files": 0,
+    "tracked_files": 234
+  },
+  "kernel": {
+    "os": "openEuler 24.03 (LTS-SP3)",
+    "running": "6.6.0-schedpilot-sp3",
+    "build_time": "#1 SMP Mon Oct  5 19:23:25 UTC 2026",
+    "source_rpm": "kernel-source-6.6.0-145.3.34.165.oe2403sp3.x86_64",
+    "source_tree": "/usr/src/linux-6.6.0-145.3.34.165.oe2403sp3.x86_64",
+    "config_sha256": "c43142c30aafd3f1be25e259a777b22db72419446e3e6ea9a3822f5a3e75f4ce",
+    "config_matches_running": true,
+    "vmlinuz_sha256": "6eaa7c58f566102254fb0e0585ecfab71d21e427d171650805b0693d5a49d0a4",
+    "btf_sha256": "c70ea693ccf991fe8e13ffbb89413ef1602a8e072324819b520c1988afcbda6a",
+    "boot_args_added": "psi=1 systemd.unified_cgroup_hierarchy=1",
+    "cgroup": "cgroup2fs",
+    "psi": "enabled"
+  },
+  "toolchain": {
+    "clang": "17.0.6-63.oe2403sp3",
+    "gcc": "12.3.1-111.oe2403sp3",
+    "bpftool": "7.2.0",
+    "libbpf": "1.2.2",
+    "pahole": "1.28",
+    "make": "4.4.1",
+    "python3": "3.11.6",
+    "missing": ["perf", "cmake", "ninja"]
+  },
+  "build": {
+    "command": "scripts/build.sh --kernel-src /usr/src/linux-6.6.0-145.3.34.165.oe2403sp3.x86_64 --jobs 8",
+    "output_dir": "/root/p0/schedpilot-0aeca0c/build/scx-tools",
+    "log": "/root/p0/build-canonical.log",
+    "log_sha256": "edbbeb957a6e4775789520172597b69fbedf5326a6038281bdaaa693e0d2baa3",
+    "exit_code": 0,
+    "injected_files": [
+      {
+        "source": "bpf/scx_schedpilot.bpf.c",
+        "target": "tools/sched_ext/scx_schedpilot.bpf.c",
+        "sha256": "3d057e6f75741554f96a2c78335a431dbbecb79de0a09f7580ecdae36c1b4de9",
+        "match": true
+      },
+      {
+        "source": "bpf/intf.h",
+        "target": "tools/sched_ext/intf.h",
+        "sha256": "c72e7eec72ca7c143a0cc855bafc88a63dc710fd8949993c37c6b93bc810b8cc",
+        "match": true
+      },
+      {
+        "source": "loader/scx_schedpilot.c",
+        "target": "tools/sched_ext/scx_schedpilot.c",
+        "sha256": "0fe906c7008056b05e106a0d92d0f688ee8b30e3c4ecfa7247d388277af0abc4",
+        "match": true
+      }
+    ],
+    "backup_of_prior_injection": "/root/p0/backup-injected",
+    "artifacts": {
+      "loader": {
+        "path": "/root/p0/schedpilot-0aeca0c/build/scx_schedpilot",
+        "sha256": "3da28c293b45fccb7eef58020f5e56fa599e9dda024126d721c60121077b5e4c"
+      },
+      "daemon": {
+        "path": "/root/p0/schedpilot-0aeca0c/build/schedpilotd",
+        "sha256": "f1f60b70cacb0d402ba41313ea7734a0ab4df0274498914850d439c4a2c3c78c"
+      },
+      "bpf_object": {
+        "path": "/root/p0/schedpilot-0aeca0c/build/scx-tools/build/obj/sched_ext/scx_schedpilot.bpf.o",
+        "sha256": "ba1c2a632d0dbe3537da4cb73c01a0254db4b3d3b6eda025023f6fce2f9e1f66"
+      }
+    },
+    "old_reference_untouched": {
+      "path": "/root/schedpilot",
+      "loader_sha256": "e7ebe09a9d25e71afec96d766f301c877911809bbf673ba6e233bb271acc896a",
+      "note": "v0.3.1-era copy, not overwritten"
+    }
+  },
+  "experiments": [
+    {
+      "id": "abc-quiet-20261021-032302",
+      "scenario": "quiet",
+      "workload": "redis GET",
+      "arms": ["A", "B", "C"],
+      "runs": 3,
+      "duration_s": 15,
+      "warmup_s": 5,
+      "interference": false,
+      "invalid_runs": 0,
+      "server_cpus": "0-3",
+      "client_cpus": "4-7",
+      "summary_sha256": "see evidence/p0/abc-smoke-20261021/abc-quiet-20261021-032302/summary.md",
+      "note": "smoke only; n=3, 15s, shared VM; not a performance result"
+    },
+    {
+      "id": "abc-noisy-20261021-032651",
+      "scenario": "noisy-cpu",
+      "workload": "redis GET + stress-ng cpu/vm interference on 0-3",
+      "arms": ["A", "B", "C"],
+      "runs": 3,
+      "duration_s": 15,
+      "warmup_s": 5,
+      "interference": true,
+      "invalid_runs": 0,
+      "server_cpus": "0-3",
+      "client_cpus": "4-7",
+      "note": "smoke only; n=3, 15s, shared VM; not a performance result"
+    }
+  ],
+  "evidence_archive": {
+    "path": "/root/p0/p0-abc-evidence.tar.gz",
+    "sha256": "02e27ff7805857ea65769c9e05036d5b42f568610061ae62e8852564e6ae2610",
+    "bytes": 16384,
+    "local_copy": "evidence/p0/abc-smoke-20261021/"
+  },
+  "environment_notes": {
+    "host": "<JUMP-HOST>, 48 CPU / 125 GiB, Ubuntu 24.04, libvirt",
+    "vm": "schedpilot-sp3, 8 vCPU / 16 GiB, bridge phybr0, <SP3-IP>",
+    "sp4_vm": "schedpilot-sp4 started, <SP4-IP>, openEuler 24.03 SP4, 6.6.0-schedpilot; cgroup v1 and PSI off; perf present; attach/detach sanity passed with loader 76f0cad31ee56018f08fbd5d1fc0065500d72b2c0c0ced286720978eb89a9ccb; no experiments run"
+  },
+  "limitations": [
+    "perf binary missing: per-run csw/migrations/ipc/mpki columns are empty; perf_stat.txt not produced",
+    "env_check PMU WARN is a false negative from missing perf; direct perf_event_open cycles/instructions test passed",
+    "cache-misses event returned 4366 for a 150M-iteration loop; not a usable LLC proxy",
+    "each vCPU exposes a separate 16 MiB L3: no meaningful shared LLC, affinity experiments unsupported",
+    "n=3 x 15s smoke on a shared host with other VMs; no statistical claim",
+    "SP4 was started and inventoried but no sched_ext experiment ran there"
+  ]
+}

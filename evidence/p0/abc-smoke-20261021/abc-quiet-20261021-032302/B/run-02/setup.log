@@ -1,0 +1,3 @@
+[schedpilot] starting scx_schedpilot --mode basic
+[schedpilot] sched_ext state=enabled ops=schedpilot 
+[schedpilot] started (mode=basic)

@@ -1,0 +1,207 @@
+{
+  "recorded_at_utc": "2026-10-21T03:05:00Z",
+  "recorded_at_local": "2026-10-21T11:05:00+08:00",
+  "layer": "kernel-integration-smoke",
+  "purpose": "P0 environment and reference-dataplane re-verification on openEuler 24.03-LTS-SP3",
+  "not_a_performance_result": true,
+  "host": {
+    "name": "<JUMP-HOST>",
+    "access": "ssh <JUMP-HOST> (<JUMP-HOST>:2229, user ubuntu)",
+    "os": "Ubuntu 24.04.1 LTS",
+    "kernel": "6.8.0-51-generic",
+    "cpus": 48,
+    "memory_total_gib": 125,
+    "memory_available_gib_at_check": 31,
+    "vm_manager": "libvirt/qemu-kvm",
+    "vms_found": {
+      "schedpilot-sp3": {
+        "state_before": "shut off",
+        "state_after": "running",
+        "vcpus": 8,
+        "memory_mib": 16384,
+        "disk": "/home/ubuntu/sp3-vm/schedpilot-sp3.qcow2",
+        "mac": "52:54:00:09:7e:9d",
+        "network": "bridge phybr0"
+      },
+      "schedpilot-sp4": {
+        "state": "shut off",
+        "vcpus": 16,
+        "memory_mib": 33554432,
+        "disk": "/home/ubuntu/vmimages/schedpilot-sp4/schedpilot-sp4.qcow2"
+      }
+    }
+  },
+  "guest": {
+    "hostname": "schedpilot-sp3",
+    "ipv4": "<SP3-IP>",
+    "ip_source": "DHCP",
+    "ssh": "ssh -i ~/.ssh/<vm-key> -J <JUMP-HOST> root@<SP3-IP>",
+    "os_release": "openEuler 24.03 (LTS-SP3)",
+    "kernel": "6.6.0-schedpilot-sp3",
+    "kernel_build": "#1 SMP Mon Oct  5 19:23:25 UTC 2026",
+    "vcpus": 8,
+    "memory_gib": 15,
+    "disk": "/dev/mapper/openeuler_schedpilot--sp3-root 69G, 40G free",
+    "cpu_model": "Intel(R) Xeon(R) CPU E5-2673 v3 @ 2.40GHz (KVM, host-passthrough)",
+    "topology": {
+      "sockets": 8,
+      "cores_per_socket": 1,
+      "threads_per_core": 1,
+      "numa_nodes": 1,
+      "l3_per_vcpu": "16 MiB, shared_cpu_list = self",
+      "meaningful_shared_llc": false
+    }
+  },
+  "kernel_provenance": {
+    "source_rpm": "kernel-source-6.6.0-145.3.34.165.oe2403sp3.x86_64",
+    "source_tree": "/usr/src/linux-6.6.0-145.3.34.165.oe2403sp3.x86_64",
+    "running_config_source": "/proc/config.gz",
+    "source_tree_config_sha256": "c43142c30aafd3f1be25e259a777b22db72419446e3e6ea9a3822f5a3e75f4ce",
+    "running_config_sha256": "c43142c30aafd3f1be25e259a777b22db72419446e3e6ea9a3822f5a3e75f4ce",
+    "config_match": true,
+    "vmlinuz_sha256": "6eaa7c58f566102254fb0e0585ecfab71d21e427d171650805b0693d5a49d0a4",
+    "btf_sha256": "c70ea693ccf991fe8e13ffbb89413ef1602a8e072324819b520c1988afcbda6a",
+    "btf_module_entries": 59,
+    "config_flags": {
+      "CONFIG_SCHED_CLASS_EXT": "y",
+      "CONFIG_EXT_GROUP_SCHED": "y",
+      "CONFIG_PSI": "y",
+      "CONFIG_PSI_DEFAULT_DISABLED": "y"
+    },
+    "boot_config_missing": "/boot/config-6.6.0-schedpilot-sp3 not installed; use /proc/config.gz"
+  },
+  "changes": [
+    {
+      "what": "enable PSI and unified cgroup v2 via kernel cmdline",
+      "command": "grubby --update-kernel=ALL --args=\"psi=1 systemd.unified_cgroup_hierarchy=1\"",
+      "reason": "distribution systemd is built default-hierarchy=legacy and CONFIG_PSI_DEFAULT_DISABLED=y",
+      "backups": [
+        "/root/p0-backup/grub.default.20261021-025103",
+        "/root/p0-backup/grub.cfg.20261021-025103"
+      ],
+      "rollback": "grubby --update-kernel=ALL --remove-args=\"psi=1 systemd.unified_cgroup_hierarchy=1\" && reboot",
+      "rebooted": true,
+      "verified": true
+    }
+  ],
+  "checks": [
+    {
+      "id": "os_sp3",
+      "layer": "environment",
+      "result": "PASS",
+      "detail": "openEuler 24.03 (LTS-SP3)"
+    },
+    {
+      "id": "sched_ext_sysfs",
+      "layer": "kernel",
+      "result": "PASS",
+      "detail": "state=disabled before attach, enable_seq=0"
+    },
+    {
+      "id": "sched_ext_attach",
+      "layer": "kernel-integration-smoke",
+      "result": "PASS",
+      "detail": "loader /root/schedpilot/build/scx_schedpilot --mode basic; state=enabled, ops=schedpilot, enable_seq=1; dmesg: BPF scheduler \"schedpilot\" enabled"
+    },
+    {
+      "id": "workload_alive_under_scx",
+      "layer": "kernel-integration-smoke",
+      "result": "PASS",
+      "detail": "stress-ng --cpu 4 --timeout 5s: passed 4, failed 0, successful run completed"
+    },
+    {
+      "id": "sched_ext_detach",
+      "layer": "kernel-integration-smoke",
+      "result": "PASS",
+      "detail": "SIGTERM loader -> state=disabled; dmesg: disabled (unregistered from user space)"
+    },
+    {
+      "id": "pinned_map_residue",
+      "layer": "kernel-integration-smoke",
+      "result": "OBSERVED",
+      "detail": "/sys/fs/bpf/schedpilot/v1/{cfg,class_map,cpu_llc,stats,tg_stats} remains after loader exit; must be handled by ownership/reconcile in v2"
+    },
+    {
+      "id": "cgroup_v2",
+      "layer": "environment",
+      "result": "PASS_AFTER_BOOT_ARG",
+      "detail": "before: cgroup v1 only (systemd default-hierarchy=legacy); after boot arg: cgroup2fs on /sys/fs/cgroup, /proc/self/cgroup=0::/..."
+    },
+    {
+      "id": "psi",
+      "layer": "environment",
+      "result": "PASS_AFTER_BOOT_ARG",
+      "detail": "before: /proc/pressure absent; after psi=1: cpu/io/irq/memory + stat present; cpu some avg60=0.36"
+    },
+    {
+      "id": "pmu_cycles",
+      "layer": "kernel-integration-smoke",
+      "result": "PASS",
+      "detail": "perf_event_open PERF_COUNT_HW_CPU_CYCLES: value=1122244653, enabled=running=426943575 ns (no multiplex)"
+    },
+    {
+      "id": "pmu_instructions",
+      "layer": "kernel-integration-smoke",
+      "result": "PASS",
+      "detail": "value=901544644, enabled=running=415584818 ns"
+    },
+    {
+      "id": "pmu_cache_misses_semantics",
+      "layer": "kernel-integration-smoke",
+      "result": "PARTIAL",
+      "detail": "cache-misses=4366 over 150M-iteration loop; too low to treat as meaningful LLC misses; do not use as LLC proxy on this VM"
+    },
+    {
+      "id": "llc_affinity",
+      "layer": "environment",
+      "result": "UNSUPPORTED_ON_THIS_VM",
+      "detail": "each vCPU exposes a separate 16 MiB L3 (shared_cpu_list=self); no meaningful shared LLC; LLC soft-affinity must be disabled with reason recorded"
+    },
+    {
+      "id": "bpf_lsm",
+      "layer": "environment",
+      "result": "PASS",
+      "detail": "lsm list: lockdown,capability,yama,selinux,bpf"
+    },
+    {
+      "id": "reference_clean_rebuild",
+      "layer": "build",
+      "result": "PENDING",
+      "detail": "/root/schedpilot is not a git repo; CHANGELOG top is v0.3.1 (2026-10-02), older than local HEAD 0aeca0c (v0.3.3); rebuild from current HEAD not done"
+    },
+    {
+      "id": "abc_minimal_experiment",
+      "layer": "performance-smoke",
+      "result": "PENDING",
+      "detail": "A/B/C and Redis smoke not run yet"
+    },
+    {
+      "id": "toolchain",
+      "layer": "environment",
+      "result": "PARTIAL",
+      "detail": "clang 17.0.6, gcc 12.3.1, bpftool 7.2.0, pahole 1.28, python3 3.11.6, libbpf 1.2.2 present; cmake, ninja, perf MISSING"
+    }
+  ],
+  "reference_artifacts": {
+    "loader": {
+      "path": "/root/schedpilot/build/scx_schedpilot",
+      "sha256": "e7ebe09a9d25e71afec96d766f301c877911809bbf673ba6e233bb271acc896a"
+    },
+    "daemon": {
+      "path": "/root/schedpilot/build/schedpilotd",
+      "sha256": "c6c4cecccefe296752d257633529a049dd5ddf3ae866e307d313f29d51f5faa7"
+    },
+    "bpf_object": {
+      "path": "/root/schedpilot/build/scx-tools/build/obj/sched_ext/scx_schedpilot.bpf.o",
+      "sha256": "a98ea2bfbbca3be653846b1a8e1ecdbcb890811e64bca8825d21ac5656574d8c"
+    },
+    "note": "reference assets from SchedPilot v0.3.1-era build, not v2 artifacts"
+  },
+  "limitations": [
+    "no v2 code was built or run; this is the legacy SchedPilot data plane",
+    "single 5s stress-ng smoke, not a performance or fairness measurement",
+    "no A/B/C, no Redis, no fault injection, no soak",
+    "boot args changed relative to the historical SP3 SchedPilot evidence (which used cgroup v1 and PSI disabled)",
+    "SP4 VM not started; 32 GiB request exceeds the 31 GiB available while SP3 is running"
+  ]
+}

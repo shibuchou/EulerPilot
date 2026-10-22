@@ -1,0 +1,42 @@
+=== acceptance start 2026-10-21T09:46:42+00:00 ===
+kernel: 6.6.0-schedpilot-sp3
+build:  /root/epv2-build
+source: /root/epv2-src
+state:  disabled
+pins:   0 entries
+=== ctest ===
+Test project /root/epv2-build
+    Start 1: unit
+1/6 Test #1: unit .............................   Passed    1.33 sec
+    Start 2: integration
+2/6 Test #2: integration ......................   Passed    2.81 sec
+    Start 3: integration_sched
+3/6 Test #3: integration_sched ................   Passed    2.27 sec
+    Start 4: integration_fd
+4/6 Test #4: integration_fd ...................   Passed    4.00 sec
+    Start 5: integration_lease
+5/6 Test #5: integration_lease ................   Passed    1.52 sec
+    Start 6: integration_ttl
+6/6 Test #6: integration_ttl ..................   Passed   11.03 sec
+
+100% tests passed, 0 tests failed out of 6
+
+Total Test time (real) =  22.96 sec
+=== A/B/C liveness ===
+[abc] fair arm (sched_ext disabled)
+{"arm": "fair", "state": "disabled", "utime_before": 30, "utime_after": 230, "progress_ticks": 200}
+[abc] basic arm
+{"arm": "basic", "state": "enabled", "utime_before": 30, "utime_after": 230, "progress_ticks": 200}
+[abc] class arm
+{"arm": "class", "state": "enabled", "utime_before": 30, "utime_after": 230, "progress_ticks": 200}
+[abc] all arms made progress; sched_ext is disabled
+=== hashes ===
+6b33142a7114c8df6b80c2bf1ea73a0b08072e09e0edbc15722f178415222c81  ep
+4077037c54915ad650400289bb4b990d080b43b320f6d8c0f1699f65fbd223ae  ep-executord
+3aa11a6b23990cc9bd61aff4163491623e8898a60f858f46e607925a9cc67f52  ep-sched-loader
+9bd709df8ed48fe03893bd7a70a7cf11e74966b73636da94ba77453f41da76cd  ep-schedctl
+=== final state ===
+state: disabled
+pins:  0 entries
+loader processes: 0
+=== acceptance OK 2026-10-21T09:47:14+00:00 ===

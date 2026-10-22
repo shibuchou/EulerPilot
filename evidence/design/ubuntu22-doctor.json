@@ -1,0 +1,32 @@
+{
+  "layer": "read-only-capability-hints",
+  "system": "Linux",
+  "kernel": "6.6.114.1-microsoft-standard-WSL2",
+  "os_release": "PRETTY_NAME=\"Ubuntu 22.04.5 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"22.04\"\nVERSION=\"22.04.5 LTS (Jammy Jellyfish)\"\nVERSION_CODENAME=jammy\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=jammy",
+  "btf_present": true,
+  "sched_ext_state": null,
+  "sched_ext_config": "not-enabled-or-absent",
+  "kernel_config_source": "/proc/config.gz",
+  "cgroup2_mount_observed": true,
+  "cgroup_controllers": "cpuset cpu io memory hugetlb pids rdma",
+  "psi_cpu_present": true,
+  "pmu_cpu_device_present": true,
+  "pmu_read_test": "NOT_RUN",
+  "lsm_list": null,
+  "tools": {
+    "git": "/usr/bin/git",
+    "clang": null,
+    "gcc": null,
+    "cmake": null,
+    "bpftool": null,
+    "perf": null,
+    "python3": "/usr/bin/python3"
+  },
+  "scx_prerequisite_hints": "NOT_OBSERVED",
+  "scx_abi_and_attach": "NOT_TESTED",
+  "delivery_environment_verified": false,
+  "limitations": [
+    "no load, attach, PMU read, cgroup delegation or policy write",
+    "not a substitute for SP3 build/runtime evidence"
+  ]
+}

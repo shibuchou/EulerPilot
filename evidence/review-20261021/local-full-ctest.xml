@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="(empty)"
+	tests="6"
+	failures="0"
+	disabled="0"
+	skipped="4"
+	hostname=""
+	time="3"
+	timestamp="2026-10-21T22:57:45"
+	>
+	<testcase name="unit" classname="unit" time="1.42101" status="run">
+		<properties/>
+		<system-out>cgroup_id=1
+deadline exceeded after apply -&gt; compensated
+[executor] reconciled txn-crash-0001: applied value detected and rolled back to snapshot
+all unit checks passed
+</system-out>
+	</testcase>
+	<testcase name="integration" classname="integration" time="2.26965" status="run">
+		<properties/>
+		<system-out>[integration] state=/tmp/ep-integration.oZawrL/state
+[integration] restart persistence
+[integration] second instance must be rejected
+[integration] synthetic crash reconcile
+[integration] all checks passed
+</system-out>
+	</testcase>
+	<testcase name="integration_sched" classname="integration_sched" time="0.00926735" status="notrun">
+		<skipped message="SKIP_RETURN_CODE=77"/>
+		<properties/>
+		<system-out>[skip] requires root
+</system-out>
+	</testcase>
+	<testcase name="integration_fd" classname="integration_fd" time="0.00981146" status="notrun">
+		<skipped message="SKIP_RETURN_CODE=77"/>
+		<properties/>
+		<system-out>[skip] requires root
+</system-out>
+	</testcase>
+	<testcase name="integration_lease" classname="integration_lease" time="0.00917618" status="notrun">
+		<skipped message="SKIP_RETURN_CODE=77"/>
+		<properties/>
+		<system-out>[skip] requires root
+</system-out>
+	</testcase>
+	<testcase name="integration_ttl" classname="integration_ttl" time="0.00870054" status="notrun">
+		<skipped message="SKIP_RETURN_CODE=77"/>
+		<properties/>
+		<system-out>[skip] requires root
+</system-out>
+	</testcase>
+</testsuite>

@@ -1,0 +1,50 @@
+EulerPilot v2 — advisory rule router — SP3 evidence
+Recorded 2026-10-21 on schedpilot-sp3 (<SP3-IP>)
+
+Scope
+  Deterministic advisory router over FeatureWindow. It NEVER writes the
+  scheduler; policy.apply remains the only writer. This gives the Agent a
+  read-only recommendation to test before adding auto-apply.
+
+Rules (first match wins)
+  insufficient CPU/load features              -> safe-basic, degraded
+  PSI CPU some avg10 >= 20                    -> latency-balanced
+  CPU >= 85 and PSI < 5                       -> throughput-balanced
+  CPU <= 30                                   -> safe-basic (idle headroom)
+  otherwise                                   -> latency-balanced
+  PSI unavailable                             -> degraded; CPU >= 85 goes
+                                                 throughput-balanced, else safe-basic
+
+Hysteresis
+  A new expert must persist for 5 s before it becomes current. Until then the
+  decision reports pending=true and the previous expert.
+
+Unit cases
+  - all invalid -> safe-basic/degraded
+  - psi=30      -> latency-balanced, switched
+  - cpu=95, psi=1 -> throughput-balanced
+  - min_route_ms=1000: t=0 pending, t=500 still safe-basic, t=1100 switched
+
+Observed (integration_fd, 2 feature samples)
+  [integration-fd] route safe-basic degraded True
+  With fewer than 3 samples the router conservatively degrades instead of
+  guessing from a single CPU delta.
+
+SP3 ctest
+  unit               Passed 1.38s
+  integration        Passed 2.81s
+  integration_sched  Passed 2.21s
+  integration_fd     Passed 3.50s
+  integration_lease  Passed 2.06s
+  integration_ttl    Passed 11.14s
+  result 6/6 passed
+
+Artifacts (SP3)
+  ep               eb9f5f74e7f7a8a0f75df0052a935a45c4228376443e484c59ad7ff9fd10de37
+  ep-executord     5bac8ae7f2a50b26c97b410e9eab483531e86d31c669ee699e8350a1fab2121c
+  ep-sched-loader  3aa11a6b23990cc9bd61aff4163491623e8898a60f858f46e607925a9cc67f52
+  ep-schedctl      3960248fbdc315d56a530caa190f307524e25a38081d6c225098e6d887ada1fa
+
+Next
+  - SLO gating over the same window
+  - optional auto-apply of a routed expert, behind an explicit policy/lease

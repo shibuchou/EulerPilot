@@ -1,0 +1,113 @@
+{
+  "recorded_date": "2026-10-21",
+  "purpose": "read-only design inputs, not v2 runtime evidence",
+  "repositories": [
+    {
+      "path": "D:\\code\\Ubuntu\\EulerPilot",
+      "head": "15e5a21d9ec9d53a94b4aa35812b33dae67ac6a3",
+      "status": [
+        " M docs/README.md",
+        "?? docs/merge_plan_schedpilot.md",
+        "?? docs/v2_redesign_2026.md"
+      ]
+    },
+    {
+      "path": "D:\\code\\Ubuntu\\schedpilot",
+      "head": "0aeca0cba2b4c9b4d4292847d71018981a04b552",
+      "status": [
+        "?? docs/07_ppt_supplement.md",
+        "?? docs/SchedPilot.pptx",
+        "?? docs/assets/diagrams/deck/",
+        "?? \"submission/SchedPilot_\\350\\241\\245\\345\\205\\205\\351\\241\\265_3\\351\\241\\265.pptx\"",
+        "?? tools/dump_pptx.py",
+        "?? tools/make_supplement_pptx.py"
+      ]
+    }
+  ],
+  "files": [
+    {
+      "path": "D:\\code\\Ubuntu\\EulerPilot\\docs\\v2_redesign_2026.md",
+      "bytes": 30442,
+      "sha256": "f82b469ac9648623be060b0fbf05ccf97f08e46156fab44fd30ce2017a9ae14f",
+      "last_write_utc": "2026-10-19T09:08:04.5133748Z"
+    },
+    {
+      "path": "D:\\code\\Ubuntu\\EulerPilot\\docs\\merge_plan_schedpilot.md",
+      "bytes": 41968,
+      "sha256": "98223b4c42b9c47e332580d64c311f364909762e9335370c7c030c79e5c18cc5",
+      "last_write_utc": "2026-10-19T09:08:18.1949856Z"
+    },
+    {
+      "path": "D:\\code\\Ubuntu\\EulerPilot\\README.md",
+      "bytes": 15220,
+      "sha256": "afd0674d9b0b6acd6d250acef93c6c9b4ce3db50ef4aeed83ad0b51e0d8f1523",
+      "last_write_utc": "2026-09-17T02:57:00.2597861Z"
+    },
+    {
+      "path": "D:\\code\\Ubuntu\\EulerPilot\\reports\\v6_formal_experiment_suite_20260726.md",
+      "bytes": 6165,
+      "sha256": "4f0125d715509a9f429fefdd83ecba158d03e4fbc29085db254b95e997295d8c",
+      "last_write_utc": "2026-07-27T03:44:58.8333037Z"
+    },
+    {
+      "path": "D:\\code\\Ubuntu\\schedpilot\\README.md",
+      "bytes": 9121,
+      "sha256": "27ab45952a12fcca2cc68414d96c58bde4d7e7807b07c82dd220a89c37eeccb3",
+      "last_write_utc": "2026-10-08T11:10:05.1014563Z"
+    },
+    {
+      "path": "D:\\code\\Ubuntu\\schedpilot\\docs\\04_test_report.md",
+      "bytes": 44956,
+      "sha256": "90c5bb2a506122f63b01ac954671da6067a0cf0a6def96bf5c254293dd7925f9",
+      "last_write_utc": "2026-10-08T11:10:15.8302542Z"
+    },
+    {
+      "path": "D:\\code\\Ubuntu\\schedpilot\\evidence\\sp3-vm\\README.md",
+      "bytes": 996,
+      "sha256": "1e919d6dc7e1d8d1e84763cf3bd2e08acf5e1ed1ec22c09512804c718912620e",
+      "last_write_utc": "2026-10-05T20:15:39.7116105Z"
+    },
+    {
+      "path": "D:\\code\\Ubuntu\\schedpilot\\evidence\\sp3-vm\\env_check.json",
+      "bytes": 3219,
+      "sha256": "4398242e5fa829299a9cd4a049bb610e3c447a80b50d9af40646ef8fd756502d",
+      "last_write_utc": "2026-10-05T20:05:49.0000000Z"
+    },
+    {
+      "path": "D:\\code\\Ubuntu\\schedpilot\\evidence\\sp3-vm\\build.log",
+      "bytes": 41754,
+      "sha256": "6344e57e596802355810eb9a85b4efd60584e41a5510a628af64f2bb3d9865b8",
+      "last_write_utc": "2026-10-05T20:04:53.0000000Z"
+    },
+    {
+      "path": "D:\\code\\Ubuntu\\schedpilot\\evidence\\sp4-vm\\formal-4\\per_run.csv",
+      "bytes": 22927,
+      "sha256": "744ba99f74dc2e8abde1c46dafe362a39e574344cde158720ad3b128e22d186e",
+      "last_write_utc": "2026-10-02T15:11:37.0000000Z"
+    },
+    {
+      "path": "D:\\code\\Ubuntu\\schedpilot\\evidence\\sp4-vm\\formal-5\\per_run.csv",
+      "bytes": 6370,
+      "sha256": "203b20d24205ce75d03e62719231a78fcf405b5c11025702111c9c3de37555a3",
+      "last_write_utc": "2026-10-08T11:09:48.0810284Z"
+    },
+    {
+      "path": "D:\\code\\Ubuntu\\schedpilot\\evidence\\sp4-vm\\nginx-7\\per_run.csv",
+      "bytes": 8998,
+      "sha256": "dabd82b024a21c1dbe49f7df99438f5225d93322438982a36c7270381feed5e6",
+      "last_write_utc": "2026-10-06T13:26:35.0000000Z"
+    },
+    {
+      "path": "D:\\code\\Ubuntu\\schedpilot\\evidence\\sp4-vm\\noif-2\\per_run.csv",
+      "bytes": 5670,
+      "sha256": "23acca8c59746852776c82546ab628817ffddba3a5a3105047e8a37a6a3c6f59",
+      "last_write_utc": "2026-10-04T04:20:37.0000000Z"
+    }
+  ],
+  "draft_snapshot": "docs/reference/v2_redesign_2026.v0.1.md",
+  "chat": {
+    "title": "开源创新",
+    "thread_id": "019e8c80-8d58-7ea1-b67d-74a33a90097c",
+    "scope": "Relevant project release/submission conclusions only; no credential or unrelated chat export"
+  }
+}

@@ -1,0 +1,26 @@
+EulerPilot v2
+Copyright (c) 2026 EulerPilot v2 contributors
+
+Project license: GPL-2.0 (decided 2026-10-21). Full text in LICENSE.
+
+Component notes:
+
+1. sched/
+   GPL-2.0. Derived from SchedPilot commit 0aeca0c:
+   - scx_schedpilot.bpf.c, intf.h, loader.c, scx_schedpilot.bpf.skel.h;
+   - scx/*.h from the SP3 kernel tree tools/sched_ext/include/scx (upstream scx).
+   Modifications and per-file SHA256 are recorded in sched/README.md.
+   sched/schedctl.cpp is new GPL-2.0 code that includes intf.h.
+
+2. third_party/nlohmann/json.hpp 3.11.3
+   MIT license; see third_party/nlohmann/LICENSE.MIT and README.md.
+
+3. Kernel interfaces
+   sched_ext / BPF kernel UAPI headers are GPL-2.0 with the usual kernel
+   userspace exception where applicable.
+
+4. Reference projects
+   The old EulerPilot project (MulanPSL-2.0) and SchedPilot (file-level
+   GPL-2.0/MIT) were read as references. Migrated SchedPilot files are
+   listed in PROVENANCE.md and sched/README.md. No old EulerPilot source was
+   copied into v2; its ideas are documented in docs/audits/.

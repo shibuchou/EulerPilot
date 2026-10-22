@@ -1,0 +1,49 @@
+P1 control-plane skeleton — build and test evidence
+Recorded 2026-10-21 (UTC ~03:47-03:52)
+
+Source archive
+  file: epv2-src.tar.gz
+  bytes: 265422
+  sha256: fac701f9cc7c5370822fdbd055301b5e9821088d52858eb47f03e4cd33db605c
+  contents: repo without .git, 195 files
+  note: this is the build-time snapshot. Documentation-only edits made after the
+        sync are not part of this hash; the C++ sources were unchanged.
+
+WSL development environment (Ubuntu 24.04)
+  g++: 13.3.0
+  cmake: 3.28.3
+  command: cmake -S . -B ~/epbuild -DCMAKE_BUILD_TYPE=Debug && cmake --build ~/epbuild -j4
+  build warnings: 0
+  ctest: 2/2 passed (unit 0.12s, integration 1.92s)
+
+openEuler 24.03-LTS-SP3 target environment (schedpilot-sp3, <SP3-IP>)
+  g++: 12.3.1 (openEuler 12.3.1-111.oe2403sp3)
+  cmake: 3.27.9
+  make: 4.4.1
+  kernel: 6.6.0-schedpilot-sp3
+  path: /root/epv2-src, /root/epv2-build
+  configure: exit 0
+  build: exit 0, 0 errors, 0 warnings
+  ctest: 2/2 passed (unit 0.04s, integration 2.54s), rerun same
+  binaries:
+    ep           f34b43cf7f21023ef1c3723e8ed6b5ef09cf0e3abed372416314aa5a1959f83a
+    ep-executord 6f2a0750463567ed5f7016bb97199ef2546b50327aa204a1473ca359dad34702
+
+Tests
+  unit: sha256 vectors, canonical json, RFC3339, journal torn tail, flock second instance,
+        fence monotonicity, apply/replay/idempotency conflict/stale fence/generation conflict,
+        rollback, external-change RECOVERY_REQUIRED, crash reconcile, UNSUPPORTED skill
+  integration: real daemon + CLI socket round trips, apply/replay/rollback, SIGTERM restart
+        keeps generation, second instance rejected, synthetic PREPARED/APPLYING restart reconcile
+
+Production-mode behaviour (no --test-mode)
+  daemon: skill=sched, status OK, generation 0
+  ep apply --file design/examples/redis-policy.json
+    -> REJECTED / UNSUPPORTED / "sched skill is not implemented in the P1 skeleton"
+  socket removed on SIGTERM exit
+
+Environment gap closed
+  installed on SP3: cmake 3.27.9, perf 6.6.0-145.3.35.166
+  env_check after install: ok=32 warn=3 fail=0
+  pmu: OK (865,554 cycles; 475,989 instructions; 0.55 insn/cycle)
+  remaining WARN: memtier_benchmark, nginx, sysbench not installed

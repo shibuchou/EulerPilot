@@ -1,0 +1,78 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://eulerpilot.local/schemas/v1alpha1/scheduling-policy.schema.json",
+  "title": "EulerPilot SchedulingPolicy design contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["apiVersion", "kind", "metadata", "spec"],
+  "properties": {
+    "apiVersion": {"const": "eulerpilot.io/v1alpha1"},
+    "kind": {"const": "SchedulingPolicy"},
+    "metadata": {
+      "type": "object", "additionalProperties": false, "required": ["name"],
+      "properties": {"name": {"type": "string", "pattern": "^[a-z][a-z0-9-]{0,62}$"}}
+    },
+    "spec": {
+      "type": "object", "additionalProperties": false,
+      "required": ["scope", "mode", "expert", "source", "targets", "parameters", "safety"],
+      "properties": {
+        "scope": {"const": "scheduler-instance"},
+        "mode": {"enum": ["basic", "class", "adaptive"]},
+        "expert": {"enum": ["safe-basic", "latency-balanced", "throughput-balanced", "cache-local"]},
+        "source": {"enum": ["rule-template", "offline-search", "human", "llm-proposal"]},
+        "targets": {
+          "type": "array", "minItems": 1, "maxItems": 64,
+          "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["kind", "role", "role_source"],
+            "properties": {
+              "kind": {"enum": ["cgroup", "pid"]},
+              "path": {"type": "string", "pattern": "^/sys/fs/cgroup/[A-Za-z0-9_./-]+$", "maxLength": 1024},
+              "pid": {"type": "integer", "minimum": 1, "maximum": 4194304},
+              "role": {"enum": ["FOREGROUND", "BACKGROUND", "NEUTRAL"]},
+              "role_source": {"const": "explicit"}
+            },
+            "allOf": [
+              {"if": {"properties": {"kind": {"const": "cgroup"}}},
+               "then": {"required": ["path"], "not": {"required": ["pid"]}}},
+              {"if": {"properties": {"kind": {"const": "pid"}}},
+               "then": {"required": ["pid"], "not": {"required": ["path"]}}}
+            ]
+          }
+        },
+        "parameters": {
+          "type": "object", "additionalProperties": false,
+          "required": ["lat_slice_ns", "comp_slice_ns", "cache_slice_ns", "bg_slice_ns", "preempt_threshold_ns", "bg_vtime_pct", "llc_affinity"],
+          "properties": {
+            "lat_slice_ns": {"type": "integer", "minimum": 250000, "maximum": 10000000},
+            "comp_slice_ns": {"type": "integer", "minimum": 250000, "maximum": 10000000},
+            "cache_slice_ns": {"type": "integer", "minimum": 250000, "maximum": 10000000},
+            "bg_slice_ns": {"type": "integer", "minimum": 250000, "maximum": 10000000},
+            "preempt_threshold_ns": {"type": "integer", "minimum": 100000, "maximum": 2000000},
+            "bg_vtime_pct": {"type": "integer", "minimum": 50, "maximum": 400},
+            "llc_affinity": {"type": "boolean"}
+          }
+        },
+        "safety": {
+          "type": "object", "additionalProperties": false,
+          "required": ["min_dwell_ms", "max_observation_age_ms", "heartbeat_period_ms", "heartbeat_timeout_ms", "policy_ttl_ms", "quiet_max_regression_pct", "evaluation_min_bg_progress_ratio", "bg_work_unit", "bg_progress_window_ms", "min_bg_work_units_per_sec", "max_bg_wait_ms", "fallback", "allow_affinity_change"],
+          "properties": {
+            "min_dwell_ms": {"type": "integer", "minimum": 5000, "maximum": 300000},
+            "max_observation_age_ms": {"type": "integer", "minimum": 100, "maximum": 10000},
+            "heartbeat_period_ms": {"type": "integer", "minimum": 100, "maximum": 1000},
+            "heartbeat_timeout_ms": {"type": "integer", "minimum": 1000, "maximum": 10000},
+            "policy_ttl_ms": {"type": "integer", "minimum": 10000, "maximum": 3600000},
+            "quiet_max_regression_pct": {"type": "number", "minimum": 0, "maximum": 5},
+            "evaluation_min_bg_progress_ratio": {"type": "number", "minimum": 0.1, "maximum": 1},
+            "bg_work_unit": {"type": "string", "minLength": 1, "maxLength": 64},
+            "bg_progress_window_ms": {"type": "integer", "minimum": 1000, "maximum": 60000},
+            "min_bg_work_units_per_sec": {"type": "number", "exclusiveMinimum": 0},
+            "max_bg_wait_ms": {"type": "integer", "minimum": 50, "maximum": 10000},
+            "fallback": {"enum": ["verified-safe-profile", "detach-to-fair"]},
+            "allow_affinity_change": {"const": false}
+          }
+        }
+      }
+    }
+  }
+}

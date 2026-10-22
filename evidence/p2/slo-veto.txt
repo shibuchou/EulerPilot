@@ -1,0 +1,37 @@
+EulerPilot v2 — SLO veto for generated policies — SP3 evidence
+Recorded 2026-10-21 on schedpilot-sp3 (<SP3-IP>)
+
+Rule
+  policy.apply now gates non-human sources (rule-template, offline-search,
+  llm-proposal) through SloGate before any side effect. A human-explicit
+  policy keeps operator authority and bypasses the gate.
+  Denial happens before PREPARED/target resolution, so it cannot attach,
+  mutate pins or advance generation. Error code: SLO_DENIED.
+
+Observed (integration_fd)
+  [integration-fd] non-human SLO veto
+  [integration-fd] non-human apply denied: SLO_DENIED
+  [integration-fd] apply
+  ...
+  [integration-fd] slo denied: FEATURES_INSUFFICIENT
+  The same policy with source=human applies normally; the llm-proposal copy
+  is rejected while sched_ext stays disabled.
+
+SP3 ctest
+  unit               Passed 1.39s
+  integration        Passed 3.16s
+  integration_sched  Passed 2.21s
+  integration_fd     Passed 3.71s
+  integration_lease  Passed 1.65s
+  integration_ttl    Passed 11.11s
+  result 6/6 passed
+
+Artifacts (SP3)
+  ep               6b33142a7114c8df6b80c2bf1ea73a0b08072e09e0edbc15722f178415222c81
+  ep-executord     abd8a1462fb5b48eb6ec7ea219c98b864ad72129c0a2aa1a5f829943a3b71abb
+  ep-sched-loader  3aa11a6b23990cc9bd61aff4163491623e8898a60f858f46e607925a9cc67f52
+  ep-schedctl      3960248fbdc315d56a530caa190f307524e25a38081d6c225098e6d887ada1fa
+
+Boundary
+  This is a veto, not auto-apply. The executor still applies only an explicit
+  request; it does not turn a route decision into a writer.

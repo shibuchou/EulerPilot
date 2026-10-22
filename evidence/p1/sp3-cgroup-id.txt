@@ -1,0 +1,40 @@
+EulerPilot v2 — cgroup2 kernel cgroup id in TargetBinding — SP3 evidence
+Recorded 2026-10-21 on schedpilot-sp3 (<SP3-IP>)
+
+Method
+  For a cgroup2 directory, name_to_handle_at(AT_FDCWD, path, handle, &mount_id, 0)
+  returns an 8-byte kernfs file handle whose value is the kernel cgroup id.
+  resolve_targets records it as TargetBinding.cgroup_id (0 = unavailable);
+  revalidate_targets recomputes it and fails on change.
+
+Observed
+  unit (WSL, /sys/fs/cgroup):        cgroup_id=1
+  SP3 integration_fd, /sys/fs/cgroup/system.slice: cgroup_id=69
+  [integration-fd] cgroup_id 69
+
+Binding JSON now includes:
+  "identity": "cgroup2-kernfs",
+  "inode": ..., "device": ..., "cgroup_id": 69, "boot_id": ...
+
+Revalidation
+  - boot_id unchanged
+  - path still a cgroup2 directory (cgroup.controllers)
+  - inode/device unchanged
+  - if the original cgroup_id was nonzero, the current cgroup_id must match
+
+Full ctest (SP3)
+  unit               Passed 0.71s
+  integration        Passed 2.72s
+  integration_sched  Passed 2.17s
+  integration_fd     Passed 2.24s
+  result 4/4 passed
+
+Artifacts (SP3)
+  ep               d574788b2167cc69c90a23981a2530a8a25e3fd82e9ffca767026ac993823214
+  ep-executord     3bda18c4f0ac919d2380d3fd6487e84c0c34999d03c1a2a0b77303b9c1fd7e04
+  ep-sched-loader  3aa11a6b23990cc9bd61aff4163491623e8898a60f858f46e607925a9cc67f52
+  ep-schedctl      3960248fbdc315d56a530caa190f307524e25a38081d6c225098e6d887ada1fa
+
+Remaining
+  - pid target kind + pidfd identity (schema change, not done)
+  - class_map wiring by cgroup id (P2)

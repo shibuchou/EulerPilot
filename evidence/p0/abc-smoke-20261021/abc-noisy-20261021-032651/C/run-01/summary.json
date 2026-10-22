@@ -1,0 +1,32 @@
+{
+  "source": "/root/p0/results/abc-noisy-20261021-032651/C/run-01/redis.out",
+  "tests": {
+    "GET": {
+      "rps": 36985.02,
+      "avg_ms": 0.999,
+      "min_ms": 0.128,
+      "p50_ms": 0.607,
+      "p95_ms": 2.655,
+      "p99_ms": 3.311,
+      "p999_ms": 4.111,
+      "max_ms": 12.479,
+      "slo_ms": 5.0,
+      "slo_pct": 99.9512658227848,
+      "slo_goodput_rps": 36966.99565481012
+    }
+  },
+  "primary": "GET",
+  "primary_data": {
+    "rps": 36985.02,
+    "avg_ms": 0.999,
+    "min_ms": 0.128,
+    "p50_ms": 0.607,
+    "p95_ms": 2.655,
+    "p99_ms": 3.311,
+    "p999_ms": 4.111,
+    "max_ms": 12.479,
+    "slo_ms": 5.0,
+    "slo_pct": 99.9512658227848,
+    "slo_goodput_rps": 36966.99565481012
+  }
+}

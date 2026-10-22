@@ -1,0 +1,46 @@
+EulerPilot v2 — apply deadline enforcement — SP3 evidence
+Recorded 2026-10-21 on schedpilot-sp3 (<SP3-IP>)
+
+Gap
+  The request deadline was checked only when the request entered. A slow
+  skill.apply could finish and commit after the caller's deadline.
+
+Change
+  handle_apply now checks now_epoch_ms() against envelope.deadline:
+    - after target revalidation, before PREPARED;
+    - after skill.apply, before VERIFIED;
+    - after skill.verify, before VERIFIED/COMMITTED.
+  If the deadline passed after a successful apply, the executor uses the
+  normal compensation path with ErrorCode::kDeadlineExceeded; it does not
+  commit. rollback is intentionally allowed to finish even if its deadline
+  passed, because safety restoration must not be aborted mid-way.
+
+Test
+  SlowMockSkill sleeps 300 ms in apply; the envelope deadline is now+100 ms.
+  Response is not VERIFIED, error code is DEADLINE_EXCEEDED, and the mock
+  value is restored to the pre-apply state.
+
+Observed (SP3 ctest -R '^unit$' -V)
+  1: deadline exceeded after apply -> compensated
+  1: all unit checks passed
+  1/1 Test #1: unit .............................   Passed    1.35 sec
+
+Full ctest (SP3)
+  unit               Passed 1.29s
+  integration        Passed 2.76s
+  integration_sched  Passed 2.13s
+  integration_fd     Passed 2.15s
+  integration_lease  Passed 2.03s
+  integration_ttl    Passed 11.08s
+  result 6/6 passed
+
+Artifacts (SP3)
+  ep               d574788b2167cc69c90a23981a2530a8a25e3fd82e9ffca767026ac993823214
+  ep-executord     9dfabc78da58c1cba4c14006bade679900b27e106d8a9840702e1a2b4ba3738d
+  ep-sched-loader  3aa11a6b23990cc9bd61aff4163491623e8898a60f858f46e607925a9cc67f52
+  ep-schedctl      3960248fbdc315d56a530caa190f307524e25a38081d6c225098e6d887ada1fa
+
+Remaining
+  - class_map wiring for cgroup_id/pid identity (P2)
+  - P2 FeatureWindow / rule routing / SLO gate
+  - A/B/C no-stall experiment

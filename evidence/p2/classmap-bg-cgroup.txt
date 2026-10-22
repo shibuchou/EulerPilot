@@ -1,0 +1,45 @@
+EulerPilot v2 — BACKGROUND cgroup target -> class_map — SP3 evidence
+Recorded 2026-10-21 on schedpilot-sp3 (<SP3-IP>)
+
+Behavior
+  A policy target with kind=cgroup and role=BACKGROUND is expanded to its
+  current cgroup.procs members after attach:
+    each pid -> class_map[tgid]={klass=BG, confidence=1000, source=EXTERN}
+  The executor monitor rescans cgroup.procs every 2 s, so processes that join
+  the cgroup while the action is active are classified within the refresh
+  window. BPF class entries expire after 5 s, so the 2 s refresh keeps them
+  alive. The map lifetime is the attachment; rollback/detach removes it.
+  A scan is capped at 256 pids per cgroup.
+
+Boundaries
+  - only explicit role=BACKGROUND targets are mapped (pid and cgroup);
+  - FOREGROUND/NEUTRAL are not forced to LAT/COMP/CACHE: business role is not
+    a runtime characteristic;
+  - no automatic demotion of unknown high-CPU tasks;
+  - cgroup removal/rename while active is tolerated (scan just stops).
+
+Test scenario
+  /sys/fs/cgroup/ep-v2-test-<shell-pid> is created, a `sleep 300` process is
+  moved into it, and the policy adds that cgroup with role=BACKGROUND.
+  The test asserts class-get(pid) -> class=BG, source=2 (EXTERN), then removes
+  the cgroup in cleanup.
+
+Observed (integration_fd)
+  [integration-fd] background class map
+  [integration-fd] background pid class BG
+  cleanup: sched_ext disabled, no pin root, no test cgroup
+
+SP3 ctest
+  unit               Passed 1.39s
+  integration        Passed 2.86s
+  integration_sched  Passed 2.14s
+  integration_fd     Passed 3.88s
+  integration_lease  Passed 1.57s
+  integration_ttl    Passed 11.05s
+  result 6/6 passed
+
+Artifacts (SP3)
+  ep               6b33142a7114c8df6b80c2bf1ea73a0b08072e09e0edbc15722f178415222c81
+  ep-executord     4077037c54915ad650400289bb4b990d080b43b320f6d8c0f1699f65fbd223ae
+  ep-sched-loader  3aa11a6b23990cc9bd61aff4163491623e8898a60f858f46e607925a9cc67f52
+  ep-schedctl      9bd709df8ed48fe03893bd7a70a7cf11e74966b73636da94ba77453f41da76cd

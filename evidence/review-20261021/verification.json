@@ -1,0 +1,33 @@
+{
+  "local_build": "PASS (Ubuntu24.04 WSL, GCC13.3)",
+  "existing_ctest": {
+    "passed": 2,
+    "skipped": 4,
+    "native_ctest_exit": 0
+  },
+  "strict_acceptance_gate": {
+    "exit": 1,
+    "expected": 1,
+    "result": "correctly rejected skipped kernel tests"
+  },
+  "acceptance_checker_unit_tests": 6,
+  "shell_syntax": "PASS",
+  "new_SP3_acceptance": "NOT_RUN",
+  "performance": "NOT_RUN",
+  "runtime_cpp_bpf_modified": false,
+  "live_SP3_read_only": {
+    "kernel": "6.6.0-schedpilot-sp3",
+    "state": "disabled",
+    "pins": 0,
+    "processes": {
+      "ep-executord": [],
+      "ep-sched-loader": []
+    },
+    "four_binary_hashes_match_acceptance_log": true,
+    "source_files_compared": 45,
+    "source_differences": [
+      "sched/README.md"
+    ],
+    "remote_files_modified": false
+  }
+}

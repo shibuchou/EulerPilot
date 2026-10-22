@@ -1,0 +1,50 @@
+EulerPilot v2 — per-instance pin namespace + eulerpilot ops — SP3 evidence
+Recorded 2026-10-21 on schedpilot-sp3 (<SP3-IP>)
+
+Change
+  - struct_ops name renamed from "schedpilot" to "eulerpilot" in
+    sched/scx_schedpilot.bpf.c (symbol/file names unchanged).
+  - BPF object rebuilt from the v2 source in the SP3 kernel tree:
+      make -C <kernel>/tools/sched_ext O=/root/ep-sched-build LLVM=1 scx_schedpilot
+    object sha256   169f2a4dde569a961710d305f835713d5445338aae5f3aec9fbe80d202a1e248
+    skeleton sha256 67e7228f2529ba9f04a839d1ed890aa3f61e82ff9631836e8e8c19ed0a5b7e87
+    strings on the object show exactly one ops name: "eulerpilot".
+  - SchedSkill now configures itself from the executor instance id and uses
+      /sys/fs/bpf/eulerpilot-v2/<instance_id>
+    instead of a fixed /sys/fs/bpf/eulerpilot-v2/v1.
+  - loader.c unchanged (sha256 1acdd6bd...).
+
+Integration output (ctest -R integration_sched -V)
+  [integration-sched] loader=/root/epv2-build/ep-sched-loader
+  [integration-sched] instance=inst-811359ac7cd5aee5
+  [integration-sched] pin_dir=/sys/fs/bpf/eulerpilot-v2/inst-811359ac7cd5aee5
+  [integration-sched] validate policy
+  [integration-sched] apply
+  [integration-sched] rollback
+  [integration-sched] crash + orphan recovery
+  [integration-sched] all checks passed
+
+Full ctest (SP3)
+  unit               Passed 0.70s
+  integration        Passed 2.68s
+  integration_sched  Passed 2.07s
+  result 3/3 passed
+
+Assertions
+  apply    -> state=enabled, ops contains eulerpilot,
+              pin dir /sys/fs/bpf/eulerpilot-v2/<instance>/cfg exists
+  rollback -> state=disabled, instance pin dir removed
+  SIGKILL  -> state=disabled (PDEATHSIG), instance pins remain
+  restart  -> same instance id, recover_orphan removes pins/runtime,
+              degraded=false, generation=3
+  final    -> state=disabled, no eulerpilot-v2 pin root, no loader process
+
+Artifacts (SP3)
+  ep               d574788b2167cc69c90a23981a2530a8a25e3fd82e9ffca767026ac993823214
+  ep-executord     454033817d7bcd1ba7c365fe2b44c1158f7ba25e2f1397db514f60ccb2b300e2
+  ep-sched-loader  001ba160a1f2c91fb6e321f223d94c7ff691ecb5a6a1e28ae7f7ff3f21b82772
+
+Still not done
+  - executor holds the sched_ext link FD in-process (still a child process)
+  - parameter writes to the cfg map
+  - pidfd / kernel cgroup id for TargetBinding

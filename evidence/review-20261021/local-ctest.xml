@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="(empty)"
+	tests="2"
+	failures="0"
+	disabled="0"
+	skipped="0"
+	hostname=""
+	time="3"
+	timestamp="2026-10-21T22:53:34"
+	>
+	<testcase name="unit" classname="unit" time="1.46664" status="run">
+		<properties/>
+		<system-out>cgroup_id=1
+deadline exceeded after apply -&gt; compensated
+[executor] reconciled txn-crash-0001: applied value detected and rolled back to snapshot
+all unit checks passed
+</system-out>
+	</testcase>
+	<testcase name="integration" classname="integration" time="2.20314" status="run">
+		<properties/>
+		<system-out>[integration] state=/tmp/ep-integration.XpizDv/state
+[integration] restart persistence
+[integration] second instance must be rejected
+[integration] synthetic crash reconcile
+[integration] all checks passed
+</system-out>
+	</testcase>
+</testsuite>

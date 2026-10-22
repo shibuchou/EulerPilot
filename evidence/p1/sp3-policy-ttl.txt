@@ -1,0 +1,47 @@
+EulerPilot v2 — safety.policy_ttl_ms auto fallback — SP3 evidence
+Recorded 2026-10-21 on schedpilot-sp3 (<SP3-IP>)
+
+Gap
+  safety.policy_ttl_ms was validated but never enforced. An attached policy
+  could outlive its declared TTL.
+
+Change
+  ActiveAction records applied_at_ms and the policy's policy_ttl_ms.
+  The 500 ms executor monitor first checks TTL, then lease expiry:
+    if now - applied_at >= ttl -> auto_fallback_locked("policy TTL expired")
+  Auto fallback uses the same journal path as lease expiry
+  (ROLLBACK_PREPARED -> rollback -> verify_rolled_back -> ROLLED_BACK),
+  returns to fair, removes pins, sets degraded and last_fallback.
+
+Observed (integration_ttl, policy_ttl_ms=10000, min_dwell_ms=5000)
+  [integration-ttl] instance=inst-978195e98943e6d9
+  [integration-ttl] apply
+  [integration-ttl] waiting for policy TTL fallback
+  [integration-ttl] policy TTL detached the scheduler and cleaned pins
+  [integration-ttl] all checks passed
+  status: degraded=true, last_fallback="policy TTL expired"
+  sched_ext: disabled, no pin root
+
+SP3 ctest
+  unit               Passed 0.99s
+  integration        Passed 2.76s
+  integration_sched  Passed 2.14s
+  integration_fd     Passed 2.26s
+  integration_lease  Passed 1.63s
+  integration_ttl    Passed 11.00s
+  result 6/6 passed
+
+Artifacts (SP3)
+  ep               d574788b2167cc69c90a23981a2530a8a25e3fd82e9ffca767026ac993823214
+  ep-executord     abaceb3e04b2375dea99351d09ff1b51fcdb838906909b62a200b24d7677630a
+  ep-sched-loader  3aa11a6b23990cc9bd61aff4163491623e8898a60f858f46e607925a9cc67f52
+  ep-schedctl      3960248fbdc315d56a530caa190f307524e25a38081d6c225098e6d887ada1fa
+
+Note
+  The validator requires min_dwell_ms >= 5000 and policy_ttl_ms >= 10000, so
+  the TTL test uses the minimum legal TTL (10 s). This is a test-duration
+  constraint, not a scheduling result.
+
+Remaining
+  - class_map wiring for cgroup_id/pid identity (P2)
+  - P2 FeatureWindow / rule routing / SLO gate

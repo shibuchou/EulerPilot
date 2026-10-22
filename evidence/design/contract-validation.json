@@ -1,0 +1,13 @@
+{
+  "status": "PASS",
+  "layer": "design-contract-only",
+  "schemas": 3,
+  "positive_examples": 4,
+  "rejected_negative_examples": 18,
+  "runtime_verified": false,
+  "performance_verified": false,
+  "limitations": [
+    "no live target, ownership, deadline or digest validation",
+    "no kernel attach or policy application"
+  ]
+}

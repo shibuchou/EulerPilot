@@ -1,0 +1,7 @@
+loader_pid=5581 daemon_pid=5592
+sched_ext.state=enabled
+sched_ext.ops=schedpilot 
+sched_ext.state=enabled
+sched_ext.enable_seq=5
+cfg mode=1 generation=2 flags=0xb hb_seq=194 hb_mono_s=2013 lat_slice=1000000 comp_slice=4000000 cache_slice=8000000 bg_slice=2000000 preempt_thr=500000 migrate_pen=2000000 bg_vtime_pct=200
+{"mode":1,"generation":2,"flags":11,"heartbeat_age_s":0,"class_map_entries":1,"pmu_available":true,"pmu_reason":"","dispatch_calls":33575,"enq_lat":22,"enq_comp":3011,"enq_cache":0}

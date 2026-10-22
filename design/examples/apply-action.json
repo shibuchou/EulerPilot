@@ -1,0 +1,13 @@
+{
+  "apiVersion": "eulerpilot.io/v1alpha1",
+  "request_id": "req-design-001",
+  "transaction_id": "txn-design-001",
+  "idempotency_key": "design-only-example-001",
+  "operation": "policy.apply",
+  "policy_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "lease_owner": "design-owner-placeholder",
+  "fence_epoch": 1,
+  "expected_generation": 0,
+  "issued_at": "2026-10-21T10:00:00+08:00",
+  "deadline": "2026-10-21T10:00:10+08:00"
+}

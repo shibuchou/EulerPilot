@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+build/
+.venv/
+evidence/runtime/
+*.qcow2
+*.ova

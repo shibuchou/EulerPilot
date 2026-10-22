@@ -1,0 +1,50 @@
+Policy validation + cgroup target binding — SP3 evidence
+Recorded 2026-10-21 on schedpilot-sp3 (<SP3-IP>)
+
+Environment
+  openEuler 24.03 (LTS-SP3), 6.6.0-schedpilot-sp3, 8 vCPU
+  loader /root/p0/schedpilot-0aeca0c/build/scx_schedpilot sha256 3da28c29...
+  final binaries:
+    ep           d574788b2167cc69c90a23981a2530a8a25e3fd82e9ffca767026ac993823214
+    ep-executord 0d3f649147e6700e539a36364f1909eb395e15eb50b61d327692dafd33ca8485
+
+Full ctest (SP3)
+  unit               Passed 0.68s
+  integration        Passed 2.52s
+  integration_sched  Passed 1.99s
+  result 3/3 passed
+
+Policy validate — valid policy
+  ep validate --file valid.json -> status OK, exit 0
+  name=p1-demo mode=class expert=latency-balanced source=human
+  target_bindings[0]:
+    kind=cgroup path=/sys/fs/cgroup/system.slice role=FOREGROUND role_source=explicit
+    identity=kernfs-inode inode=69 device=26
+    boot_id=400be773-ed44-4c2d-b24e-0eae2e97acea
+
+Policy validate — invalid mode
+  ep validate --file invalid-mode.json -> status REJECTED, exit 1
+  error.code=SCHEMA_INVALID
+  error.detail="spec.mode has invalid value 'turbo'"
+
+Policy validate — path traversal
+  ep validate --file invalid-path.json -> status REJECTED, exit 1
+  error.code=SCHEMA_INVALID
+  error.detail="spec.targets[0].path must be a normalized /sys/fs/cgroup/... path"
+
+Apply with a valid policy
+  status=VERIFIED observed_generation=1
+  checks: probe, plan, policy(p1-demo/class/latency-balanced),
+          targets(1 cgroup binding(s)), snapshot, apply, verify
+  target_bindings[0].inode=69 device=26
+  /sys/kernel/sched_ext/state=enabled ops=schedpilot
+
+Rollback
+  status=ROLLED_BACK, state=disabled, legacy pins removed
+  after: no /sys/fs/bpf/schedpilot/v1, no loader process
+
+Negative cases covered by unit tests (tests/unit/test_main.cpp)
+  missing parameters, unknown spec field, bad metadata name, invalid mode,
+  slice out of range, duplicate target, path traversal, heartbeat timeout
+  <= period, affinity change allowed, ttl <= dwell, observation age >
+  heartbeat timeout.

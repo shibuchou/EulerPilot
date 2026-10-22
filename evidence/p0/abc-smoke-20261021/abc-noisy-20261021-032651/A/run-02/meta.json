@@ -1,0 +1,20 @@
+{
+  "arm": "A",
+  "run": 2,
+  "out": "/root/p0/results/abc-noisy-20261021-032651/A/run-02",
+  "invalid": false,
+  "invalid_reason": "",
+  "primary": {
+    "rps": 17446.89,
+    "avg_ms": 2.464,
+    "min_ms": 0.2,
+    "p50_ms": 2.967,
+    "p95_ms": 4.151,
+    "p99_ms": 4.559,
+    "p999_ms": 7.247,
+    "max_ms": 20.783,
+    "slo_ms": 5.0,
+    "slo_pct": 99.23053435114504,
+    "slo_goodput_rps": 17312.64217465649
+  }
+}

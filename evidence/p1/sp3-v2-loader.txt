@@ -1,0 +1,54 @@
+EulerPilot v2 sched loader — build and integration evidence
+Recorded 2026-10-21 on schedpilot-sp3 (<SP3-IP>)
+
+Component
+  sched/loader.c            modified from SchedPilot 0aeca0c loader/scx_schedpilot.c
+  sched/scx_schedpilot.bpf.c  copied unmodified (GPL-2.0)
+  sched/intf.h              copied unmodified (GPL-2.0)
+  sched/scx_schedpilot.bpf.skel.h  generated from the same BPF object
+  sched/scx/*.h             copied from SP3 kernel tree tools/sched_ext/include/scx
+  pin namespace             /sys/fs/bpf/eulerpilot-v2/v1 (was /sys/fs/bpf/schedpilot/v1)
+  ops name                  still "schedpilot" (BPF object unchanged)
+
+Build
+  cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug \
+    -DEP_LIBBPF_STATIC=/root/p0/scx-build/build/obj/libbpf/libbpf.a
+  ep-sched-loader: enabled (static libbpf 1.3)
+
+libbpf finding
+  system libbpf 1.2.2: ep-sched-loader SIGSEGV shortly after loading the object,
+    before "schedpilot loaded" was printed; coredump present, backtrace not
+    captured (gdb absent).
+  kernel-tree static libbpf 1.3: loader attaches and detaches normally.
+  resolution: link the static libbpf from the kernel tree; documented in
+    sched/README.md and CMake option EP_LIBBPF_STATIC.
+  this is a real deployment constraint, not a test artifact.
+
+SP3 full ctest
+  unit               Passed 0.70s
+  integration        Passed 2.58s
+  integration_sched  Passed 1.94s   # uses /root/epv2-build/ep-sched-loader
+  result 3/3 passed
+
+integration_sched assertions (all passed)
+  ep validate      -> OK, target /sys/fs/cgroup/system.slice
+  apply            -> state=enabled, ops=schedpilot
+                      /sys/fs/bpf/eulerpilot-v2/v1/cfg exists
+                      sched-runtime.json exists
+  rollback         -> state=disabled, pin dir removed, runtime marker removed
+  SIGKILL executor -> state=disabled within the poll window (PDEATHSIG)
+                      pins remain
+  restart          -> recover_orphan removes pins/runtime, degraded=false,
+                      generation=3
+  final            -> state=disabled, no pin dir, no loader process
+
+Artifacts (SP3)
+  ep               d574788b2167cc69c90a23981a2530a8a25e3fd82e9ffca767026ac993823214
+  ep-executord     d78146a3cf80d67ac1a5ec0bd7debca9a21ea6e4f9e2d933c6d17fc359f464f9
+  ep-sched-loader  85c8b8594051b7e3957fa1bd0c072fd5aa58a54231351031459e4cd13c080c17
+
+Still not done
+  - executor holds the sched_ext link FD in-process (still a child process)
+  - per-instance pin path (currently one fixed v2 path)
+  - parameter writes to cfg map
+  - ops rename from "schedpilot" to "eulerpilot"

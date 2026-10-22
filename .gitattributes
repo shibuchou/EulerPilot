@@ -1,0 +1,14 @@
+* text=auto eol=lf
+*.sh text eol=lf
+*.py text eol=lf
+*.c text eol=lf
+*.cpp text eol=lf
+*.h text eol=lf
+*.hpp text eol=lf
+CMakeLists.txt text eol=lf
+
+# Preserve raw evidence, input snapshots and vendored files byte for byte.
+/evidence/** -text
+/docs/reference/** -text
+/third_party/** -text
+/sched/scx/** -text

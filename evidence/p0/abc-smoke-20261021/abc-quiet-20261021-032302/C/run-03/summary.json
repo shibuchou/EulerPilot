@@ -1,0 +1,32 @@
+{
+  "source": "/root/p0/results/abc-quiet-20261021-032302/C/run-03/redis.out",
+  "tests": {
+    "GET": {
+      "rps": 61461.62,
+      "avg_ms": 0.486,
+      "min_ms": 0.12,
+      "p50_ms": 0.423,
+      "p95_ms": 0.919,
+      "p99_ms": 1.223,
+      "p999_ms": 2.047,
+      "max_ms": 6.135,
+      "slo_ms": 5.0,
+      "slo_pct": 99.99982332155477,
+      "slo_goodput_rps": 61461.51141056538
+    }
+  },
+  "primary": "GET",
+  "primary_data": {
+    "rps": 61461.62,
+    "avg_ms": 0.486,
+    "min_ms": 0.12,
+    "p50_ms": 0.423,
+    "p95_ms": 0.919,
+    "p99_ms": 1.223,
+    "p999_ms": 2.047,
+    "max_ms": 6.135,
+    "slo_ms": 5.0,
+    "slo_pct": 99.99982332155477,
+    "slo_goodput_rps": 61461.51141056538
+  }
+}

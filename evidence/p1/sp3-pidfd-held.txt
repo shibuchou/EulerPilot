@@ -1,0 +1,33 @@
+EulerPilot v2 — held pidfd across the transaction — SP3 evidence
+Recorded 2026-10-21 on schedpilot-sp3 (<SP3-IP>)
+
+Change
+  TargetBinding now owns a std::shared_ptr<int> pidfd for pid targets.
+  resolve_targets() opens pidfd_open(pid) and keeps it; copies share the fd
+  and the last copy closes it. revalidate_targets() uses
+  pidfd_send_signal(fd, 0) plus the /proc/<pid>/stat starttime, so a dead or
+  recycled PID fails closed even if the PID number is reused.
+  cgroup targets are unchanged (inode/device/boot_id/cgroup_id).
+
+Unit coverage
+  - resolve(getpid()) -> pidfd is non-null and >= 0
+  - revalidate passes while the process lives
+  - fork a child, resolve it, kill+reap it, revalidate now fails
+
+SP3 ctest
+  unit               Passed 0.69s
+  integration        Passed 2.70s
+  integration_sched  Passed 2.05s
+  integration_fd     Passed 2.13s
+  result 4/4 passed
+
+Artifacts (SP3)
+  ep               d574788b2167cc69c90a23981a2530a8a25e3fd82e9ffca767026ac993823214
+  ep-executord     61189a6e969993d6635e886c1afa4b8ef66b51221e0d67d2a9faffe3dbf48ce5
+  ep-sched-loader  3aa11a6b23990cc9bd61aff4163491623e8898a60f858f46e607925a9cc67f52
+  ep-schedctl      3960248fbdc315d56a530caa190f307524e25a38081d6c225098e6d887ada1fa
+
+Remaining
+  - wire cgroup_id/pid identity into the BPF class_map (P2)
+  - fail-safe for all modes, single-domain recovery, A/B/C no-stall
+  - P2 FeatureWindow / rule routing / SLO gate

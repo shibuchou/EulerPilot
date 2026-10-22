@@ -1,0 +1,45 @@
+EulerPilot v2 — lease-expiry auto fallback — SP3 evidence
+Recorded 2026-10-21 on schedpilot-sp3 (<SP3-IP>)
+
+Gap
+  Before this change, lease expiry was only checked when a request arrived.
+  An attached scheduler kept running after its lease expired.
+
+Change
+  Executor starts a monitor thread (500 ms period). If an active applied
+  action exists and ownership_.lease().expires_ms has passed, it performs an
+  automatic rollback while holding the executor mutex:
+    ROLLBACK_PREPARED (reason=lease expired) ->
+    skill.rollback -> verify_rolled_back ->
+    ROLLED_BACK + generation advance
+  The scheduler returns to fair, pins/runtime are removed, degraded_ is set,
+  and status reports last_fallback="lease expired".
+  A failure in this path journals RECOVERY_REQUIRED and keeps degraded set.
+
+Observed (integration_lease, CLI apply --ttl-ms 1000)
+  [integration-lease] instance=inst-897df0fb0dd623ad
+  [integration-lease] apply
+  [integration-lease] waiting for lease expiry fallback
+  [integration-lease] lease expiry detached the scheduler and cleaned pins
+  [integration-lease] all checks passed
+  status: degraded=true, last_fallback="lease expired"
+  sched_ext: disabled, no pin root, no loader process
+
+SP3 ctest
+  unit               Passed 1.00s
+  integration        Passed 2.82s
+  integration_sched  Passed 2.29s
+  integration_fd     Passed 2.31s
+  integration_lease  Passed 1.58s
+  result 5/5 passed
+
+Artifacts (SP3)
+  ep               d574788b2167cc69c90a23981a2530a8a25e3fd82e9ffca767026ac993823214
+  ep-executord     8a1b0ade1c43695a515234a45556497d27b52b4fb2b41301364120b29a872cb2
+  ep-sched-loader  3aa11a6b23990cc9bd61aff4163491623e8898a60f858f46e607925a9cc67f52
+  ep-schedctl      3960248fbdc315d56a530caa190f307524e25a38081d6c225098e6d887ada1fa
+
+Remaining
+  - fail-safe for other modes/conditions; A/B/C no-stall
+  - class_map wiring for cgroup_id/pid identity (P2)
+  - P2 FeatureWindow / rule routing / SLO gate

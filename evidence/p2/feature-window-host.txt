@@ -1,0 +1,46 @@
+EulerPilot v2 — FeatureWindow host slice — SP3 evidence
+Recorded 2026-10-21 on schedpilot-sp3 (<SP3-IP>)
+
+Scope
+  First P2 slice: a host-level rolling feature window, exposed read-only.
+  Per-task run-delay/wakeups/migrations are explicitly invalid for now and
+  carry a missing reason instead of a fake zero.
+
+Implementation
+  include/ep/features.hpp, src/core/features.cpp
+  - 30-sample deque; executor samples every 1 s from its 500 ms monitor.
+  - CPU busy% from /proc/stat deltas (first sample invalid: no delta).
+  - load1 from /proc/loadavg.
+  - CPU PSI some avg10 from /proc/pressure/cpu (invalid with a reason when
+    psi=0 or the file is missing).
+  - Each MetricWindow has valid/source/samples/age_ms/min/avg/max and
+    missing when invalid.
+  - run_delay_ns is always invalid with
+    "host window does not sample run-delay; use BPF/task stats".
+  - feature.snapshot operation + `ep features` CLI.
+
+Observed (integration_fd)
+  [integration-fd] feature window
+  [integration-fd] features samples 2
+  metrics.load1.valid = true
+  metrics.run_delay_ns.valid = false (missing reason present)
+
+SP3 ctest
+  unit               Passed 1.33s
+  integration        Passed 2.65s
+  integration_sched  Passed 2.16s
+  integration_fd     Passed 3.41s
+  integration_lease  Passed 1.61s
+  integration_ttl    Passed 11.07s
+  result 6/6 passed
+
+Artifacts (SP3)
+  ep               67fd404faada8dccee9557cd73f1c0522c7e65dadcb75922b6e83df908406709
+  ep-executord     23dc2a52d045f70be1aed73f59ac4aeaec366d6dac34487ffafd49471e3dd445
+  ep-sched-loader  3aa11a6b23990cc9bd61aff4163491623e8898a60f858f46e607925a9cc67f52
+  ep-schedctl      3960248fbdc315d56a530caa190f307524e25a38081d6c225098e6d887ada1fa
+
+Next
+  - rule classification/routing over FeatureWindow, with missing-metric
+    conservative degradation
+  - SLO gating

@@ -1,0 +1,29 @@
+{
+  "layer": "design-only",
+  "checks": [
+    {
+      "tool": "validate_design.py",
+      "args": [],
+      "exit_code": 0,
+      "expected": 0
+    },
+    {
+      "tool": "doctor.py",
+      "args": [],
+      "exit_code": 0,
+      "expected": 0
+    },
+    {
+      "tool": "doctor.py",
+      "args": [
+        "--require-scx"
+      ],
+      "exit_code": 2,
+      "expected": 2
+    }
+  ],
+  "local_markdown_links_checked": 14,
+  "broken_local_links": [],
+  "kernel_runtime_verified": false,
+  "v2_performance_verified": false
+}

@@ -1,0 +1,4 @@
+sched_ext.state=enabled
+sched_ext.enable_seq=6
+cfg mode=1 generation=2 flags=0xb hb_seq=26 hb_mono_s=2044 lat_slice=1000000 comp_slice=4000000 cache_slice=8000000 bg_slice=2000000 preempt_thr=500000 migrate_pen=2000000 bg_vtime_pct=200
+enq_comp=70 dsp_comp=70 run_normal=445 run_cache=26 direct_cache=26 direct_normal=375 class_hit=78 class_miss=1334 dispatch_calls=525 enq_vtime_comp=70 dsq_cache_try=493 

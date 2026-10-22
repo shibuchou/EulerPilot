@@ -1,0 +1,7 @@
+loader_pid=none daemon_pid=none
+sched_ext.state=disabled
+sched_ext.ops=
+sched_ext.state=disabled
+sched_ext.enable_seq=1
+cfg=missing
+schedpilotd.status=unavailable

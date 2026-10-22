@@ -1,0 +1,50 @@
+EulerPilot v2 — SLO gate — SP3 evidence
+Recorded 2026-10-21 on schedpilot-sp3 (<SP3-IP>)
+
+Scope
+  Read-only `slo.evaluate` / `ep slo --expert NAME`. It answers whether the
+  current FeatureWindow permits an expert. It never writes the scheduler.
+
+Checks
+  - expert must be known (safe-basic / latency-balanced / throughput-balanced /
+    cache-local);
+  - FeatureWindow must have >=3 samples and age <= max_observation_age_ms;
+  - cpu_busy_pct must be valid;
+  - latency-balanced/throughput-balanced require valid PSI;
+  - throughput-balanced is denied when PSI some avg10 >= 20;
+  - cache-local is denied because LLC/topology is not sampled;
+  - safe-basic is allowed without PSI (conservative fallback);
+  - quiet regression is reported as not evaluated (no quiet baseline yet).
+
+Unit cases
+  - all invalid -> FEATURES_INSUFFICIENT
+  - psi=30 + throughput-balanced -> PSI_PRESSURE_TOO_HIGH
+  - psi=30 + latency-balanced -> allowed
+  - PSI missing + latency-balanced -> PSI_FEATURE_MISSING
+  - PSI missing + safe-basic -> allowed
+  - cache-local -> LLC_FEATURE_MISSING
+  - age 5000ms > 1000ms -> FEATURES_STALE
+
+Observed (integration_fd, 2 feature samples)
+  [integration-fd] route safe-basic degraded True
+  [integration-fd] slo denied: FEATURES_INSUFFICIENT
+  Fewer than 3 samples deny instead of guessing.
+
+SP3 ctest
+  unit               Passed 1.33s
+  integration        Passed 2.86s
+  integration_sched  Passed 2.27s
+  integration_fd     Passed 3.61s
+  integration_lease  Passed 1.57s
+  integration_ttl    Passed 11.15s
+  result 6/6 passed
+
+Artifacts (SP3)
+  ep               6b33142a7114c8df6b80c2bf1ea73a0b08072e09e0edbc15722f178415222c81
+  ep-executord     245742ce518490321c15a53187022cea640c9c92d8f259e1d1c2586ec51456f4
+  ep-sched-loader  3aa11a6b23990cc9bd61aff4163491623e8898a60f858f46e607925a9cc67f52
+  ep-schedctl      3960248fbdc315d56a530caa190f307524e25a38081d6c225098e6d887ada1fa
+
+Next
+  - auto-apply a routed expert only behind an explicit policy + lease
+  - class_map wiring and A/B/C no-stall

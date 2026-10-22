@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://eulerpilot.local/schemas/v1alpha1/action-envelope.schema.json",
+  "type": "object", "additionalProperties": false,
+  "required": ["apiVersion", "request_id", "transaction_id", "idempotency_key", "operation", "policy_sha256", "lease_owner", "fence_epoch", "expected_generation", "issued_at", "deadline"],
+  "properties": {
+    "apiVersion": {"const": "eulerpilot.io/v1alpha1"},
+    "request_id": {"type": "string", "minLength": 8, "maxLength": 128},
+    "transaction_id": {"type": "string", "minLength": 8, "maxLength": 128},
+    "idempotency_key": {"type": "string", "minLength": 8, "maxLength": 128},
+    "operation": {"enum": ["policy.apply", "policy.rollback"]},
+    "policy_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "lease_owner": {"type": "string", "minLength": 8, "maxLength": 128},
+    "fence_epoch": {"type": "integer", "minimum": 1},
+    "expected_generation": {"type": "integer", "minimum": 0},
+    "issued_at": {"type": "string", "format": "date-time"},
+    "deadline": {"type": "string", "format": "date-time"},
+    "rollback_of": {
+      "type": "object", "additionalProperties": false,
+      "required": ["apply_action_id", "original_transaction_id", "snapshot_id"],
+      "properties": {
+        "apply_action_id": {"type": "string", "minLength": 8, "maxLength": 128},
+        "original_transaction_id": {"type": "string", "minLength": 8, "maxLength": 128},
+        "snapshot_id": {"type": "string", "minLength": 8, "maxLength": 128}
+      }
+    }
+  },
+  "allOf": [{
+    "if": {"properties": {"operation": {"const": "policy.rollback"}}, "required": ["operation"]},
+    "then": {"required": ["rollback_of"]},
+    "else": {"not": {"required": ["rollback_of"]}}
+  }]
+}

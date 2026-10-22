@@ -1,0 +1,48 @@
+P1 reference SchedSkill — real sched_ext integration evidence
+Recorded 2026-10-21 on schedpilot-sp3 (<SP3-IP>)
+
+Environment
+  openEuler 24.03 (LTS-SP3)
+  kernel 6.6.0-schedpilot-sp3
+  8 vCPU / 16 GiB
+  loader /root/p0/schedpilot-0aeca0c/build/scx_schedpilot
+  loader sha256 3da28c293b45fccb7eef58020f5e56fa599e9dda024126d721c60121077b5e4c
+  ep-executord sha256 73ba72af74f67f3aa84a148c528df4a378dbb97926f210fb798ab17bc790c5e0
+  ep sha256 f34b43cf7f21023ef1c3723e8ed6b5ef09cf0e3abed372416314aa5a1959f83a
+
+Full ctest (SP3)
+  unit               Passed 0.68s
+  integration        Passed 2.65s
+  integration_sched  Passed 1.76s
+  result 3/3 passed
+
+integration_sched assertions (all passed)
+  apply    -> /sys/kernel/sched_ext/state = enabled
+              /sys/kernel/sched_ext/root/ops contains schedpilot
+              /sys/fs/bpf/schedpilot/v1/cfg exists
+              <state>/sched-runtime.json exists
+  rollback -> state = disabled
+              /sys/fs/bpf/schedpilot/v1 removed
+              sched-runtime.json removed
+  crash    -> apply again, SIGKILL ep-executord
+              state = disabled within the poll window (PR_SET_PDEATHSIG)
+              legacy pins remain (expected)
+  restart  -> recover_orphan stops/cleans the orphan
+              ep status: status=OK, degraded=false, generation=3
+              pins and runtime marker removed
+  final    -> state = disabled, no pins, no scx_schedpilot process
+
+Stability
+  ctest -R integration_sched --repeat until-fail:2 -> 2/2 passed
+
+Observed values from a manual run
+  attach: enable_seq 15 -> 16
+  detach: enable_seq unchanged at 16 (monotonic)
+  runtime marker pins: cfg, class_map, cpu_llc, stats, tg_stats with inode+device
+
+Bugs found by this test and fixed before the final run
+  1. pin snapshot raced the loader's pin step; wait for a stable pin set
+  2. post-rollback check compared the whole snapshot incl. enable_seq; added
+     Skill::verify_rolled_back with domain-specific semantics
+  3. restart test treated a stale socket file as readiness; wait for a real
+     status response

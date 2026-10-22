@@ -1,0 +1,42 @@
+EulerPilot v2 — pid target binding (pidfd + starttime) — SP3 evidence
+Recorded 2026-10-21 on schedpilot-sp3 (<SP3-IP>)
+
+Schema / validator
+  spec.targets item now accepts:
+    {"kind":"cgroup","path":"/sys/fs/cgroup/...","role":...,"role_source":"explicit"}
+    {"kind":"pid","pid":N,"role":...,"role_source":"explicit"}
+  cgroup requires path and rejects pid; pid requires 1..4194304 and rejects path.
+  Duplicate cgroup paths / duplicate pids are rejected. Unknown kinds are rejected.
+
+Identity
+  resolve_targets() for a pid target:
+    - pidfd_open(pid), close after the check;
+    - read /proc/<pid>/stat field 22 (starttime);
+    - record pid + starttime in TargetBinding.
+  revalidate_targets() opens the pidfd again and compares starttime; a changed
+  starttime (PID reuse) or a dead process -> TARGET_STALE.
+  The pidfd is used for validation; it is not held across the transaction yet.
+
+Observed (integration_fd, targets = system.slice + pid 1)
+  [integration-fd] cgroup_id 69
+  [integration-fd] pid target 1 19
+  binding: {"kind":"pid","identity":"pidfd+starttime","pid":1,"starttime":19,
+            "boot_id":"..."}
+
+Full ctest (SP3)
+  unit               Passed 0.71s
+  integration        Passed 2.65s
+  integration_sched  Passed 2.22s
+  integration_fd     Passed 2.26s
+  result 4/4 passed
+
+Artifacts (SP3)
+  ep               d574788b2167cc69c90a23981a2530a8a25e3fd82e9ffca767026ac993823214
+  ep-executord     51d84a19c8539bc625b1689816291b8229ec46e2a651648347546af58a463d20
+  ep-sched-loader  3aa11a6b23990cc9bd61aff4163491623e8898a60f858f46e607925a9cc67f52
+  ep-schedctl      3960248fbdc315d56a530caa190f307524e25a38081d6c225098e6d887ada1fa
+
+Remaining
+  - hold the pidfd across the transaction (currently validate-then-close)
+  - fail-safe for all modes, A/B/C no-stall
+  - P2 FeatureWindow / rule routing / SLO gate

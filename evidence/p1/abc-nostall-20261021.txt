@@ -1,0 +1,39 @@
+EulerPilot v2 — A/B/C no-stall liveness — SP3 evidence
+Recorded 2026-10-21 on schedpilot-sp3 (<SP3-IP>)
+
+What this is
+  A liveness check, not a performance measurement. A CPU-bound bash loop runs
+  for 2 s under fair, basic and class scheduling; the test asserts that utime
+  advances in every arm and that sched_ext state transitions are clean.
+  It does NOT compare throughput/latency and must not be cited as a v2 gain.
+
+Command
+  /root/epv2-build/abc_nostall.sh \
+    /root/epv2-build/ep-executord /root/epv2-build/ep \
+    /root/epv2-build/ep-sched-loader
+
+Raw output
+  [abc] fair arm (sched_ext disabled)
+  {"arm": "fair", "state": "disabled", "utime_before": 30, "utime_after": 230, "progress_ticks": 200}
+  [abc] basic arm
+  {"arm": "basic", "state": "enabled", "utime_before": 30, "utime_after": 230, "progress_ticks": 200}
+  [abc] class arm
+  {"arm": "class", "state": "enabled", "utime_before": 30, "utime_after": 230, "progress_ticks": 200}
+  [abc] all arms made progress; sched_ext is disabled
+
+State
+  pre:  disabled, no pin root, no loader
+  post: disabled, no pin root, no loader
+
+Interpretation
+  - every arm made progress: no liveness stall in this scenario;
+  - identical tick counts are expected for a single busy loop on an 8-vCPU
+    host and are not evidence of equal performance;
+  - this does not cover loaded multi-tenant scenarios, SLO regressions or
+    per-target effects.
+
+Artifacts (SP3)
+  ep               6b33142a7114c8df6b80c2bf1ea73a0b08072e09e0edbc15722f178415222c81
+  ep-executord     abd8a1462fb5b48eb6ec7ea219c98b864ad72129c0a2aa1a5f829943a3b71abb
+  ep-sched-loader  3aa11a6b23990cc9bd61aff4163491623e8898a60f858f46e607925a9cc67f52
+  ep-schedctl      3960248fbdc315d56a530caa190f307524e25a38081d6c225098e6d887ada1fa

@@ -1,0 +1,51 @@
+EulerPilot v2 — FD-passing link ownership — SP3 evidence
+Recorded 2026-10-21 on schedpilot-sp3 (<SP3-IP>)
+
+Design
+  ep-sched-loader attaches the scheduler once, pins maps, then sends the
+  struct_ops bpf_link FD to the executor over a Unix socket (SCM_RIGHTS) and
+  exits. The executor holds the link FD; when it crashes, the FD closes and
+  the kernel detaches the scheduler. No long-lived loader child, no PDEATHSIG
+  dependency for the --skill sched path.
+  sched-ref keeps the old child-process mode for comparison/tests.
+
+Observed (ctest -R integration_fd -V)
+  [integration-fd] loader=/root/epv2-build/ep-sched-loader
+  [integration-fd] instance=inst-18f3792b600ad12b
+  [integration-fd] pin_dir=/sys/fs/bpf/eulerpilot-v2/inst-18f3792b600ad12b
+  [integration-fd] validate policy
+  [integration-fd] apply
+  [integration-fd] executor holds a bpf link fd; loader has exited
+  [integration-fd] cfg parameters
+  [integration-fd] cfg generation 2
+  [integration-fd] rollback
+  [integration-fd] crash + orphan recovery
+  [integration-fd] all checks passed
+
+Assertions
+  apply    -> state=enabled, ops=eulerpilot, instance pins, cfg lat=2ms,
+              cache=4ms, llc=false, generation=2
+              executor has a bpf fd; ep-sched-loader process count is 0
+  rollback -> state=disabled, pins/runtime removed
+  SIGKILL  -> state=disabled within the poll window (link FD closed)
+              pins remain
+  restart  -> recover_orphan removes pins/runtime, degraded=false,
+              generation=3
+  final    -> state=disabled, no pin root, no loader process
+
+Full ctest (SP3)
+  unit               Passed 0.69s
+  integration        Passed 2.66s
+  integration_sched  Passed 2.15s   # sched-ref child mode
+  integration_fd     Passed 2.10s   # FD-passing mode
+  result 4/4 passed
+
+Artifacts (SP3)
+  ep               d574788b2167cc69c90a23981a2530a8a25e3fd82e9ffca767026ac993823214
+  ep-executord     5d19c94c363215f6aa285f18cc76effe08c29b5c024dfcb465c128ca0737075b
+  ep-sched-loader  3aa11a6b23990cc9bd61aff4163491623e8898a60f858f46e607925a9cc67f52
+  ep-schedctl      3960248fbdc315d56a530caa190f307524e25a38081d6c225098e6d887ada1fa
+
+Remaining
+  - TargetBinding pidfd / kernel cgroup id
+  - P2 FeatureWindow / rule routing / SLO gate

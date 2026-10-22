@@ -1,0 +1,39 @@
+EulerPilot v2 — BACKGROUND pid target -> class_map — SP3 evidence
+Recorded 2026-10-21 on schedpilot-sp3 (<SP3-IP>)
+
+Behavior
+  A policy target with kind=pid and role=BACKGROUND is written to the pinned
+  class_map after attach:
+    key=tgid, klass=BG, confidence=1000, source=SP_SRC_EXTERN,
+    updated_ns=CLOCK_MONOTONIC.
+  The executor monitor refreshes these entries every 2 s; BPF class entries
+  expire after 5 s, so the refresh keeps an active action classified.
+  The map lifetime is the attachment: rollback/detach removes it, so there is
+  no classification left behind.
+
+Boundaries
+  - only explicit pid+BACKGROUND targets are mapped;
+  - cgroup targets are not expanded to class_map keys yet;
+  - FOREGROUND/NEUTRAL are not forced to LAT/COMP/CACHE, because business
+    role is not a runtime characteristic;
+  - no automatic demotion of unknown high-CPU tasks.
+
+Observed (integration_fd, background `sleep 300` pid)
+  [integration-fd] background class map
+  [integration-fd] background pid class BG
+  ep-schedctl class-get: present=true, class=BG, source=2 (EXTERN)
+
+SP3 ctest
+  unit               Passed 1.34s
+  integration        Passed 2.70s
+  integration_sched  Passed 2.17s
+  integration_fd     Passed 3.80s
+  integration_lease  Passed 1.60s
+  integration_ttl    Passed 11.14s
+  result 6/6 passed
+
+Artifacts (SP3)
+  ep               6b33142a7114c8df6b80c2bf1ea73a0b08072e09e0edbc15722f178415222c81
+  ep-executord     1c3307d9bd683bd48b94e6a6039508f0cd34610a782995a126cab763950d75fb
+  ep-sched-loader  3aa11a6b23990cc9bd61aff4163491623e8898a60f858f46e607925a9cc67f52
+  ep-schedctl      9bd709df8ed48fe03893bd7a70a7cf11e74966b73636da94ba77453f41da76cd

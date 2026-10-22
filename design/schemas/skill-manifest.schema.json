@@ -1,0 +1,34 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://eulerpilot.local/schemas/v1alpha1/skill-manifest.schema.json",
+  "type": "object", "additionalProperties": false,
+  "required": ["apiVersion", "kind", "metadata", "spec"],
+  "properties": {
+    "apiVersion": {"const": "eulerpilot.io/v1alpha1"},
+    "kind": {"const": "SkillManifest"},
+    "metadata": {
+      "type": "object", "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": {"type": "string", "pattern": "^[a-z][a-z0-9_-]{0,62}$"},
+        "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"}
+      }
+    },
+    "spec": {
+      "type": "object", "additionalProperties": false,
+      "required": ["implementation_status", "effect_scope", "capabilities", "required_capabilities", "policy_schema", "execution", "compensation"],
+      "properties": {
+        "implementation_status": {"enum": ["planned", "experimental", "verified"]},
+        "effect_scope": {"enum": ["task", "cgroup", "scheduler-instance", "netns", "interface"]},
+        "capabilities": {
+          "type": "array", "uniqueItems": true, "minItems": 1,
+          "items": {"enum": ["probe", "plan", "snapshot", "apply", "verify", "rollback", "reconcile", "stop"]}
+        },
+        "required_capabilities": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z0-9_.-]+$"}},
+        "policy_schema": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_.-]*\\.schema\\.json$"},
+        "execution": {"const": "privileged-executor-only"},
+        "compensation": {"enum": ["supported-with-conflict-check", "not-supported"]}
+      }
+    }
+  }
+}

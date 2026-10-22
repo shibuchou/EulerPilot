@@ -1,0 +1,14 @@
+{
+  "apiVersion": "eulerpilot.io/v1alpha1",
+  "kind": "SkillManifest",
+  "metadata": {"name": "sched_ext", "version": "0.1.0"},
+  "spec": {
+    "implementation_status": "planned",
+    "effect_scope": "scheduler-instance",
+    "capabilities": ["probe", "plan", "snapshot", "apply", "verify", "rollback", "reconcile", "stop"],
+    "required_capabilities": ["sched_ext.attach", "bpf.map_write", "target.resolve"],
+    "policy_schema": "scheduling-policy.schema.json",
+    "execution": "privileged-executor-only",
+    "compensation": "supported-with-conflict-check"
+  }
+}

@@ -1,0 +1,4 @@
+sched_ext.state=disabled
+sched_ext.enable_seq=1
+cfg=missing
+stats=missing

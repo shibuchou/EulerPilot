@@ -1,0 +1,20 @@
+{
+  "arm": "C",
+  "run": 1,
+  "out": "/root/p0/results/abc-quiet-20261021-032302/C/run-01",
+  "invalid": false,
+  "invalid_reason": "",
+  "primary": {
+    "rps": 63911.17,
+    "avg_ms": 0.439,
+    "min_ms": 0.112,
+    "p50_ms": 0.391,
+    "p95_ms": 0.735,
+    "p99_ms": 1.127,
+    "p999_ms": 2.519,
+    "max_ms": 9.519,
+    "slo_ms": 5.0,
+    "slo_pct": 99.99864864864865,
+    "slo_goodput_rps": 63910.30633554054
+  }
+}

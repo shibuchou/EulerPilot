@@ -1,0 +1,58 @@
+EulerPilot v2 — cfg parameter writes — SP3 evidence
+Recorded 2026-10-21 on schedpilot-sp3 (<SP3-IP>)
+
+Component
+  ep-schedctl (GPL-2.0, sched/schedctl.cpp) is a short-lived helper invoked by
+  the executor. It opens the pinned cfg map, applies policy parameters, bumps
+  cfg.generation, reads back and verifies. It is not a long-lived second writer.
+
+Parameter mapping
+  policy spec.parameters.lat_slice_ns            -> sp_cfg.lat_slice_ns
+  policy spec.parameters.comp_slice_ns           -> sp_cfg.comp_slice_ns
+  policy spec.parameters.cache_slice_ns          -> sp_cfg.cache_slice_ns
+  policy spec.parameters.bg_slice_ns             -> sp_cfg.bg_slice_ns
+  policy spec.parameters.preempt_threshold_ns    -> sp_cfg.preempt_thresh_ns
+  policy spec.parameters.bg_vtime_pct            -> sp_cfg.bg_vtime_pct
+  policy spec.parameters.llc_affinity            -> SP_FLAG_LLC_AFFINITY bit
+
+Loader defaults (sched/loader.c init_cfg_defaults)
+  lat=1000000 comp=4000000 cache=8000000 bg=2000000
+  preempt=500000 bg_vtime=200 llc_affinity=true
+
+Policy used by integration_sched
+  lat=2000000 comp=4000000 cache=4000000 bg=2000000
+  preempt=500000 bg_vtime=200 llc_affinity=false
+
+Observed after apply (ep-schedctl get)
+  [integration-sched] instance=inst-0251f2be4ccda602
+  [integration-sched] pin_dir=/sys/fs/bpf/eulerpilot-v2/inst-0251f2be4ccda602
+  [integration-sched] cfg generation 2
+  Python assertions passed for lat=2000000, comp=4000000, cache=4000000,
+  bg=2000000, preempt=500000, bg_vtime=200, llc_affinity=false.
+  generation 2 = loader init 1 + one parameter write.
+
+Lifecycle
+  apply    -> attach, pin, cfg_before=get, set(parameters), cfg_after=get,
+              verify re-reads cfg and compares
+  rollback -> restore(cfg_before) while the loader is still attached, then
+              SIGTERM/detach, then remove owned pins
+  crash    -> runtime marker stores cfg_before; recover_orphan restores it
+              before stopping the orphan loader
+  failures -> a failed set restores cfg_before and stops the loader; a restore
+              failure is reported in the rollback detail after detach
+
+Full ctest (SP3)
+  unit               Passed 0.70s
+  integration        Passed 2.70s
+  integration_sched  Passed 2.16s
+  result 3/3 passed
+
+Artifacts (SP3)
+  ep               d574788b2167cc69c90a23981a2530a8a25e3fd82e9ffca767026ac993823214
+  ep-executord     2d8e22703e5ef9ec27fa5c002742a0c38fbdd8459f1ba7bdce06940b3f9e4632
+  ep-sched-loader  001ba160a1f2c91fb6e321f223d94c7ff691ecb5a6a1e28ae7f7ff3f21b82772
+  ep-schedctl      3960248fbdc315d56a530caa190f307524e25a38081d6c225098e6d887ada1fa
+
+Still not done
+  - executor holds the sched_ext link FD in-process (still a child process)
+  - pidfd / kernel cgroup id for TargetBinding
