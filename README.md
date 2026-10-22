@@ -2,6 +2,13 @@
 
 面向 **2026 年全国大学生计算机系统能力大赛—操作系统设计赛—中西部与华南区域赛—功能挑战赛道**，围绕「面向 openEuler 的自适应资源管控 Agent」重新设计的独立项目。
 
+## 参赛信息
+
+- 高校：西安邮电大学
+- 队伍：三驱兄弟
+- 队伍 ID：T2026116649912743
+- 赛题：proj2（功能挑战赛道）
+
 **当前状态：P0 技术验证通过，P1 部分实现且未收口，P2 为 advisory 切片。控制面、v2 自建 loader（每实例 pin、`eulerpilot` ops）、cfg 参数写入、SchedulingPolicy 校验与 cgroup/pid 目标绑定（cgroup_id、单次apply持有 pidfd/starttime）、租约/策略 TTL 过期自动回退、apply deadline 强制已跑通 SP3 真实闭环；执行服务通过 FD 传递持有 link FD；FeatureWindow、advisory 规则路由、SLO 门控与非人工来源 SLO 否决已接入；A/B/C liveness 已通过；显式 BACKGROUND 的 pid/cgroup 目标已展开到 class_map 并由执行服务每 2s 刷新；helper 已加整轮刷新预算（204ms/3 pid）和同期限 EOF 收割（208ms）。自动 apply、加载场景 SLO 与性能比较尚未实现，尚无 v2 性能结果。** 主验收系统为 openEuler 24.03-LTS-SP3；Ubuntu 用于开发和辅助兼容验证。旧 EulerPilot、SchedPilot 作为参考资产，按模块迁移。旧前端验收界面不迁入，先用 CLI、结构化状态和可复现实验完成闭环。
 
 2026-10-21 已完成 P0（SP3 环境、参考数据面干净重建、A/B/C smoke）与 P1 主体：`ep-executord` 唯一写者、lease/fence、generation、append-only WAL、事务状态机、崩溃 reconcile、幂等，`ep` CLI，`sched`（loader 一次性 attach 后通过 SCM_RIGHTS 把 link FD 交给执行服务并退出；每实例 pin、`eulerpilot` ops）与 `sched-ref`（子进程对照模式），短命 `ep-schedctl` 写入/回读/恢复 cfg 参数，以及策略 schema/语义校验与 cgroup/pid TargetBinding。既有SP3日志记录 `ctest` 6/6通过；审查发现的故障边界尚未覆盖，不能据此判定P1完成。
