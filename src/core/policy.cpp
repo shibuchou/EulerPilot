@@ -204,7 +204,8 @@ bool validate_scheduling_policy(const Json& policy, PolicySummary* summary,
       if (error != nullptr) *error = path + " must be an object";
       return false;
     }
-    if (!check_keys(target, {"kind", "path", "pid", "role", "role_source"}, path, error)) {
+    if (!check_keys(target, {"kind", "path", "pid", "role", "role_source", "class"}, path,
+                    error)) {
       return false;
     }
     PolicyTarget parsed;
@@ -252,6 +253,28 @@ bool validate_scheduling_policy(const Json& policy, PolicySummary* summary,
       if (error != nullptr) *error = path + ".role_source must be explicit";
       return false;
     }
+    // `class` is the runtime-feature tier (which DSQ the task lands in) and is
+    // deliberately orthogonal to `role`, which is the business role. It is optional
+    // and never inferred: a target that does not declare one is classified by role
+    // only (BACKGROUND -> BG, everything else left NORMAL/unclassified).
+    if (target.contains("class")) {
+      if (!get_enum(target, "class", path, {"NORMAL", "LAT", "COMPUTE", "CACHE", "BG"},
+                    &parsed.runtime_class, error)) {
+        return false;
+      }
+      // The one asymmetry worth enforcing: BG is the contained tier (short slice,
+      // vtime penalty), so letting any role claim it would be a route to demote a
+      // foreground task to background treatment without saying so in `role`.
+      if (parsed.runtime_class == "BG" && parsed.role != "BACKGROUND") {
+        if (error != nullptr) *error = path + ".class BG requires role BACKGROUND";
+        return false;
+      }
+      if (parsed.role == "BACKGROUND" && !parsed.runtime_class.empty() &&
+          parsed.runtime_class != "BG") {
+        if (error != nullptr) *error = path + ".role BACKGROUND must use class BG";
+        return false;
+      }
+    }
     result.targets.push_back(std::move(parsed));
   }
 
@@ -295,7 +318,7 @@ bool validate_scheduling_policy(const Json& policy, PolicySummary* summary,
                    "heartbeat_timeout_ms", "policy_ttl_ms", "quiet_max_regression_pct",
                    "evaluation_min_bg_progress_ratio", "bg_work_unit",
                    "bg_progress_window_ms", "min_bg_work_units_per_sec", "max_bg_wait_ms",
-                   "fallback", "allow_affinity_change"},
+                   "max_foreground_p99_ms", "fallback", "allow_affinity_change"},
                   "spec.safety", error)) {
     return false;
   }
@@ -344,6 +367,14 @@ bool validate_scheduling_policy(const Json& policy, PolicySummary* summary,
     return false;
   }
   if (!get_int(safety, "max_bg_wait_ms", "spec.safety", 50, 10000, &value, error)) {
+    return false;
+  }
+  // Optional: the protocol's online forward-latency limit (§5.1 rule 4) is an
+  // absolute ceiling, because p99 cannot resolve a 5% relative change. Absent
+  // means not declared, and the gate reports "not evaluated" instead of inventing
+  // a number.
+  if (safety.contains("max_foreground_p99_ms") &&
+      !get_int(safety, "max_foreground_p99_ms", "spec.safety", 1, 60000, &value, error)) {
     return false;
   }
   std::string fallback;

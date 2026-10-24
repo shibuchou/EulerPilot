@@ -41,6 +41,7 @@ UEI_DEFINE(uei);
 struct sp_task_ctx {
 	u64 enq_ns;
 	u64 slice_ns;
+	u64 run_ns;
 	s32 last_cpu;
 	u32 enq_depth;
 };
@@ -424,6 +425,29 @@ s32 BPF_STRUCT_OPS(schedpilot_select_cpu, struct task_struct *p, s32 prev_cpu,
 	return cpu;
 }
 
+/*
+ * ops.enqueue() is not preceded by ops.select_cpu() when a task is re-enqueued
+ * (slice exhausted, preempted by a higher class, migrated, or restored after an
+ * attribute change), and select_cpu is the only thing that wakes an idle target CPU
+ * on our behalf. A task left in a DSQ that no CPU has a reason to come back for stays
+ * there -- and for a per-CPU kworker "no CPU has a reason" is permanent, because the
+ * only CPU allowed to run it is the idle one. SP3 hit exactly that during the flagship
+ * pilot: every attached block lost the scheduler to the kernel's 30s runnable-stall
+ * watchdog with a kworker as the reported victim.
+ */
+static void kick_idle_for(struct task_struct *p, u64 enq_flags)
+{
+	s32 cpu;
+
+	if (enq_flags & SCX_ENQ_WAKEUP)
+		return;
+	cpu = scx_bpf_pick_idle_cpu(p->cpus_ptr, 0);
+	if (cpu >= 0) {
+		stat_inc(SP_STAT_ENQ_KICK);
+		scx_bpf_kick_cpu(cpu, SCX_KICK_IDLE);
+	}
+}
+
 void BPF_STRUCT_OPS(schedpilot_enqueue, struct task_struct *p, u64 enq_flags)
 {
 	struct sp_cfg *c = get_cfg();
@@ -444,12 +468,35 @@ void BPF_STRUCT_OPS(schedpilot_enqueue, struct task_struct *p, u64 enq_flags)
 		tc->enq_depth++;
 	}
 
+	/*
+	 * A task that may only run on one CPU must not be parked in a shared class DSQ.
+	 * Whichever other CPU's ops.dispatch() pulls it cannot run it, the core bounces
+	 * it into the global DSQ, and the only CPU that can take it from there is its
+	 * own -- which has no reason to balance if it is already idle. That is how SP3
+	 * lost the scheduler to the 30s runnable-stall watchdog with a per-CPU kworker
+	 * as the reported victim, and the stats said so directly: enq_comp == dsp_comp,
+	 * i.e. nothing was waiting inside our own DSQs to be drained.
+	 *
+	 * Queue it on its own CPU's local DSQ instead, and wake that CPU if it is idle.
+	 * nr_cpus_allowed is used rather than the mask weight because this kernel
+	 * exposes bpf_cpumask_weight only as a kfunc call on every enqueue.
+	 */
+	if (p->nr_cpus_allowed == 1) {
+		s32 cpu = scx_bpf_task_cpu(p);
+
+		stat_inc(SP_STAT_ENQ_PINNED_LOCAL);
+		scx_bpf_dsq_insert(p, SCX_DSQ_LOCAL_ON | cpu, slice, enq_flags);
+		scx_bpf_kick_cpu(cpu, SCX_KICK_IDLE);
+		return;
+	}
+
 	if (!(e.flags & SP_FLAG_CLASS_DSQ)) {
 		stat_inc(SP_STAT_ENQ_SHARED);
 		stat_inc(SP_STAT_ENQ_VTIME_SHARED);
 		vtime_floor(p, vtime_now_comp, slice);
 		scx_bpf_dsq_insert_vtime(p, SP_DSQ_SHARED, slice,
 					 p->scx.dsq_vtime, enq_flags);
+		kick_idle_for(p, enq_flags);
 		return;
 	}
 
@@ -487,6 +534,7 @@ void BPF_STRUCT_OPS(schedpilot_enqueue, struct task_struct *p, u64 enq_flags)
 					 p->scx.dsq_vtime, enq_flags);
 		break;
 	}
+	kick_idle_for(p, enq_flags);
 }
 
 void BPF_STRUCT_OPS(schedpilot_running, struct task_struct *p)
@@ -502,9 +550,10 @@ void BPF_STRUCT_OPS(schedpilot_running, struct task_struct *p)
 
 	tc = get_task_ctx(p, false);
 	if (tc) {
-		if (tc->enq_depth) {
-			u64 now = bpf_ktime_get_ns();
+		u64 now = bpf_ktime_get_ns();
 
+		tc->run_ns = now;
+		if (tc->enq_depth) {
 			if (now > tc->enq_ns && now - tc->enq_ns < SP_MAX_RUN_DELAY_NS)
 				tg_stat_add(p->tgid, SP_TG_RUN_DELAY,
 					    now - tc->enq_ns);
@@ -566,10 +615,16 @@ void BPF_STRUCT_OPS(schedpilot_stopping, struct task_struct *p, bool runnable)
 	u64 consumed;
 	u64 weight = task_weight(p);
 	u64 cost;
+	u64 now = bpf_ktime_get_ns();
 
 	effective_policy(c, &e);
 	slice = (tc && tc->slice_ns) ? tc->slice_ns : slice_for(&e, klass);
 	consumed = slice > p->scx.slice ? slice - p->scx.slice : 0;
+	/* Slices are only checked at tick boundaries, so the slice remainder
+	 * understates what a task really held the CPU for; charge wall time. */
+	if (tc && tc->run_ns && now > tc->run_ns &&
+	    now - tc->run_ns <= SP_MAX_RUN_DELAY_NS)
+		consumed = now - tc->run_ns;
 
 	tg_stat_add(p->tgid, SP_TG_SWITCHES, 1);
 	tg_stat_add(p->tgid, SP_TG_RUNTIME, consumed);

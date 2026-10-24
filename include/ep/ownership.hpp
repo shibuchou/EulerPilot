@@ -35,8 +35,11 @@ class Ownership {
   bool commit_generation(std::uint64_t generation, std::string* error);
 
   const LeaseState& lease() const { return lease_; }
+  // Returns false when the grant could not be persisted. *out is filled either way and
+  // *persisted says which case happened, so a caller can decide whether an in-memory-only
+  // lease is acceptable: tearing an existing effect down is, taking a new one is not.
   bool acquire_lease(const std::string& owner, std::uint64_t ttl_ms, LeaseState* out,
-                     std::string* error);
+                     std::string* error, bool* persisted = nullptr);
   bool validate_lease(const std::string& owner, std::uint64_t fence,
                       std::string* error) const;
 

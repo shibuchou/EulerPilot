@@ -91,6 +91,15 @@ class Skill {
   virtual bool apply(const Plan& plan, const Snapshot& snapshot, const LeaseState& lease,
                      Applied* out, std::string* error) = 0;
   virtual VerifyResult verify(const Applied& applied, std::int64_t deadline_ms) = 0;
+  // Cheap presence check for an effect that is already active, polled on the
+  // monitor tick. It must not spawn helpers or re-read tunables: it only answers
+  // "is our effect still the one in place". verify() stays the authoritative,
+  // expensive post-apply check.
+  virtual bool liveness(const Applied& applied, std::string* detail) {
+    (void)applied;
+    (void)detail;
+    return true;
+  }
   virtual RecoveryResult rollback(const Applied& applied, const Snapshot& snapshot,
                                   std::string* error) = 0;
   // Post-rollback semantic check. A generic "snapshot again and compare" cannot

@@ -157,10 +157,11 @@ bool Ownership::commit_generation(std::uint64_t generation, std::string* error) 
   return persist(error);
 }
 
-bool Ownership::acquire_lease(const std::string& owner, std::uint64_t ttl_ms,
-                              LeaseState* out, std::string* error) {
+bool Ownership::acquire_lease(const std::string& owner, std::uint64_t ttl_ms, LeaseState* out,
+                             std::string* error, bool* persisted) {
   if (owner.size() < 8 || owner.size() > 128) {
     if (error != nullptr) *error = "lease_owner must be 8..128 characters";
+    if (persisted != nullptr) *persisted = true;
     return false;
   }
   std::uint64_t ttl = ttl_ms;
@@ -169,8 +170,12 @@ bool Ownership::acquire_lease(const std::string& owner, std::uint64_t ttl_ms,
   lease_.owner = owner;
   lease_.fence += 1;
   lease_.expires_ms = now_epoch_ms() + static_cast<std::int64_t>(ttl);
-  if (!persist(error)) return false;
   if (out != nullptr) *out = lease_;
+  if (persisted != nullptr) *persisted = true;
+  if (!persist(error)) {
+    if (persisted != nullptr) *persisted = false;
+    return false;
+  }
   return true;
 }
 

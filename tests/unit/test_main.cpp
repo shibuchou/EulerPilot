@@ -13,6 +13,7 @@
 #include <string>
 #include <thread>
 
+#include "ep/autopilot.hpp"
 #include "ep/executor.hpp"
 #include "ep/features.hpp"
 #include "ep/journal.hpp"
@@ -264,6 +265,102 @@ void test_executor_apply_and_rollback() {
   std::filesystem::remove_all(dir);
 }
 
+void test_autopilot_rules() {
+  ep::AutoInput base;
+  base.enabled = true;
+  base.auto_owner = "autopilot-v2";
+  base.lease_owner = "autopilot-v2";
+  base.lease_expires_ms = 60000;
+  base.routed_expert = "latency-balanced";
+  base.slo_allowed = true;
+  base.active_expert = "safe-basic";
+  base.min_interval_ms = 15000;
+  base.now_ms = 50000;
+  // Pass the suppression gates by default so each case below isolates one of them.
+  base.active_age_ms = 120000;
+  base.desired_stable_ms = 20000;
+
+  const auto go = ep::auto_pilot_decide(base);
+  CHECK(go.act);
+  CHECK(go.expert == "latency-balanced");
+
+  ep::AutoInput off = base;
+  off.enabled = false;
+  CHECK(ep::auto_pilot_decide(off).hold == "disabled");
+
+  ep::AutoInput anonymous = base;
+  anonymous.auto_owner = "";
+  CHECK(ep::auto_pilot_decide(anonymous).hold == "no auto owner configured");
+
+  // A live operator lease always outranks the autopilot.
+  ep::AutoInput human = base;
+  human.lease_owner = "cli-operator-1";
+  CHECK(ep::auto_pilot_decide(human).hold == "lease held by cli-operator-1");
+
+  ep::AutoInput expired = base;
+  expired.lease_expires_ms = 40000;
+  CHECK(ep::auto_pilot_decide(expired).hold == "lease expired");
+
+  // It switches an effect that a human already applied; it never introduces one.
+  ep::AutoInput noactive = base;
+  noactive.active_expert = "";
+  CHECK(ep::auto_pilot_decide(noactive).hold == "no active policy to switch");
+
+  ep::AutoInput degraded = base;
+  degraded.routing_degraded = true;
+  CHECK(ep::auto_pilot_decide(degraded).hold == "routing degraded");
+
+  ep::AutoInput denied = base;
+  denied.slo_allowed = false;
+  denied.slo_code = "PSI_MISSING";
+  CHECK(ep::auto_pilot_decide(denied).hold == "slo denied: PSI_MISSING");
+
+  ep::AutoInput same = base;
+  same.active_expert = "latency-balanced";
+  CHECK(ep::auto_pilot_decide(same).hold == "already in place: latency-balanced");
+
+  // Narrower than the policy schema enum: cache-local was never exercised on SP3.
+  ep::AutoInput beyond = base;
+  beyond.routed_expert = "cache-local";
+  CHECK(ep::auto_pilot_decide(beyond).hold == "expert outside autopilot whitelist: cache-local");
+  CHECK(!ep::auto_pilot_expert_allowed("cache-local"));
+  CHECK(ep::auto_pilot_expert_allowed("throughput-balanced"));
+
+  ep::AutoInput cooling = base;
+  cooling.last_action_ms = 45000;
+  CHECK(ep::auto_pilot_decide(cooling).hold.rfind("cooldown", 0) == 0);
+  ep::AutoInput cooling_outside = cooling;
+  cooling_outside.last_action_ms = 30000;
+  CHECK(ep::auto_pilot_decide(cooling_outside).act);
+
+  // Suppression, sized from the measured 0.3-0.7s cost of one switch.
+  ep::AutoInput fresh = base;
+  fresh.active_age_ms = 1000;
+  CHECK(ep::auto_pilot_decide(fresh).hold.rfind("dwell 60000ms not met", 0) == 0);
+
+  ep::AutoInput flapping = base;
+  flapping.desired_stable_ms = 2000;
+  CHECK(ep::auto_pilot_decide(flapping).hold ==
+        "routing target stable 2000ms of 15000ms required");
+
+  ep::AutoInput spent = base;
+  spent.switch_times_ms = {45000, 40000};
+  CHECK(ep::auto_pilot_decide(spent).hold ==
+        "switch budget 2/2 in 600000ms window");
+
+  // Older switches fall out of the rolling window and the budget frees up.
+  ep::AutoInput aged = base;
+  aged.switch_times_ms = {40000, -700000};
+  CHECK(ep::auto_pilot_decide(aged).act);
+
+  // Authority outranks suppression: an operator lease is reported first.
+  ep::AutoInput operator_first = base;
+  operator_first.lease_owner = "cli-operator";
+  operator_first.active_age_ms = 0;
+  operator_first.switch_times_ms = {49000, 48000};
+  CHECK(ep::auto_pilot_decide(operator_first).hold == "lease held by cli-operator");
+}
+
 void test_executor_external_change() {
   const auto dir = make_temp_dir("external");
   {
@@ -434,6 +531,24 @@ void test_policy_validation() {
       ++g_failures;
     }
   };
+
+  {
+    // The online forward ceiling is optional: absent validates, in range validates,
+    // out of range is refused rather than clamped.
+    auto with_ceiling = valid_policy();
+    with_ceiling["spec"]["safety"]["max_foreground_p99_ms"] = 5000;
+    ep::PolicySummary ceiling_summary;
+    std::string ceiling_error;
+    CHECK(ep::validate_scheduling_policy(with_ceiling, &ceiling_summary, &ceiling_error));
+    CHECK(ceiling_summary.safety.value("max_foreground_p99_ms", 0LL) == 5000);
+
+    auto zero = with_ceiling;
+    zero["spec"]["safety"]["max_foreground_p99_ms"] = 0;
+    expect_invalid(zero, "foreground ceiling of zero is not a limit");
+    auto huge = with_ceiling;
+    huge["spec"]["safety"]["max_foreground_p99_ms"] = 70000;
+    expect_invalid(huge, "foreground ceiling beyond the declared range");
+  }
 
   {
     auto policy = valid_policy();
@@ -611,6 +726,62 @@ void test_refresh_revokes_stale_members() {
   std::filesystem::remove_all(dir);
 }
 
+void test_refresh_reclassifies_in_place() {
+  const auto dir = make_temp_dir("refresh-reclass");
+  const auto cgroup = dir / "cg";
+  std::filesystem::create_directories(cgroup);
+  write_text_file(cgroup / "cgroup.controllers", "\n");
+  write_text_file(cgroup / "cgroup.procs", "333\n");
+  ep::PolicyTarget target{"cgroup", cgroup.string(), "FOREGROUND", "explicit"};
+  target.runtime_class = "LAT";
+  std::vector<ep::TargetBinding> bindings;
+  std::string error;
+  CHECK(ep::resolve_targets({target}, &bindings, &error));
+
+  const auto log = dir / "ctrl.log";
+  const auto ctrl = dir / "fake-ctrl.sh";
+  write_text_file(ctrl, "#!/usr/bin/env bash\nprintf '%s\\n' \"$*\" >> \"" + log.string() +
+                            "\"\necho '{\"ok\":true}'\n");
+  CHECK(::chmod(ctrl.c_str(), 0755) == 0);
+
+  ep::SchedPaths paths;
+  paths.state_dir = dir / "state";
+  paths.ctrl = ctrl.string();
+  paths.ctrl_timeout_ms = 1000;
+  ep::SchedSkill skill(paths);
+  ep::Applied applied;
+  applied.bindings = bindings;
+  ep::RefreshContext context{ep::now_epoch_ms() + 1000};
+  CHECK(skill.refresh(applied, applied.bindings, context, &error));
+  const std::string first = read_text_file(log);
+  CHECK(first.find("--class LAT") != std::string::npos);
+  CHECK(first.find("--pid 333") != std::string::npos);
+
+  // Same pid, different declared class: it has to be re-asserted in place. Deleting
+  // first would let the task run as NORMAL for a refresh period.
+  std::vector<ep::TargetBinding> reclassed = bindings;
+  reclassed[0].runtime_class = "CACHE";
+  CHECK(skill.refresh(applied, reclassed, context, &error));
+  std::string delta = read_text_file(log);
+  delta = delta.substr(first.size());
+  CHECK(delta.find("--class CACHE") != std::string::npos);
+  CHECK(delta.find("--pid 333") != std::string::npos);
+  CHECK(delta.find("class-del") == std::string::npos);
+
+  // Declaring NORMAL means "no entry". ctrl_class_set treats NORMAL as a no-op by
+  // design, so the old tier must be deleted explicitly or it stays in the kernel map.
+  std::vector<ep::TargetBinding> plain = reclassed;
+  plain[0].runtime_class = "NORMAL";
+  plain[0].role = "NEUTRAL";
+  CHECK(skill.refresh(applied, plain, context, &error));
+  const std::string total = read_text_file(log);
+  const std::string tail = total.substr(first.size() + delta.size());
+  CHECK(tail.find("class-del") != std::string::npos);
+  CHECK(tail.find("--pid 333") != std::string::npos);
+  CHECK(tail.find("--class") == std::string::npos);
+  std::filesystem::remove_all(dir);
+}
+
 void test_sched_skill_fake_loader() {
   const auto dir = make_temp_dir("schedskill");
   const auto sched_ext = dir / "sched_ext";
@@ -622,6 +793,7 @@ void test_sched_skill_fake_loader() {
   std::filesystem::create_directories(state_dir);
   write_text_file(sched_ext / "state", "disabled\n");
   write_text_file(sched_ext / "root" / "ops", "\n");
+  write_text_file(sched_ext / "enable_seq", "0\n");
 
   const auto loader = dir / "fake-loader.sh";
   write_text_file(loader, R"BASH(#!/usr/bin/env bash
@@ -632,8 +804,9 @@ mkdir -p "$se/root" "$pin"
 : > "$pin/cfg"
 : > "$pin/class_map"
 : > "$pin/stats"
-echo enabled > "$se/state"
 echo eulerpilot > "$se/root/ops"
+echo $(( $(cat "$se/enable_seq") + 1 )) > "$se/enable_seq"
+echo enabled > "$se/state"
 trap 'echo disabled > "$se/state"; : > "$se/root/ops"; exit 0' TERM INT
 while true; do sleep 0.05; done
 )BASH");
@@ -719,6 +892,299 @@ while true; do sleep 0.05; done
   std::filesystem::remove_all(dir);
 }
 
+void test_sched_enable_seq_semantics() {
+  const auto dir = make_temp_dir("sched-verify-seq");
+  const auto sched_ext = dir / "sched_ext";
+  const auto pin_dir = dir / "pin";
+  const auto state_dir = dir / "state";
+  const auto run_dir = dir / "exec";
+  std::filesystem::create_directories(sched_ext / "root");
+  std::filesystem::create_directories(pin_dir);
+  std::filesystem::create_directories(state_dir);
+  write_text_file(sched_ext / "state", "disabled\n");
+  write_text_file(sched_ext / "root" / "ops", "\n");
+  write_text_file(sched_ext / "enable_seq", "0\n");
+  write_text_file(sched_ext / "enable_seq", "100\n");
+
+  const auto loader = dir / "fake-loader-seq.sh";
+  write_text_file(loader, R"BASH(#!/usr/bin/env bash
+set -e
+se="${EP_FAKE_SCHED_EXT:?}"
+pin="${EP_FAKE_PIN:?}"
+mkdir -p "$se/root" "$pin"
+: > "$pin/cfg"
+: > "$pin/class_map"
+: > "$pin/stats"
+echo eulerpilot > "$se/root/ops"
+echo $(( $(cat "$se/enable_seq") + 1 )) > "$se/enable_seq"
+echo enabled > "$se/state"
+trap 'echo disabled > "$se/state"; : > "$se/root/ops"; exit 0' TERM INT
+while true; do sleep 0.05; done
+)BASH");
+  CHECK(::chmod(loader.c_str(), 0755) == 0);
+  CHECK(::setenv("EP_FAKE_SCHED_EXT", sched_ext.c_str(), 1) == 0);
+  CHECK(::setenv("EP_FAKE_PIN", pin_dir.c_str(), 1) == 0);
+
+  ep::SchedPaths paths;
+  paths.state_dir = state_dir;
+  paths.loader = loader.string();
+  paths.sched_ext_dir = sched_ext.string();
+  paths.pin_dir = pin_dir.string();
+
+  const ep::Json intent{{"mode", "class"}};
+  {
+    ep::Executor executor(run_dir, std::make_unique<ep::SchedSkill>(paths),
+                          ep::ExecutorOptions{true});
+    std::string error;
+    CHECK(executor.init(&error));
+    ep::Json lease = executor.handle(ep::Json{{"operation", "lease.acquire"},
+                                              {"request_id", "req-lease-seq"},
+                                              {"lease_owner", "unit-owner-01"}});
+    CHECK(lease["status"] == "OK");
+    const std::uint64_t fence = lease["fence_epoch"].get<std::uint64_t>();
+    const ep::Json envelope = make_envelope("policy.apply", intent, "unit-owner-01", fence, 0,
+                                            "idem-seq-0001");
+    ep::Json response = executor.handle(ep::Json{{"operation", "policy.apply"},
+                                                  {"envelope", envelope},
+                                                  {"intent", intent}});
+    CHECK(response["status"] == "VERIFIED");
+
+    ep::Applied applied;
+    applied.data = ep::Json::parse(read_text_file(state_dir / "sched-runtime.json"));
+    CHECK(applied.data["enable_seq"] == 101);
+
+    ep::SchedSkill verifier(paths);
+    // scx_enable_seq has exactly one increment site in the kernel and it lives
+    // inside scx_enable(), so any value other than the one recorded at attach
+    // means sched_ext was enabled again. For a same-named instance that is the
+    // only signal left, because state and ops keep looking healthy.
+    write_text_file(sched_ext / "enable_seq", "500\n");
+    const auto moved = verifier.verify(applied, 0);
+    CHECK(!moved.ok);
+    CHECK(moved.detail.find("enable_seq moved") != std::string::npos);
+
+    // A smaller counter is equally impossible and must also fail.
+    write_text_file(sched_ext / "enable_seq", "5\n");
+    CHECK(!verifier.verify(applied, 0).ok);
+
+    // An unrelated takeover still fails on ops before reaching the counter.
+    write_text_file(sched_ext / "enable_seq", "101\n");
+    write_text_file(sched_ext / "root" / "ops", "thirdparty\n");
+    const auto taken = verifier.verify(applied, 0);
+    CHECK(!taken.ok);
+    CHECK(taken.detail.find("ops does not contain eulerpilot") != std::string::npos);
+
+    // Counter, ops, state and the live loader all unchanged is a healthy attach.
+    write_text_file(sched_ext / "root" / "ops", "eulerpilot\n");
+    CHECK(verifier.verify(applied, 0).ok);
+  }
+  std::filesystem::remove_all(dir);
+}
+
+void test_sched_enable_seq_publish_window() {
+  const auto dir = make_temp_dir("sched-seq-window");
+  const auto sched_ext = dir / "sched_ext";
+  const auto pin_dir = dir / "pin";
+  const auto state_dir = dir / "state";
+  const auto run_dir = dir / "exec";
+  std::filesystem::create_directories(sched_ext / "root");
+  std::filesystem::create_directories(pin_dir);
+  std::filesystem::create_directories(state_dir);
+  write_text_file(sched_ext / "state", "disabled\n");
+  write_text_file(sched_ext / "root" / "ops", "\n");
+  write_text_file(sched_ext / "enable_seq", "0\n");
+
+  // scx_enable() sets state=enabled well before it increments enable_seq, so the
+  // loader reproduces that order: reading the counter immediately after attach
+  // still returns the pre-enable value.
+  const auto loader = dir / "fake-loader-slow-seq.sh";
+  write_text_file(loader, R"BASH(#!/usr/bin/env bash
+set -e
+se="${EP_FAKE_SCHED_EXT:?}"
+pin="${EP_FAKE_PIN:?}"
+mkdir -p "$se/root" "$pin"
+: > "$pin/cfg"
+: > "$pin/class_map"
+: > "$pin/stats"
+echo eulerpilot > "$se/root/ops"
+echo enabled > "$se/state"
+( sleep 0.4; echo $(( $(cat "$se/enable_seq") + 1 )) > "$se/enable_seq" ) &
+trap 'echo disabled > "$se/state"; : > "$se/root/ops"; exit 0' TERM INT
+while true; do sleep 0.05; done
+)BASH");
+  CHECK(::chmod(loader.c_str(), 0755) == 0);
+  CHECK(::setenv("EP_FAKE_SCHED_EXT", sched_ext.c_str(), 1) == 0);
+  CHECK(::setenv("EP_FAKE_PIN", pin_dir.c_str(), 1) == 0);
+
+  ep::SchedPaths paths;
+  paths.state_dir = state_dir;
+  paths.loader = loader.string();
+  paths.sched_ext_dir = sched_ext.string();
+  paths.pin_dir = pin_dir.string();
+
+  const ep::Json intent{{"mode", "class"}};
+  {
+    ep::Executor executor(run_dir, std::make_unique<ep::SchedSkill>(paths),
+                          ep::ExecutorOptions{true});
+    std::string error;
+    CHECK(executor.init(&error));
+    ep::Json lease = executor.handle(ep::Json{{"operation", "lease.acquire"},
+                                              {"request_id", "req-lease-window"},
+                                              {"lease_owner", "unit-owner-01"}});
+    const std::uint64_t fence = lease["fence_epoch"].get<std::uint64_t>();
+    const ep::Json envelope = make_envelope("policy.apply", intent, "unit-owner-01", fence, 0,
+                                            "idem-window-0001");
+    const ep::Json response = executor.handle(ep::Json{{"operation", "policy.apply"},
+                                                        {"envelope", envelope},
+                                                        {"intent", intent}});
+    CHECK(response["status"] == "VERIFIED");
+    const ep::Json runtime =
+        ep::Json::parse(read_text_file(state_dir / "sched-runtime.json"));
+    CHECK(runtime["enable_seq"] == 1);
+    CHECK(executor.handle(ep::Json{{"operation", "policy.status"},
+                                   {"request_id", "req-status-window"}})
+              .value("degraded", true) == false);
+  }
+  std::filesystem::remove_all(dir);
+}
+
+void test_sched_liveness_takeover() {
+  const auto dir = make_temp_dir("sched-liveness");
+  const auto sched_ext = dir / "sched_ext";
+  const auto pin_dir = dir / "pin";
+  const auto state_dir = dir / "state";
+  const auto run_dir = dir / "exec";
+  std::filesystem::create_directories(sched_ext / "root");
+  std::filesystem::create_directories(pin_dir);
+  std::filesystem::create_directories(state_dir);
+  write_text_file(sched_ext / "state", "disabled\n");
+  write_text_file(sched_ext / "root" / "ops", "\n");
+  write_text_file(sched_ext / "enable_seq", "0\n");
+
+  const auto loader = dir / "fake-loader-alive.sh";
+  write_text_file(loader, R"BASH(#!/usr/bin/env bash
+set -e
+se="${EP_FAKE_SCHED_EXT:?}"
+pin="${EP_FAKE_PIN:?}"
+mkdir -p "$se/root" "$pin"
+: > "$pin/cfg"
+: > "$pin/class_map"
+: > "$pin/stats"
+echo eulerpilot > "$se/root/ops"
+echo $(( $(cat "$se/enable_seq") + 1 )) > "$se/enable_seq"
+echo enabled > "$se/state"
+trap 'echo disabled > "$se/state"; : > "$se/root/ops"; exit 0' TERM INT
+while true; do sleep 0.05; done
+)BASH");
+  CHECK(::chmod(loader.c_str(), 0755) == 0);
+  CHECK(::setenv("EP_FAKE_SCHED_EXT", sched_ext.c_str(), 1) == 0);
+  CHECK(::setenv("EP_FAKE_PIN", pin_dir.c_str(), 1) == 0);
+
+  ep::SchedPaths paths;
+  paths.state_dir = state_dir;
+  paths.loader = loader.string();
+  paths.sched_ext_dir = sched_ext.string();
+  paths.pin_dir = pin_dir.string();
+
+  const ep::Json intent{{"mode", "class"}};
+  {
+    ep::Executor executor(run_dir, std::make_unique<ep::SchedSkill>(paths),
+                          ep::ExecutorOptions{true});
+    std::string error;
+    CHECK(executor.init(&error));
+    ep::Json lease = executor.handle(ep::Json{{"operation", "lease.acquire"},
+                                              {"request_id", "req-lease-live"},
+                                              {"lease_owner", "unit-owner-01"}});
+    const std::uint64_t fence = lease["fence_epoch"].get<std::uint64_t>();
+    const ep::Json envelope = make_envelope("policy.apply", intent, "unit-owner-01", fence, 0,
+                                            "idem-live-0001");
+    ep::Json response = executor.handle(ep::Json{{"operation", "policy.apply"},
+                                                  {"envelope", envelope},
+                                                  {"intent", intent}});
+    CHECK(response["status"] == "VERIFIED");
+
+    const auto status = [&executor]() {
+      return executor.handle(ep::Json{{"operation", "policy.status"},
+                                      {"request_id", "req-status-live"}});
+    };
+    const auto ready = status();
+    CHECK(ready.value("status", "") == "OK");
+    CHECK(ready.value("degraded", true) == false);
+
+    // One poll landing on a transient read must not tear down a healthy effect.
+    write_text_file(sched_ext / "root" / "ops", "thirdparty\n");
+    std::this_thread::sleep_for(std::chrono::milliseconds(600));
+    write_text_file(sched_ext / "root" / "ops", "eulerpilot\n");
+    std::this_thread::sleep_for(std::chrono::milliseconds(1400));
+    CHECK(status().value("degraded", true) == false);
+    CHECK(read_text_file(sched_ext / "state") == "enabled");
+
+    // A same-named instance taking over leaves state and ops looking healthy, so
+    // the enable counter is the only thing that reveals it; the bounded fallback
+    // must still fire.
+    write_text_file(sched_ext / "enable_seq", "99\n");
+    std::this_thread::sleep_for(std::chrono::milliseconds(4500));
+    const auto after = status();
+    CHECK(after.value("degraded", false) == true);
+    const std::string fallback = after.value("last_fallback", std::string());
+    CHECK(fallback.find("scheduler lost") != std::string::npos);
+    CHECK(fallback.find("enable_seq moved") != std::string::npos);
+    CHECK(read_text_file(sched_ext / "state") == "disabled");
+    CHECK(!std::filesystem::exists(state_dir / "sched-runtime.json"));
+  }
+  std::filesystem::remove_all(dir);
+}
+
+void test_startup_degraded_reason_surfaced() {
+  const auto dir = make_temp_dir("startup-degraded");
+  const auto sched_ext = dir / "sched_ext";
+  const auto pin_root = dir / "pin-root";
+  const auto state_dir = dir / "state";
+  const auto run_dir = dir / "exec";
+  std::filesystem::create_directories(sched_ext / "root");
+  std::filesystem::create_directories(pin_root);
+  std::filesystem::create_directories(state_dir);
+  // Another v2 instance already owns the scheduler: eulerpilot is registered, but
+  // this instance has no runtime marker of its own. Startup must refuse and, after
+  // the 2026-10-22 SP3 takeover run, must be able to say why.
+  write_text_file(sched_ext / "state", "enabled\n");
+  write_text_file(sched_ext / "root" / "ops", "eulerpilot\n");
+  write_text_file(sched_ext / "enable_seq", "7\n");
+
+  ep::SchedPaths paths;
+  paths.state_dir = state_dir;
+  paths.sched_ext_dir = sched_ext.string();
+  paths.pin_root = pin_root.string();
+  paths.loader = "/bin/false";  // never reached: apply is refused before spawn
+
+  ep::Executor executor(run_dir, std::make_unique<ep::SchedSkill>(paths),
+                        ep::ExecutorOptions{true});
+  std::string error;
+  CHECK(executor.init(&error));
+  const auto status = executor.handle(ep::Json{{"operation", "policy.status"},
+                                               {"request_id", "req-startup-degraded"}});
+  CHECK(status.value("degraded", false) == true);
+  const std::string reason = status.value("startup_degraded_reason", std::string());
+  CHECK(reason.find("eulerpilot is attached but no runtime marker exists") != std::string::npos);
+
+  ep::Json lease = executor.handle(ep::Json{{"operation", "lease.acquire"},
+                                            {"request_id", "req-lease-degraded"},
+                                            {"lease_owner", "unit-owner-01"}});
+  const std::uint64_t fence = lease["fence_epoch"].get<std::uint64_t>();
+  const ep::Json intent{{"mode", "class"}};
+  const ep::Json envelope = make_envelope("policy.apply", intent, "unit-owner-01", fence, 0,
+                                          "idem-degraded-0001");
+  const ep::Json response = executor.handle(ep::Json{{"operation", "policy.apply"},
+                                                      {"envelope", envelope},
+                                                      {"intent", intent}});
+  CHECK(response["status"] == "RECOVERY_REQUIRED");
+  const std::string detail = response.contains("error") && response["error"].contains("detail")
+                                 ? response["error"].at("detail").get<std::string>()
+                                 : std::string();
+  CHECK(detail.find("no runtime marker") != std::string::npos);
+  std::filesystem::remove_all(dir);
+}
+
 void test_sched_helper_timeout() {
   const auto dir = make_temp_dir("sched-helper-timeout");
   const auto sched_ext = dir / "sched_ext";
@@ -730,6 +1196,7 @@ void test_sched_helper_timeout() {
   std::filesystem::create_directories(state_dir);
   write_text_file(sched_ext / "state", "disabled\n");
   write_text_file(sched_ext / "root" / "ops", "\n");
+  write_text_file(sched_ext / "enable_seq", "0\n");
 
   const auto loader = dir / "fake-loader.sh";
   write_text_file(loader, R"BASH(#!/usr/bin/env bash
@@ -740,8 +1207,9 @@ mkdir -p "$se/root" "$pin"
 : > "$pin/cfg"
 : > "$pin/class_map"
 : > "$pin/stats"
-echo enabled > "$se/state"
 echo eulerpilot > "$se/root/ops"
+echo $(( $(cat "$se/enable_seq") + 1 )) > "$se/enable_seq"
+echo enabled > "$se/state"
 trap 'echo disabled > "$se/state"; : > "$se/root/ops"; exit 0' TERM INT
 while true; do sleep 0.05; done
 )BASH");
@@ -803,7 +1271,9 @@ void test_sched_refresh_budget() {
   paths.ctrl_timeout_ms = 2000;
   ep::SchedSkill skill(paths);
   ep::Applied applied;
-  applied.data = ep::Json{{"bg_pids", ep::Json::array({1, 2, 3})}};
+  applied.data = ep::Json{{"classified", ep::Json::array(
+      {ep::Json{{"pid", 1}, {"class", "BG"}}, ep::Json{{"pid", 2}, {"class", "LAT"}},
+       ep::Json{{"pid", 3}, {"class", "CACHE"}}})}};
   const auto start = std::chrono::steady_clock::now();
   ep::RefreshContext context{ep::now_epoch_ms() + 200};
   std::string error;
@@ -829,7 +1299,8 @@ void test_sched_eof_budget() {
   paths.ctrl_timeout_ms = 2000;
   ep::SchedSkill skill(paths);
   ep::Applied applied;
-  applied.data = ep::Json{{"bg_pids", ep::Json::array({1})}};
+  applied.data = ep::Json{{"classified", ep::Json::array(
+      {ep::Json{{"pid", 1}, {"class", "BG"}}})}};
   const auto start = std::chrono::steady_clock::now();
   ep::RefreshContext context{ep::now_epoch_ms() + 200};
   std::string error;
@@ -855,6 +1326,7 @@ void test_sched_abort_foreign_pin() {
   std::filesystem::create_directories(state_dir);
   write_text_file(sched_ext / "state", "disabled\n");
   write_text_file(sched_ext / "root" / "ops", "\n");
+  write_text_file(sched_ext / "enable_seq", "0\n");
 
   const auto loader = dir / "fake-loader.sh";
   write_text_file(loader, R"BASH(#!/usr/bin/env bash
@@ -866,8 +1338,9 @@ mkdir -p "$se/root" "$pin"
 : > "$pin/class_map"
 : > "$pin/stats"
 ( sleep 0.6; : > "$pin/foreign" ) &
-echo enabled > "$se/state"
 echo eulerpilot > "$se/root/ops"
+echo $(( $(cat "$se/enable_seq") + 1 )) > "$se/enable_seq"
+echo enabled > "$se/state"
 trap 'echo disabled > "$se/state"; : > "$se/root/ops"; exit 0' TERM INT
 while true; do sleep 0.05; done
 )BASH");
@@ -1120,42 +1593,478 @@ void test_rule_router() {
   CHECK(pending["switched"] == true);
 }
 
+ep::SloInput slo_input(const ep::Json& features, const std::string& expert) {
+  ep::SloInput in;
+  in.features = features;
+  in.expert = expert;
+  in.now_ms = 20000;
+  in.max_observation_age_ms = 1000;
+  return in;
+}
+
+ep::ServiceObservation service_observation(const std::string& expert, std::int64_t observed_at_ms,
+                                           double p99_ms, double bg_units, double bg_wait_ms) {
+  ep::ServiceObservation obs;
+  obs.workload = "svc-unit";
+  obs.observed_at_ms = observed_at_ms;
+  obs.window_ms = 5000;
+  obs.expert = expert;
+  obs.has_foreground_p99 = true;
+  obs.foreground_p99_ms = p99_ms;
+  obs.has_bg_work_units = true;
+  obs.bg_work_units_per_sec = bg_units;
+  obs.has_bg_max_wait = true;
+  obs.bg_max_wait_ms = bg_wait_ms;
+  return obs;
+}
+
 void test_slo_gate() {
   ep::SloGate gate;
   ep::Json decision = gate.evaluate(
-      feature_snapshot(false, false, 0.0, false, 0.0, false, 0.0), "latency-balanced",
-      1000);
+      slo_input(feature_snapshot(false, false, 0.0, false, 0.0, false, 0.0), "latency-balanced"));
   CHECK(decision["allowed"] == false);
   CHECK(decision["code"] == "FEATURES_INSUFFICIENT");
 
-  decision = gate.evaluate(feature_snapshot(true, true, 50.0, true, 1.0, true, 30.0),
-                           "throughput-balanced", 1000);
+  decision = gate.evaluate(slo_input(feature_snapshot(true, true, 50.0, true, 1.0, true, 30.0),
+                                     "throughput-balanced"));
   CHECK(decision["allowed"] == false);
   CHECK(decision["code"] == "PSI_PRESSURE_TOO_HIGH");
 
-  decision = gate.evaluate(feature_snapshot(true, true, 50.0, true, 1.0, true, 30.0),
-                           "latency-balanced", 1000);
+  decision = gate.evaluate(slo_input(feature_snapshot(true, true, 50.0, true, 1.0, true, 30.0),
+                                     "latency-balanced"));
   CHECK(decision["allowed"] == true);
 
-  decision = gate.evaluate(feature_snapshot(true, true, 50.0, true, 1.0, false, 0.0),
-                           "latency-balanced", 1000);
+  decision = gate.evaluate(slo_input(feature_snapshot(true, true, 50.0, true, 1.0, false, 0.0),
+                                     "latency-balanced"));
   CHECK(decision["allowed"] == false);
   CHECK(decision["code"] == "PSI_FEATURE_MISSING");
 
-  decision = gate.evaluate(feature_snapshot(true, true, 50.0, true, 1.0, false, 0.0),
-                           "safe-basic", 1000);
+  decision = gate.evaluate(slo_input(feature_snapshot(true, true, 50.0, true, 1.0, false, 0.0),
+                                     "safe-basic"));
   CHECK(decision["allowed"] == true);
 
-  decision = gate.evaluate(feature_snapshot(true, true, 50.0, true, 1.0, true, 1.0),
-                           "cache-local", 1000);
+  decision = gate.evaluate(slo_input(feature_snapshot(true, true, 50.0, true, 1.0, true, 1.0),
+                                     "cache-local"));
   CHECK(decision["allowed"] == false);
   CHECK(decision["code"] == "LLC_FEATURE_MISSING");
 
   ep::Json stale = feature_snapshot(true, true, 50.0, true, 1.0, true, 30.0);
   stale["age_ms"] = 5000;
-  decision = gate.evaluate(stale, "latency-balanced", 1000);
+  decision = gate.evaluate(slo_input(stale, "latency-balanced"));
   CHECK(decision["allowed"] == false);
   CHECK(decision["code"] == "FEATURES_STALE");
+}
+
+void test_service_slo() {
+  ep::SloGate gate;
+  const ep::Json good_features = feature_snapshot(true, true, 50.0, true, 1.0, true, 30.0);
+  const ep::Json safety{{"min_bg_work_units_per_sec", 1.0},
+                        {"max_bg_wait_ms", 1000.0},
+                        {"evaluation_min_bg_progress_ratio", 0.5},
+                        {"quiet_max_regression_pct", 5.0}};
+
+  // Without telemetry the gate must say "not evaluated", never "passed".
+  ep::Json decision = gate.evaluate(slo_input(good_features, "latency-balanced"));
+  CHECK(decision["allowed"] == true);
+  CHECK(decision["service_evidence"] == "absent");
+
+  ep::SloInput measured = slo_input(good_features, "latency-balanced");
+  measured.has_observation = true;
+  measured.safety = safety;
+  measured.observation = service_observation("latency-balanced", 18000, 1.6, 900.0, 40.0);
+  decision = gate.evaluate(measured);
+  CHECK(decision["allowed"] == true);
+  CHECK(decision["service_evidence"] == "present");
+
+  // A measured floor breach outranks the host-feature verdict: it is the more
+  // specific evidence about the workload the operator cares about.
+  ep::SloInput starving = slo_input(
+      feature_snapshot(false, false, 0.0, false, 0.0, false, 0.0), "latency-balanced");
+  starving.has_observation = true;
+  starving.safety = safety;
+  starving.observation = service_observation("latency-balanced", 18000, 1.6, 0.5, 40.0);
+  decision = gate.evaluate(starving);
+  CHECK(decision["allowed"] == false);
+  CHECK(decision["code"] == "BG_PROGRESS_FLOOR");
+
+  ep::SloInput waiting = measured;
+  waiting.observation = service_observation("latency-balanced", 18000, 1.6, 900.0, 1500.0);
+  decision = gate.evaluate(waiting);
+  CHECK(decision["allowed"] == false);
+  CHECK(decision["code"] == "BG_WAIT_EXCEEDED");
+
+  ep::SloInput outdated = measured;
+  outdated.observation = service_observation("latency-balanced", 1000, 1.6, 900.0, 40.0);
+  decision = gate.evaluate(outdated);
+  CHECK(decision["allowed"] == false);
+  CHECK(decision["code"] == "SERVICE_OBSERVATION_STALE");
+
+  ep::SloInput condemned = measured;
+  condemned.adverse["latency-balanced"] = "BG_PROGRESS_FLOOR: measured 0.500000 below floor";
+  decision = gate.evaluate(condemned);
+  CHECK(decision["allowed"] == false);
+  CHECK(decision["code"] == "SERVICE_EVIDENCE_DENIED");
+  // Evidence is per expert: another档 is still negotiable.
+  condemned.expert = "safe-basic";
+  CHECK(gate.evaluate(condemned)["allowed"] == true);
+
+  // Nothing declared means nothing invented.
+  ep::SloInput undeclared = measured;
+  undeclared.safety = ep::Json::object();
+  undeclared.observation = service_observation("latency-balanced", 18000, 1.6, 0.0, 9000.0);
+  CHECK(gate.evaluate(undeclared)["allowed"] == true);
+
+  // Observation contract.
+  ep::ServiceObservation parsed;
+  std::string error;
+  CHECK(ep::parse_service_observation(
+      ep::Json{{"workload", "svc"},
+               {"observed_at_ms", 1000},
+               {"window_ms", 2000},
+               {"expert", "safe-basic"},
+               {"foreground", ep::Json{{"p99_latency_ms", 2.5}}}},
+      &parsed, &error));
+  CHECK(parsed.has_foreground_p99);
+  CHECK(!parsed.has_bg_work_units);
+  CHECK(parsed.expert == "safe-basic");
+
+  CHECK(!ep::parse_service_observation(
+      ep::Json{{"workload", "svc"},
+               {"observed_at_ms", 1000},
+               {"window_ms", 2000},
+               {"expert", "safe-basic"},
+               {"foreground", ep::Json{{"p50_latency_ms", 2.5}}}},
+      &parsed, &error));
+  CHECK(!error.empty());
+  error.clear();
+  CHECK(!ep::parse_service_observation(
+      ep::Json{{"workload", "svc"},
+               {"observed_at_ms", 1000},
+               {"window_ms", 50},
+               {"expert", "safe-basic"},
+               {"background", ep::Json{{"work_units_per_sec", 3.0}}}},
+      &parsed, &error));
+  error.clear();
+  CHECK(!ep::parse_service_observation(
+      ep::Json{{"workload", "svc"},
+               {"observed_at_ms", 1000},
+               {"window_ms", 2000},
+               {"expert", "made-up"},
+               {"background", ep::Json{{"work_units_per_sec", 3.0}}}},
+      &parsed, &error));
+  error.clear();
+  CHECK(!ep::parse_service_observation(
+      ep::Json{{"workload", "svc"},
+               {"observed_at_ms", 1000},
+               {"window_ms", 2000},
+               {"expert", "safe-basic"}},
+      &parsed, &error));
+
+  // Switch outcome: the measurement after a change decides whether it hurt.
+  const ep::ServiceObservation before =
+      service_observation("latency-balanced", 1000, 1.6, 1000.0, 40.0);
+  const ep::ServiceNoise silent;  // no history yet -> every declared check runs
+  CHECK(ep::evaluate_switch_outcome(safety, before,
+                                    service_observation("safe-basic", 6000, 1.6, 400.0, 40.0),
+                                    silent)
+            .code == "BG_PROGRESS_REGRESSED");
+  CHECK(ep::evaluate_switch_outcome(safety, before,
+                                    service_observation("safe-basic", 6000, 1.6, 600.0, 40.0),
+                                    silent)
+            .code == "");
+  CHECK(ep::evaluate_switch_outcome(safety, before,
+                                    service_observation("safe-basic", 6000, 1.6, 60.0, 40.0),
+                                    silent)
+            .code == "BG_PROGRESS_REGRESSED");
+  CHECK(ep::evaluate_switch_outcome(safety, before,
+                                    service_observation("safe-basic", 6000, 1.6, 1000.0, 2000.0),
+                                    silent)
+            .code == "BG_WAIT_EXCEEDED");
+  CHECK(ep::evaluate_switch_outcome(safety, before,
+                                    service_observation("safe-basic", 6000, 1.8, 1000.0, 40.0),
+                                    silent)
+            .code == "FOREGROUND_REGRESSED");
+  CHECK(ep::evaluate_switch_outcome(ep::Json::object(), before,
+                                    service_observation("safe-basic", 6000, 99.0, 0.0, 9000.0),
+                                    silent)
+            .code == "");
+
+  // Resolution floor: the SP3 characterisation measured p99 moving 3.8-20% between
+  // windows of the same state, so a 5% budget cannot be judged. The verdict must
+  // say "not run", never pretend the check passed.
+  ep::ServiceNoise loud;
+  loud.p99_pct = 15.0;
+  loud.bg_progress_pct = 1.0;
+  const auto unresolvable = ep::evaluate_switch_outcome(
+      safety, before, service_observation("safe-basic", 6000, 1.9, 1000.0, 40.0), loud);
+  CHECK(unresolvable.code.empty());
+  CHECK(unresolvable.skipped_foreground);
+  CHECK(unresolvable.detail.find("not run") != std::string::npos);
+  // Absolute limits are single-window comparisons, so noise does not excuse them.
+  CHECK(ep::evaluate_switch_outcome(safety, before,
+                                    service_observation("safe-basic", 6000, 9.9, 0.01, 40.0), loud)
+            .code == "BG_PROGRESS_FLOOR");
+  CHECK(ep::evaluate_switch_outcome(safety, before,
+                                    service_observation("safe-basic", 6000, 1.6, 1000.0, 2000.0),
+                                    loud)
+            .code == "BG_WAIT_EXCEEDED");
+  // A progress contract finer than the progress measurement is skipped the same way.
+  ep::Json tight_ratio = safety;
+  tight_ratio["evaluation_min_bg_progress_ratio"] = 0.995;  // asks to resolve 0.5%
+  const auto ratio_unrunnable = ep::evaluate_switch_outcome(
+      tight_ratio, before, service_observation("safe-basic", 6000, 1.6, 999.0, 40.0), loud);
+  CHECK(ratio_unrunnable.skipped_ratio);
+  CHECK(ratio_unrunnable.code.empty());
+  // Absolute forward ceiling: single-window fact, so noise excuses nothing.
+  ep::Json with_ceiling = safety;
+  with_ceiling["max_foreground_p99_ms"] = 5.0;
+  ep::SloInput over = measured;
+  over.safety = with_ceiling;
+  over.observation = service_observation("latency-balanced", 18000, 20.0, 900.0, 40.0);
+  CHECK(gate.evaluate(over).value("code", "") == "FOREGROUND_P99_EXCEEDED");
+  CHECK(gate.evaluate(over)["allowed"] == false);
+  over.observation = service_observation("latency-balanced", 18000, 4.9, 900.0, 40.0);
+  CHECK(gate.evaluate(over)["allowed"] == true);
+  // Undeclared means unenforced: the same 20ms measurement passes with no ceiling.
+  CHECK(gate.evaluate(measured)["allowed"] == true);
+  // With no foreground number at all the check reports "not evaluated".
+  ep::SloInput no_fg = measured;
+  no_fg.safety = with_ceiling;
+  no_fg.observation = service_observation("latency-balanced", 18000, 0.0, 900.0, 40.0);
+  no_fg.observation.has_foreground_p99 = false;
+  CHECK(gate.evaluate(no_fg)["allowed"] == true);
+  CHECK(gate.evaluate(no_fg)["service_evidence"] == "present");
+
+  // If progress itself were that coarse (80% window-to-window), even a 50%
+  // sensitivity cannot be honoured: the check is reported as unrunnable, and the
+  // absolute floor is what still protects the background role.
+  ep::ServiceNoise jittery_progress = loud;
+  jittery_progress.bg_progress_pct = 80.0;
+  CHECK(ep::evaluate_switch_outcome(safety, before,
+                                    service_observation("safe-basic", 6000, 1.6, 400.0, 40.0),
+                                    jittery_progress)
+            .skipped_ratio);
+  CHECK(!ep::evaluate_switch_outcome(safety, before,
+                                     service_observation("safe-basic", 6000, 1.6, 999.0, 40.0),
+                                     silent)
+             .skipped_ratio);
+}
+
+void test_service_observe_rpc() {
+  const auto dir = make_temp_dir("observe");
+  {
+    ep::Executor executor(dir, std::make_unique<ep::MockSkill>(dir / "mock"),
+                          ep::ExecutorOptions{true});
+    std::string error;
+    CHECK(executor.init(&error));
+
+    const auto valid = ep::Json{{"workload", "svc-rpc"},
+                                 {"observed_at_ms", ep::now_epoch_ms()},
+                                 {"window_ms", 2000},
+                                 {"expert", "safe-basic"},
+                                 {"foreground", ep::Json{{"p99_latency_ms", 2.0}}},
+                                 {"background", ep::Json{{"work_units_per_sec", 800.0},
+                                                         {"max_wait_ms", 60.0}}}};
+
+    ep::Json invented = valid;
+    invented["requests_per_second"] = 12;
+    ep::Json response = executor.handle(ep::Json{{"operation", "service.observe"},
+                                                 {"request_id", "req-obs-bad-000001"},
+                                                 {"observation", invented}});
+    CHECK(response["status"] == "REJECTED");
+    CHECK(response["error"]["code"] == "SCHEMA_INVALID");
+
+    // A probe with a wrong clock must not become the system's idea of the present.
+    ep::Json future = valid;
+    future["observed_at_ms"] = ep::now_epoch_ms() + 600000;
+    response = executor.handle(ep::Json{{"operation", "service.observe"},
+                                        {"request_id", "req-obs-bad-000002"},
+                                        {"observation", future}});
+    CHECK(response["status"] == "REJECTED");
+
+    response = executor.handle(ep::Json{{"operation", "service.observe"},
+                                        {"request_id", "req-obs-ok-0000001"},
+                                        {"observation", valid}});
+    CHECK(response["status"] == "OK");
+    CHECK(response["accepted"]["workload"] == "svc-rpc");
+    // Ingest is advisory: it must not move the generation or write anything.
+    const std::uint64_t generation = executor.generation();
+
+    response = executor.handle(ep::Json{{"operation", "policy.status"},
+                                        {"request_id", "req-obs-status-0001"}});
+    CHECK(response["status"] == "OK");
+    CHECK(response["service"]["observed"] == true);
+    CHECK(response["service"]["workload"] == "svc-rpc");
+    CHECK(response["service"]["bg_work_units_per_sec"] == 800.0);
+    CHECK(response["service"]["adverse_experts"].is_object());
+    CHECK(response["service"]["outcome_pending"] == false);
+    // Lost-observation accounting is the consumer's job: what it accepted and
+    // what it turned away must be countable from the control plane, not only from
+    // the producer's own log.
+    CHECK(response["service"]["observations_accepted"] == 1);
+    CHECK(response["service"]["observations_rejected"] == 2);
+    CHECK(!response["service"].value("last_rejection", std::string()).empty());
+    CHECK(executor.generation() == generation);
+
+    // A window that describes a minute long gone is refused, not silently kept as
+    // "the present" -- and the refusal must not displace the fresher measurement.
+    ep::Json dead = valid;
+    dead["observed_at_ms"] = ep::now_epoch_ms() - 100000;
+    response = executor.handle(ep::Json{{"operation", "service.observe"},
+                                        {"request_id", "req-obs-dead-000001"},
+                                        {"observation", dead}});
+    CHECK(response["status"] == "REJECTED");
+    CHECK(response["error"]["code"] == "SCHEMA_INVALID");
+
+    // Gaps are only useful if the control plane still reports one after it ends:
+    // age_ms exists while someone asks, the high-water and the count outlive it.
+    ep::Json brief = valid;
+    brief["window_ms"] = 100;
+    brief["observed_at_ms"] = ep::now_epoch_ms() - 500;
+    response = executor.handle(ep::Json{{"operation", "service.observe"},
+                                        {"request_id", "req-obs-brief-000001"},
+                                        {"observation", brief}});
+    CHECK(response["status"] == "OK");
+    response = executor.handle(ep::Json{{"operation", "slo.evaluate"},
+                                        {"request_id", "req-obs-slo-000002"},
+                                        {"expert", "safe-basic"}});
+    CHECK(response["status"] == "OK");
+    response = executor.handle(ep::Json{{"operation", "policy.status"},
+                                        {"request_id", "req-obs-status-0002"}});
+    CHECK(response["service"]["observations_accepted"] == 2);
+    CHECK(response["service"]["observations_rejected"] == 3);
+    CHECK(response["service"]["window_ms"] == 100);
+    CHECK(response["service"]["observation_max_age_ms"].get<std::int64_t>() >= 500);
+    CHECK(response["service"]["stale_checks"].get<std::uint64_t>() >= 1);
+    CHECK(executor.generation() == generation);
+
+    // An unknown measurement is reported as "not evaluated", never as a pass.
+    response = executor.handle(ep::Json{{"operation", "slo.evaluate"},
+                                        {"request_id", "req-obs-slo-000001"},
+                                        {"expert", "safe-basic"}});
+    CHECK(response["service_evidence"] == "present");
+  }
+}
+
+// The presence check's first branch is the one the integration suite cannot reach:
+// `active_` only exists inside the process that received the link FD, so no legal
+// sequence leaves a real executor holding an applied policy with link_fd_ < 0.
+// Directly constructed, that branch needs no product-side seam -- a fresh SchedSkill
+// is exactly the state the branch describes -- and the two modes are distinguishable
+// only because name() reports which one is configured.
+void test_sched_skill_presence_branches() {
+  const auto dir = make_temp_dir("presence");
+  ep::SchedPaths paths;
+  paths.state_dir = dir;
+  paths.sched_ext_dir = dir / "no-such-sched_ext";
+  paths.pin_root = dir / "no-such-pins";
+  paths.fd_passing = true;
+
+  ep::Applied applied;
+  applied.data = ep::Json{{"pid", 4242},
+                          {"starttime", 1ULL},
+                          {"mode", "class"},
+                          {"enable_seq", 7ULL},
+                          {"pins", ep::Json::array()}};
+
+  {
+    ep::SchedSkill skill(paths);
+    CHECK(skill.name() == "sched");
+    std::string detail;
+    CHECK(!skill.liveness(applied, &detail));
+    CHECK(detail == "executor does not hold the struct_ops link fd");
+    // verify() shares the same primitive, so it must report the same reason rather
+    // than a kernel-state mismatch it never got to look at.
+    const ep::VerifyResult verify = skill.verify(applied, 0);
+    CHECK(!verify.ok);
+    CHECK(verify.detail == "executor does not hold the struct_ops link fd");
+    // The mirror guard in verify_rolled_back only fails while the FD is still held,
+    // so with none held it moves on to the kernel state it actually checks.
+    const ep::VerifyResult rolled = skill.verify_rolled_back(ep::Snapshot{}, 0);
+    CHECK(!rolled.ok);
+    CHECK(rolled.detail.find("sched_ext state") != std::string::npos);
+  }
+
+  paths.fd_passing = false;
+  {
+    ep::SchedSkill skill(paths);
+    CHECK(skill.name() == "sched-ref");
+    std::string detail;
+    CHECK(!skill.liveness(applied, &detail));
+    CHECK(detail == "loader process is gone or was replaced");
+  }
+
+  // An applied record that is not sched runtime data at all is refused before any
+  // presence reasoning, and says so.
+  {
+    ep::SchedSkill skill(paths);
+    ep::Applied garbage;
+    garbage.data = ep::Json{{"unexpected", "shape"}};
+    std::string detail;
+    CHECK(!skill.liveness(garbage, &detail));
+    CHECK(detail == "applied data cannot be parsed as sched runtime");
+  }
+}
+
+void test_policy_class_declaration() {
+  auto with_class = [](const char* role, const char* klass) {
+    ep::Json target{{"kind", "pid"},
+                    {"pid", 4242},
+                    {"role", role},
+                    {"role_source", "explicit"}};
+    if (klass != nullptr) target["class"] = klass;
+    return ep::Json{{"apiVersion", "eulerpilot.io/v1alpha1"},
+                    {"kind", "SchedulingPolicy"},
+                    {"metadata", ep::Json{{"name", "class-policy"}}},
+                    {"spec", ep::Json{{"scope", "scheduler-instance"},
+                                      {"mode", "class"},
+                                      {"expert", "safe-basic"},
+                                      {"source", "human"},
+                                      {"targets", ep::Json::array({target})},
+                                      {"parameters", valid_policy()["spec"]["parameters"]},
+                                      {"safety", valid_policy()["spec"]["safety"]}}}};
+  };
+
+  // A declared class survives validation and reaches the binding layer.
+  ep::PolicySummary summary;
+  std::string error;
+  CHECK(ep::validate_scheduling_policy(with_class("FOREGROUND", "LAT"), &summary, &error));
+  CHECK(summary.targets.size() == 1);
+  CHECK(summary.targets[0].runtime_class == "LAT");
+  CHECK(ep::effective_runtime_class("FOREGROUND", "LAT") == "LAT");
+  CHECK(ep::effective_runtime_class("NEUTRAL", "") == "");
+
+  // The role default is exactly the previous behavior: only BACKGROUND was classified.
+  CHECK(ep::effective_runtime_class("BACKGROUND", "") == "BG");
+  CHECK(ep::effective_runtime_class("FOREGROUND", "") == "");
+  CHECK(ep::effective_runtime_class("FOREGROUND", "NORMAL") == "NORMAL");
+
+  auto rejected = [](const ep::Json& policy, const char* label) {
+    ep::PolicySummary local;
+    std::string message;
+    if (ep::validate_scheduling_policy(policy, &local, &message)) {
+      std::cerr << "expected rejection: " << label << "\n";
+      ++g_failures;
+    } else if (message.empty()) {
+      std::cerr << "rejection without a message: " << label << "\n";
+      ++g_failures;
+    } else {
+      std::cerr << "rejected as expected (" << label << "): " << message << "\n";
+    }
+  };
+
+  // BG is the contained tier (short slice, vtime penalty). It must never be
+  // reachable without the business role that says so, and a BACKGROUND target may
+  // not claim a non-contained tier while keeping BG's role: the two would disagree
+  // about what to protect.
+  rejected(with_class("FOREGROUND", "BG"), "class BG without BACKGROUND role");
+  rejected(with_class("NEUTRAL", "BG"), "class BG on a NEUTRAL target");
+  rejected(with_class("BACKGROUND", "LAT"), "BACKGROUND claiming a non-BG class");
+  rejected(with_class("FOREGROUND", "SUPER"), "unknown class name");
+
+  // Absent class keeps working, including for BACKGROUND.
+  CHECK(ep::validate_scheduling_policy(with_class("BACKGROUND", nullptr), &summary, &error));
+  CHECK(summary.targets[0].runtime_class.empty());
 }
 
 void test_deadline_exceeded_after_apply() {
@@ -1189,6 +2098,297 @@ void test_deadline_exceeded_after_apply() {
 
 }  // namespace
 
+// Protocol §8: a revocation is only proven when the map says the entry is gone, and a
+// teardown must still detach when it is not. The fake helper keeps a real per-pid store
+// so class-del that silently no-ops is detectable the way bpftool would detect it.
+void test_rollback_proves_class_removal() {
+  const auto dir = make_temp_dir("rollback-class-readback");
+  const auto sched_ext = dir / "sched_ext";
+  const auto pin_dir = dir / "pin";
+  const auto state_dir = dir / "state";
+  const auto class_map = dir / "class-map";
+  std::filesystem::create_directories(sched_ext / "root");
+  std::filesystem::create_directories(state_dir);
+  std::filesystem::create_directories(class_map);
+  write_text_file(sched_ext / "state", "disabled\n");
+  write_text_file(sched_ext / "root" / "ops", "\n");
+  write_text_file(sched_ext / "enable_seq", "0\n");
+
+  const auto loader = dir / "fake-loader.sh";
+  write_text_file(loader, R"BASH(#!/usr/bin/env bash
+set -e
+se="${EP_FAKE_SCHED_EXT:?}"
+pin="${EP_FAKE_PIN:?}"
+mkdir -p "$se/root" "$pin"
+: > "$pin/cfg"
+: > "$pin/class_map"
+: > "$pin/stats"
+echo eulerpilot > "$se/root/ops"
+echo $(( $(cat "$se/enable_seq") + 1 )) > "$se/enable_seq"
+echo enabled > "$se/state"
+trap 'echo disabled > "$se/state"; : > "$se/root/ops"; exit 0' TERM INT
+while true; do sleep 0.05; done
+)BASH");
+  CHECK(::chmod(loader.c_str(), 0755) == 0);
+  CHECK(::setenv("EP_FAKE_SCHED_EXT", sched_ext.c_str(), 1) == 0);
+  CHECK(::setenv("EP_FAKE_PIN", pin_dir.c_str(), 1) == 0);
+
+  const auto ctrl = dir / "fake-class-ctrl.sh";
+  write_text_file(ctrl, R"BASH(#!/usr/bin/env bash
+map="${EP_FAKE_CLASS_MAP:?}"
+log="${EP_FAKE_CLASS_LOG:?}"
+mkdir -p "$map"
+cmd="$1"
+shift
+pid=""
+klass=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --pid) pid="$2"; shift 2 ;;
+    --class) klass="$2"; shift 2 ;;
+    *) shift ;;
+  esac
+done
+printf '%s %s\n' "$cmd" "$pid" >> "$log"
+case "$cmd" in
+  class-set)
+    printf '%s' "$klass" > "$map/$pid"
+    echo "{\"ok\":true,\"pid\":$pid,\"class\":\"$klass\"}" ;;
+  class-del)
+    if [ "${EP_FAKE_DEL_NOOPS:-0}" = "1" ]; then
+      echo "{\"ok\":true,\"pid\":$pid,\"deleted\":true}"
+    else
+      rm -f "$map/$pid"
+      echo "{\"ok\":true,\"pid\":$pid,\"deleted\":true}"
+    fi ;;
+  class-get)
+    if [ -s "$map/$pid" ]; then
+      echo "{\"ok\":true,\"pid\":$pid,\"present\":true,\"class\":\"$(cat "$map/$pid")\"}"
+    else
+      echo "{\"ok\":true,\"pid\":$pid,\"present\":false}"
+    fi ;;
+  *) echo '{"ok":true}' ;;
+esac
+)BASH");
+  CHECK(::chmod(ctrl.c_str(), 0755) == 0);
+  CHECK(::setenv("EP_FAKE_CLASS_MAP", class_map.c_str(), 1) == 0);
+
+  const ep::Json intent{{"mode", "class"},
+                        {"targets", ep::Json::array({ep::Json{
+                                             {"kind", "pid"},
+                                             {"pid", 4242},
+                                             {"role", "BACKGROUND"}}})}};
+
+  const std::string entry = (class_map / "4242").string();
+  const std::string log = (dir / "ctrl.log").string();
+
+  // A confirmed deletion: the map itself has to report the entry as gone.
+  {
+    write_text_file(dir / "ctrl.log", "");
+    CHECK(::setenv("EP_FAKE_DEL_NOOPS", "0", 1) == 0);
+    CHECK(::setenv("EP_FAKE_CLASS_LOG", log.c_str(), 1) == 0);
+    ep::SchedPaths paths;
+    paths.state_dir = state_dir / "ok";
+    paths.loader = loader.string();
+    paths.sched_ext_dir = sched_ext.string();
+    paths.pin_dir = pin_dir.string();
+    paths.ctrl = ctrl.string();
+    ep::Executor executor(dir / "run-ok", std::make_unique<ep::SchedSkill>(paths),
+                          ep::ExecutorOptions{true});
+    std::string error;
+    CHECK(executor.init(&error));
+    const ep::Json lease = executor.handle(ep::Json{{"operation", "lease.acquire"},
+                                                    {"request_id", "req-lease-c1"},
+                                                    {"lease_owner", "unit-owner-01"}});
+    CHECK(lease["status"] == "OK");
+    const std::uint64_t fence = lease["fence_epoch"].get<std::uint64_t>();
+    const ep::Json envelope =
+        make_envelope("policy.apply", intent, "unit-owner-01", fence, 0, "idem-class-rb01");
+    const ep::Json applied = executor.handle(ep::Json{{"operation", "policy.apply"},
+                                                      {"envelope", envelope},
+                                                      {"intent", intent}});
+    CHECK(applied["status"] == "VERIFIED");
+    CHECK(std::filesystem::exists(entry));
+    CHECK(read_text_file(entry) == "BG");
+    const ep::Json rollback_of{{"apply_action_id", applied["action_id"]},
+                               {"original_transaction_id", envelope["transaction_id"]},
+                               {"snapshot_id", applied["snapshot_id"]}};
+    const ep::Json rollback_envelope =
+        make_envelope("policy.rollback", intent, "unit-owner-01", fence, 1,
+                      "idem-class-rb01r", rollback_of);
+    const ep::Json rolled = executor.handle(ep::Json{{"operation", "policy.rollback"},
+                                                     {"envelope", rollback_envelope}});
+    CHECK(rolled["status"] == "ROLLED_BACK");
+    CHECK(rolled["rollback"]["detail"].get<std::string>().find("unconfirmed") ==
+          std::string::npos);
+    CHECK(!std::filesystem::exists(entry));
+    const std::string calls = read_text_file(log);
+    CHECK(calls.find("class-set 4242") != std::string::npos);
+    CHECK(calls.find("class-del 4242") != std::string::npos);
+    // The read-back is a separate map query after the delete, not a trust in the exit code.
+    const auto del_at = calls.find("class-del 4242");
+    const auto get_at = calls.find("class-get 4242");
+    CHECK(get_at != std::string::npos);
+    CHECK(get_at > del_at);
+    CHECK(read_text_file(sched_ext / "state") == "disabled");
+  }
+
+  // A deletion that no-ops: report it, and still detach -- fail-safe wins over tidy.
+  {
+    write_text_file(dir / "ctrl.log", "");
+    CHECK(::setenv("EP_FAKE_DEL_NOOPS", "1", 1) == 0);
+    ep::SchedPaths paths;
+    paths.state_dir = state_dir / "stuck";
+    paths.loader = loader.string();
+    paths.sched_ext_dir = sched_ext.string();
+    paths.pin_dir = pin_dir.string();
+    paths.ctrl = ctrl.string();
+    ep::Executor executor(dir / "run-stuck", std::make_unique<ep::SchedSkill>(paths),
+                          ep::ExecutorOptions{true});
+    std::string error;
+    CHECK(executor.init(&error));
+    const ep::Json lease = executor.handle(ep::Json{{"operation", "lease.acquire"},
+                                                    {"request_id", "req-lease-c2"},
+                                                    {"lease_owner", "unit-owner-01"}});
+    const std::uint64_t fence = lease["fence_epoch"].get<std::uint64_t>();
+    const ep::Json envelope =
+        make_envelope("policy.apply", intent, "unit-owner-01", fence, 0, "idem-class-rb02");
+    const ep::Json applied = executor.handle(ep::Json{{"operation", "policy.apply"},
+                                                      {"envelope", envelope},
+                                                      {"intent", intent}});
+    CHECK(applied["status"] == "VERIFIED");
+    CHECK(std::filesystem::exists(entry));
+    const ep::Json rollback_of{{"apply_action_id", applied["action_id"]},
+                               {"original_transaction_id", envelope["transaction_id"]},
+                               {"snapshot_id", applied["snapshot_id"]}};
+    const ep::Json rollback_envelope =
+        make_envelope("policy.rollback", intent, "unit-owner-01", fence, 1,
+                      "idem-class-rb02r", rollback_of);
+    const ep::Json rolled = executor.handle(ep::Json{{"operation", "policy.rollback"},
+                                                     {"envelope", rollback_envelope}});
+    CHECK(rolled["status"] == "ROLLED_BACK");
+    const std::string detail = rolled["rollback"]["detail"].get<std::string>();
+    CHECK(detail.find("class revocation unconfirmed") != std::string::npos);
+    CHECK(detail.find("survived deletion") != std::string::npos);
+    CHECK(read_text_file(sched_ext / "state") == "disabled");
+    CHECK(!executor.degraded());
+  }
+  std::filesystem::remove_all(dir);
+}
+
+// An exiting service must not rely on a fd closing by accident: the effect it put in
+// the kernel has to go through the same compensating rollback, with a committed record.
+void test_executor_shutdown_releases_active_effect() {
+  const auto dir = make_temp_dir("executor-shutdown");
+  ep::Executor executor(dir, std::make_unique<ep::MockSkill>(dir / "mock"),
+                        ep::ExecutorOptions{true});
+  std::string error;
+  CHECK(executor.init(&error));
+  const ep::Json lease = executor.handle(ep::Json{{"operation", "lease.acquire"},
+                                                  {"request_id", "req-lease-sd1"},
+                                                  {"lease_owner", "unit-owner-01"}});
+  const std::uint64_t fence = lease["fence_epoch"].get<std::uint64_t>();
+  const ep::Json intent{{"value", 77}};
+  const ep::Json envelope =
+      make_envelope("policy.apply", intent, "unit-owner-01", fence, 0, "idem-shutdown-1");
+  const ep::Json applied = executor.handle(ep::Json{{"operation", "policy.apply"},
+                                                    {"envelope", envelope},
+                                                    {"intent", intent}});
+  CHECK(applied["status"] == "VERIFIED");
+  bool exists = false;
+  CHECK(read_mock_value(dir, &exists) == 77);
+  CHECK(exists);
+  const std::size_t records_before = executor.journal_size();
+  CHECK(executor.generation() == 1);
+
+  executor.shutdown("unit test is stopping the executor");
+  read_mock_value(dir, &exists);
+  CHECK(!exists);
+  CHECK(executor.generation() == 2);
+  CHECK(executor.journal_size() > records_before);
+
+  // Nothing is active any more, so a second shutdown must not write another record.
+  const std::size_t records_after = executor.journal_size();
+  executor.shutdown("second shutdown must be a no-op");
+  CHECK(executor.journal_size() == records_after);
+  std::filesystem::remove_all(dir);
+}
+
+// An unwritable state store must not block taking an effect back down to fair, and must
+// not quietly let a new effect through either.
+void test_lease_survives_unwritable_state_store() {
+  const auto dir = make_temp_dir("lease-unwritable-store");
+  ep::Executor executor(dir, std::make_unique<ep::MockSkill>(dir / "mock"),
+                        ep::ExecutorOptions{true});
+  std::string error;
+  CHECK(executor.init(&error));
+  const ep::Json lease = executor.handle(ep::Json{{"operation", "lease.acquire"},
+                                                  {"request_id", "req-lease-us01"},
+                                                  {"lease_owner", "unit-owner-01"}});
+  CHECK(lease["status"] == "OK");
+  CHECK(lease.value("lease_persisted", true));
+  const std::uint64_t fence = lease["fence_epoch"].get<std::uint64_t>();
+
+  const ep::Json intent{{"value", 91}};
+  const ep::Json envelope =
+      make_envelope("policy.apply", intent, "unit-owner-01", fence, 0, "idem-unwrit-0001");
+  const ep::Json applied = executor.handle(ep::Json{{"operation", "policy.apply"},
+                                                    {"envelope", envelope},
+                                                    {"intent", intent}});
+  CHECK(applied["status"] == "VERIFIED");
+  bool exists = false;
+  CHECK(read_mock_value(dir, &exists) == 91);
+
+  // Break only the state file: renaming a regular file onto a directory fails with
+  // ENOTDIR for every uid, which is what a full/readonly store looks like to persist().
+  std::filesystem::remove(dir / "state.json");
+  std::filesystem::create_directory(dir / "state.json");
+
+  const ep::Json second = executor.handle(ep::Json{{"operation", "lease.acquire"},
+                                                   {"request_id", "req-lease-us02"},
+                                                   {"lease_owner", "unit-owner-01"},
+                                                   {"lease_ttl_ms", 30000}});
+  CHECK(second["status"] == "OK");
+  CHECK(second["lease_persisted"] == false);
+  CHECK(!second["warning"].get<std::string>().empty());
+  const std::uint64_t second_fence = second["fence_epoch"].get<std::uint64_t>();
+  CHECK(second_fence == fence + 1);
+
+  // A *new* effect is still refused while the store is unwritable.
+  const ep::Json other{{"value", 92}};
+  const ep::Json other_env =
+      make_envelope("policy.apply", other, "unit-owner-01", second_fence, 1,
+                    "idem-unwrit-0002");
+  const ep::Json refused = executor.handle(ep::Json{{"operation", "policy.apply"},
+                                                    {"envelope", other_env},
+                                                    {"intent", other}});
+  CHECK(refused["status"] == "RECOVERY_REQUIRED");
+  CHECK(refused["error"]["code"] == "RECOVERY_REQUIRED");
+
+  // Teardown reaches the skill anyway, and says the audit could not be completed.
+  const ep::Json rollback_of{{"apply_action_id", applied["action_id"]},
+                             {"original_transaction_id", envelope["transaction_id"]},
+                             {"snapshot_id", applied["snapshot_id"]}};
+  const ep::Json rollback_envelope =
+      make_envelope("policy.rollback", intent, "unit-owner-01", second_fence, 1,
+                    "idem-unwrit-0003", rollback_of);
+  const ep::Json rolled = executor.handle(ep::Json{{"operation", "policy.rollback"},
+                                                   {"envelope", rollback_envelope}});
+  CHECK(rolled["status"] == "DEGRADED");
+  CHECK(rolled["rollback"]["status"] == "EFFECT_RESTORED");
+  CHECK(rolled["error"]["message"].get<std::string>().find("state.json") !=
+        std::string::npos);
+  read_mock_value(dir, &exists);
+  CHECK(!exists);
+
+  const ep::Json status = executor.handle(ep::Json{{"operation", "policy.status"},
+                                                   {"request_id", "req-status-us01"}});
+  CHECK(status["degraded"] == true);
+  CHECK(!status["store_warning"].get<std::string>().empty());
+  std::filesystem::remove(dir / "state.json");
+  std::filesystem::remove_all(dir);
+}
+
 int main() {
   test_policy_validation();
   test_target_resolution();
@@ -1205,15 +2405,28 @@ int main() {
   test_feature_window();
   test_rule_router();
   test_slo_gate();
+  test_service_slo();
+  test_service_observe_rpc();
+  test_autopilot_rules();
   test_executor_external_change();
   test_executor_reconcile_after_crash();
   test_wal_faults();
   test_unsupported_skill();
   test_sched_skill_fake_loader();
+  test_sched_skill_presence_branches();
+  test_refresh_reclassifies_in_place();
+  test_policy_class_declaration();
+  test_sched_enable_seq_semantics();
+  test_sched_enable_seq_publish_window();
+  test_sched_liveness_takeover();
+  test_startup_degraded_reason_surfaced();
   test_sched_helper_timeout();
   test_sched_refresh_budget();
   test_sched_eof_budget();
   test_sched_abort_foreign_pin();
+  test_rollback_proves_class_removal();
+  test_executor_shutdown_releases_active_effect();
+  test_lease_survives_unwritable_state_store();
   if (g_failures != 0) {
     std::cerr << g_failures << " check(s) failed\n";
     return 1;

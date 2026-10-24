@@ -18,6 +18,7 @@ struct TargetBinding {
   std::string path;
   std::string role;
   std::string role_source;
+  std::string runtime_class{};  // declared class, or "" when the policy declared none
   std::string boot_id;
   std::uint64_t inode = 0;
   std::uint64_t device = 0;
@@ -29,6 +30,14 @@ struct TargetBinding {
 
   Json to_json() const;
 };
+
+// The class the data plane should file this target under, or "" when nothing should
+// be written to class_map at all. One function holds the role default so the apply
+// path and the 2s refresh path can never disagree about who is BG today. The pair
+// overload exists because the apply path only has the validated policy text, while
+// the refresh path has live bindings; both must mean the same thing.
+std::string effective_runtime_class(const std::string& role, const std::string& declared);
+std::string effective_runtime_class(const TargetBinding& binding);
 
 // Opens every target as a cgroup v2 directory (O_PATH|O_NOFOLLOW) and records
 // path + inode + device + boot_id. Fails closed on a missing/non-v2/symlink path.

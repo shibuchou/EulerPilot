@@ -18,6 +18,7 @@ add_library(ep_core STATIC
   src/core/features.cpp
   src/core/router.cpp
   src/core/slo.cpp
+  src/core/autopilot.cpp
   src/executor/journal.cpp
   src/executor/ownership.cpp
   src/executor/executor.cpp

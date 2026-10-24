@@ -158,6 +158,8 @@ Json TargetBinding::to_json() const {
               {"path", path},
               {"role", role},
               {"role_source", role_source},
+              {"class", runtime_class},
+              {"effective_class", effective_runtime_class(*this)},
               {"identity", kind == "pid" ? "pidfd+starttime" : "cgroup2-kernfs"},
               {"inode", inode},
               {"device", device},
@@ -165,6 +167,17 @@ Json TargetBinding::to_json() const {
               {"pid", pid},
               {"starttime", starttime},
               {"boot_id", boot_id}};
+}
+
+std::string effective_runtime_class(const std::string& role, const std::string& declared) {
+  if (!declared.empty()) return declared;
+  // Today's behavior, kept exactly: only an explicitly BACKGROUND target was ever
+  // classified (as BG). Anything else stays out of class_map and runs as NORMAL.
+  return role == "BACKGROUND" ? "BG" : std::string();
+}
+
+std::string effective_runtime_class(const TargetBinding& binding) {
+  return effective_runtime_class(binding.role, binding.runtime_class);
 }
 
 bool resolve_targets(const std::vector<PolicyTarget>& targets,
@@ -182,6 +195,7 @@ bool resolve_targets(const std::vector<PolicyTarget>& targets,
     binding.path = target.path;
     binding.role = target.role;
     binding.role_source = target.role_source;
+    binding.runtime_class = target.runtime_class;
     binding.boot_id = current_boot;
     if (target.kind == "pid") {
       int pidfd = -1;

@@ -15,6 +15,7 @@
 #include <chrono>
 #include <cstring>
 #include <fstream>
+#include <iostream>
 #include <sstream>
 #include <thread>
 #include <vector>
@@ -84,12 +85,18 @@ Json SchedSkill::Runtime::to_json() const {
              {"pins", array}};
   if (!cfg_before.is_null()) value["cfg_before"] = cfg_before;
   if (!cfg_after.is_null()) value["cfg_after"] = cfg_after;
-  if (!bg_pids.empty()) {
-    Json pids = Json::array();
-    for (const auto pid : bg_pids) pids.push_back(pid);
-    value["bg_pids"] = pids;
+  if (!classified.empty()) {
+    Json entries = Json::array();
+    for (const auto& entry : classified) entries.push_back(entry.to_json());
+    value["classified"] = entries;
   }
-  if (!bg_cgroups.empty()) value["bg_cgroups"] = bg_cgroups;
+  return value;
+}
+
+Json SchedSkill::Classified::to_json() const {
+  Json value{{"class", klass}};
+  if (pid > 0) value["pid"] = pid;
+  if (!path.empty()) value["path"] = path;
   return value;
 }
 
@@ -110,11 +117,13 @@ bool SchedSkill::Runtime::parse(const Json& value, Runtime* out) {
     }
     runtime.cfg_before = value.value("cfg_before", Json());
     runtime.cfg_after = value.value("cfg_after", Json());
-    for (const auto& item : value.value("bg_pids", Json::array())) {
-      runtime.bg_pids.push_back(item.get<std::int64_t>());
-    }
-    for (const auto& item : value.value("bg_cgroups", Json::array())) {
-      runtime.bg_cgroups.push_back(item.get<std::string>());
+    for (const auto& item : value.value("classified", Json::array())) {
+      Classified entry;
+      entry.pid = item.value("pid", 0LL);
+      entry.path = item.value("path", "");
+      entry.klass = item.value("class", "");
+      if (entry.klass.empty() || (entry.pid <= 0 && entry.path.empty())) return false;
+      runtime.classified.push_back(entry);
     }
   } catch (const std::exception&) {
     return false;
@@ -164,6 +173,24 @@ std::uint64_t SchedSkill::read_enable_seq() const {
   } catch (const std::exception&) {
     return 0;
   }
+}
+
+std::uint64_t SchedSkill::wait_enable_seq_stable(std::uint64_t previous_seq,
+                                                 int timeout_ms) const {
+  // scx_enable() publishes state=enabled before it increments enable_seq: the
+  // kernel prints the banner and fires the uevent, releases the mutex, and only
+  // then runs atomic_long_inc(&scx_enable_seq) (kernel/sched/ext.c). A single
+  // read right after attach can still return the pre-enable value, which would
+  // look like "the counter moved" a moment later. Wait for the publish and
+  // require two matching reads.
+  const auto deadline = std::chrono::steady_clock::now() +
+                        std::chrono::milliseconds(timeout_ms > 0 ? timeout_ms : 0);
+  while (std::chrono::steady_clock::now() < deadline) {
+    const std::uint64_t first = read_enable_seq();
+    if (first != previous_seq && first == read_enable_seq()) return first;
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+  return read_enable_seq();
 }
 
 std::string SchedSkill::read_ops() const {
@@ -736,11 +763,21 @@ bool SchedSkill::ctrl_restore(const Json& snapshot, Json* cfg, std::string* erro
   return true;
 }
 
-bool SchedSkill::ctrl_class_set(std::int64_t pid, std::string* error,
-                                std::uint64_t timeout_ms) const {
+bool SchedSkill::ctrl_class_set(std::int64_t pid, const std::string& klass,
+                                std::string* error, std::uint64_t timeout_ms) const {
+  if (klass.empty() || klass == "NORMAL") {
+    // NORMAL means "no entry": writing it would let an unrelated tgid that reuses
+    // this pid inherit a classification this policy never declared.
+    return true;
+  }
+  // The policy vocabulary says COMPUTE (LAT/COMPUTE/CACHE are runtime features); the
+  // data-plane helper calls that tier COMP. Translate here, at the one boundary where
+  // policy names meet wire tokens -- otherwise a COMPUTE target fails class-set and the
+  // whole apply is rejected.
+  const std::string wire = klass == "COMPUTE" ? "COMP" : klass;
   Json output;
   if (!run_ctrl({"class-set", "--pin-dir", pin_dir(), "--pid", std::to_string(pid),
-                 "--class", "BG", "--confidence", "1000"},
+                 "--class", wire, "--confidence", "1000"},
                 &output, error, timeout_ms)) {
     return false;
   }
@@ -761,17 +798,82 @@ bool SchedSkill::ctrl_class_del(std::int64_t pid, std::string* error,
   return output.value("ok", false);
 }
 
-bool SchedSkill::revoke_managed(std::string* error) {
+bool SchedSkill::ctrl_class_get(std::int64_t pid, Json* out, std::string* error) const {
+  Json output;
+  if (!run_ctrl({"class-get", "--pin-dir", pin_dir(), "--pid", std::to_string(pid)}, &output,
+                error)) {
+    return false;
+  }
+  *out = output;
+  return true;
+}
+
+std::string SchedSkill::residual_effects() const {
+  std::vector<std::string> parts;
+  Json cfg;
+  std::string cfg_error;
+  if (ctrl_get(&cfg, &cfg_error)) {
+    // The fields the data plane actually honours, not just the mode bit: a rollback
+    // that leaves a stale slice or vtime behind is a residual effect, not a clean stop.
+    static const char* keys[] = {"lat_slice_ns",      "comp_slice_ns",  "cache_slice_ns",
+                                 "bg_slice_ns",       "bg_vtime_pct",   "preempt_threshold_ns",
+                                 "llc_affinity"};
+    for (const char* key : keys) {
+      if (cfg.contains(key)) parts.push_back(std::string(key) + "=" + cfg.at(key).dump());
+    }
+  } else {
+    parts.push_back("cfg unreadable (" + cfg_error + ")");
+  }
+  for (const auto& entry : managed_class_) {
+    Json item;
+    std::string item_error;
+    if (!ctrl_class_get(entry.first, &item, &item_error)) {
+      parts.push_back("pid " + std::to_string(entry.first) + " class unreadable (" +
+                      item_error + ")");
+    } else if (item.value("present", false)) {
+      parts.push_back("pid " + std::to_string(entry.first) + " still " +
+                      item.value("class", std::string("?")));
+    }
+  }
+  if (parts.empty()) return "";
+  std::string joined;
+  for (const auto& part : parts) joined += (joined.empty() ? "; residual: " : ", ") + part;
+  return joined;
+}
+
+bool SchedSkill::revoke_managed(std::string* error, bool confirm_readback) {
   bool ok = true;
-  for (auto it = managed_bg_pids_.begin(); it != managed_bg_pids_.end();) {
+  for (auto it = managed_class_.begin(); it != managed_class_.end();) {
     std::string delete_error;
-    if (ctrl_class_del(*it, &delete_error)) {
-      it = managed_bg_pids_.erase(it);
-    } else {
+    if (!ctrl_class_del(it->first, &delete_error)) {
       ok = false;
       if (error != nullptr && error->empty()) *error = delete_error;
       ++it;
+      continue;
     }
+    if (confirm_readback) {
+      Json entry;
+      std::string read_error;
+      if (!ctrl_class_get(it->first, &entry, &read_error)) {
+        ok = false;
+        if (error != nullptr && error->empty()) {
+          *error = "class-get after class-del of pid " + std::to_string(it->first) + ": " +
+                   read_error;
+        }
+        ++it;
+        continue;
+      }
+      if (entry.value("present", false)) {
+        ok = false;
+        if (error != nullptr && error->empty()) {
+          *error = "class_map entry for pid " + std::to_string(it->first) +
+                   " survived deletion (still " + entry.value("class", std::string("?")) + ")";
+        }
+        ++it;
+        continue;
+      }
+    }
+    it = managed_class_.erase(it);
   }
   return ok;
 }
@@ -864,7 +966,7 @@ bool SchedSkill::stop_pid(std::int64_t pid, std::uint64_t starttime, int timeout
   return !pid_matches(pid, starttime);
 }
 
-bool SchedSkill::apply(const Plan& plan, const Snapshot&, const LeaseState&, Applied* out,
+bool SchedSkill::apply(const Plan& plan, const Snapshot& snapshot, const LeaseState&, Applied* out,
                        std::string* error) {
   if (!preflight(error)) return false;
   const std::string mode = plan.params.value("mode", "class");
@@ -939,7 +1041,7 @@ bool SchedSkill::apply(const Plan& plan, const Snapshot&, const LeaseState&, App
       if (error != nullptr) *error = cleanup_error;
       return false;
     }
-    managed_bg_pids_.clear();
+    managed_class_.clear();
     remove_runtime();
     return true;
   };
@@ -947,7 +1049,7 @@ bool SchedSkill::apply(const Plan& plan, const Snapshot&, const LeaseState&, App
   runtime.pid = pid;
   runtime.starttime = starttime;
   runtime.mode = mode;
-  runtime.enable_seq = read_enable_seq();
+  runtime.enable_seq = wait_enable_seq_stable(snapshot.data.value("enable_seq", 0ULL), 1000);
   runtime.pins = wait_pins_settled(3000);
   owned_pins = runtime.pins;
   if (runtime.pins.empty()) {
@@ -977,26 +1079,34 @@ bool SchedSkill::apply(const Plan& plan, const Snapshot&, const LeaseState&, App
   for (const auto& target : targets) {
     if (!target.is_object()) continue;
     const std::string kind = target.value("kind", "");
-    if (target.value("role", "") != "BACKGROUND") continue;
+    const std::string klass =
+        effective_runtime_class(target.value("role", ""), target.value("class", ""));
+    if (klass.empty()) continue;
     if (kind == "pid") {
       const std::int64_t pid = target.value("pid", 0LL);
       if (pid <= 0) continue;
-      if (!ctrl_class_set(pid, error)) {
+      if (!ctrl_class_set(pid, klass, error)) {
         (void)abort_attach();
         return false;
       }
-      runtime.bg_pids.push_back(pid);
-      managed_bg_pids_.insert(pid);
+      Classified entry;
+      entry.pid = pid;
+      entry.klass = klass;
+      runtime.classified.push_back(entry);
+      managed_class_[pid] = klass;
     } else if (kind == "cgroup") {
       const std::string path = target.value("path", "");
       if (path.empty()) continue;
-      runtime.bg_cgroups.push_back(path);
+      Classified entry;
+      entry.path = path;
+      entry.klass = klass;
+      runtime.classified.push_back(entry);
       for (const auto pid : cgroup_pids(path)) {
-        if (!ctrl_class_set(pid, error)) {
+        if (!ctrl_class_set(pid, klass, error)) {
           (void)abort_attach();
           return false;
         }
-        managed_bg_pids_.insert(pid);
+        managed_class_[pid] = klass;
       }
     }
   }
@@ -1042,6 +1152,26 @@ bool SchedSkill::refresh(const Applied& applied, const std::vector<TargetBinding
     return false;
   };
 
+  // cfg is what every policy claim rests on, and anything that can reach the pinned map
+  // can overwrite it. One read per cycle re-asserts it. Per-entry class drift is not
+  // corrected here: that would cost one helper call per classified task inside a budget
+  // measured in milliseconds, and the entries are re-asserted on any real change.
+  const Json cfg_after =
+      applied.data.is_object() ? applied.data.value("cfg_after", Json()) : Json();
+  if (cfg_after.is_object() && !cfg_after.empty()) {
+    const std::uint64_t budget = per_call();
+    if (budget == 0) return stop("refresh budget exhausted before the cfg drift check");
+    std::string drift;
+    if (!ctrl_verify(cfg_after, &drift)) {
+      std::string set_error;
+      Json ignored;
+      if (!ctrl_set(cfg_after, &ignored, &set_error)) {
+        return stop("cfg drifted (" + drift + ") and re-assert failed: " + set_error);
+      }
+      std::cerr << "[sched-skill] cfg drift corrected: " << drift << "\n";
+    }
+  }
+
   if (!bindings.empty()) {
     for (const auto& binding : bindings) {
       if (!revalidate_binding(binding, error)) {
@@ -1050,60 +1180,122 @@ bool SchedSkill::refresh(const Applied& applied, const std::vector<TargetBinding
         return false;
       }
     }
-    std::set<std::int64_t> desired;
+    // Phase 1: what should be classified right now. Deliberately no map writes here:
+    // the earlier version recorded the new class *before* comparing, so a change never
+    // looked like a change and "switch this pid back to NORMAL" silently did nothing.
+    std::map<std::int64_t, std::string> desired;
     for (const auto& binding : bindings) {
-      if (binding.role != "BACKGROUND") continue;
+      const std::string klass = effective_runtime_class(binding);
+      if (klass.empty()) continue;
       if (binding.kind == "pid") {
-        const std::uint64_t budget = per_call();
-        if (budget == 0) return stop("refresh budget exhausted before bound pid refresh");
-        if (!ctrl_class_set(binding.pid, error, budget)) return false;
-        desired.insert(binding.pid);
-        managed_bg_pids_.insert(binding.pid);
+        desired[binding.pid] = klass;
       } else if (binding.kind == "cgroup") {
         std::vector<std::int64_t> pids;
         if (!read_cgroup_members(binding, &pids, error)) return false;
-        for (const auto pid : pids) {
-          const std::uint64_t budget = per_call();
-          if (budget == 0) return stop("refresh budget exhausted during bound cgroup refresh");
-          if (!ctrl_class_set(pid, error, budget)) return false;
-          desired.insert(pid);
-          managed_bg_pids_.insert(pid);
-        }
+        for (const auto pid : pids) desired[pid] = klass;
       }
     }
-    // Members that left the binding (or whose cgroup lost them) must not keep
-    // a stale BG classification.
-    for (auto it = managed_bg_pids_.begin(); it != managed_bg_pids_.end();) {
-      if (desired.count(*it) != 0) {
+    // Phase 2: reconcile. A change *to* NORMAL means "no entry", so it deletes -- the
+    // helper treats NORMAL as a no-op by design and re-asserting it would leave the old
+    // tier in the kernel map forever. Any other change is re-asserted in place, because
+    // deleting first would let the task run NORMAL for a whole refresh cycle.
+    for (const auto& entry : desired) {
+      auto managed = managed_class_.find(entry.first);
+      if (entry.second == "NORMAL") {
+        if (managed == managed_class_.end()) continue;
+        const std::uint64_t budget = per_call();
+        if (budget == 0) return stop("refresh budget exhausted during class removal");
+        if (!ctrl_class_del(entry.first, error, budget)) return false;
+        managed_class_.erase(managed);
+        continue;
+      }
+      if (managed != managed_class_.end() && managed->second == entry.second) continue;
+      const std::uint64_t budget = per_call();
+      if (budget == 0) return stop("refresh budget exhausted during class reconcile");
+      if (!ctrl_class_set(entry.first, entry.second, error, budget)) return false;
+      managed_class_[entry.first] = entry.second;
+    }
+    // Phase 3: anything still managed that is no longer desired is revoked.
+    for (auto it = managed_class_.begin(); it != managed_class_.end();) {
+      if (desired.count(it->first) != 0) {
         ++it;
         continue;
       }
       const std::uint64_t budget = per_call();
       if (budget == 0) return stop("refresh budget exhausted during stale member revocation");
-      if (!ctrl_class_del(*it, error, budget)) return false;
-      it = managed_bg_pids_.erase(it);
+      if (!ctrl_class_del(it->first, error, budget)) return false;
+      it = managed_class_.erase(it);
     }
     return true;
   }
 
-  // Compatibility path for callers/tests without live bindings.
+  // Marker-only path for callers/tests that hold no live bindings: replay exactly
+  // what apply recorded, class included.
   if (!applied.data.is_object()) return true;
-  for (const auto& item : applied.data.value("bg_pids", Json::array())) {
-    if (!item.is_number_integer() && !item.is_number_unsigned()) continue;
-    const std::uint64_t budget = per_call();
-    if (budget == 0) return stop("refresh budget exhausted before bg pid refresh");
-    if (!ctrl_class_set(item.get<std::int64_t>(), error, budget)) return false;
-  }
-  for (const auto& item : applied.data.value("bg_cgroups", Json::array())) {
-    if (!item.is_string()) continue;
-    const std::string path = item.get<std::string>();
-    for (const auto pid : cgroup_pids(path)) {
+  for (const auto& item : applied.data.value("classified", Json::array())) {
+    if (!item.is_object()) continue;
+    const std::string klass = item.value("class", "");
+    if (klass.empty()) continue;
+    if (item.contains("pid")) {
+      const std::int64_t pid = item.value("pid", 0LL);
+      if (pid <= 0) continue;
       const std::uint64_t budget = per_call();
-      if (budget == 0) return stop("refresh budget exhausted during cgroup refresh");
-      if (!ctrl_class_set(pid, error, budget)) return false;
+      if (budget == 0) return stop("refresh budget exhausted before classified pid refresh");
+      if (!ctrl_class_set(pid, klass, error, budget)) return false;
+    } else if (item.contains("path")) {
+      const std::string path = item.value("path", "");
+      for (const auto pid : cgroup_pids(path)) {
+        const std::uint64_t budget = per_call();
+        if (budget == 0) return stop("refresh budget exhausted during cgroup refresh");
+        if (!ctrl_class_set(pid, klass, error, budget)) return false;
+      }
     }
   }
   return true;
+}
+
+bool SchedSkill::presence_ok(const Runtime& runtime, std::string* detail) const {
+  auto fail = [detail](const std::string& message) {
+    if (detail != nullptr) *detail = message;
+    return false;
+  };
+  if (paths_.fd_passing) {
+    if (link_fd_ < 0) {
+      return fail("executor does not hold the struct_ops link fd");
+    }
+  } else if (!pid_matches(runtime.pid, runtime.starttime)) {
+    return fail("loader process is gone or was replaced");
+  }
+  const std::string state = read_state();
+  if (state != "enabled") {
+    return fail("sched_ext state is '" + state + "', expected enabled");
+  }
+  const std::string ops = read_ops();
+  if (ops.find("eulerpilot") == std::string::npos) {
+    return fail("ops does not contain eulerpilot: " + ops);
+  }
+  // enable_seq only ever moves inside scx_enable(), so a moved value means
+  // sched_ext was enabled again after our attach. A concurrent takeover is not
+  // reachable here: on SP3 the kernel refuses a second struct_ops registration
+  // with EBUSY, for both the reference loader and a second v2 loader, and leaves
+  // the running scheduler untouched. This check is therefore the backstop for a
+  // fast disable+re-enable that a ~1s poll could sample past, not the primary
+  // takeover signal — the state and ops checks above catch that first.
+  const std::uint64_t seq = read_enable_seq();
+  if (seq != runtime.enable_seq) {
+    return fail("sched_ext enable_seq moved from " + std::to_string(runtime.enable_seq) +
+                " to " + std::to_string(seq) + "; sched_ext was re-enabled");
+  }
+  return true;
+}
+
+bool SchedSkill::liveness(const Applied& applied, std::string* detail) {
+  Runtime runtime;
+  if (!Runtime::parse(applied.data, &runtime)) {
+    if (detail != nullptr) *detail = "applied data cannot be parsed as sched runtime";
+    return false;
+  }
+  return presence_ok(runtime, detail);
 }
 
 VerifyResult SchedSkill::verify(const Applied& applied, std::int64_t) {
@@ -1111,23 +1303,9 @@ VerifyResult SchedSkill::verify(const Applied& applied, std::int64_t) {
   if (!Runtime::parse(applied.data, &runtime)) {
     return VerifyResult{false, "applied data cannot be parsed as sched runtime"};
   }
-  if (paths_.fd_passing) {
-    if (link_fd_ < 0) {
-      return VerifyResult{false, "executor does not hold the struct_ops link fd"};
-    }
-  } else if (!pid_matches(runtime.pid, runtime.starttime)) {
-    return VerifyResult{false, "loader process is gone or was replaced"};
-  }
-  const std::string state = read_state();
-  if (state != "enabled") {
-    return VerifyResult{false, "sched_ext state is '" + state + "', expected enabled"};
-  }
-  const std::string ops = read_ops();
-  if (ops.find("eulerpilot") == std::string::npos) {
-    return VerifyResult{false, "ops does not contain eulerpilot: " + ops};
-  }
-  if (read_enable_seq() != runtime.enable_seq) {
-    return VerifyResult{false, "enable_seq changed since attach"};
+  std::string presence;
+  if (!presence_ok(runtime, &presence)) {
+    return VerifyResult{false, presence};
   }
   if (!runtime.cfg_after.is_null()) {
     std::string cfg_error;
@@ -1183,13 +1361,23 @@ RecoveryResult SchedSkill::rollback(const Applied& applied, const Snapshot&, std
   const bool has_runtime = Runtime::parse(applied.data, &runtime);
   bool conflict = false;
   std::string cfg_warning;
+  std::string class_warning;
   const bool link_held = paths_.fd_passing && link_fd_ >= 0;
-  if (has_runtime && !runtime.cfg_before.is_null() &&
-      (link_held || (runtime.pid > 0 && pid_matches(runtime.pid, runtime.starttime)))) {
+  const bool loader_alive = has_runtime && runtime.pid > 0 &&
+                            pid_matches(runtime.pid, runtime.starttime);
+  if (has_runtime && !runtime.cfg_before.is_null() && (link_held || loader_alive)) {
     Json ignored;
     std::string restore_error;
     if (!ctrl_restore(runtime.cfg_before, &ignored, &restore_error)) {
       cfg_warning = "; cfg restore failed: " + restore_error;
+    }
+  }
+  // Revoke while the map is still reachable: if the detach then fails, "rolled back"
+  // must not mean "the classification is still in force and nobody looked".
+  if (!managed_class_.empty() && (link_held || loader_alive)) {
+    std::string revoke_error;
+    if (!revoke_managed(&revoke_error, true)) {
+      class_warning = "; class revocation unconfirmed: " + revoke_error;
     }
   }
   if (paths_.fd_passing) {
@@ -1199,12 +1387,14 @@ RecoveryResult SchedSkill::rollback(const Applied& applied, const Snapshot&, std
     }
     if (!wait_disabled(kStopTimeoutMs)) {
       return RecoveryResult{false, true,
-                            "link fd closed but sched_ext is still enabled" + cfg_warning};
+                            "link fd closed but sched_ext is still enabled" + cfg_warning +
+                                class_warning};
     }
   } else if (has_runtime && runtime.pid > 0) {
     if (!stop_pid(runtime.pid, runtime.starttime, kStopTimeoutMs)) {
       return RecoveryResult{false, true,
-                            "loader did not exit after SIGTERM/SIGKILL" + cfg_warning};
+                            "loader did not exit after SIGTERM/SIGKILL" + cfg_warning +
+                                class_warning};
     }
   }
   const std::string state = read_state();
@@ -1212,22 +1402,24 @@ RecoveryResult SchedSkill::rollback(const Applied& applied, const Snapshot&, std
   if (state == "enabled" && ops.find("eulerpilot") != std::string::npos) {
     return RecoveryResult{false, true,
                           "an eulerpilot instance is still attached but is not owned by this "
-                          "action" + cfg_warning};
+                          "action" + cfg_warning + class_warning};
   }
   if (!has_runtime) {
     const auto pins = list_pins();
     if (!pins.empty()) {
-      return RecoveryResult{false, true, "pins exist without an owned runtime marker"};
+      return RecoveryResult{false, true,
+                            "pins exist without an owned runtime marker" + residual_effects()};
     }
-    return RecoveryResult{true, false, "no scheduler was attached" + cfg_warning};
+    return RecoveryResult{true, false, "no scheduler was attached" + cfg_warning + class_warning};
   }
   if (!cleanup_pins(runtime.pins, &conflict, error)) {
+    *error += residual_effects();
     return RecoveryResult{false, conflict, *error};
   }
-  managed_bg_pids_.clear();
+  managed_class_.clear();
   remove_runtime();
   return RecoveryResult{true, false, "detached and removed " + std::to_string(runtime.pins.size()) +
-                                         " owned pin(s)" + cfg_warning};
+                                         " owned pin(s)" + cfg_warning + class_warning};
 }
 
 VerifyResult SchedSkill::verify_rolled_back(const Snapshot&, std::int64_t) {
@@ -1246,12 +1438,15 @@ VerifyResult SchedSkill::verify_rolled_back(const Snapshot&, std::int64_t) {
   if (!pins.empty()) {
     std::string names;
     for (const auto& pin : pins) names += pin.name + " ";
-    return VerifyResult{false, "pins remain after rollback: " + names};
+    return VerifyResult{false, "pins remain after rollback: " + names + residual_effects()};
   }
   if (std::filesystem::exists(std::filesystem::path(paths_.state_dir) / "sched-runtime.json")) {
-    return VerifyResult{false, "runtime marker remains after rollback"};
+    return VerifyResult{false,
+                        "runtime marker remains after rollback" + residual_effects()};
   }
-  return VerifyResult{true, "detached, pins cleaned, runtime marker removed"};
+  return VerifyResult{true,
+                      "detached, pins cleaned, runtime marker removed; no class or cfg outlives "
+                      "the unpin"};
 }
 
 RecoveryResult SchedSkill::reconcile(const ReconcileContext&, std::string* error) {
@@ -1263,18 +1458,35 @@ RecoveryResult SchedSkill::recover_orphan(std::string* error) {
   const bool has_runtime = read_runtime(&runtime);
   bool conflict = false;
   std::string cfg_warning;
-  if (has_runtime && !runtime.cfg_before.is_null() && runtime.pid > 0 &&
-      pid_matches(runtime.pid, runtime.starttime)) {
+  std::string class_warning;
+  const bool loader_alive =
+      has_runtime && runtime.pid > 0 && pid_matches(runtime.pid, runtime.starttime);
+  if (has_runtime && !runtime.cfg_before.is_null() && loader_alive) {
     Json ignored;
     std::string restore_error;
     if (!ctrl_restore(runtime.cfg_before, &ignored, &restore_error)) {
       cfg_warning = "; cfg restore failed: " + restore_error;
     }
   }
+  // The marker is the only surviving record of what a dead executor wrote, so rebuild
+  // the managed set from it and let the map confirm each deletion.
+  if (loader_alive) {
+    for (const auto& item : runtime.classified) {
+      if (item.pid > 0) managed_class_[item.pid] = item.klass;
+      for (const auto pid : cgroup_pids(item.path)) managed_class_[pid] = item.klass;
+    }
+    if (!managed_class_.empty()) {
+      std::string revoke_error;
+      if (!revoke_managed(&revoke_error, true)) {
+        class_warning = "; class revocation unconfirmed: " + revoke_error;
+      }
+    }
+  }
   if (has_runtime) {
     if (runtime.pid > 0 && pid_matches(runtime.pid, runtime.starttime)) {
       if (!stop_pid(runtime.pid, runtime.starttime, kStopTimeoutMs)) {
-        return RecoveryResult{false, true, "orphan loader did not exit" + cfg_warning};
+        return RecoveryResult{false, true,
+                              "orphan loader did not exit" + cfg_warning + class_warning};
       }
     }
     const std::string state = read_state();
@@ -1282,14 +1494,16 @@ RecoveryResult SchedSkill::recover_orphan(std::string* error) {
     if (state == "enabled" && ops.find("eulerpilot") != std::string::npos) {
       return RecoveryResult{false, true,
                             "eulerpilot still attached after stopping the owned loader" +
-                                cfg_warning};
+                                cfg_warning + class_warning};
     }
+    managed_class_.clear();
     if (!cleanup_pins(runtime.pins, &conflict, error)) {
       return RecoveryResult{false, conflict, *error};
     }
     remove_runtime();
     return RecoveryResult{true, false,
-                          "stopped orphan loader and removed owned pins" + cfg_warning};
+                          "stopped orphan loader and removed owned pins" + cfg_warning +
+                              class_warning};
   }
   const std::string state = read_state();
   const std::string ops = read_ops();

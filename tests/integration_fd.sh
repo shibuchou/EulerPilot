@@ -68,6 +68,7 @@ cat >"$POLICY" <<'JSON'
       "bg_work_unit": "requests",
       "bg_progress_window_ms": 5000,
       "min_bg_work_units_per_sec": 1,
+      "max_foreground_p99_ms": 50,
       "max_bg_wait_ms": 1000,
       "fallback": "verified-safe-profile",
       "allow_affinity_change": false
@@ -86,7 +87,16 @@ import json, sys
 policy = json.load(open(sys.argv[1]))
 policy["spec"]["targets"].append(
     {"kind": "cgroup", "path": sys.argv[2], "role": "BACKGROUND",
-     "role_source": "explicit"})
+     "role_source": "explicit", "class": "BG"})
+# A non-default class on a FOREGROUND pid target. This is the path a policy could
+# not express before: LAT/CACHE existed in the data plane but nothing could feed them.
+for target in policy["spec"]["targets"]:
+    if target.get("kind") == "pid":
+        target["class"] = "LAT"
+    elif target.get("kind") == "cgroup" and target.get("role") == "FOREGROUND":
+        # COMPUTE is the policy-spelling of the helper's COMP tier; the mapping lives in
+        # ctrl_class_set, and this line is what exercises it.
+        target["class"] = "COMPUTE"
 json.dump(policy, open(sys.argv[1], "w"))
 PY
 
@@ -301,9 +311,25 @@ pids = [b for b in bindings if b.get("kind") == "pid"]
 assert pids and pids[0].get("pid") == 1, bindings
 assert pids[0].get("starttime", 0) > 0, bindings
 print("[integration-fd] pid target", pids[0]["pid"], pids[0]["starttime"])
+# What the policy declared, and what the skill therefore wrote: a FOREGROUND target
+# can now carry LAT, which is the path that used to be unreachable from a policy.
+declared = sorted({(b.get("class"), b.get("effective_class")) for b in bindings})
+assert ("LAT", "LAT") in declared, bindings
+assert ("COMPUTE", "COMPUTE") in declared, bindings
+assert ("BG", "BG") in declared, bindings
+print("[integration-fd] declared/effective classes:", declared)
 PY
 
 echo "[integration-fd] background class map"
+lat_cls="$("$CTL" class-get --pin-dir "$PINDIR" --pid 1)" || fail "class-get (LAT) failed"
+python3 - "$lat_cls" <<'PY'
+import json, sys
+reply = json.loads(sys.argv[1])
+assert reply.get("present") is True, reply
+assert reply.get("class") == "LAT", reply
+print("[integration-fd] declared class read back from the kernel map:", reply["class"])
+PY
+
 cls="$("$CTL" class-get --pin-dir "$PINDIR" --pid "$BG_PID")" || fail "class-get failed"
 python3 - "$cls" <<'PY'
 import json, sys
@@ -323,6 +349,87 @@ assert reply.get("allowed") is False, reply
 assert reply.get("code") == "FEATURES_INSUFFICIENT", reply
 print("[integration-fd] slo denied:", reply["code"])
 PY
+
+echo "[integration-fd] service observation"
+# The instance runs --skill sched (link FD over SCM_RIGHTS), so it must not
+# describe itself as the child-process reference mode.
+[ "$(field "$("$EP" status --socket "$SOCK")" skill)" = "sched" ] ||
+  fail "status reports the wrong skill mode"
+NOW_MS="$(python3 -c 'import time; print(int(time.time() * 1000))')"
+write_obs() {  # name expert p99 units wait
+  cat >"$TMP/$1.json" <<JSON
+{"workload": "svc-integration", "observed_at_ms": $NOW_MS, "window_ms": 5000,
+ "expert": "$2", "foreground": {"p99_latency_ms": $3},
+ "background": {"work_units_per_sec": $4, "max_wait_ms": $5}}
+JSON
+}
+write_obs obs-good latency-balanced 1.6 900 40
+"$EP" observe --file "$TMP/obs-good.json" --socket "$SOCK" >"$TMP/obs1.json" 2>&1 ||
+  fail "observe rejected a valid observation: $(cat "$TMP/obs1.json")"
+python3 - "$TMP/obs1.json" <<'PY'
+import json, sys
+reply = json.load(open(sys.argv[1]))
+assert reply.get("status") == "OK", reply
+assert reply["accepted"]["workload"] == "svc-integration", reply
+assert reply.get("switch_outcome") == {}, reply
+print("[integration-fd] observation accepted for", reply["accepted"]["expert"])
+PY
+
+write_obs obs-ceiling latency-balanced 900.0 900 40
+"$EP" observe --file "$TMP/obs-ceiling.json" --socket "$SOCK" >/dev/null 2>&1 ||
+  fail "observe rejected the ceiling-breaching measurement"
+slo="$("$EP" slo --expert latency-balanced --socket "$SOCK")" || fail "slo after ceiling breach failed"
+python3 - "$slo" <<'CEIL'
+import json, sys
+reply = json.loads(sys.argv[1])
+assert reply.get("allowed") is False, reply
+# The absolute ceiling outranks the resolution guard: a single-window fact needs
+# no repeat measurement.
+assert reply.get("code") == "FOREGROUND_P99_EXCEEDED", reply
+print("[integration-fd] foreground ceiling enforced:", reply["code"])
+CEIL
+
+write_obs obs-starving latency-balanced 1.6 0.01 40
+"$EP" observe --file "$TMP/obs-starving.json" --socket "$SOCK" >/dev/null 2>&1 ||
+  fail "observe rejected the starving measurement"
+slo="$("$EP" slo --expert latency-balanced --socket "$SOCK")" || fail "slo after observe failed"
+python3 - "$slo" <<'PY'
+import json, sys
+reply = json.loads(sys.argv[1])
+assert reply.get("allowed") is False, reply
+# Measured damage outranks stale host features: the workload signal is the more
+# specific evidence, and the box is idle here so features would say insufficient.
+assert reply.get("code") == "BG_PROGRESS_FLOOR", reply
+assert reply.get("service_evidence") == "present", reply
+print("[integration-fd] slo denied on measurement:", reply["code"])
+PY
+
+cat >"$TMP/obs-bad.json" <<JSON
+{"workload": "svc-integration", "observed_at_ms": $NOW_MS, "window_ms": 5000,
+ "expert": "latency-balanced", "requests_per_second": 12}
+JSON
+if "$EP" observe --file "$TMP/obs-bad.json" --socket "$SOCK" >/dev/null 2>&1; then
+  fail "observe accepted an unknown measurement field"
+fi
+
+status="$("$EP" status --socket "$SOCK")" || fail "status after observe failed"
+generation_before="$(field "$status" generation)"
+python3 - "$status" <<'PY'
+import json, sys
+reply = json.loads(sys.argv[1])
+service = reply.get("service", {})
+assert service.get("observed") is True, reply
+assert service.get("workload") == "svc-integration", service
+assert service.get("bg_work_units_per_sec") == 0.01, service
+assert isinstance(service.get("adverse_experts"), dict), service
+assert service.get("outcome_pending") is False, service
+assert "min_bg_work_units_per_sec" in service.get("declared_limits", {}), service
+print("[integration-fd] service state reported:", service.get("measured_expert"))
+PY
+# Ingest is advisory: it must not become a second writer or bump the generation.
+status="$("$EP" status --socket "$SOCK")" || fail "status recheck failed"
+[ "$(field "$status" generation)" = "$generation_before" ] ||
+  fail "service.observe moved the generation"
 
 BG_OLD="$BG_PID"
 kill -TERM "$BG_PID" 2>/dev/null || true

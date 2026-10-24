@@ -1,8 +1,12 @@
 #include "ep/executor.hpp"
 
+#include <cmath>
+
+#include "ep/autopilot.hpp"
 #include "ep/policy.hpp"
 #include "ep/target.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <iostream>
 #include <string>
@@ -69,6 +73,16 @@ Executor::~Executor() {
   if (monitor_.joinable()) monitor_.join();
 }
 
+void Executor::shutdown(const std::string& reason) {
+  running_ = false;
+  if (monitor_.joinable()) monitor_.join();
+  std::lock_guard<std::mutex> guard(mu_);
+  if (!active_) return;
+  // The 2s retry backoff must not decide whether we leave an effect in the kernel.
+  next_fallback_attempt_ms_ = 0;
+  auto_fallback_locked(reason);
+}
+
 bool Executor::init(std::string* error) {
   if (!ownership_.open(error)) return false;
   if (!journal_.open(error)) return false;
@@ -85,12 +99,21 @@ bool Executor::init(std::string* error) {
   std::string orphan_error;
   const RecoveryResult orphan = skill_->recover_orphan(&orphan_error);
   if (!orphan.ok) {
-    std::cerr << "[executor] orphan recovery failed: " << orphan_error << "\n";
+    // The skill's detail is the actionable part; the out-parameter is often
+    // empty on this path, which used to log "orphan recovery failed: " and
+    // nothing else while every later apply came back RECOVERY_REQUIRED.
+    startup_degraded_reason_ = orphan.detail.empty() ? orphan_error : orphan.detail;
+    if (startup_degraded_reason_.empty()) startup_degraded_reason_ = "orphan recovery failed";
+    if (orphan.conflict) startup_degraded_reason_ += "; foreign resources left untouched";
+    std::cerr << "[executor] orphan recovery failed: " << startup_degraded_reason_ << "\n";
   }
   std::vector<std::string> unresolved;
   if (!reconcile_all(&unresolved, error)) return false;
   degraded_ = !unresolved.empty() || !orphan.ok;
   for (const auto& txn : unresolved) {
+    if (startup_degraded_reason_.empty())
+      startup_degraded_reason_ = "unfinished transactions";
+    startup_degraded_reason_ += "; " + txn;
     std::cerr << "[executor] unresolved transaction " << txn
               << "; executor starts DEGRADED\n";
   }
@@ -121,6 +144,7 @@ Json Executor::handle(const Json& request) {
   if (operation == "feature.snapshot") return handle_features(request);
   if (operation == "route.decide") return handle_route(request);
   if (operation == "slo.evaluate") return handle_slo(request);
+  if (operation == "service.observe") return handle_observe(request);
   if (operation == "lease.acquire") return handle_lease(request);
   if (operation == "policy.validate") return handle_validate(request);
   if (operation == "policy.apply") return handle_apply(request);
@@ -134,6 +158,9 @@ Json Executor::handle_status(const Json& request) {
   const std::string request_id = request.value("request_id", "");
   Json unfinished = Json::array();
   for (const auto& txn : journal_.transactions_needing_reconcile()) unfinished.push_back(txn);
+  Json adverse_json = Json::object();
+  for (const auto& entry : adverse_experts_) adverse_json[entry.first] = entry.second;
+  const std::int64_t now_ms = now_epoch_ms();
   return Json{{"request_id", request_id},
               {"status", "OK"},
               {"instance_id", ownership_.instance_id()},
@@ -143,6 +170,59 @@ Json Executor::handle_status(const Json& request) {
               {"lease", ownership_.lease().to_json()},
               {"journal_records", journal_.size()},
               {"last_fallback", last_fallback_},
+              {"store_warning", last_store_warning_},
+              {"startup_degraded_reason", startup_degraded_reason_},
+              {"auto_apply", Json{{"enabled", options_.auto_apply},
+                                  {"owner", options_.auto_owner},
+                                  {"baseline", options_.auto_baseline_path},
+                                  {"active_expert",
+                                   active_ ? active_->policy_expert : std::string()},
+                                  {"last_expert", auto_last_expert_},
+                                  {"last_reason", auto_last_reason_},
+                                  {"last_hold", auto_last_hold_},
+                                  {"last_action_at_ms", auto_last_action_ms_},
+                                  {"min_interval_ms", options_.auto_min_interval_ms},
+                                  {"dwell_ms", options_.auto_dwell_ms},
+                                  {"candidate_hold_ms", options_.auto_candidate_hold_ms},
+                                  {"budget_window_ms", options_.auto_budget_window_ms},
+                                  {"budget_max_switches", options_.auto_budget_max_switches},
+                                  {"switches_recorded",
+                                   static_cast<std::int64_t>(auto_switch_times_.size())},
+                                  {"projected_unprotected_ms",
+                                   static_cast<std::int64_t>(auto_switch_times_.size()) *
+                                       options_.auto_measured_downtime_ms},
+                                  {"measured_downtime_ms", options_.auto_measured_downtime_ms}}},
+              {"service", Json{{"observed", has_observation_},
+                               {"workload", observation_.workload},
+                               {"measured_expert", observation_.expert},
+                               {"observed_at_ms", observation_.observed_at_ms},
+                               {"window_ms", observation_.window_ms},
+                               {"age_ms", has_observation_ ? now_ms - observation_.observed_at_ms
+                                                            : std::int64_t{0}},
+                               {"foreground_p99_ms", observation_.has_foreground_p99
+                                                         ? Json(observation_.foreground_p99_ms)
+                                                         : Json(nullptr)},
+                               {"bg_work_units_per_sec",
+                                observation_.has_bg_work_units
+                                    ? Json(observation_.bg_work_units_per_sec)
+                                    : Json(nullptr)},
+                               {"bg_max_wait_ms", observation_.has_bg_max_wait
+                                                      ? Json(observation_.bg_max_wait_ms)
+                                                      : Json(nullptr)},
+                               {"declared_limits", active_safety_},
+                               {"adverse_experts", adverse_json},
+                               {"outcome_pending", outcome_pending_},
+                               {"outcome_windows", outcome_windows_},
+                               {"outcome_windows_required", options_.auto_outcome_windows},
+                               {"observations_accepted", observations_accepted_},
+                               {"observations_rejected", observations_rejected_},
+                               {"last_rejection", last_rejection_},
+                               {"observation_max_age_ms", observation_max_age_ms_},
+                               {"stale_checks", stale_checks_},
+                               {"noise_p99_pct", service_noise(observation_.expert).p99_pct},
+                               {"noise_bg_progress_pct",
+                                service_noise(observation_.expert).bg_progress_pct},
+                               {"last_outcome", last_outcome_}}},
               {"incomplete_transactions", unfinished}};
 }
 
@@ -158,12 +238,189 @@ Json Executor::handle_route(const Json& request) {
   return decision;
 }
 
+SloInput Executor::service_slo_input(const std::string& expert, std::int64_t now_ms) {
+  SloInput in;
+  in.features = features_.snapshot();
+  in.expert = expert;
+  in.now_ms = now_ms;
+  in.max_observation_age_ms = 1000;
+  in.safety = active_safety_;
+  in.has_observation = has_observation_;
+  in.observation = observation_;
+  in.adverse = adverse_experts_;
+  if (has_observation_) {
+    const std::int64_t age = now_ms - observation_.observed_at_ms;
+    if (age > observation_max_age_ms_) observation_max_age_ms_ = age;
+    if (age > 2 * observation_.window_ms) stale_checks_++;
+  }
+  return in;
+}
+
 Json Executor::handle_slo(const Json& request) {
   const std::string expert = request.value("expert", "");
-  const std::int64_t max_age = request.value("max_observation_age_ms", 1000LL);
-  Json decision = SloGate{}.evaluate(features_.snapshot(), expert, max_age);
+  SloInput in = service_slo_input(expert, now_epoch_ms());
+  in.max_observation_age_ms = request.value("max_observation_age_ms", 1000LL);
+  Json decision = SloGate{}.evaluate(in);
   decision["request_id"] = request.value("request_id", "");
   return decision;
+}
+
+namespace {
+
+// Largest change between consecutive windows of the same expert, as a percentage.
+// Two windows is enough to say "this signal jitters by at least X"; one is not.
+void remember(std::vector<double>& history, bool present, double value) {
+  if (!present) return;
+  if (history.size() >= 8) history.erase(history.begin());
+  history.push_back(value);
+}
+
+// A pair of consecutive windows only shows jitter if the two describe the same
+// world. SP3 showed why that needs saying: the same档 measured 1.9ms under load
+// and 0.13ms after it, and counting that as "noise" would make the guard refuse
+// everything forever. Differences beyond a factor of four are state changes.
+double jitter_pct(const std::vector<double>& values) {
+  double worst = 0.0;
+  for (std::size_t i = 1; i < values.size(); ++i) {
+    const double previous = values[i - 1];
+    const double current = values[i];
+    if (previous <= 0.0 || current <= 0.0) continue;
+    const double ratio = current > previous ? current / previous : previous / current;
+    if (ratio > 4.0) continue;
+    const double delta = std::abs(current - previous) / previous * 100.0;
+    if (delta > worst) worst = delta;
+  }
+  return worst;
+}
+
+}  // namespace
+
+ServiceNoise Executor::service_noise(const std::string& expert) const {
+  ServiceNoise noise;
+  const auto fg = fg_p99_history_.find(expert);
+  if (fg != fg_p99_history_.end()) noise.p99_pct = jitter_pct(fg->second);
+  const auto bg = bg_progress_history_.find(expert);
+  if (bg != bg_progress_history_.end()) noise.bg_progress_pct = jitter_pct(bg->second);
+  return noise;
+}
+
+Json Executor::handle_observe(const Json& request) {
+  const std::string request_id = request.value("request_id", "");
+  ServiceObservation parsed;
+  std::string error;
+  if (!request.contains("observation") ||
+      !parse_service_observation(request.at("observation"), &parsed, &error)) {
+    observations_rejected_++;
+    last_rejection_ = error;
+    return rejection(request_id, ErrorCode::kSchemaInvalid,
+                     "service observation rejected", error);
+  }
+  const std::int64_t now_ms = now_epoch_ms();
+  if (parsed.observed_at_ms < now_ms - 600000 ||
+      parsed.observed_at_ms < now_ms - 10 * parsed.window_ms) {
+    // Accepting a long-dead window would silently replace a fresher one and then
+    // sit there denying every change as stale, which reads like a gate fault.
+    observations_rejected_++;
+    last_rejection_ = "observation is too old to describe the present";
+    return rejection(request_id, ErrorCode::kSchemaInvalid,
+                     "service observation is too old",
+                     "observed_at_ms=" + std::to_string(parsed.observed_at_ms) +
+                         " now_ms=" + std::to_string(now_ms));
+  }
+  if (parsed.observed_at_ms > now_ms + 5000) {
+    observations_rejected_++;
+    last_rejection_ = "observation is from the future";
+    return rejection(request_id, ErrorCode::kSchemaInvalid, "service observation is from the future",
+                     "observed_at_ms=" + std::to_string(parsed.observed_at_ms) +
+                         " now_ms=" + std::to_string(now_ms));
+  }
+
+  if (!outcome_pending_) {
+    remember(fg_p99_history_[parsed.expert], parsed.has_foreground_p99, parsed.foreground_p99_ms);
+    remember(bg_progress_history_[parsed.expert], parsed.has_bg_work_units,
+             parsed.bg_work_units_per_sec);
+  }
+
+  Json outcome = Json::object();
+  if (outcome_pending_ && parsed.expert == outcome_to_) {
+    const ServiceNoise noise = service_noise(outcome_from_);
+    const OutcomeVerdict verdict = evaluate_switch_outcome(active_safety_, outcome_before_, parsed,
+                                                          noise);
+    outcome = Json{{"from", outcome_from_},
+                   {"to", outcome_to_},
+                   {"evaluated", true},
+                   {"windows_observed", outcome_windows_ + 1},
+                   {"windows_required", options_.auto_outcome_windows},
+                   {"noise_p99_pct", noise.p99_pct},
+                   {"noise_bg_progress_pct", noise.bg_progress_pct}};
+    if (verdict.code.empty() && (verdict.skipped_foreground || verdict.skipped_ratio)) {
+      // The contract asks for a resolution the measurement does not have, so the
+      // comparison is reported as unrunnable instead of silently passing.
+      outcome["hurt"] = false;
+      outcome["comparable"] = false;
+      outcome["detail"] = verdict.detail;
+      last_outcome_ = outcome_to_ + ": " + verdict.detail;
+      outcome_pending_ = false;
+      outcome_windows_ = 0;
+      std::cerr << "[executor] " << last_outcome_ << "\n";
+    } else if (verdict.code.empty()) {
+      // One clean window is enough to stop treating the change as damaging.
+      last_outcome_ = outcome_to_ + " measured within the declared limits";
+      outcome_pending_ = false;
+      outcome_windows_ = 0;
+      outcome["hurt"] = false;
+      outcome["comparable"] = true;
+    } else {
+      outcome_windows_++;
+      outcome["comparable"] = true;
+      outcome["code"] = verdict.code;
+      outcome["detail"] = verdict.detail;
+      if (outcome_windows_ >= options_.auto_outcome_windows) {
+        // The expert that produced this measurement is now known-bad on this
+        // evidence, so the gate refuses to propose it again until the service
+        // measurement says otherwise.
+        adverse_experts_[outcome_to_] = verdict.code + ": " + verdict.detail + " (" +
+                                        std::to_string(outcome_windows_) +
+                                        " consecutive windows)";
+        last_outcome_ = outcome_to_ + " regressed the service: " + verdict.code + " (" +
+                        verdict.detail + ")";
+        std::cerr << "[executor] service evidence against " << outcome_to_ << ": " << verdict.code
+                  << " (" << verdict.detail << ") over " << outcome_windows_ << " windows\n";
+        outcome["hurt"] = true;
+        outcome_pending_ = false;
+        outcome_windows_ = 0;
+      } else {
+        // A p99 from one window moves by more than the declared budget on noise
+        // alone, so a single violation is recorded as suspicion, not evidence.
+        outcome["hurt"] = false;
+        last_outcome_ = "suspected " + verdict.code + " in window " +
+                        std::to_string(outcome_windows_) + " of " +
+                        std::to_string(options_.auto_outcome_windows) + " for " + outcome_to_;
+        std::cerr << "[executor] " << last_outcome_ << "; confirming\n";
+      }
+    }
+  } else if (outcome_pending_) {
+    outcome = Json{{"from", outcome_from_},
+                   {"to", outcome_to_},
+                   {"evaluated", false},
+                   {"detail", "measurement is labelled " + parsed.expert + ", still waiting for " +
+                                  outcome_to_}};
+  }
+
+  observation_ = parsed;
+  has_observation_ = true;
+  observations_accepted_++;
+  Json adverse_json = Json::object();
+  for (const auto& entry : adverse_experts_) adverse_json[entry.first] = entry.second;
+  return Json{{"status", "OK"},
+              {"request_id", request_id},
+              {"accepted", Json{{"workload", parsed.workload},
+                                {"expert", parsed.expert},
+                                {"observed_at_ms", parsed.observed_at_ms},
+                                {"window_ms", parsed.window_ms}}},
+              {"observed_generation", ownership_.generation()},
+              {"switch_outcome", outcome},
+              {"adverse_experts", adverse_json}};
 }
 
 Json Executor::handle_lease(const Json& request) {
@@ -184,7 +441,28 @@ Json Executor::handle_lease(const Json& request) {
     return rejection(request_id, ErrorCode::kSchemaInvalid, error);
   }
   LeaseState lease;
-  if (!ownership_.acquire_lease(owner, ttl_ms, &lease, &error)) {
+  bool persisted = true;
+  if (!ownership_.acquire_lease(owner, ttl_ms, &lease, &error, &persisted)) {
+    if (!persisted) {
+      // The store is unwritable (disk full, read-only mount, ...). A lease that only lives
+      // in this process must not back a *new* effect, but refusing it altogether would block
+      // the one action that is always safe: taking an existing effect back down to fair.
+      // Grant it, say out loud that it is not durable, and let the degraded flag refuse
+      // applies until someone reconciles.
+      degraded_ = true;
+      last_store_warning_ = "lease is in memory only: " + error;
+      std::cerr << "[executor] lease granted in memory only: " << error << "\n";
+      return Json{{"request_id", request_id},
+                  {"status", "OK"},
+                  {"lease_owner", lease.owner},
+                  {"fence_epoch", lease.fence},
+                  {"expires_ms", lease.expires_ms},
+                  {"expires_at", iso8601_from_ms(lease.expires_ms)},
+                  {"observed_generation", ownership_.generation()},
+                  {"lease_persisted", false},
+                  {"warning", last_store_warning_ +
+                                  "; policy.apply is refused until reconcile succeeds"}};
+    }
     return rejection(request_id, ErrorCode::kSchemaInvalid, error);
   }
   return Json{{"request_id", request_id},
@@ -416,7 +694,8 @@ Json Executor::handle_apply(const Json& request) {
     result.observed_generation = ownership_.generation();
     result.error = Error{ErrorCode::kRecoveryRequired,
                          "executor is degraded; reconcile before applying",
-                         "run transaction.reconcile"};
+                         startup_degraded_reason_.empty() ? "run transaction.reconcile"
+                                                          : startup_degraded_reason_};
     return result.to_json();
   }
   if (journal_.broken()) {
@@ -433,7 +712,11 @@ Json Executor::handle_apply(const Json& request) {
   // Generated proposals must pass the SLO gate. A human-explicit policy keeps
   // operator authority and bypasses the gate.
   if (!options_.test_mode && policy_summary.source != "human") {
-    const Json gate = SloGate{}.evaluate(features_.snapshot(), policy_summary.expert, 1000);
+    // Judge the proposal against the limits it declares for itself, plus any
+    // measured service evidence already on file.
+    SloInput proposal_gate_input = service_slo_input(policy_summary.expert, now_epoch_ms());
+    proposal_gate_input.safety = policy_summary.safety;
+    const Json gate = SloGate{}.evaluate(proposal_gate_input);
     if (!gate.value("allowed", false)) {
       return rejection(request_id, ErrorCode::kSloDenied,
                        "SLO gate denied expert '" + policy_summary.expert + "' from source '" +
@@ -505,9 +788,12 @@ Json Executor::handle_apply(const Json& request) {
   // The effect exists from here on. Track it before any journal/state write so
   // a later persistence failure cannot lose the recovery context.
   applied.bindings = bindings;
+  const std::string previous_expert = active_ ? active_->policy_expert : std::string();
+  const bool had_observation_before = has_observation_;
+  const ServiceObservation observation_before = observation_;
   active_ = ActiveAction{envelope.transaction_id, action_id, envelope.lease_owner,
                          envelope.fence_epoch, applied.data, snapshot.data,
-                         snapshot.id, digest, now_epoch_ms(),
+                         snapshot.id, digest, policy_summary.expert, now_epoch_ms(),
                          policy_summary.safety.value("policy_ttl_ms", 60000LL),
                          applied.bindings};
   if (now_epoch_ms() > envelope.deadline_ms) {
@@ -570,6 +856,25 @@ Json Executor::handle_apply(const Json& request) {
   result.checks.push_back(Check{"snapshot", true, snapshot.id});
   result.checks.push_back(Check{"apply", true, "applied"});
   result.checks.push_back(Check{"verify", true, verify.detail});
+
+  // The gate reads the limits this policy declares, so they only become binding
+  // once the policy is actually in place.
+  active_safety_ = policy_summary.safety;
+  if (!previous_expert.empty() && previous_expert != policy_summary.expert) {
+    // A change of expert is an experiment on the served workload. Arm the outcome
+    // check so the next measurement under the new expert decides whether it hurt;
+    // without a pre-switch measurement there is nothing to compare against, and
+    // that is reported instead of assumed.
+    outcome_from_ = previous_expert;
+    outcome_to_ = policy_summary.expert;
+    outcome_before_ = observation_before;
+    outcome_pending_ = had_observation_before;
+    outcome_windows_ = 0;
+    if (!had_observation_before) {
+      last_outcome_ = "no pre-switch service measurement; outcome of " + previous_expert +
+                      " -> " + policy_summary.expert + " not evaluated";
+    }
+  }
 
   const Json response = result.to_json();
   if (!ownership_.commit_generation(new_generation, &error)) {
@@ -802,8 +1107,38 @@ void Executor::monitor_loop() {
       features_.sample();
       last_feature_ms_ = now;
     }
-    if (!active_) continue;
+    // The autopilot is an internal caller of the same apply path a client uses,
+    // so it runs on the monitor thread and never becomes a second writer.
+    if (options_.auto_apply && now - auto_last_check_ms_ >= 2000) {
+      auto_last_check_ms_ = now;
+      run_auto_apply_locked(now);
+    }
+    if (!active_) {
+      liveness_strikes_ = 0;
+      continue;
+    }
     if (now < next_fallback_attempt_ms_) continue;
+    // A verified apply can still lose the resource afterwards, so presence is
+    // re-checked while the effect is active. Three consecutive misses (~3s) are
+    // required because a single read can land inside a kernel re-enable
+    // transition, and a false positive would tear down a healthy scheduler.
+    if (now - last_liveness_ms_ >= 1000) {
+      last_liveness_ms_ = now;
+      Applied probe;
+      probe.data = active_->applied;
+      probe.bindings = active_->bindings;
+      std::string detail;
+      if (skill_->liveness(probe, &detail)) {
+        liveness_strikes_ = 0;
+      } else if (++liveness_strikes_ >= 3) {
+        liveness_strikes_ = 0;
+        auto_fallback_locked("scheduler lost: " + detail);
+        continue;
+      } else {
+        std::cerr << "[executor] liveness miss " << liveness_strikes_ << ": " << detail
+                  << "\n";
+      }
+    }
     if (active_->ttl_ms > 0 && now - active_->applied_at_ms >= active_->ttl_ms) {
       auto_fallback_locked("policy TTL expired");
       continue;
@@ -932,6 +1267,173 @@ void Executor::auto_fallback_locked(const std::string& reason) {
   degraded_ = true;
   last_fallback_ = reason;
   std::cerr << "[executor] auto fallback: " << reason << "\n";
+}
+
+void Executor::run_auto_apply_locked(std::int64_t now_ms) {
+  if (options_.auto_owner.empty() || !options_.auto_baseline_policy.is_object() ||
+      !options_.auto_baseline_policy.contains("spec")) {
+    auto_last_hold_ = "autopilot baseline policy unavailable";
+    return;
+  }
+
+  LeaseState lease = ownership_.lease();
+  const bool mine = lease.owner == options_.auto_owner;
+  const bool valid = lease.expires_ms > now_ms;
+  if (valid && !mine) {
+    // A live lease held by somebody else always outranks the autopilot.
+    auto_last_hold_ = "lease held by " + lease.owner;
+    return;
+  }
+  const bool renewing = mine && valid &&
+                        lease.expires_ms - now_ms < options_.auto_lease_ttl_ms / 2;
+  if (!mine || !valid || renewing) {
+    std::string lease_error;
+    LeaseState acquired;
+    if (!ownership_.acquire_lease(options_.auto_owner,
+                                  static_cast<std::uint64_t>(options_.auto_lease_ttl_ms),
+                                  &acquired, &lease_error)) {
+      auto_last_hold_ = "lease acquire failed: " + lease_error;
+      return;
+    }
+    lease = acquired;
+    std::cerr << "[executor] autopilot " << (renewing ? "renewed" : "took")
+              << " lease fence=" << lease.fence << "\n";
+  }
+
+  const Json routing = router_.decide(features_.snapshot(), now_ms);
+  const std::string routed = routing.value("expert", "");
+  const Json gate = SloGate{}.evaluate(service_slo_input(routed, now_ms));
+
+  // Track how long the routing target has been unchanged: a route that keeps
+  // flipping is evidence the workload straddles a threshold, not that the policy
+  // should follow every crossing.
+  if (routed != auto_desired_) {
+    auto_desired_ = routed;
+    auto_desired_since_ms_ = now_ms;
+  }
+  const std::int64_t budget_cutoff = now_ms - options_.auto_budget_window_ms;
+  auto_switch_times_.erase(
+      std::remove_if(auto_switch_times_.begin(), auto_switch_times_.end(),
+                     [budget_cutoff](std::int64_t at) { return at <= budget_cutoff; }),
+      auto_switch_times_.end());
+
+  AutoInput input;
+  input.enabled = true;
+  input.auto_owner = options_.auto_owner;
+  input.lease_owner = lease.owner;
+  input.lease_expires_ms = lease.expires_ms;
+  input.routing_degraded = routing.value("degraded", false);
+  input.routed_expert = routed;
+  input.slo_allowed = gate.value("allowed", false);
+  input.slo_code = gate.value("code", "");
+  input.active_expert = active_ ? active_->policy_expert : std::string();
+  input.active_age_ms = active_ ? now_ms - active_->applied_at_ms : 0;
+  input.desired_stable_ms = now_ms - auto_desired_since_ms_;
+  input.switch_times_ms = auto_switch_times_;
+  input.last_action_ms = auto_last_action_ms_;
+  input.min_interval_ms = options_.auto_min_interval_ms;
+  input.now_ms = now_ms;
+  input.dwell_ms = options_.auto_dwell_ms;
+  input.candidate_hold_ms = options_.auto_candidate_hold_ms;
+  input.budget_window_ms = options_.auto_budget_window_ms;
+  input.budget_max_switches = options_.auto_budget_max_switches;
+  input.measured_downtime_ms = options_.auto_measured_downtime_ms;
+
+  const AutoDecision decision = auto_pilot_decide(input);
+  if (!decision.act) {
+    auto_last_hold_ = decision.hold;
+    return;
+  }
+
+  // Switching means dropping the current effect and attaching the new one:
+  // skill preflight refuses a second attach while an effect is in place, and
+  // overwriting active_ without rolling it back would lose its ownership.
+  // Rollback first, so the worst outcome of a failed switch is the safe state.
+  // Rollback clears active_, so the expert being left has to be remembered here
+  // or the post-switch measurement would have nothing to be judged against.
+  const std::string from_expert = active_ ? active_->policy_expert : std::string();
+  if (active_) {
+    const Json rollback_of{{"apply_action_id", active_->action_id},
+                           {"original_transaction_id", active_->txn},
+                           {"snapshot_id", active_->snapshot_id}};
+    const Json rollback_envelope{
+        {"apiVersion", kApiVersion},
+        {"request_id", "req-auto-rb-" + random_hex(12)},
+        {"transaction_id", "txn-auto-rb-" + random_hex(12)},
+        {"idempotency_key", "auto-rb-" + std::to_string(now_ms)},
+        {"operation", "policy.rollback"},
+        {"policy_sha256", active_->policy_sha256},
+        {"lease_owner", lease.owner},
+        {"fence_epoch", lease.fence},
+        {"expected_generation", ownership_.generation()},
+        {"issued_at", now_iso8601()},
+        {"deadline", iso8601_from_ms(now_ms + 60000)},
+        {"rollback_of", rollback_of}};
+    const Json rolled = handle_rollback(Json{{"operation", "policy.rollback"},
+                                             {"envelope", rollback_envelope}});
+    const std::string rolled_status = rolled.value("status", "");
+    if (rolled_status != "ROLLED_BACK") {
+      auto_last_action_ms_ = now_ms;
+      // The rollback already detached the effect, so this attempt paid a gap even
+      // though it never re-attached: it has to consume budget.
+      auto_switch_times_.push_back(now_ms);
+      auto_last_hold_ = "switch aborted, rollback returned " + rolled_status;
+      std::cerr << "[executor] autopilot " << auto_last_hold_ << "; staying on fair\n";
+      return;
+    }
+  }
+
+  Json policy = options_.auto_baseline_policy;
+  policy["spec"]["expert"] = decision.expert;
+  policy["spec"]["source"] = "rule-template";
+  const std::string digest = sha256_hex(canonical_json(policy));
+  const Json envelope{
+      {"apiVersion", kApiVersion},
+      {"request_id", "req-auto-ap-" + random_hex(12)},
+      {"transaction_id", "txn-auto-ap-" + random_hex(12)},
+      {"idempotency_key", "auto-ap-" + std::to_string(now_ms)},
+      {"operation", "policy.apply"},
+      {"policy_sha256", digest},
+      {"lease_owner", lease.owner},
+      {"fence_epoch", lease.fence},
+      {"expected_generation", ownership_.generation()},
+      {"issued_at", now_iso8601()},
+      {"deadline", iso8601_from_ms(now_ms + 60000)}};
+  const Json response = handle_apply(Json{{"operation", "policy.apply"},
+                                          {"envelope", envelope},
+                                          {"policy", policy}});
+  auto_last_action_ms_ = now_ms;
+  auto_last_expert_ = decision.expert;
+  const std::string status = response.value("status", "");
+  if (status == "VERIFIED") {
+    auto_last_hold_.clear();
+    auto_last_reason_ = decision.reason;
+    auto_switch_times_.push_back(now_ms);
+    if (!from_expert.empty() && from_expert != decision.expert) {
+      outcome_from_ = from_expert;
+      outcome_to_ = decision.expert;
+      outcome_before_ = observation_;
+      outcome_pending_ = has_observation_;
+      outcome_windows_ = 0;
+      if (!has_observation_) {
+        last_outcome_ = "no service measurement before " + from_expert + " -> " +
+                        decision.expert + "; outcome not evaluated";
+      }
+    }
+    std::cerr << "[executor] autopilot switched " << decision.reason
+              << "; switch " << auto_switch_times_.size() << "/"
+              << options_.auto_budget_max_switches << " in "
+              << options_.auto_budget_window_ms << "ms window, projected unprotected "
+              << auto_switch_times_.size() * options_.auto_measured_downtime_ms << "ms\n";
+    return;
+  }
+  auto_last_hold_ = "apply returned " + status;
+  // Rollback succeeded but the apply did not: the gap was still paid, so it
+  // counts against the budget rather than being treated as a free retry.
+  auto_switch_times_.push_back(now_ms);
+  std::cerr << "[executor] autopilot apply not verified: " << status << " "
+            << response.value("error", Json(Json::object_t())).dump()
+            << "; effect left rolled back\n";
 }
 
 bool Executor::reconcile_all(std::vector<std::string>* unresolved, std::string* error) {

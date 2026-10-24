@@ -13,6 +13,7 @@ struct PolicyTarget {
   std::string path;         // /sys/fs/cgroup/... (cgroup only)
   std::string role;         // FOREGROUND / BACKGROUND / NEUTRAL
   std::string role_source;  // explicit
+  std::string runtime_class{};  // optional: NORMAL / LAT / COMPUTE / CACHE / BG ("" = by role)
   std::int64_t pid = 0;     // pid only
 };
 

@@ -10,11 +10,13 @@
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <memory>
 #include <string>
 
 #include "ep/executor.hpp"
+#include "ep/policy.hpp"
 #include "ep/mock_skill.hpp"
 #include "ep/sched_skill.hpp"
 #include "ep/unsupported_skill.hpp"
@@ -41,12 +43,34 @@ struct Options {
   std::string sched_ctl = "/usr/local/bin/ep-schedctl";
   bool test_mode = false;
   bool allow_any_uid = false;
+  bool auto_apply = false;
+  std::string auto_policy_path;
+  std::string auto_owner = "autopilot-v2";
+  long long auto_min_interval_ms = 15000;
+  long long auto_lease_ttl_ms = 30000;
+  long long auto_dwell_ms = 60000;
+  long long auto_candidate_hold_ms = 15000;
+  long long auto_budget_window_ms = 600000;
+  long long auto_budget_max_switches = 2;
+  long long auto_outcome_windows = 2;
+  long long auto_measured_downtime_ms = 665;
 };
 
 void print_usage() {
   std::cout << "usage: ep-executord [--state-dir DIR] [--socket PATH] "
                "[--skill sched|mock] [--loader PATH] [--sched-ctl PATH] "
-               "[--test-mode] [--allow-any-uid]\n";
+               "[--test-mode] [--allow-any-uid] "
+               "[--auto-apply --auto-policy FILE [--auto-owner ID] "
+               "[--auto-min-interval-ms N] [--auto-lease-ttl-ms N]]\n"
+               "  --auto-apply moves an in-place policy between whitelisted experts;\n"
+               "  it requires --auto-policy, only acts while it holds the lease, and\n"
+               "  never changes targets or safety limits.\n"
+               "  suppression (one switch costs ~0.3-0.7s of unprotected time):\n"
+               "  --auto-dwell-ms N (default 60000) min age before leaving an expert\n"
+               "  --auto-candidate-hold-ms N (15000) route must be stable that long\n"
+               "  --auto-budget-window-ms N (600000) + --auto-budget-max-switches K (2)\n"
+               "  --auto-outcome-windows K (2) violating windows before service evidence\n"
+               "  --auto-measured-downtime-ms N (665) reported unprotected time\n";
 }
 
 bool parse_args(int argc, char** argv, Options* options, std::string* error) {
@@ -74,6 +98,46 @@ bool parse_args(int argc, char** argv, Options* options, std::string* error) {
       options->test_mode = true;
     } else if (arg == "--allow-any-uid") {
       options->allow_any_uid = true;
+    } else if (arg == "--auto-apply") {
+      options->auto_apply = true;
+    } else if (arg == "--auto-policy") {
+      if (!next(&options->auto_policy_path)) return false;
+    } else if (arg == "--auto-owner") {
+      if (!next(&options->auto_owner)) return false;
+    } else if (arg == "--auto-min-interval-ms" || arg == "--auto-lease-ttl-ms" ||
+               arg == "--auto-dwell-ms" || arg == "--auto-candidate-hold-ms" ||
+               arg == "--auto-budget-window-ms") {
+      std::string value;
+      if (!next(&value)) return false;
+      char* end = nullptr;
+      const long long parsed = std::strtoll(value.c_str(), &end, 10);
+      if (end == value.c_str() || *end != '\0' || parsed < 1000 || parsed > 3600000) {
+        *error = arg + " needs an integer in 1000..3600000, got: " + value;
+        return false;
+      }
+      if (arg == "--auto-min-interval-ms") options->auto_min_interval_ms = parsed;
+      else if (arg == "--auto-lease-ttl-ms") options->auto_lease_ttl_ms = parsed;
+      else if (arg == "--auto-dwell-ms") options->auto_dwell_ms = parsed;
+      else if (arg == "--auto-candidate-hold-ms") options->auto_candidate_hold_ms = parsed;
+      else options->auto_budget_window_ms = parsed;
+    } else if (arg == "--auto-budget-max-switches" ||
+               arg == "--auto-outcome-windows" ||
+               arg == "--auto-measured-downtime-ms") {
+      std::string value;
+      if (!next(&value)) return false;
+      char* end = nullptr;
+      const long long parsed = std::strtoll(value.c_str(), &end, 10);
+      const long long limit = arg == "--auto-budget-max-switches"
+                              ? 100
+                              : (arg == "--auto-outcome-windows" ? 10 : 60000);
+      const long long lowest = arg == "--auto-outcome-windows" ? 1 : 0;
+      if (end == value.c_str() || *end != '\0' || parsed < lowest || parsed > limit) {
+        *error = arg + " needs an integer in 0.." + std::to_string(limit) + ", got: " + value;
+        return false;
+      }
+      if (arg == "--auto-budget-max-switches") options->auto_budget_max_switches = parsed;
+      else if (arg == "--auto-outcome-windows") options->auto_outcome_windows = parsed;
+      else options->auto_measured_downtime_ms = parsed;
     } else if (arg == "-h" || arg == "--help") {
       print_usage();
       std::exit(0);
@@ -220,8 +284,60 @@ int main(int argc, char** argv) {
     skill = std::make_unique<ep::UnsupportedSkill>(options.skill);
   }
 
-  ep::Executor executor(options.state_dir, std::move(skill),
-                        ep::ExecutorOptions{options.test_mode});
+  ep::ExecutorOptions executor_options;
+  executor_options.test_mode = options.test_mode;
+  if (options.auto_apply) {
+    if (options.skill != "sched" && options.skill != "sched-ref") {
+      std::cerr << "[executord] --auto-apply needs --skill sched|sched-ref\n";
+      return 2;
+    }
+    if (options.auto_policy_path.empty()) {
+      std::cerr << "[executord] --auto-apply requires --auto-policy FILE\n";
+      return 2;
+    }
+    std::ifstream input(options.auto_policy_path);
+    if (!input) {
+      std::cerr << "[executord] cannot read autopilot baseline: "
+                << options.auto_policy_path << '\n';
+      return 1;
+    }
+    ep::Json baseline;
+    try {
+      baseline = ep::Json::parse(input);
+    } catch (const std::exception& e) {
+      std::cerr << "[executord] autopilot baseline is not valid JSON: " << e.what() << "\n";
+      return 1;
+    }
+    ep::PolicySummary baseline_summary;
+    std::string baseline_error;
+    if (!ep::validate_scheduling_policy(baseline, &baseline_summary, &baseline_error)) {
+      std::cerr << "[executord] autopilot baseline rejected: " << baseline_error << "\n";
+      return 1;
+    }
+    executor_options.auto_apply = true;
+    executor_options.auto_owner = options.auto_owner;
+    executor_options.auto_baseline_path = options.auto_policy_path;
+    executor_options.auto_min_interval_ms = options.auto_min_interval_ms;
+    executor_options.auto_dwell_ms = options.auto_dwell_ms;
+    executor_options.auto_candidate_hold_ms = options.auto_candidate_hold_ms;
+    executor_options.auto_budget_window_ms = options.auto_budget_window_ms;
+    executor_options.auto_budget_max_switches =
+        static_cast<int>(options.auto_budget_max_switches);
+    executor_options.auto_outcome_windows = static_cast<int>(options.auto_outcome_windows);
+    executor_options.auto_measured_downtime_ms = options.auto_measured_downtime_ms;
+    executor_options.auto_lease_ttl_ms = options.auto_lease_ttl_ms;
+    executor_options.auto_baseline_policy = std::move(baseline);
+    std::cout << "[executord] autopilot enabled owner=" << options.auto_owner
+              << " baseline=" << baseline_summary.name << " expert=" << baseline_summary.expert
+              << " min_interval_ms=" << options.auto_min_interval_ms
+              << " dwell_ms=" << options.auto_dwell_ms
+              << " candidate_hold_ms=" << options.auto_candidate_hold_ms
+              << " budget=" << options.auto_budget_max_switches << "/"
+              << options.auto_budget_window_ms << "ms outcome_windows="
+              << options.auto_outcome_windows << "\n";
+  }
+
+  ep::Executor executor(options.state_dir, std::move(skill), std::move(executor_options));
   if (!executor.init(&error)) {
     std::cerr << "[executord] init failed: " << error << "\n";
     return 1;
@@ -283,9 +399,10 @@ int main(int argc, char** argv) {
     serve_client(client, &executor, options.allow_any_uid);
   }
 
-  std::cerr << "[executord] shutting down\n";
   ::close(listen_fd);
   ::unlink(options.socket_path.c_str());
+  executor.shutdown("executord received a stop signal");
+  std::cerr << "[executord] shutting down\n";
   ::unlink(pid_path.c_str());
   return 0;
 }

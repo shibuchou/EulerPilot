@@ -73,7 +73,7 @@ struct Skill {
 - `spec.scope`固定为`scheduler-instance`：初版参数共享，不能对不同cgroup伪造独立全局slice。
 - `targets`显式声明前台/后台/中立角色；执行时解析出身份和权限，不把样例路径当本机已存在。
 - `expert`为白名单profile；`parameters`为有界值，mode与生成来源存档。
-- `safety`包含最小驻留、最大观测年龄、心跳、策略TTL、quiet预算和后台进度底线。`evaluation_min_bg_progress_ratio`是配对实验中相对同场景A0工作率的评估门槛，在线Agent不把它当可观测反事实。在线保护使用明确工作单位的`min_bg_work_units_per_sec`与`bg_progress_window_ms`、以及`max_bg_wait_ms`；绝对门槛来自pilot冻结配置。
+- `safety`包含最小驻留、最大观测年龄、心跳、策略TTL、quiet预算和后台进度底线。`evaluation_min_bg_progress_ratio`是配对实验中相对同场景A0工作率的评估门槛，在线Agent不把它当可观测反事实。在线保护使用明确工作单位的`min_bg_work_units_per_sec`与`bg_progress_window_ms`、以及`max_bg_wait_ms`；绝对门槛来自pilot冻结配置。`max_foreground_p99_ms`（可选）是前向延迟的在线绝对上限：实测p99的相邻窗抖动为3.8–20%，比策略声明的5%相对预算粗，所以在线判前向退化只能用绝对量（协议§5.1）。
 - 策略未声明改cpuset/affinity，纯调度实验不得暗改它们；此类动作未来用独立cgroup策略和对照。
 
 schema保证字段类型/枚举/静态范围。语义校验进一步检查slice关系、TTL/驻留/心跳、目标重复、策略能力条件。真正执行仍需kernel probe、授权、身份、资源冲突、当前generation和目标健康检查。当前脚本通过不代表策略可安全部署。

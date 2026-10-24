@@ -30,7 +30,8 @@
               "path": {"type": "string", "pattern": "^/sys/fs/cgroup/[A-Za-z0-9_./-]+$", "maxLength": 1024},
               "pid": {"type": "integer", "minimum": 1, "maximum": 4194304},
               "role": {"enum": ["FOREGROUND", "BACKGROUND", "NEUTRAL"]},
-              "role_source": {"const": "explicit"}
+              "role_source": {"const": "explicit"},
+              "class": {"enum": ["NORMAL", "LAT", "COMPUTE", "CACHE", "BG"]}
             },
             "allOf": [
               {"if": {"properties": {"kind": {"const": "cgroup"}}},
@@ -68,6 +69,7 @@
             "bg_progress_window_ms": {"type": "integer", "minimum": 1000, "maximum": 60000},
             "min_bg_work_units_per_sec": {"type": "number", "exclusiveMinimum": 0},
             "max_bg_wait_ms": {"type": "integer", "minimum": 50, "maximum": 10000},
+            "max_foreground_p99_ms": {"type": "integer", "minimum": 1, "maximum": 60000},
             "fallback": {"enum": ["verified-safe-profile", "detach-to-fair"]},
             "allow_affinity_change": {"const": false}
           }

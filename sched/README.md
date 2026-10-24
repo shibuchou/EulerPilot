@@ -7,10 +7,10 @@
 
 | 文件 | 来源 | 原 SHA256 | 当前 SHA256 | 修改 |
 |---|---|---|---|---|
-| `scx_schedpilot.bpf.c` | SchedPilot `0aeca0c` `bpf/scx_schedpilot.bpf.c` | `3d057e6f…` | `f568b0e8…` | struct_ops 名改为 `eulerpilot`；v2 公平性预算 |
-| `intf.h` | SchedPilot `0aeca0c` `bpf/intf.h` | `c72e7eec…` | `431c5719…` | cfg v3 预算字段 |
-| `loader.c` | SchedPilot `0aeca0c` `loader/scx_schedpilot.c` | `0fe906c7…` | `d32730af…` | 见下 |
-| `scx_schedpilot.bpf.skel.h` | 由上述 BPF 源在 SP3 构建后 `bpftool gen skeleton` 生成 | - | `4617297c…` | 生成物 |
+| `scx_schedpilot.bpf.c` | SchedPilot `0aeca0c` `bpf/scx_schedpilot.bpf.c` | `3d057e6f…` | `cbc3471d…` | struct_ops 名改为 `eulerpilot`；v2 公平性预算；2026-10-22 真实运行时长记账；2026-10-23 绑定任务直投本地 DSQ + 非唤醒 enqueue 唤醒 idle CPU（runnable task stall 修复） |
+| `intf.h` | SchedPilot `0aeca0c` `bpf/intf.h` | `c72e7eec…` | `4cfe88cc…` | cfg v3 预算字段；新增 `enq_kick`/`enq_pinned_local` 计数 |
+| `loader.c` | SchedPilot `0aeca0c` `loader/scx_schedpilot.c` | `0fe906c7…` | `381aee8c…` | 见下 |
+| `scx_schedpilot.bpf.skel.h` | 由 `scripts/build_bpf_sp3.sh` 在 SP3 构建后 `bpftool gen skeleton` 生成 | - | `d1c4e598…` | 生成物（2026-10-23 重新生成；object `eb53ca5d…`） |
 | `schedctl.cpp` | 新增（EulerPilot v2），包含 GPL-2.0 `intf.h` | - | `7b030a53…` | cfg/class_map 控制工具 |
 | `scx/*.h` | SP3 内核树 `tools/sched_ext/include/scx/`（上游 scx，GPL-2.0） | - | 见各文件 | 无 |
 
@@ -26,8 +26,17 @@ BPF 源的修改：仅 struct_ops 的 `.name` 从 `"schedpilot"` 改为 `"eulerp
 5. 新增 `--fd-socket PATH`：attach 后把 struct_ops link FD 经 SCM_RIGHTS 交给执行服务并退出；
 6. 帮助文本与 provenance 注释更新。
 
-**v2 修改**：新增 cfg v3 预算字段、统一 `effective_policy`、per-CPU 运行时间预算/aging/撤销路径；DSQ id 与 BPF 函数名不变。struct_ops 已注册为 `eulerpilot`，
+**v2 修改**：新增 cfg v3 预算字段、统一 `effective_policy`、per-CPU 运行时间预算/aging/撤销路径；
+2026-10-22 再给 `sp_task_ctx` 增加 `run_ns`，并把 `stopping()` 的 `consumed` 改为真实占用墙钟时长
+（超过 `SP_MAX_RUN_DELAY_NS` 时回退 slice 差值）——内核只在 tick 边界检查 slice，用 `slice - p->scx.slice`
+会系统性低估占用，使 `lat_budget_pct` 的封顶判定够不到阈值。DSQ id 与 BPF 函数名不变。struct_ops 已注册为 `eulerpilot`，
 `SchedSkill` 以 ops `eulerpilot` 识别调度器。
+
+**预算语义边界（SP3 实测）**：LAT 任务独占 `SP_DSQ_LAT`，被 `scx_bpf_dsq_move_to_local()` 搬走后该 DSQ 即空，
+下一次 dispatch 必然转去服务 `SP_DSQ_COMP`（COMP/NORMAL/BG 共用），因此片数近似 1:1 交替、
+**时间份额由片长比决定**。`lat_budget_pct` 只能在这个比值之上封顶，本身不产生保底；
+要让保留份额生效，执行侧需按 `lat_slice = comp_slice × pct / (100 − pct)` 把预算表达为片长配额
+（60% 预算、comp 4ms → lat 6ms）。实测数据与三臂对照见 `evidence/p1/fairness-budget-20261022.txt`。
 
 ## 构建
 
@@ -46,12 +55,19 @@ cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug \
 静态库由 SchedPilot `scripts/build.sh` 或内核树 `tools/lib/bpf` 构建；v2 目前不自动构建它，
 这是交付前需要补的可复现步骤。
 
-重新生成 skeleton 的参考流程（需要 SP3 内核树）：
+重新生成 BPF 对象与 skeleton：用 `scripts/build_bpf_sp3.sh`（2026-10-23 起脚本化，
+之前这段流程只以散文形式存在，实际无法按需复现——本轮修 runnable task stall 时必须重建
+BPF 才暴露出来）。
 
 ```bash
-# 以 SchedPilot scripts/build.sh --kernel-src <tree> 构建出 scx_schedpilot.bpf.o
-bpftool gen skeleton scx_schedpilot.bpf.o name scx_schedpilot > scx_schedpilot.bpf.skel.h\n# v2 实测：clang -g -O2 -mcpu=v3 -target bpf -D__TARGET_ARCH_x86 -D__SCHEDPILOT_BPF__\n#   -I sched -I sched/scx -I <vmlinux+bpf headers>；需 bpftool >= 7.3 生成 struct_ops skeleton。
+bash scripts/build_bpf_sp3.sh /root/epv2-src /root/epv2-src/sched
+# 可覆盖：KERNEL_SRC / VMLINUX_DIR / BPFTOOL / WORK
+# 需要 clang（本机 17.0.6）、bpftool >= 7.3（struct_ops skeleton）、SP3 内核树头文件
+# 输出的 object 与 skeleton sha256 要写进 PROVENANCE.md
 ```
+
+上游 scx 头文件在本机不是 warning-clean（`scx/common.bpf.h:87` 的
+`struct scx_event_stats` 可见性告警），脚本用 `-Wall` 但不加 `-Werror`。
 
 ## 使用
 

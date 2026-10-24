@@ -128,6 +128,8 @@ struct sp_tg_stats {
 #define SP_STAT_LAT_BUDGET_THROTTLE  34
 #define SP_STAT_LAT_IDLE_BORROW      35
 #define SP_STAT_AGING_FORCE          36
+#define SP_STAT_ENQ_KICK           37
+#define SP_STAT_ENQ_PINNED_LOCAL   38
 #define SP_NR_STATS                  40
 
 #endif /* __SCHEDPILOT_INTF_H */

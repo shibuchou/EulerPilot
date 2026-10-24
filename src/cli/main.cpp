@@ -35,6 +35,7 @@ struct Options {
   std::string policy_sha256;
   std::string idempotency_key;
   std::string expert;
+  std::string lease_owner;
   std::uint64_t ttl_ms = 30000;
 };
 
@@ -44,7 +45,8 @@ void print_usage() {
                "  ep features [--socket PATH]\n"
                "  ep route [--socket PATH]\n"
                "  ep slo --expert NAME [--socket PATH]\n"
-               "  ep lease [--ttl-ms N] [--socket PATH]\n"
+               "  ep observe --file OBSERVATION.json [--socket PATH]\n"
+               "  ep lease [--ttl-ms N] [--owner NAME] [--socket PATH]\n"
                "  ep validate --file POLICY.json [--socket PATH]\n"
                "  ep apply (--file POLICY.json | --intent JSON | --intent-file FILE)\n"
                "           [--idempotency-key KEY] [--ttl-ms N] [--socket PATH]\n"
@@ -150,12 +152,15 @@ ep::Json make_envelope(const std::string& operation, const std::string& policy_s
   return envelope;
 }
 
-bool acquire_lease(const std::string& socket_path, std::uint64_t ttl_ms, ep::Json* lease,
-                   std::string* error) {
+bool acquire_lease(const std::string& socket_path, std::uint64_t ttl_ms, const std::string& owner,
+                   ep::Json* lease, std::string* error) {
+  // An explicit owner is how an operator hands the lease to the autopilot identity;
+  // without it each call gets a fresh cli identity.
+  const std::string resolved_owner = owner.empty() ? "cli-" + ep::random_hex(8) : owner;
   ep::Json response;
   const ep::Json request{{"operation", "lease.acquire"},
                          {"request_id", "req-" + ep::random_hex(12)},
-                         {"lease_owner", "cli-" + ep::random_hex(8)},
+                         {"lease_owner", resolved_owner},
                          {"lease_ttl_ms", ttl_ms}};
   if (!send_request(socket_path, request, &response, error)) return false;
   if (response.value("status", "") != "OK") {
@@ -213,6 +218,8 @@ bool parse_args(int argc, char** argv, Options* options, std::string* error) {
       if (!next(&options->idempotency_key)) return false;
     } else if (arg == "--expert") {
       if (!next(&options->expert)) return false;
+    } else if (arg == "--owner") {
+      if (!next(&options->lease_owner)) return false;
     } else if (arg == "--ttl-ms") {
       std::string value;
       if (!next(&value)) return false;
@@ -291,6 +298,28 @@ int main(int argc, char** argv) {
     return print_response(response);
   }
 
+  if (options.command == "observe") {
+    if (options.file.empty()) {
+      std::cerr << "ep: observe needs --file OBSERVATION.json\n";
+      return 2;
+    }
+    ep::Json observation;
+    if (!read_json_file(options.file, &observation, &error)) {
+      std::cerr << "ep: " << error << "\n";
+      return 1;
+    }
+    ep::Json response;
+    if (!send_request(options.socket_path,
+                      ep::Json{{"operation", "service.observe"},
+                               {"request_id", "req-" + ep::random_hex(8)},
+                               {"observation", observation}},
+                      &response, &error)) {
+      std::cerr << "ep: " << error << "\n";
+      return 1;
+    }
+    return print_response(response);
+  }
+
   if (options.command == "reconcile") {
     ep::Json response;
     if (!send_request(options.socket_path,
@@ -327,7 +356,7 @@ int main(int argc, char** argv) {
 
   if (options.command == "lease") {
     ep::Json lease;
-    if (!acquire_lease(options.socket_path, options.ttl_ms, &lease, &error)) {
+    if (!acquire_lease(options.socket_path, options.ttl_ms, options.lease_owner, &lease, &error)) {
       std::cerr << "ep: " << error << "\n";
       return 1;
     }
@@ -363,7 +392,7 @@ int main(int argc, char** argv) {
     }
 
     ep::Json lease;
-    if (!acquire_lease(options.socket_path, options.ttl_ms, &lease, &error)) {
+    if (!acquire_lease(options.socket_path, options.ttl_ms, options.lease_owner, &lease, &error)) {
       std::cerr << "ep: " << error << "\n";
       return 1;
     }
@@ -392,7 +421,7 @@ int main(int argc, char** argv) {
       return 2;
     }
     ep::Json lease;
-    if (!acquire_lease(options.socket_path, options.ttl_ms, &lease, &error)) {
+    if (!acquire_lease(options.socket_path, options.ttl_ms, options.lease_owner, &lease, &error)) {
       std::cerr << "ep: " << error << "\n";
       return 1;
     }
