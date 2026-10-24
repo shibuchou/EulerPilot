@@ -1,0 +1,49 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "eulerpilot.io/v1alpha1/event-arm.schema.json",
+  "title": "EventArm",
+  "description": "Human authority for the R5 autonomous event link: while the eBPF pump reports the watched cgroup's runnable wait over the threshold for sustain_windows consecutive windows, an armed executor raises cpu.weight through the normal transaction path; when the condition clears (release_windows) or the TTL expires, it compensates. The named owner must hold the lease before any action.",
+  "type": "object",
+  "required": ["apiVersion", "kind", "metadata", "spec"],
+  "additionalProperties": false,
+  "properties": {
+    "apiVersion": {"type": "string", "const": "eulerpilot.io/v1alpha1"},
+    "kind": {"type": "string", "const": "EventArm"},
+    "metadata": {
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string", "pattern": "^[a-z][a-z0-9-]{0,62}$"}
+      }
+    },
+    "spec": {
+      "type": "object",
+      "required": ["watch", "threshold_wait_ms", "sustain_windows", "release_windows", "min_interval_ms", "lease_ttl_ms", "action", "policy_ttl_ms"],
+      "additionalProperties": false,
+      "properties": {
+        "watch": {
+          "type": "string",
+          "pattern": "^/sys/fs/cgroup/[A-Za-z0-9_./-]+$",
+          "minLength": 10,
+          "maxLength": 1024,
+          "description": "Normalized cgroup v2 path whose runnable wait is watched; it must exist at arm time."
+        },
+        "threshold_wait_ms": {"type": "integer", "minimum": 1, "maximum": 60000},
+        "sustain_windows": {"type": "integer", "minimum": 1, "maximum": 10},
+        "release_windows": {"type": "integer", "minimum": 1, "maximum": 10},
+        "min_interval_ms": {"type": "integer", "minimum": 1000, "maximum": 3600000},
+        "lease_ttl_ms": {"type": "integer", "minimum": 1000, "maximum": 3600000},
+        "policy_ttl_ms": {"type": "integer", "minimum": 10000, "maximum": 3600000},
+        "action": {
+          "type": "object",
+          "required": ["cpu_weight"],
+          "additionalProperties": false,
+          "properties": {
+            "cpu_weight": {"type": "integer", "minimum": 1, "maximum": 10000}
+          }
+        }
+      }
+    }
+  }
+}

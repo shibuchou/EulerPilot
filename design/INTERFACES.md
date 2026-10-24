@@ -17,6 +17,8 @@ JSON Schema采用Draft-07，JSON文件也可被YAML解析器读取；初版以JS
 | ActionEnvelope | 请求/幂等/所有权/generation/deadline与策略摘要 | 唯一执行服务处理 |
 | ActionResult | 实际状态、生效版本、验证/恢复结果 | 持久可追溯 |
 | SkillManifest | 能力、schema、作用域和权限 | 静态加载，版本匹配 |
+| EventObservation | ep-evtmon 只读泵的一个窗口：per-cgroup runnable 等待（events/wait_max/wait_avg）+ 泵健康计数 | 过期即拒,不取租约,只能让门更严 |
+| EventArm | R5 自主事件动作的人工授权：watch 路径、阈值、持续/回落窗数、动作 cpu_weight、TTL | arm 属主必须持租约;条件清除或 TTL 到期逆序补偿 |
 
 BG来自TargetRef显式角色；行为推断不修改角色授权。TargetRef路径仍须防符号链接和越权，schema正则不能替代文件描述符与内核身份验证。
 

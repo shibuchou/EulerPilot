@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "ep/domain.hpp"
+#include "ep/event_guard.hpp"
 #include "ep/features.hpp"
 #include "ep/journal.hpp"
 #include "ep/ownership.hpp"
@@ -47,6 +48,13 @@ struct ExecutorOptions {
   // p99 latency moves more than a declared budget on noise alone.
   int auto_outcome_windows = 2;
   std::int64_t auto_measured_downtime_ms = 665;
+
+  // R5 event link: an armed executor (cgroup domain) moves cpu.weight of a
+  // watched cgroup while the eBPF-reported runnable wait stays over a declared
+  // threshold, and undoes it when the condition clears. The arm file is the
+  // human authority; the named owner must hold the lease; the pump is a reader.
+  bool event_armed = false;
+  EventArm event_arm;
 
   // Constructors keep every existing ExecutorOptions{true} call site warning-free
   // now that the struct carries more than the two original fields.
@@ -97,6 +105,7 @@ class Executor {
   Json handle_route(const Json& request);
   Json handle_slo(const Json& request);
   Json handle_observe(const Json& request);
+  Json handle_event_observe(const Json& request);
   Json handle_lease(const Json& request);
   Json handle_validate(const Json& request);
   Json handle_apply(const Json& request);
@@ -143,6 +152,12 @@ class Executor {
   // Caller must hold mu_. Pure decision plus one apply attempt through the same
   // lease/fence/journal path a client uses.
   void run_auto_apply_locked(std::int64_t now_ms);
+  // Caller must hold mu_. R5 event guard: consumes new pump observations, keeps
+  // the sustain/release streaks and drives the armed cgroup action through the
+  // same transaction path a client uses. Like the autopilot it is an internal
+  // caller, never a second writer.
+  void run_event_guard_locked(std::int64_t now_ms);
+  Json event_status_locked(std::int64_t now_ms) const;
 
   std::mutex mu_;
   std::filesystem::path state_dir_;
@@ -206,6 +221,22 @@ class Executor {
   std::string outcome_from_;
   std::string outcome_to_;
   std::string last_outcome_;
+  // Event-link state (R5). In-memory telemetry like the service half: after a
+  // restart the guard must be re-armed and the pump re-attached anyway.
+  bool event_has_observation_ = false;
+  EventObservation event_observation_;
+  std::int64_t event_consumed_at_ms_ = 0;   // observed_at_ms of the last window the streaks counted
+  std::int64_t event_over_windows_ = 0;
+  std::int64_t event_under_windows_ = 0;
+  std::int64_t event_last_action_ms_ = 0;
+  std::int64_t event_last_check_ms_ = 0;
+  std::string event_last_hold_;
+  std::string event_last_decision_;        // last action reason (or "none")
+  std::uint64_t event_observations_accepted_ = 0;
+  std::uint64_t event_observations_rejected_ = 0;
+  std::string event_last_rejection_;
+  std::int64_t event_observation_max_age_ms_ = 0;
+  std::uint64_t event_stale_checks_ = 0;
   RuleRouter router_;
 };
 

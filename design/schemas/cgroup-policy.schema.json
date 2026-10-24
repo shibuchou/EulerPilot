@@ -37,8 +37,8 @@
         },
         "source": {
           "type": "string",
-          "enum": ["human"],
-          "description": "The event-driven (rule-template) path needs the same lease and authority discipline the scheduling domain enforces; it is not offered here until that exists for cgroups."
+          "enum": ["human", "event-template"],
+          "description": "event-template is the autonomous half of the R5 link; the executor's apply-side event gate accepts it only while an armed EventArm's named owner holds the lease and the eBPF pump observation is fresh. Other autonomous sources stay out until they can show the same authority chain."
         },
         "effects": {
           "type": "array",

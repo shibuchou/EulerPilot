@@ -55,6 +55,7 @@ struct Options {
   long long auto_budget_max_switches = 2;
   long long auto_outcome_windows = 2;
   long long auto_measured_downtime_ms = 665;
+  std::string event_arm_path;
 };
 
 void print_usage() {
@@ -71,7 +72,13 @@ void print_usage() {
                "  --auto-candidate-hold-ms N (15000) route must be stable that long\n"
                "  --auto-budget-window-ms N (600000) + --auto-budget-max-switches K (2)\n"
                "  --auto-outcome-windows K (2) violating windows before service evidence\n"
-               "  --auto-measured-downtime-ms N (665) reported unprotected time\n";
+               "  --auto-measured-downtime-ms N (665) reported unprotected time\n"
+               "  --event-arm FILE arms the R5 event link (needs --skill cgroup): the eBPF\n"
+               "  pump reports per-cgroup runnable wait via event.observe; while it stays\n"
+               "  over the declared threshold the executor raises cpu.weight through the\n"
+               "  normal transaction path and undoes it when the condition clears or TTL\n"
+               "  expires. The arm is the human authority and its named owner must hold\n"
+               "  the lease; a stale or missing observation can only freeze the guard.\n";
 }
 
 bool parse_args(int argc, char** argv, Options* options, std::string* error) {
@@ -139,6 +146,8 @@ bool parse_args(int argc, char** argv, Options* options, std::string* error) {
       if (arg == "--auto-budget-max-switches") options->auto_budget_max_switches = parsed;
       else if (arg == "--auto-outcome-windows") options->auto_outcome_windows = parsed;
       else options->auto_measured_downtime_ms = parsed;
+    } else if (arg == "--event-arm") {
+      if (!next(&options->event_arm_path)) return false;
     } else if (arg == "-h" || arg == "--help") {
       print_usage();
       std::exit(0);
@@ -291,6 +300,48 @@ int main(int argc, char** argv) {
 
   ep::ExecutorOptions executor_options;
   executor_options.test_mode = options.test_mode;
+  if (!options.event_arm_path.empty()) {
+    if (options.skill != "cgroup") {
+      std::cerr << "[executord] --event-arm needs --skill cgroup (it moves cpu.weight)\n";
+      return 2;
+    }
+    std::ifstream input(options.event_arm_path);
+    if (!input) {
+      std::cerr << "[executord] cannot read event arm: " << options.event_arm_path << '\n';
+      return 1;
+    }
+    ep::Json arm_json;
+    try {
+      arm_json = ep::Json::parse(input);
+    } catch (const std::exception& e) {
+      std::cerr << "[executord] event arm is not valid JSON: " << e.what() << "\n";
+      return 1;
+    }
+    ep::EventArm arm;
+    std::string arm_error;
+    if (!ep::validate_event_arm(arm_json, &arm, &arm_error)) {
+      std::cerr << "[executord] event arm rejected: " << arm_error << "\n";
+      return 1;
+    }
+    // The watched cgroup must exist at arm time: matching happens by path, but a
+    // watch on a path that is not there yet would look exactly like a pump that
+    // never reports it, and the operator should learn that at startup.
+    std::error_code ec;
+    if (!std::filesystem::exists(std::filesystem::path(arm.watch) / "cgroup.controllers", ec)) {
+      std::cerr << "[executord] event arm watch path is not a live cgroup v2 directory: "
+                << arm.watch << "\n";
+      return 1;
+    }
+    executor_options.event_armed = true;
+    executor_options.event_arm = std::move(arm);
+    std::cout << "[executord] event guard armed name=" << executor_options.event_arm.name
+              << " watch=" << executor_options.event_arm.watch
+              << " threshold_wait_ms=" << executor_options.event_arm.threshold_wait_ms
+              << " sustain=" << executor_options.event_arm.sustain_windows
+              << " release=" << executor_options.event_arm.release_windows
+              << " cpu_weight=" << executor_options.event_arm.cpu_weight
+              << " ttl_ms=" << executor_options.event_arm.policy_ttl_ms << "\n";
+  }
   if (options.auto_apply) {
     if (options.skill != "sched" && options.skill != "sched-ref") {
       std::cerr << "[executord] --auto-apply needs --skill sched|sched-ref\n";

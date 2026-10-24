@@ -8,3 +8,4 @@ evidence/runtime/
 # Qoder Desktop artifacts, never project content
 .qoder-credits/
 .qoder-*.py
+build-wsl/

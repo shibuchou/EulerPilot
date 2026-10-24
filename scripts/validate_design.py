@@ -58,6 +58,20 @@ def check_cgroup_semantics(policy):
     paths = [effect["path"] for effect in effects]
     if len(set(paths)) != len(paths):
         raise ValueError("one cgroup path may appear only once per policy")
+    # The schema's character-class pattern accepts ".." because dots are legal in
+    # cgroup names, so canonicality is a semantic check here (the scheduling
+    # contract above does the same). Without it the traversal fixture passes.
+    for path in paths:
+        parts = path.split("/")
+        if ".." in parts or "." in parts or "//" in path or path.endswith("/"):
+            raise ValueError("cgroup path must be canonical")
+
+
+def check_event_arm_semantics(arm):
+    watch = arm["spec"]["watch"]
+    parts = watch.split("/")
+    if ".." in parts or "." in parts or "//" in watch or watch.endswith("/"):
+        raise ValueError("watch path must be canonical")
 
 
 def check_skill_semantics(manifest):
@@ -90,6 +104,7 @@ def main():
     contracts = [
         ("scheduling-policy.schema.json", "redis-policy.json", check_policy_semantics),
         ("cgroup-policy.schema.json", "cgroup-protect-scope.json", check_cgroup_semantics),
+        ("event-arm.schema.json", "event-arm.json", check_event_arm_semantics),
         ("skill-manifest.schema.json", "sched-skill.json", check_skill_semantics),
         ("action-envelope.schema.json", "apply-action.json", check_action_semantics),
         ("action-envelope.schema.json", "rollback-action.json", check_action_semantics),
@@ -123,6 +138,11 @@ def main():
         ("cgroup-protect-scope.json", ["spec", "effects", 0, "path"], "/sys/fs/cgroup/../system.slice", "cgroup path traversal"),
         ("cgroup-protect-scope.json", ["spec", "source"], "rule-template", "autonomous cgroup writer"),
         ("cgroup-protect-scope.json", ["spec", "safety", "policy_ttl_ms"], 5000, "ttl below floor"),
+        ("cgroup-protect-scope.json", ["spec", "source"], "llm", "unauthorized autonomous source"),
+        ("event-arm.json", ["spec", "sustain_windows"], 0, "sustain must need evidence"),
+        ("event-arm.json", ["spec", "watch"], "/sys/fs/cgroup/../system.slice", "arm path traversal"),
+        ("event-arm.json", ["spec", "action", "cpu_weight"], 0, "arm zero cpu weight"),
+        ("event-arm.json", ["spec", "threshold_wait_ms"], 0, "threshold below floor"),
     ]
     for example_name, keys, value, label in cases:
         schema, example, semantic = validators[example_name]

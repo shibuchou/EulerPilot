@@ -1,0 +1,15 @@
+{
+  "apiVersion": "eulerpilot.io/v1alpha1",
+  "kind": "EventArm",
+  "metadata": {"name": "protect-frontend-scope"},
+  "spec": {
+    "watch": "/sys/fs/cgroup/user.slice/user-1000.slice/session-1.scope",
+    "threshold_wait_ms": 50,
+    "sustain_windows": 2,
+    "release_windows": 1,
+    "min_interval_ms": 30000,
+    "lease_ttl_ms": 30000,
+    "policy_ttl_ms": 120000,
+    "action": {"cpu_weight": 5000}
+  }
+}

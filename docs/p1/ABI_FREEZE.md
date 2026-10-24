@@ -41,7 +41,8 @@ attach/detach 与崩溃回收测试，`sched-ref` 保留子进程对照。BPF op
 | 幂等 | 已实现 | 同 key 同内容返回原结果；同 key 不同内容拒绝 |
 | Unix socket 控制通道 | 已实现 | 0600，`SO_PEERCRED` 校验 uid |
 | v2 自建 loader | 已实现（FD 传递 + 子进程对照） | `sched/` 构建 `ep-sched-loader`；`sched` 模式交 link FD，`sched-ref` 保留子进程；ops `eulerpilot` |
-| cgroup / TC / 事件链 | **NOT IMPLEMENTED** | 不写 cgroup、不挂 TC/XDP |
+| cgroup（R5 动作域） | 已实现（SP3 真机集成） | 见上 |
+| `event.observe` + `EventArm`（R5 感知端） | 已实现（SP3 真机闭环） | 只读摄取泵观测（严格字段+新鲜度,计数 accepted/rejected/high-water age/stale_checks）；`--event-arm FILE` 人工授权（watch/threshold/sustain/release/min_interval/lease_ttl/action.cpu_weight/policy_ttl,启动时校验+watch 必须是活目录）；武装守卫只在 arm 属主持租约时经事务路径动作,条件清除或 TTL 到期补偿。`policy.status` 新增 `event` 段。CgroupPolicy `spec.source` 枚举加入 `event-template`,apply 侧事件证据门（arm 在场+租约属主+观测新鲜）是唯一放行路径 |
 
 ## 2. 线路格式
 
@@ -67,6 +68,9 @@ attach/detach 与崩溃回收测试，`sched-ref` 保留子进程对照。BPF op
 {"operation": "policy.validate", "request_id": "req-...", "policy": {"...SchedulingPolicy..."}}
 {"operation": "lease.acquire", "request_id": "req-...", "lease_owner": "agent-...", "lease_ttl_ms": 30000}
 {"operation": "transaction.reconcile", "request_id": "req-..."}
+{"operation": "event.observe", "request_id": "req-...", "observation": {"source": "evtmon", "observed_at_ms": N,
+ "window_ms": N, "cgroups": [{"path": "/sys/fs/cgroup/...", "cgroup_id": N, "events": N,
+ "wait_max_ms": F, "wait_avg_ms": F}], "pump": {"...计数器,可选..."}}}
 ```
 
 每次连接只处理一个请求：客户端写一行 JSON，服务端回一行 JSON 后关闭。上限 1 MiB。

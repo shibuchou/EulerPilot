@@ -21,10 +21,10 @@
 | P1 静态闭环 | **判定达成**（[P1 退出门槛报告](docs/p1/P1_EXIT_REPORT.md)：fail-safe 矩阵 run8 17/17 PASS）。不覆盖：adaptive/心跳/PMU 为 UNSUPPORTED 而非通过；stall 类缺陷未穷尽；越权改 class 条目不被纠正；崩溃后 pin 靠同实例重启回收 |
 | P2 自适应 | 功能件已实现并单独留证（FeatureWindow/规则路由/SLO 门控/服务观测/切换抑制/自动 apply），自动通道默认关闭；**门控的收益未测出**（只证明是"延迟器不是否决器"，推迟约 40s、代价上界 ≈0–30 个请求），未收口 |
 | P3 性能 | 首批正式矩阵已出数（20 block × A0/A1/A2/C/D，seed 20261024，块内配对 + 10000 次 bootstrap）：C vs A0 goodput@5ms **+1.62% [+1.53,+1.82]（20/0）**、p99 −47.9%；C vs A2 **+1.90%**（不是静态权重倾斜）；A1 纯观测臂 **−0.82%**（观测栈是净成本）；BG 相对进度 0.997–1.001。限定：单机单负载单 SLO；@2ms 阈值处无收益；class 路由实测零结果；**新构建后须重跑**（见下一步） |
-| P4 扩展 | cgroup 效果域（快照→写→读回→漂移再断言→补偿→崩溃 marker 恢复）已真机验证并成为第 7 个 CTest 必测项；**eBPF 事件触发链路未开始**（R5 差后半） |
+| P4 扩展 | **R5 两半均已真机闭环**：动作端 cgroup 效果域（cpu.weight,崩溃 marker 恢复）+ 感知端 eBPF 事件链（raw_tp 采集 runnable 等待 → 只读泵 ep-evtmon → event.observe → 武装守卫经事务路径升权/补偿;杀泵门冻结+TTL 兜底）,`integration_events` 为第 8 个 CTest 必测项。见 `evidence/p4/events-link-20261025.txt` |
 | P5 交付 | 未开始 |
 
-回归基线：unit **478** 条断言、`ctest` **7/7**、一键验收 r25/r26/r27 各六轮 rc=0。
+回归基线：unit **550** 条断言、`ctest` **8/8**（新增 integration_events）；一键验收 r25/r26/r27 各六轮 rc=0（验收脚本的必测项清点仍为 7 项,待下轮与冻结构建一起重跑更新）。
 
 阶段判定依据、逐项证据路径、硬天花板（内核行为与测量能力的边界）与工程约定见 [交接件](docs/HANDOVER_20261024.md)——接手本项目的第一份读物；进度明细见 [实施计划](docs/IMPLEMENTATION_PLAN.md)。
 
@@ -91,7 +91,7 @@ bash experiments/fail_safe_matrix_sp3.sh /root/epv2-build/ep-executord /root/epv
 
 按优先级（每项的完成判据见 [交接件](docs/HANDOVER_20261024.md) §5）：
 
-1. **R5 后半**：eBPF 事件触发链路——`sched_wakeup/sched_switch` 计算每 cgroup 的 runnable 等待，ringbuf 交给只读事件泵，驱动 cgroup Skill，条件消失或 TTL 到期逆序补偿；事件泵不得成为第二写者。
+1. ~~R5 后半：eBPF 事件触发链路~~ **已完成（2026-10-25,真机五相时间线）**；剩余：watch 的 cgroup 重建身份拒绝、泵开销量化。
 2. **在冻结构建上重跑 A1/C/D 矩阵臂**：P1 收尾的四项控制面改动都晚于旗舰构建，重跑后 P3 数字才与交付构建一致；新旧并列报告，不许只留好看的那组。
 3. **class 逐条漂移的处置**：实现抽样再断言，或写进交付限制并排除相关声明。
 4. **R6 对照臂**：E 臂（参考 `schedpilotd`，与 v2 互斥运行）与 X 臂（上游 scx）；补 B 臂（BASIC scx 基础成本）。

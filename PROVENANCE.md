@@ -857,3 +857,14 @@ Linux sched_ext、scx、SchedCP/AgenticOS、MoS/ASA等一手链接及已确认�
 ## 跨平台操作边界
 
 本轮只在新项目写文件。后续连接SP3/宿主时，先检查实际目标/生效路径、仓库状态、差异与现有备份，在新目录构建/暂存；文件级diff/hash通过后再合并，不能整批覆盖旧实验环境。
+
+## R5 事件触发链路(2026-10-25 追加)
+
+新增组件与构建指纹(全部 SP3 `6.6.0-schedpilot-sp3`):`sched/events_trace.bpf.c` raw_tp
+tracing 对象(`scripts/build_bpf_sp3.sh <src> <out> events` 重建;object SHA256
+`433653b1d03299fd…`,skeleton `dd65f9a7bf70066…` 已入库,object 本身按调度器对象的
+惯例不入库);只读事件泵 `ep-evtmon`(`c6b008b8aa4aebd6…`);执行服务 `ep-executord`
+(`c70ab0934ea249a9…`)与 `ep`(`80da78b867526da1…`)为含事件链的重建;源码树聚合哈希
+`e9d7f4b9addacfa5…`(排除 skel)。真机时间线与边界见
+[evidence/p4/events-link-20261025.txt](evidence/p4/events-link-20261025.txt);
+R5 动作端(cgroup Skill)见 2026-10-24 节。本轮改动晚于旗舰矩阵构建,矩阵重跑义务不变。

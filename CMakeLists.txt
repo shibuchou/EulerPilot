@@ -20,6 +20,7 @@ add_library(ep_core STATIC
   src/core/router.cpp
   src/core/slo.cpp
   src/core/autopilot.cpp
+  src/core/event_guard.cpp
   src/executor/journal.cpp
   src/executor/ownership.cpp
   src/executor/executor.cpp
@@ -74,6 +75,20 @@ else()
   message(STATUS "ep-schedctl: disabled (libbpf/elf/z missing)")
 endif()
 
+# Read-only eBPF event pump of the R5 link: loads the events_trace tracing
+# object and reports per-cgroup runnable wait; it never writes scheduler state.
+if(LIBBPF_INCLUDE_DIR AND EP_LIBBPF_LINK AND ELF_LIBRARY AND Z_LIBRARY AND
+   EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/sched/events_trace.bpf.skel.h")
+  add_executable(ep-evtmon src/evtmon/main.cpp)
+  target_include_directories(ep-evtmon PRIVATE sched third_party ${LIBBPF_INCLUDE_DIR})
+  target_compile_options(ep-evtmon PRIVATE -w)
+  target_link_libraries(ep-evtmon PRIVATE
+    ${EP_LIBBPF_LINK} ${ELF_LIBRARY} ${Z_LIBRARY} Threads::Threads)
+  message(STATUS "ep-evtmon: enabled")
+else()
+  message(STATUS "ep-evtmon: disabled (libbpf/elf/z or skeleton missing)")
+endif()
+
 enable_testing()
 add_executable(ep_unit_tests tests/unit/test_main.cpp)
 target_link_libraries(ep_unit_tests PRIVATE ep_core)
@@ -93,6 +108,16 @@ add_test(NAME integration_cgroup
   COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/tests/integration_cgroup.sh
           $<TARGET_FILE:ep-executord> $<TARGET_FILE:ep>)
 set_tests_properties(integration_cgroup PROPERTIES TIMEOUT 180 SKIP_RETURN_CODE 77 RUN_SERIAL TRUE)
+
+# R5 event link (real kernel + real BPF): tracing -> pump -> event.observe ->
+# armed cpu.weight action -> compensation. Needs root, tracepoints and ep-evtmon.
+if(TARGET ep-evtmon)
+  add_test(NAME integration_events
+    COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/tests/integration_events.sh
+            $<TARGET_FILE:ep-executord> $<TARGET_FILE:ep> $<TARGET_FILE:ep-evtmon>)
+  set_tests_properties(integration_events PROPERTIES
+    TIMEOUT 240 SKIP_RETURN_CODE 77 RUN_SERIAL TRUE)
+endif()
 
 # Real-kernel test; skipped (CTest SKIP) unless a reference loader is provided
 # and the environment is idle. Run it explicitly on SP3 with:

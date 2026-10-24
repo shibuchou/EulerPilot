@@ -9,6 +9,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <memory>
 #include <string>
 #include <thread>
@@ -2517,6 +2518,13 @@ void test_cgroup_policy_validation() {
   ep::Json autonomous = good;
   autonomous["spec"]["source"] = "rule-template";
   reject(autonomous, "autonomous writer");
+  // event-template is the armed R5 half: accepted by the contract, and the
+  // executor's event evidence gate (not the schema) decides whether it may run.
+  ep::Json event_sourced = good;
+  event_sourced["spec"]["source"] = "event-template";
+  ep::CgroupPolicySummary event_summary;
+  CHECK(ep::validate_cgroup_policy(event_sourced, &event_summary, &error));
+  CHECK(event_summary.source == "event-template");
   ep::Json zero_weight = good;
   zero_weight["spec"]["effects"][0]["cpu_weight"] = 0;
   reject(zero_weight, "cpu_weight 0");
@@ -2545,6 +2553,403 @@ void test_cgroup_policy_validation() {
   ep::Json unknown = good;
   unknown["spec"]["extra"] = 1;
   reject(unknown, "unknown field");
+}
+
+// ---- R5 event link: pure decision, observation contract, arm contract ----
+
+ep::Json event_observation_json(const std::string& path, double wait_max_ms,
+                                std::int64_t observed_at_ms, std::int64_t window_ms) {
+  return ep::Json{{"source", "evtmon"},
+                  {"observed_at_ms", observed_at_ms},
+                  {"window_ms", window_ms},
+                  {"pump", ep::Json{{"reports", 1}}},
+                  {"cgroups", ep::Json::array({ep::Json{
+                                   {"path", path},
+                                   {"cgroup_id", 4242},
+                                   {"events", 12},
+                                   {"wait_max_ms", wait_max_ms},
+                                   {"wait_avg_ms", wait_max_ms / 2}}})}};
+}
+
+void test_event_guard_decide() {
+  ep::EventGuardInput in;
+  in.armed = true;
+  in.sustain_windows = 2;
+  in.release_windows = 1;
+  in.min_interval_ms = 30000;
+  in.since_action_ms = std::numeric_limits<std::int64_t>::max();
+
+  ep::EventGuardDecision d = ep::event_guard_decide(in);
+  CHECK(d.action == ep::EventGuardDecision::Action::kNone);
+  CHECK(d.hold.find("EVENT_OBSERVATION_NONE") != std::string::npos);
+
+  in.has_observation = true;
+  in.observation_stale = true;
+  d = ep::event_guard_decide(in);
+  CHECK(d.action == ep::EventGuardDecision::Action::kNone);
+  CHECK(d.hold.find("EVENT_OBSERVATION_STALE") != std::string::npos);
+
+  in.observation_stale = false;
+  in.watch_present = false;
+  d = ep::event_guard_decide(in);
+  CHECK(d.action == ep::EventGuardDecision::Action::kNone);
+  CHECK(d.hold.find("produced no events") != std::string::npos);
+
+  in.watch_present = true;
+  in.over_windows = 1;  // sustain is 2
+  d = ep::event_guard_decide(in);
+  CHECK(d.action == ep::EventGuardDecision::Action::kNone);
+  CHECK(d.hold.find("below threshold") != std::string::npos);
+
+  in.since_action_ms = 100;  // below min_interval
+  in.over_windows = 2;
+  d = ep::event_guard_decide(in);
+  CHECK(d.action == ep::EventGuardDecision::Action::kNone);
+  CHECK(d.hold.find("min interval") != std::string::npos);
+
+  in.since_action_ms = 31000;
+  d = ep::event_guard_decide(in);
+  CHECK(d.action == ep::EventGuardDecision::Action::kApply);
+  CHECK(d.reason.find("2 window(s)") != std::string::npos);
+
+  // Active effect: the undo direction needs the least evidence.
+  ep::EventGuardInput active = in;
+  active.active = true;
+  active.has_observation = false;
+  d = ep::event_guard_decide(active);
+  CHECK(d.action == ep::EventGuardDecision::Action::kRollback);
+
+  active.has_observation = true;
+  active.watch_present = false;
+  d = ep::event_guard_decide(active);
+  CHECK(d.action == ep::EventGuardDecision::Action::kRollback);
+  CHECK(d.reason.find("vanished") != std::string::npos);
+
+  active.watch_present = true;
+  active.observation_stale = true;
+  d = ep::event_guard_decide(active);
+  CHECK(d.action == ep::EventGuardDecision::Action::kNone);
+  CHECK(d.hold.find("EVENT_OBSERVATION_STALE") != std::string::npos);
+
+  active.observation_stale = false;
+  active.under_windows = 1;
+  d = ep::event_guard_decide(active);
+  CHECK(d.action == ep::EventGuardDecision::Action::kRollback);
+  CHECK(d.reason.find("condition cleared") != std::string::npos);
+
+  active.under_windows = 0;
+  active.over_windows = 3;
+  d = ep::event_guard_decide(active);
+  CHECK(d.action == ep::EventGuardDecision::Action::kNone);
+  CHECK(d.hold.find("condition holds") != std::string::npos);
+
+  // Streak bookkeeping: one window moves exactly one streak; an absent watch
+  // moves neither ("condition absent" is not "condition cleared").
+  std::int64_t over = 1, under = 0;
+  ep::advance_event_streaks(&over, &under, true, true);
+  CHECK(over == 2 && under == 0);
+  ep::advance_event_streaks(&over, &under, true, false);
+  CHECK(over == 0 && under == 1);
+  ep::advance_event_streaks(&over, &under, false, true);
+  CHECK(over == 0 && under == 1);
+}
+
+void test_event_observation_parse() {
+  ep::EventObservation parsed;
+  std::string error;
+  const ep::Json good = event_observation_json("/sys/fs/cgroup/a.scope", 4.5,
+                                               ep::now_epoch_ms(), 5000);
+  CHECK(ep::parse_event_observation(good, &parsed, &error));
+  CHECK(parsed.source == "evtmon");
+  CHECK(parsed.cgroups.size() == 1);
+  CHECK(parsed.cgroups[0].path == "/sys/fs/cgroup/a.scope");
+  CHECK(parsed.cgroups[0].events == 12);
+  CHECK(parsed.cgroups[0].has_wait_max && parsed.cgroups[0].wait_max_ms == 4.5);
+  CHECK(parsed.cgroups[0].has_wait_avg);
+
+  auto reject = [&error](const ep::Json& bad, const char* label) {
+    ep::EventObservation out;
+    const bool accepted = ep::parse_event_observation(bad, &out, &error);
+    if (accepted) {
+      std::cerr << "[FAIL] event observation accepted a bad case: " << label << "\n";
+      ++g_failures;
+      return;
+    }
+    std::cout << "[event-observation] rejected " << label << ": " << error << "\n";
+  };
+  ep::Json wrong_source = good;
+  wrong_source["source"] = "prom";
+  reject(wrong_source, "wrong source");
+  ep::Json unknown = good;
+  unknown["extra"] = 1;
+  reject(unknown, "unknown field");
+  ep::Json window = good;
+  window["window_ms"] = 50;
+  reject(window, "window below floor");
+  ep::Json negative = good;
+  negative["cgroups"][0]["wait_max_ms"] = -1.0;
+  reject(negative, "negative wait");
+  ep::Json bad_path = good;
+  bad_path["cgroups"][0]["path"] = "/sys/fs/cgroup/../escape";
+  reject(bad_path, "path traversal");
+  ep::Json missing_waits = good;
+  missing_waits["cgroups"][0].erase("wait_max_ms");
+  missing_waits["cgroups"][0].erase("wait_avg_ms");
+  ep::EventObservation no_waits;
+  CHECK(ep::parse_event_observation(missing_waits, &no_waits, &error));
+  CHECK(!no_waits.cgroups[0].has_wait_max);
+  // The hierarchy root is a real cgroup and a legitimate thing to watch.
+  ep::Json root = good;
+  root["cgroups"][0]["path"] = "/sys/fs/cgroup";
+  ep::EventObservation root_parsed;
+  CHECK(ep::parse_event_observation(root, &root_parsed, &error));
+}
+
+ep::Json event_arm_json() {
+  return ep::Json{{"apiVersion", "eulerpilot.io/v1alpha1"},
+                  {"kind", "EventArm"},
+                  {"metadata", {{"name", "unit-arm"}}},
+                  {"spec",
+                   {{"watch", "/sys/fs/cgroup/unit.scope"},
+                    {"threshold_wait_ms", 50},
+                    {"sustain_windows", 2},
+                    {"release_windows", 1},
+                    {"min_interval_ms", 30000},
+                    {"lease_ttl_ms", 30000},
+                    {"policy_ttl_ms", 60000},
+                    {"action", {{"cpu_weight", 5000}}}}}};
+}
+
+void test_event_arm_validation() {
+  ep::EventArm arm;
+  std::string error;
+  CHECK(ep::validate_event_arm(event_arm_json(), &arm, &error));
+  CHECK(arm.name == "unit-arm");
+  CHECK(arm.owner() == "eventguard:unit-arm");
+  CHECK(arm.cpu_weight == 5000);
+
+  auto reject = [&error](const ep::Json& bad, const char* label) {
+    ep::EventArm out;
+    const bool accepted = ep::validate_event_arm(bad, &out, &error);
+    if (accepted) {
+      std::cerr << "[FAIL] event arm accepted a bad case: " << label << "\n";
+      ++g_failures;
+      return;
+    }
+    std::cout << "[event-arm] rejected " << label << ": " << error << "\n";
+  };
+  ep::Json sustain = event_arm_json();
+  sustain["spec"]["sustain_windows"] = 0;
+  reject(sustain, "sustain without evidence");
+  ep::Json threshold = event_arm_json();
+  threshold["spec"]["threshold_wait_ms"] = 0;
+  reject(threshold, "threshold below floor");
+  ep::Json traversal = event_arm_json();
+  traversal["spec"]["watch"] = "/sys/fs/cgroup/../system.slice";
+  reject(traversal, "watch path traversal");
+  ep::Json weight = event_arm_json();
+  weight["spec"]["action"]["cpu_weight"] = 0;
+  reject(weight, "zero cpu weight");
+  ep::Json ttl = event_arm_json();
+  ttl["spec"]["policy_ttl_ms"] = 5000;
+  reject(ttl, "ttl below floor");
+  ep::Json unknown = event_arm_json();
+  unknown["spec"]["extra"] = 1;
+  reject(unknown, "unknown field");
+  ep::Json kind = event_arm_json();
+  kind["kind"] = "CgroupPolicy";
+  reject(kind, "wrong kind");
+
+  // The action document the guard builds must itself satisfy the policy
+  // contract -- the guard is a client of its own transaction path.
+  const ep::Json policy = ep::event_action_policy(arm);
+  ep::CgroupPolicySummary summary;
+  CHECK(ep::validate_cgroup_policy(policy, &summary, &error));
+  CHECK(summary.source == "event-template");
+  CHECK(summary.effects.size() == 1);
+  CHECK(summary.effects[0].path == arm.watch);
+  CHECK(summary.effects[0].cpu_weight == arm.cpu_weight);
+}
+
+void test_event_observe_rpc() {
+  const auto dir = make_temp_dir("evt-observe");
+  {
+    ep::Executor executor(dir, std::make_unique<ep::MockSkill>(dir / "mock"),
+                          ep::ExecutorOptions{true});
+    std::string error;
+    CHECK(executor.init(&error));
+
+    const ep::Json accepted = executor.handle(ep::Json{
+        {"operation", "event.observe"}, {"request_id", "req-evt-0001"},
+        {"observation", event_observation_json("/sys/fs/cgroup/a.scope", 3.0,
+                                               ep::now_epoch_ms(), 5000)}});
+    CHECK(accepted["status"] == "OK");
+
+    ep::Json status = executor.handle(ep::Json{{"operation", "policy.status"}});
+    CHECK(status["event"]["observations_accepted"] == 1);
+    CHECK(status["event"]["observations_rejected"] == 0);
+    CHECK(status["event"]["observation"]["observed"] == true);
+    CHECK(status["event"]["observation"]["cgroups"] == 1);
+
+    // A window older than 10x its size is refused: accepting it would let a
+    // dead pump's last report masquerade as the present.
+    const ep::Json too_old = executor.handle(ep::Json{
+        {"operation", "event.observe"}, {"request_id", "req-evt-0002"},
+        {"observation", event_observation_json("/sys/fs/cgroup/a.scope", 3.0,
+                                               ep::now_epoch_ms() - 60000, 5000)}});
+    CHECK(too_old["status"] == "REJECTED");
+    const ep::Json future = executor.handle(ep::Json{
+        {"operation", "event.observe"}, {"request_id", "req-evt-0003"},
+        {"observation", event_observation_json("/sys/fs/cgroup/a.scope", 3.0,
+                                               ep::now_epoch_ms() + 6000, 5000)}});
+    CHECK(future["status"] == "REJECTED");
+    ep::Json malformed = event_observation_json("/sys/fs/cgroup/a.scope", 3.0,
+                                                ep::now_epoch_ms(), 5000);
+    malformed["surprise"] = true;
+    const ep::Json bad = executor.handle(ep::Json{{"operation", "event.observe"},
+                                                   {"request_id", "req-evt-0004"},
+                                                   {"observation", malformed}});
+    CHECK(bad["status"] == "REJECTED");
+    status = executor.handle(ep::Json{{"operation", "policy.status"}});
+    CHECK(status["event"]["observations_accepted"] == 1);
+    CHECK(status["event"]["observations_rejected"] == 3);
+    CHECK(!status["event"]["last_rejection"].get<std::string>().empty());
+
+    executor.shutdown("unit test done");
+    std::filesystem::remove_all(dir);
+  }
+}
+
+// The apply-side event gate, on a real (non-test-mode) executor with the
+// cgroup skill against a fake hierarchy. The watched path is chosen so it can
+// never resolve on the real /sys/fs/cgroup: a request that passes the gate
+// therefore stops at target resolution (TARGET_STALE), which is exactly how
+// the test distinguishes "gate refused" from "gate let it through".
+void test_event_apply_gate() {
+  const auto dir = make_temp_dir("evt-gate");
+  const auto root = dir / "cg";
+  std::filesystem::create_directories(root);
+  write_text_file(root / "cgroup.controllers", "cpu memory\n");
+
+  ep::CgroupPaths paths;
+  paths.state_dir = dir / "state";
+  paths.cgroup_root = root.string();
+
+  ep::Json event_policy = ep::Json{
+      {"apiVersion", "eulerpilot.io/v1alpha1"},
+      {"kind", "CgroupPolicy"},
+      {"metadata", {{"name", "gate-probe"}}},
+      {"spec",
+       {{"scope", "cgroup-effects"},
+        {"source", "event-template"},
+        {"effects",
+         ep::Json::array({ep::Json{{"path", "/sys/fs/cgroup/epv2-gate-nonexistent"},
+                                   {"cpu_weight", 9000}}})},
+        {"safety", {{"policy_ttl_ms", 30000}}}}}};
+  ep::Json human_policy = event_policy;
+  human_policy["spec"]["source"] = "human";
+
+  auto arm_executor = [&]() {
+    ep::ExecutorOptions options;  // non-test mode: validation and gates are real
+    options.event_armed = true;
+    options.event_arm.name = "gate-test";
+    options.event_arm.watch = "/sys/fs/cgroup/epv2-gate-nonexistent";
+    options.event_arm.threshold_wait_ms = 5;  // injected waits stay below it so
+    options.event_arm.sustain_windows = 1;    // the background guard loop itself
+    options.event_arm.release_windows = 1;    // never acts during this test
+    options.event_arm.min_interval_ms = 1000;
+    options.event_arm.lease_ttl_ms = 30000;
+    options.event_arm.policy_ttl_ms = 30000;
+    options.event_arm.cpu_weight = 9000;
+    return std::make_unique<ep::Executor>(dir / "state",
+                                          std::make_unique<ep::CgroupSkill>(paths), options);
+  };
+
+  // Armed executor: a stale-but-acceptable observation (30s old, 5s window)
+  // freezes the gate for source=event-template.
+  {
+    auto executor = arm_executor();
+    std::string error;
+    CHECK(executor->init(&error));
+    const ep::Json stale = executor->handle(ep::Json{
+        {"operation", "event.observe"}, {"request_id", "req-evt-g001"},
+        {"observation", event_observation_json("/sys/fs/cgroup/epv2-gate-nonexistent", 1.0,
+                                               ep::now_epoch_ms() - 30000, 5000)}});
+    CHECK(stale["status"] == "OK");
+    const ep::Json lease = executor->handle(ep::Json{{"operation", "lease.acquire"},
+                                                     {"request_id", "req-evt-g002"},
+                                                     {"lease_owner", "eventguard:gate-test"},
+                                                     {"lease_ttl_ms", 30000}});
+    CHECK(lease["status"] == "OK");
+    const ep::Json envelope =
+        make_envelope("policy.apply", event_policy, "eventguard:gate-test",
+                      lease["fence_epoch"].get<std::uint64_t>(),
+                      lease["observed_generation"].get<std::uint64_t>(), "idem-evt-gate-1");
+    const ep::Json denied = executor->handle(ep::Json{{"operation", "policy.apply"},
+                                                      {"envelope", envelope},
+                                                      {"policy", event_policy}});
+    CHECK(denied["status"] == "REJECTED");
+    CHECK(denied["error"]["code"] == "SLO_DENIED");
+    CHECK(denied["error"]["message"].get<std::string>().find("event evidence gate") !=
+          std::string::npos);
+
+    // A fresh observation opens the gate; the request then dies at target
+    // resolution, which proves it got past the gate.
+    const ep::Json fresh = executor->handle(ep::Json{
+        {"operation", "event.observe"}, {"request_id", "req-evt-g003"},
+        {"observation", event_observation_json("/sys/fs/cgroup/epv2-gate-nonexistent", 1.0,
+                                               ep::now_epoch_ms() - 1000, 5000)}});
+    CHECK(fresh["status"] == "OK");
+    const ep::Json envelope2 =
+        make_envelope("policy.apply", event_policy, "eventguard:gate-test",
+                      lease["fence_epoch"].get<std::uint64_t>(),
+                      lease["observed_generation"].get<std::uint64_t>(), "idem-evt-gate-2");
+    const ep::Json passed = executor->handle(ep::Json{{"operation", "policy.apply"},
+                                                      {"envelope", envelope2},
+                                                      {"policy", event_policy}});
+    CHECK(passed["status"] == "REJECTED");
+    CHECK(passed["error"]["code"] == "TARGET_STALE");
+    executor->shutdown("unit test done");
+  }
+
+  // Unarmed executor: event-template is refused even with a fresh observation,
+  // while a human policy passes the gate on operator authority alone.
+  {
+    ep::ExecutorOptions plain;  // not armed
+    ep::Executor executor(dir / "state-plain", std::make_unique<ep::CgroupSkill>(paths), plain);
+    std::string error;
+    CHECK(executor.init(&error));
+    const ep::Json fresh = executor.handle(ep::Json{
+        {"operation", "event.observe"}, {"request_id", "req-evt-g101"},
+        {"observation", event_observation_json("/sys/fs/cgroup/epv2-gate-nonexistent", 1.0,
+                                               ep::now_epoch_ms() - 1000, 5000)}});
+    CHECK(fresh["status"] == "OK");
+    const ep::Json lease = executor.handle(ep::Json{{"operation", "lease.acquire"},
+                                                    {"request_id", "req-evt-g102"},
+                                                    {"lease_owner", "plain-owner-01"},
+                                                    {"lease_ttl_ms", 30000}});
+    CHECK(lease["status"] == "OK");
+    const ep::Json envelope =
+        make_envelope("policy.apply", event_policy, "plain-owner-01",
+                      lease["fence_epoch"].get<std::uint64_t>(),
+                      lease["observed_generation"].get<std::uint64_t>(), "idem-evt-gate-3");
+    const ep::Json denied = executor.handle(ep::Json{{"operation", "policy.apply"},
+                                                     {"envelope", envelope},
+                                                     {"policy", event_policy}});
+    CHECK(denied["status"] == "REJECTED");
+    CHECK(denied["error"]["code"] == "SLO_DENIED");
+    const ep::Json human_envelope =
+        make_envelope("policy.apply", human_policy, "plain-owner-01",
+                      lease["fence_epoch"].get<std::uint64_t>(),
+                      lease["observed_generation"].get<std::uint64_t>(), "idem-evt-gate-4");
+    const ep::Json human = executor.handle(ep::Json{{"operation", "policy.apply"},
+                                                    {"envelope", human_envelope},
+                                                    {"policy", human_policy}});
+    CHECK(human["status"] == "REJECTED");
+    CHECK(human["error"]["code"] == "TARGET_STALE");
+    executor.shutdown("unit test done");
+    std::filesystem::remove_all(dir);
+  }
 }
 
 int main() {
@@ -2587,6 +2992,11 @@ int main() {
   test_lease_survives_unwritable_state_store();
   test_cgroup_policy_validation();
   test_cgroup_skill_lifecycle();
+  test_event_guard_decide();
+  test_event_observation_parse();
+  test_event_arm_validation();
+  test_event_observe_rpc();
+  test_event_apply_gate();
   if (g_failures != 0) {
     std::cerr << g_failures << " check(s) failed\n";
     return 1;

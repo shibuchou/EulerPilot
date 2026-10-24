@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <chrono>
 #include <iostream>
+#include <limits>
 #include <string>
 #include <utility>
 
@@ -150,6 +151,7 @@ Json Executor::handle(const Json& request) {
   if (operation == "route.decide") return handle_route(request);
   if (operation == "slo.evaluate") return handle_slo(request);
   if (operation == "service.observe") return handle_observe(request);
+  if (operation == "event.observe") return handle_event_observe(request);
   if (operation == "lease.acquire") return handle_lease(request);
   if (operation == "policy.validate") return handle_validate(request);
   if (operation == "policy.apply") return handle_apply(request);
@@ -228,6 +230,7 @@ Json Executor::handle_status(const Json& request) {
                                {"noise_bg_progress_pct",
                                 service_noise(observation_.expert).bg_progress_pct},
                                {"last_outcome", last_outcome_}}},
+              {"event", event_status_locked(now_ms)},
               {"incomplete_transactions", unfinished}};
 }
 
@@ -426,6 +429,55 @@ Json Executor::handle_observe(const Json& request) {
               {"observed_generation", ownership_.generation()},
               {"switch_outcome", outcome},
               {"adverse_experts", adverse_json}};
+}
+
+Json Executor::handle_event_observe(const Json& request) {
+  const std::string request_id = request.value("request_id", "");
+  EventObservation parsed;
+  std::string error;
+  if (!request.contains("observation") ||
+      !parse_event_observation(request.at("observation"), &parsed, &error)) {
+    event_observations_rejected_++;
+    event_last_rejection_ = error;
+    return rejection(request_id, ErrorCode::kSchemaInvalid, "event observation rejected", error);
+  }
+  const std::int64_t now_ms = now_epoch_ms();
+  // Same freshness rules as the service half: a long-dead window must not
+  // replace a fresher one and then sit there holding the guard hostage, and a
+  // window from the future is a broken producer.
+  if (parsed.observed_at_ms < now_ms - 600000 ||
+      parsed.observed_at_ms < now_ms - 10 * parsed.window_ms) {
+    event_observations_rejected_++;
+    event_last_rejection_ = "event observation is too old to describe the present";
+    return rejection(request_id, ErrorCode::kSchemaInvalid,
+                     "event observation is too old",
+                     "observed_at_ms=" + std::to_string(parsed.observed_at_ms) +
+                         " now_ms=" + std::to_string(now_ms));
+  }
+  if (parsed.observed_at_ms > now_ms + 5000) {
+    event_observations_rejected_++;
+    event_last_rejection_ = "event observation is from the future";
+    return rejection(request_id, ErrorCode::kSchemaInvalid,
+                     "event observation is from the future",
+                     "observed_at_ms=" + std::to_string(parsed.observed_at_ms) +
+                         " now_ms=" + std::to_string(now_ms));
+  }
+  event_observation_ = std::move(parsed);
+  event_has_observation_ = true;
+  event_observations_accepted_++;
+  Json samples = Json::array();
+  for (const auto& sample : event_observation_.cgroups) {
+    samples.push_back(Json{{"path", sample.path},
+                           {"cgroup_id", sample.cgroup_id},
+                           {"events", sample.events}});
+  }
+  return Json{{"status", "OK"},
+              {"request_id", request_id},
+              {"accepted", Json{{"source", "evtmon"},
+                                {"observed_at_ms", event_observation_.observed_at_ms},
+                                {"window_ms", event_observation_.window_ms},
+                                {"cgroups", samples}}},
+              {"observed_generation", ownership_.generation()}};
 }
 
 Json Executor::handle_lease(const Json& request) {
@@ -769,16 +821,43 @@ Json Executor::handle_apply(const Json& request) {
   // Generated proposals must pass the SLO gate. A human-explicit policy keeps
   // operator authority and bypasses the gate.
   if (!options_.test_mode && policy_summary.source != "human") {
-    // Judge the proposal against the limits it declares for itself, plus any
-    // measured service evidence already on file.
-    SloInput proposal_gate_input = service_slo_input(policy_summary.expert, now_epoch_ms());
-    proposal_gate_input.safety = policy_summary.safety;
-    const Json gate = SloGate{}.evaluate(proposal_gate_input);
-    if (!gate.value("allowed", false)) {
-      return rejection(request_id, ErrorCode::kSloDenied,
-                       "SLO gate denied expert '" + policy_summary.expert + "' from source '" +
-                           policy_summary.source + "'",
-                       gate.dump());
+    if (policy_summary.mode == "cgroup") {
+      // The cgroup domain has no service SLO to consult. An autonomous writer
+      // passes only through the armed event path: the arm file is the human
+      // authority, this request must ride the arm's own lease, and the event
+      // observation must be fresh -- so killing the pump freezes this gate shut
+      // even for a hand-crafted source=event-template policy.
+      const std::int64_t age_ms = event_has_observation_
+                                      ? now_epoch_ms() - event_observation_.observed_at_ms
+                                      : std::int64_t{-1};
+      const bool fresh =
+          event_has_observation_ && age_ms <= 2 * event_observation_.window_ms;
+      const bool authorized = options_.event_armed &&
+                              envelope.lease_owner == options_.event_arm.owner();
+      if (!authorized || !fresh) {
+        return rejection(request_id, ErrorCode::kSloDenied,
+                         "event evidence gate denied a source='" + policy_summary.source +
+                             "' CgroupPolicy",
+                         Json{{"armed", options_.event_armed},
+                              {"lease_owner", envelope.lease_owner},
+                              {"event_owner",
+                               options_.event_armed ? options_.event_arm.owner() : ""},
+                              {"observation_age_ms", age_ms},
+                              {"fresh", fresh}}
+                             .dump());
+      }
+    } else {
+      // Judge the proposal against the limits it declares for itself, plus any
+      // measured service evidence already on file.
+      SloInput proposal_gate_input = service_slo_input(policy_summary.expert, now_epoch_ms());
+      proposal_gate_input.safety = policy_summary.safety;
+      const Json gate = SloGate{}.evaluate(proposal_gate_input);
+      if (!gate.value("allowed", false)) {
+        return rejection(request_id, ErrorCode::kSloDenied,
+                         "SLO gate denied expert '" + policy_summary.expert + "' from source '" +
+                             policy_summary.source + "'",
+                         gate.dump());
+      }
     }
   }
 
@@ -1170,6 +1249,12 @@ void Executor::monitor_loop() {
       auto_last_check_ms_ = now;
       run_auto_apply_locked(now);
     }
+    // Same for the R5 event guard: it drives the cgroup skill through the
+    // transaction path and only while its named owner holds the lease.
+    if (options_.event_armed && now - event_last_check_ms_ >= 2000) {
+      event_last_check_ms_ = now;
+      run_event_guard_locked(now);
+    }
     if (!active_) {
       liveness_strikes_ = 0;
       continue;
@@ -1491,6 +1576,200 @@ void Executor::run_auto_apply_locked(std::int64_t now_ms) {
   std::cerr << "[executor] autopilot apply not verified: " << status << " "
             << response.value("error", Json(Json::object_t())).dump()
             << "; effect left rolled back\n";
+}
+
+void Executor::run_event_guard_locked(std::int64_t now_ms) {
+  const EventArm& arm = options_.event_arm;
+  if (!options_.event_armed || arm.name.empty()) return;
+
+  // Consume at most what is new: the guard ticks every 2s while the pump
+  // reports every window+interval, and counting one window twice would turn
+  // "sustained N windows" into "sustained N ticks".
+  const bool new_window = event_has_observation_ &&
+                          event_observation_.observed_at_ms != event_consumed_at_ms_;
+  const EventCgroupSample* watch = nullptr;
+  if (new_window) {
+    event_consumed_at_ms_ = event_observation_.observed_at_ms;
+    for (const auto& sample : event_observation_.cgroups) {
+      if (sample.path == arm.watch) {
+        watch = &sample;
+        break;
+      }
+    }
+    if (watch != nullptr && watch->has_wait_max) {
+      advance_event_streaks(&event_over_windows_, &event_under_windows_, true,
+                            watch->wait_max_ms >= static_cast<double>(arm.threshold_wait_ms));
+    }
+    // A window without the watch (or without waits) leaves both streaks alone:
+    // "condition absent" is not evidence for either direction.
+  } else if (event_has_observation_) {
+    for (const auto& sample : event_observation_.cgroups) {
+      if (sample.path == arm.watch) {
+        watch = &sample;
+        break;
+      }
+    }
+  }
+
+  // Permission first: like the autopilot, the guard only acts while its named
+  // owner holds the lease; a live lease held by anyone else stops it.
+  LeaseState lease = ownership_.lease();
+  const bool mine = lease.owner == arm.owner();
+  const bool valid = lease.expires_ms > now_ms;
+  if (valid && !mine) {
+    event_last_hold_ = "lease held by " + lease.owner;
+    return;
+  }
+  const bool renewing =
+      mine && valid && lease.expires_ms - now_ms < arm.lease_ttl_ms / 2;
+  if (!mine || !valid || renewing) {
+    std::string lease_error;
+    LeaseState acquired;
+    if (!ownership_.acquire_lease(arm.owner(), static_cast<std::uint64_t>(arm.lease_ttl_ms),
+                                  &acquired, &lease_error)) {
+      event_last_hold_ = "lease acquire failed: " + lease_error;
+      return;
+    }
+    lease = acquired;
+    std::cerr << "[executor] event guard " << (renewing ? "renewed" : "took")
+              << " lease fence=" << lease.fence << "\n";
+  }
+
+  // The active effect is ours only if it was applied under the arm's owner;
+  // another writer's effect (a human apply) must never be clobbered by us.
+  const bool ours = active_ && active_->owner == arm.owner();
+  if (active_ && !ours) {
+    event_last_hold_ = "another effect is active (owner " + active_->owner + ")";
+    return;
+  }
+
+  const std::int64_t age_ms =
+      event_has_observation_ ? now_ms - event_observation_.observed_at_ms : std::int64_t{-1};
+  const bool stale = event_has_observation_ && age_ms > 2 * event_observation_.window_ms;
+  if (event_has_observation_) {
+    if (age_ms > event_observation_max_age_ms_) event_observation_max_age_ms_ = age_ms;
+    if (stale) event_stale_checks_++;
+  }
+
+  EventGuardInput input;
+  input.armed = true;
+  input.active = ours;
+  input.has_observation = event_has_observation_;
+  input.observation_stale = stale;
+  input.watch_present = watch != nullptr;
+  input.wait_over_threshold =
+      watch != nullptr && watch->has_wait_max &&
+      watch->wait_max_ms >= static_cast<double>(arm.threshold_wait_ms);
+  input.over_windows = event_over_windows_;
+  input.under_windows = event_under_windows_;
+  input.since_action_ms = event_last_action_ms_ == 0
+                              ? std::numeric_limits<std::int64_t>::max()
+                              : now_ms - event_last_action_ms_;
+  input.min_interval_ms = arm.min_interval_ms;
+  input.sustain_windows = arm.sustain_windows;
+  input.release_windows = arm.release_windows;
+
+  const EventGuardDecision decision = event_guard_decide(input);
+  event_last_hold_ = decision.hold;
+  if (decision.action == EventGuardDecision::Action::kNone) return;
+
+  if (decision.action == EventGuardDecision::Action::kRollback) {
+    const Json rollback_of{{"apply_action_id", active_->action_id},
+                           {"original_transaction_id", active_->txn},
+                           {"snapshot_id", active_->snapshot_id}};
+    const Json envelope{
+        {"apiVersion", kApiVersion},
+        {"request_id", "req-evt-rb-" + random_hex(12)},
+        {"transaction_id", "txn-evt-rb-" + random_hex(12)},
+        {"idempotency_key", "evt-rb-" + std::to_string(now_ms)},
+        {"operation", "policy.rollback"},
+        {"policy_sha256", active_->policy_sha256},
+        {"lease_owner", lease.owner},
+        {"fence_epoch", lease.fence},
+        {"expected_generation", ownership_.generation()},
+        {"issued_at", now_iso8601()},
+        {"deadline", iso8601_from_ms(now_ms + 60000)},
+        {"rollback_of", rollback_of}};
+    const Json rolled = handle_rollback(Json{{"operation", "policy.rollback"},
+                                             {"envelope", envelope}});
+    event_last_action_ms_ = now_ms;
+    const std::string status = rolled.value("status", "");
+    if (status == "ROLLED_BACK") {
+      event_last_decision_ = "rolled back: " + decision.reason;
+      event_last_hold_.clear();
+      std::cerr << "[executor] event guard rolled back: " << decision.reason << "\n";
+    } else {
+      event_last_decision_ = "rollback returned " + status;
+      std::cerr << "[executor] event guard rollback returned " << status << "\n";
+    }
+    return;
+  }
+
+  // kApply: drive the armed action through the same transaction path a client
+  // uses. The apply-side event gate re-checks the arm, the owner and the
+  // observation freshness, so killing the pump freezes both ends.
+  Json policy = event_action_policy(arm);
+  const std::string digest = sha256_hex(canonical_json(policy));
+  const Json envelope{
+      {"apiVersion", kApiVersion},
+      {"request_id", "req-evt-ap-" + random_hex(12)},
+      {"transaction_id", "txn-evt-ap-" + random_hex(12)},
+      {"idempotency_key", "evt-ap-" + std::to_string(now_ms)},
+      {"operation", "policy.apply"},
+      {"policy_sha256", digest},
+      {"lease_owner", lease.owner},
+      {"fence_epoch", lease.fence},
+      {"expected_generation", ownership_.generation()},
+      {"issued_at", now_iso8601()},
+      {"deadline", iso8601_from_ms(now_ms + 60000)}};
+  const char* payload_key = options_.test_mode ? "intent" : "policy";
+  const Json response = handle_apply(Json{{"operation", "policy.apply"},
+                                          {"envelope", envelope},
+                                          {payload_key, policy}});
+  event_last_action_ms_ = now_ms;
+  const std::string status = response.value("status", "");
+  if (status == "VERIFIED") {
+    event_last_decision_ = "applied: " + decision.reason;
+    event_last_hold_.clear();
+    std::cerr << "[executor] event guard applied cpu.weight=" << arm.cpu_weight << " on "
+              << arm.watch << ": " << decision.reason << "\n";
+  } else {
+    event_last_decision_ = "apply returned " + status;
+    std::cerr << "[executor] event guard apply not verified: " << status << " "
+              << response.value("error", Json(Json::object_t())).dump() << "\n";
+  }
+}
+
+Json Executor::event_status_locked(std::int64_t now_ms) const {
+  const EventArm& arm = options_.event_arm;
+  const std::int64_t age_ms =
+      event_has_observation_ ? now_ms - event_observation_.observed_at_ms : std::int64_t{-1};
+  return Json{{"armed", options_.event_armed},
+              {"name", arm.name},
+              {"owner", arm.owner()},
+              {"watch", arm.watch},
+              {"threshold_wait_ms", arm.threshold_wait_ms},
+              {"sustain_windows", arm.sustain_windows},
+              {"release_windows", arm.release_windows},
+              {"active", active_ && active_->owner == arm.owner()},
+              {"over_windows", event_over_windows_},
+              {"under_windows", event_under_windows_},
+              {"last_hold", event_last_hold_},
+              {"last_decision", event_last_decision_},
+              {"last_action_at_ms", event_last_action_ms_},
+              {"action_cpu_weight", arm.cpu_weight},
+              {"policy_ttl_ms", arm.policy_ttl_ms},
+              {"observation", Json{{"observed", event_has_observation_},
+                                   {"observed_at_ms", event_observation_.observed_at_ms},
+                                   {"window_ms", event_observation_.window_ms},
+                                   {"age_ms", age_ms},
+                                   {"cgroups",
+                                    static_cast<std::int64_t>(event_observation_.cgroups.size())}}},
+              {"observations_accepted", event_observations_accepted_},
+              {"observations_rejected", event_observations_rejected_},
+              {"last_rejection", event_last_rejection_},
+              {"observation_max_age_ms", event_observation_max_age_ms_},
+              {"stale_checks", event_stale_checks_}};
 }
 
 bool Executor::reconcile_all(std::vector<std::string>* unresolved, std::string* error) {

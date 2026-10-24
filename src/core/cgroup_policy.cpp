@@ -58,10 +58,12 @@ bool validate_cgroup_policy(const Json& policy, CgroupPolicySummary* summary,
     return false;
   }
   std::string source;
-  // rule-template etc. stay out until the event-driven path can hand the lease to a
-  // named owner: an autonomous writer needs the same authority check the scheduling
-  // domain requires, and inventing a weaker one for cgroups would be a hole.
-  if (!get_enum(spec, "source", "spec", {"human"}, &source, error)) {
+  // event-template is the autonomous half of the R5 link and carries the same
+  // authority the scheduling domain demands: the apply-side event gate only
+  // accepts it while an armed EventArm's named owner holds the lease and the
+  // eBPF pump observation is fresh. Anything weaker (rule-template, llm) stays
+  // out until it can show the same authority chain.
+  if (!get_enum(spec, "source", "spec", {"human", "event-template"}, &source, error)) {
     if (error != nullptr) *error = "spec.source: " + *error + " (CgroupPolicy is human-set)";
     return false;
   }

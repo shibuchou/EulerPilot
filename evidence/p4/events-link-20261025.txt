@@ -1,0 +1,99 @@
+# R5 事件触发链路:hook → 决策 → 动作 → 恢复(真机时间线)
+
+日期:2026-10-25。环境:SP3 `6.6.0-schedpilot-sp3`、openEuler 24.03 (LTS-SP3)、
+8 vCPU。本文件记录 R5 后半(感知端)的实现与真机证据;动作端(cgroup Skill)见
+`evidence/p4/cgroup-domain-20261024.txt`。R5 判定依据 = 两半相加。
+
+## 1. 链路构成(本轮新增)
+
+```
+sched/events_trace.bpf.c   BPF tracing 对象:raw_tp sched_wakeup/sched_wakeup_new/
+                           sched_switch/sched_process_exit。wakeup 记录(时间戳,
+                           cgroup kernfs id, task start_time),switch 消费并按
+                           cgroup 聚合(events / wait_total_ns / wait_max_ns);
+                           start_time 不匹配即丢弃(pid 复用防护,计数器可见)。
+src/evtmon/main.cpp        ep-evtmon 只读事件泵:加载 tracing 对象,每窗口排空聚合
+                           map、把 kernfs id 解析回 cgroup 路径(逐窗口 stat 遍历)、
+                           打印 JSON 并以 event.observe 上报执行服务。不写调度器/
+                           控制map/cgroup——唯一输出是测量与上报。
+include/ep/event_guard.hpp
+src/core/event_guard.cpp   EventObservation 契约解析(严格字段+新鲜度)、EventArm
+                           契约(watch/threshold/sustain/release/min_interval/
+                           lease_ttl/action/policy_ttl)、纯判定 event_guard_decide
+                           (证据先于抑制;撤销方向所需证据最少)、advance_event_streaks。
+src/executor/*             event.observe RPC(镜像 service.observe:不取租约、不推进
+                           generation、只能更严);--event-arm FILE 人工授权;监控线程
+                           run_event_guard_locked(消费新窗口→持续/回落计数→租约权限
+                           门→判定→经 handle_apply/handle_rollback 事务路径动作);
+                           policy.status 新增 event 段。
+CgroupPolicy 契约          spec.source 枚举加入 event-template:只被武装事件门的
+                           apply 放行(arm 在场 + 该请求骑在 arm 属主的租约上 +
+                           事件观测新鲜),schema 层不拦、运行时拦。
+design/schemas/event-arm.schema.json + examples/event-arm.json + validate_design
+tests/integration_events.sh 真机五相时间线(第 8 个 CTest 必测项)
+```
+
+事件门在 handle_apply 中的位置与 SloGate 同级且在其之前判 cgroup 域:杀掉泵 ⇒
+观测断供 ⇒ 门冻结(event-template 的 apply 被拒),已有效应由策略 TTL 走既有
+自动回退路径补偿。
+
+## 2. 构建(全部在 SP3 上,scripts/build_bpf_sp3.sh events 重建 BPF)
+
+| 产物 | SHA256(前 16) |
+|---|---|
+| ep-executord | c70ab0934ea249a9 |
+| ep | 80da78b867526d |
+| ep-evtmon | c6b008b8aa4aebd6 |
+| events_trace.bpf.o | 433653b1d03299fd |
+| events_trace.bpf.skel.h | dd65f9a7bf70066 |
+| 源码树聚合(排除 skel) | e9d7f4b9addacfa5 |
+
+## 3. 真机时间线(tests/integration_events.sh,2026-10-25 16:30 UTC+8)
+
+被看对象:systemd scope(CPUWeight=100)→ cpu.weight=100;噪声:独立 cgroup
+8 个纯自旋海绵;信号:被看 cgroup 16 个 50ms 周期 sleeper(每次唤醒都要在饱和
+CPU 后面排队)。arm:threshold 5ms、sustain=release=1、min_interval 1s、
+policy_ttl 12s、action cpu.weight=5000。泵窗口 3s/间隔 0.5s。
+
+| 相位 | 断言 | 结果 |
+|---|---|---|
+| A 空载 | 8s 内不动(weight=100),hold 为 below-threshold 类 | PASS |
+| B 饥饿 | weight 100→5000(守卫日志 "event guard applied cpu.weight=5000") | PASS(16:30:26) |
+| C 撤载 | weight 5000→100("event guard rolled back") | PASS(16:30:30) |
+| D 杀泵 | 重新饥饿→再次 5000;kill 泵后 25s 内 TTL 兜底回 100;hold=EVENT_OBSERVATION_STALE 且 stale_checks≥1;不再重试 | PASS |
+| E 泵单独 | 无执行服务时泵跑 7s,weight 保持 100(泵非写者) | PASS |
+
+回归:unit(550 断言,含事件链 5 个测试组)全过;`ctest` **8/8**(integration_events
+为第 8 项,总 90s);`validate_design.py` 6 正例/27 反例。
+
+## 4. 过程中钉死的三个事实(不写下来就会重踩)
+
+1. **raw tracepoint 的名字不带 category**:`SEC("raw_tp/sched_wakeup")` 才能附着,
+   `raw_tp/sched/sched_wakeup` 报 ENOENT;经典 `tp/` 前缀下 BPF_PROG 宏取参会被
+   verifier 拒(reg type unsupported for arg#0)。
+2. **本机 cgroup 根和 system.slice 默认只委派 memory pids**:裸 mkdir 出来的目录
+   没有 cpu.weight(打开报 EACCES,不是 ENOENT)。systemd 只在单元声明 CPUWeight
+   时按需启用 +cpu——所以测试必须用 `systemd-run -p CPUWeight` 建 scope,不能
+   裸 mkdir。
+3. **纯自旋任务几乎不产生 wakeup 事件**:信号是"wakeup→首次运行的等待",自旋者
+   只在 fork 时有一次 sched_wakeup_new;要制造可测的 runnable 等待,被看组必须
+   周期性睡眠再唤醒(噪声组才用自旋海绵)。
+
+另修一个产品缺陷:观测/武备路径校验原本拒绝 cgroup 根本身("/sys/fs/cgroup"),
+而根是合法的观测对象——已放行(策略效果路径校验保持更严)。
+
+## 5. 边界(本证据不证明什么)
+
+- **不含任何性能结论**:泵/BPF 的 CPU 开销、事件量上限(map 4096 个 cgroup、
+  热点 cgroup 聚合串行化)未量化;`agg_updates_lost` 计数器在位但本轮为 0。
+- **测量的语义近似**:wait = "最后一次 wakeup 到首次运行"(延迟记账同款近似),
+  不是完整排队驻留时间;已在 BPF 源码头注释声明。
+- **watch 按 path 匹配**:同名 cgroup 删除重建后路径继续匹配但身份(kernfs id)
+  变化未被拒绝——与 TargetBinding 的"重建即失效"纪律相比是缺口,记 P4 待办;
+  构造:重建后 id 不同、观测按新 id 上报、执行服务按 path 匹配仍会动作。
+- **cgroup 域没有"已有效应时再 apply"的通用保护**(既有边界,本轮未改):
+  事件守卫自查 active_(别人的效应在位时 hold),但人工 apply 与武装守卫并发
+  时仍靠操作纪律。
+- 真机 PID 复用由 start_time 比对丢弃(计数器),未构造复用场景实测。
+- 本轮 ctest/integration 之外未重跑:验收六轮、fail-safe 矩阵、旗舰矩阵
+  (见 IMPLEMENTATION_PLAN 重跑义务)。
