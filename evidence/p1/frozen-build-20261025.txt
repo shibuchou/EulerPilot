@@ -1,0 +1,45 @@
+# 冻结构建、验收 r28 与 fail-safe run9(2026-10-25)
+
+环境:SP3 `6.6.0-schedpilot-sp3`、openEuler 24.03 LTS-SP3。本文件是"在冻结构建上重出
+P3 数字"这一义务的构建侧记录;矩阵重跑结果另行归档。
+
+## 1. 冻结内容(源码 = git `370180b`,SP3 树经 `git archive` 字节校验一致)
+
+干净构建目录、`-DEP_LIBBPF_STATIC=/root/ep-sched-build/build/obj/libbpf/libbpf.a`:
+
+| 产物 | SHA256(前 16) |
+|---|---|
+| ep-executord | 3693c9ac22dfdea2 |
+| ep | 3cb202fd138ed167 |
+| ep-evtmon | 2752282392b50f9 |
+| ep-sched-loader | e33496d46b2ca287 |
+| ep-schedctl | 6fef4d43a5cf7f30 |
+| events_trace.bpf.o | 433653b1d03299fd |
+
+CMake 加了 libbpf 链接陷阱警告后重配重建,全部哈希不变(消息改动不影响产物)。
+
+**构建陷阱(已写进 CMake WARNING)**:不带 `EP_LIBBPF_STATIC` 时 loader 链接系统
+`libbpf.so` 且**启动即静默退出**、日志为空——症状像执行服务缺陷,实际是链接配置。
+第一次干净构建就踩了它(4 个 sched 系测试挂);该配置此前只活在旧构建目录的 CMake
+cache 里。
+
+## 2. 结果
+
+| 检查 | 结果 |
+|---|---|
+| `ctest`(8 必测项,含 integration_events) | **8/8** |
+| 验收 `accept_sp3_rounds.sh r28`(每轮 ctest+A/B/C liveness+哈希+收尾断言) | **6/6 rc=0**(第一次尝试在第 1 轮因事件测试负载贴阈值翻车,加固后整组重跑;失败现场保留在 acc-r28-1.txt 与 /tmp 证据说明里) |
+| fail-safe 矩阵 run9(17 条目) | **17/17 PASS**,收尾 `state=disabled`、pin 根为空(`/root/epv2-evidence/fail-safe-20261025/`) |
+| 旗舰矩阵重跑 | 已按同一冻结参数(20 block × A0/A1/A2/C/D、seed 20261024)预注册并启动,输出 `/root/epv2-evidence/flagship-rerun-20261025/`,结果另文 |
+
+事件测试加固的教训(记档):同优先级海绵下被看组的稳态等待落在 3.8–4.3ms,贴着
+5ms 阈值——Phase B 靠启动瞬态过线、Phase D 稳态不过线,表现为偶发失败。海绵降到
+nice -10、sleeper 加密到 24×20ms 后三连过 + 六轮验收全过。**测试负载的稳态要离判定
+阈值两侧都有余量,不能只看瞬态。**
+
+## 3. 边界
+
+- r28 六轮与 fail-safe run9 都在冻结构建上,但**旗舰矩阵重跑未完成前,P3 数字仍是
+  旧构建的**;旧数与新数必须并列报告。
+- 事件链集成测试是唯一有负载敏感度的必测项;它现在有两侧余量,但"验收级机器上的
+  负载余量"本身是运行时性质,换机器要重新确认。

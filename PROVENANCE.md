@@ -868,3 +868,12 @@ tracing 对象(`scripts/build_bpf_sp3.sh <src> <out> events` 重建;object SHA25
 `e9d7f4b9addacfa5…`(排除 skel)。真机时间线与边界见
 [evidence/p4/events-link-20261025.txt](evidence/p4/events-link-20261025.txt);
 R5 动作端(cgroup Skill)见 2026-10-24 节。本轮改动晚于旗舰矩阵构建,矩阵重跑义务不变。
+
+## 冻结构建、验收 r28 与 fail-safe run9(2026-10-25 追加)
+
+源码 `370180b`(SP3 树 git archive 字节校验一致),干净构建带
+`-DEP_LIBBPF_STATIC=/root/ep-sched-build/build/obj/libbpf/libbpf.a`(不带则 loader 链
+系统 libbpf 并静默秒退,CMake 已加 WARNING):executord `3693c9ac…`、ep `3cb202fd…`、
+evtmon `27522823…`、loader `e33496d4…`、schedctl `6fef4d43…`、events BPF `433653b1…`。
+ctest 8/8;验收 r28 六轮 rc=0;fail-safe run9 17/17。旗舰矩阵按同一冻结参数重跑中。
+详见 [evidence/p1/frozen-build-20261025.txt](evidence/p1/frozen-build-20261025.txt)。
