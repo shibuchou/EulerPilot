@@ -26,7 +26,7 @@ quiet/后台初测"）与第 120 行补加的"加载场景的 SLO/无失速"。
 
 | 门槛 | 判定 | 层级 | 证据 | 边界（不证明什么） |
 |---|---|---|---|---|
-| 没有双写 | **达成** | 单元+真机集成+故障矩阵 | S11（第二实例 `another executor instance holds .../executor.lock`，且未挂载）；`evidence/p1/takeover-thirdparty-20261022.txt`（第三方 `schedpilotd` 在场时拒绝挂载；第二次 struct_ops 注册被内核 EBUSY 拒绝）；`evidence/p1/sp3-instance-pin.txt`（pin 按实例命名空间隔离） | 只保证 **v2 自己不产生第二写者**。`ep-schedctl` 是 root 可执行的旁路工具，任何 root 进程都能写 cfg/class_map；S12 实测越权改 cfg 会被纠正，**越权改 class 条目不会被纠正**（逐条读回要按分类任务数付费，落在毫秒级刷新预算里不成立） |
+| 没有双写 | **达成** | 单元+真机集成+故障矩阵 | S11（第二实例 `another executor instance holds .../executor.lock`，且未挂载）；`evidence/p1/takeover-thirdparty-20261022.txt`（第三方 `schedpilotd` 在场时拒绝挂载；第二次 struct_ops 注册被内核 EBUSY 拒绝）；`evidence/p1/sp3-instance-pin.txt`（pin 按实例命名空间隔离） | 只保证 **v2 自己不产生第二写者**。`ep-schedctl` 是 root 可执行的旁路工具，任何 root 进程都能写 cfg/class_map；S12 实测越权改 cfg 会被纠正；越权改 class 条目自 2026-10-25 起由轮换抽样再断言纠正（`evidence/p1/class-drift-20261025.txt`,此前"逐条付费不成立"的限制以摊到 N 个周期的方式解决） |
 | TID/实例正确 | **达成（范围如实收窄）** | 单元+真机集成+矩阵 | `evidence/p1/sp3-pidfd-held.txt`、`sp3-pid-target.txt`、`sp3-cgroup-id.txt`（cgroup 用 kernfs inode+device+cgroup_id+boot_id；pid 用 pidfd+starttime，fd 持有到事务结束）；S04（同实例重启回收自己的 pin，异实例不越权清理）；S11（拒绝他人 pin） | 线程级目标不做：class_map 以 tgid 为键，S16 记为超出范围。真机 PID 复用 **SKIP**：pidfd 已在结构上排除"回收的 pid 在同一绑定下被重新解释"，去调 `kernel.pid_max` 逼复用测的是内核而不是我们的代码 |
 | 单域崩溃恢复通过 | **达成** | 故障恢复层真机 | 进程崩溃：S04（挂载中 SIGKILL 执行服务→内核立即摘除→同实例重启 `recover_orphan` 扫 pin、`degraded=false`）、S05（SIGKILL loader→3 次存活判定内 `auto fallback: scheduler lost`）；服务退出：`Executor::shutdown()`（本轮修复，run2 曾实测到退出留下 5 个 map pin）；存储故障：S14（ENOSPC 下授予"仅内存租约"完成拆除、新效应被 `RECOVERY_REQUIRED` 拒绝、`store_warning` 可报告）；WAL 状态机 unit 矩阵与 `evidence/p1/wal-hardening-20261022.txt`；根因更正见 `evidence/p1/enable-seq-publish-20261022.txt` | "崩溃不证明已穷尽"；崩溃后 pin 由**同实例重启**回收，换 state 目录则无人回收（运维约束） |
 | 所有模式 fail-safe | **达成（口径：v2 可达模式）** | 故障恢复层真机 | basic：S02/S07；class：S01/S04/S05/S06/S12/S13/S15/S17；adaptive：S03 在真实 RPC 上 `REJECTED` 且零副作用；两步写入的第二步失败：S17（`status=ROLLED_BACK`、`error.code=APPLY_FAILED`、generation 不推进、无残留、可干净重试） | 见 §1：心跳与 PMU 两条 UNSUPPORTED；热插拔在本内核会注销调度器（S15），v2 的行为是检出并补偿，不是"扛住" |
@@ -70,8 +70,9 @@ quiet/后台初测"）与第 120 行补加的"加载场景的 SLO/无失速"。
 
 ## 5. 遗留项（不再是 P1 阻塞，按性质分类）
 
-1. **已知限制（需产品决策）**：越权修改 class 条目不被纠正。要么给刷新加"抽样再断言"，
-   要么把这条写进交付说明并排除相关声明。
+1. **已闭合（2026-10-25）**：越权修改 class 条目现在由刷新的轮换抽样再断言纠正
+   （每周期一条、N 周期全覆盖;真机两场景过,`evidence/p1/class-drift-20261025.txt`）。
+   剩余边界:纠正有轮换周期的时延,不是实时防护;只覆盖本实例管理过的条目。
 2. **未跑的真机构造**：删除并重建同名 cgroup 路径（绑定失效后应拒绝继续而不是写错对象）。
    unit 已覆盖，真机层仍缺。
 3. **未解释观测**：`/sys/fs/bpf/eulerpilot-v2` 一度整体消失（随后由 loader `mkdir_p` 重建）；

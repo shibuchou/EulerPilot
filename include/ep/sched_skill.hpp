@@ -155,6 +155,11 @@ class SchedSkill : public Skill {
   // pid -> class this instance wrote. Revocation deletes by pid, so the class is
   // only needed to re-assert, never to undo.
   std::map<std::int64_t, std::string> managed_class_;
+  // Rotating class drift sample: one managed entry is read back per refresh
+  // cycle (full coverage in N cycles), so an out-of-band class-set is caught
+  // without paying one helper call per classified task in every cycle.
+  std::int64_t class_sample_next_pid_ = 0;
+  std::uint64_t class_drift_corrections_ = 0;
 };
 
 }  // namespace ep

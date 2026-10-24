@@ -2555,6 +2555,85 @@ void test_cgroup_policy_validation() {
   reject(unknown, "unknown field");
 }
 
+// An out-of-band class-set used to be invisible between real changes. The
+// rotating per-cycle sample must catch it (one entry per cycle, not one per
+// task) and re-assert the declared class through the same helper.
+void test_class_drift_sample_corrected() {
+  const auto dir = make_temp_dir("class-drift");
+  const auto cgroup = dir / "cg";
+  const auto class_map = dir / "class-map";
+  const auto state_dir = dir / "state";
+  std::filesystem::create_directories(cgroup);
+  std::filesystem::create_directories(class_map);
+  write_text_file(cgroup / "cgroup.controllers", "\n");
+  write_text_file(cgroup / "cgroup.procs", "333\n");
+  ep::PolicyTarget target{"cgroup", cgroup.string(), "BACKGROUND", "explicit"};
+  std::vector<ep::TargetBinding> bindings;
+  std::string error;
+  CHECK(ep::resolve_targets({target}, &bindings, &error));
+
+  const auto ctrl = dir / "fake-class-ctrl.sh";
+  write_text_file(ctrl, R"BASH(#!/usr/bin/env bash
+map="${EP_FAKE_CLASS_MAP:?}"
+cmd="$1"
+shift
+pid=""
+klass=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --pid) pid="$2"; shift 2 ;;
+    --class) klass="$2"; shift 2 ;;
+    *) shift ;;
+  esac
+done
+case "$cmd" in
+  class-set) printf '%s' "$klass" > "$map/$pid"; echo "{\"ok\":true}" ;;
+  class-del) rm -f "$map/$pid"; echo "{\"ok\":true}" ;;
+  class-get)
+    if [ -s "$map/$pid" ]; then
+      echo "{\"ok\":true,\"present\":true,\"class\":\"$(cat "$map/$pid")\"}"
+    else
+      echo "{\"ok\":true,\"present\":false}"
+    fi ;;
+  *) echo '{"ok":true}' ;;
+esac
+)BASH");
+  CHECK(::chmod(ctrl.c_str(), 0755) == 0);
+  CHECK(::setenv("EP_FAKE_CLASS_MAP", class_map.c_str(), 1) == 0);
+
+  ep::SchedPaths paths;
+  paths.state_dir = state_dir;
+  paths.ctrl = ctrl.string();
+  paths.ctrl_timeout_ms = 1000;
+  ep::SchedSkill skill(paths);
+  ep::Applied applied;
+  applied.bindings = bindings;
+  const std::string entry = (class_map / "333").string();
+
+  ep::RefreshContext context{ep::now_epoch_ms() + 3000};
+  CHECK(skill.refresh(applied, applied.bindings, context, &error));
+  CHECK(read_text_file(entry) == "BG");
+
+  // Out-of-band rewrite: the kernel map now says COMP while the policy says BG.
+  write_text_file(entry, "COMP");
+  CHECK(skill.refresh(applied, applied.bindings, context, &error));
+  CHECK(read_text_file(entry) == "BG");
+
+  // Out-of-band delete: a vanished entry is drift too, not a pass.
+  std::filesystem::remove(entry);
+  CHECK(skill.refresh(applied, applied.bindings, context, &error));
+  CHECK(read_text_file(entry) == "BG");
+
+  // A clean cycle samples and finds nothing to do: no delete, one get, no set.
+  write_text_file(entry, "COMP");  // drift again, then two refreshes: first
+  CHECK(skill.refresh(applied, applied.bindings, context, &error));
+  const std::string before = read_text_file(entry);
+  CHECK(skill.refresh(applied, applied.bindings, context, &error));
+  CHECK(read_text_file(entry) == before);
+  CHECK(std::filesystem::exists(entry));
+  std::filesystem::remove_all(dir);
+}
+
 // ---- R5 event link: pure decision, observation contract, arm contract ----
 
 ep::Json event_observation_json(const std::string& path, double wait_max_ms,
@@ -2992,6 +3071,7 @@ int main() {
   test_lease_survives_unwritable_state_store();
   test_cgroup_policy_validation();
   test_cgroup_skill_lifecycle();
+  test_class_drift_sample_corrected();
   test_event_guard_decide();
   test_event_observation_parse();
   test_event_arm_validation();

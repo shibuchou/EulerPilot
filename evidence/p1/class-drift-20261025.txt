@@ -1,0 +1,38 @@
+# class_map 逐条漂移的抽样再断言(真机)
+
+日期:2026-10-25。环境:SP3 `6.6.0-schedpilot-sp3`。二进制:`ep-executord 80c301b6fe81e2d7…`、
+`ep-sched-loader 45bdc3c0d64c8ab7…`。现场目录:`/root/epv2-evidence/class-drift-20261025/`。
+
+## 1. 变更
+
+`SchedSkill::refresh` 新增第 4 相:每周期从 `managed_class_` 里按游标轮换取**一条**
+受管条目,`class-get` 读回并与期望类比较(比较用线上词汇:策略 COMPUTE = 内核 COMP),
+不一致即 `class-set` 纠正并打日志,缺失("no entry")同样算漂移。成本 = 每周期一次
+helper 调用(与 cfg 读回同量级,实测 5ms 级),N 个受管条目 N 个周期(2s)全覆盖。
+这取代了此前"逐条纠正要按分类任务数付费,落在毫秒级刷新预算里不成立"的限制——
+不是把全量纠正塞进预算,而是把全量摊到 N 个周期。
+
+## 2. 真机时间线(experiments/class_drift_sp3.sh)
+
+策略:pid 目标 `role=BACKGROUND, class=BG`。attach 后 `class-get` 报 BG。
+
+| 场景 | 注入 | 断言 | 结果 |
+|---|---|---|---|
+| 1 越权改值 | `ep-schedctl class-set --pid N --class COMP`(root 旁路) | 内核回到 BG;日志有 `class drift corrected: pid N wanted BG, kernel had COMP` | PASS(20s 轮询窗内) |
+| 2 越权删除 | `ep-schedctl class-del --pid N` | 内核重建 BG;日志有 `... kernel had no entry` | PASS |
+| 收尾 | `ep rollback` | `state=disabled`、pin 无、`class-get` absent | PASS |
+
+daemon.log 恰好 2 条纠正日志(每场景 1 条),无重复纠正。
+
+unit:`test_class_drift_sample_corrected`(有状态假 helper:改值/删值/干净周期三个
+断言组);SP3 `ctest` 8/8。
+
+## 3. 边界
+
+- 纠正时延上限 = 轮换周期(N 条目 × 2s)+ 一个刷新周期;单条目场景实测在 20s
+  轮询窗内。**这不是实时防护**——root 旁路写在被纠正前真实生效。
+- 抽样在刷新预算内先于过期条目撤销之后执行;预算耗尽会明报
+  ("refresh budget exhausted before the class drift sample")而不是静默跳过。
+- 只覆盖 `managed_class_` 内的条目(本实例写过的);对从未声明分类的 pid 的
+  越权写入不属于漂移,不纠正(与"NORMAL 不写条目防 PID 复用继承"的设计一致)。
+- 本变更晚于旗舰矩阵构建,矩阵重跑义务不变。

@@ -16,6 +16,7 @@
 #include <cstring>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <sstream>
 #include <thread>
 #include <vector>
@@ -1153,9 +1154,9 @@ bool SchedSkill::refresh(const Applied& applied, const std::vector<TargetBinding
   };
 
   // cfg is what every policy claim rests on, and anything that can reach the pinned map
-  // can overwrite it. One read per cycle re-asserts it. Per-entry class drift is not
-  // corrected here: that would cost one helper call per classified task inside a budget
-  // measured in milliseconds, and the entries are re-asserted on any real change.
+  // can overwrite it. One read per cycle re-asserts it. Per-entry class drift is
+  // corrected by the rotating sample in phase 4 below: one read per cycle, not one
+  // per classified task, because the whole refresh budget is milliseconds.
   const Json cfg_after =
       applied.data.is_object() ? applied.data.value("cfg_after", Json()) : Json();
   if (cfg_after.is_object() && !cfg_after.empty()) {
@@ -1225,6 +1226,40 @@ bool SchedSkill::refresh(const Applied& applied, const std::vector<TargetBinding
       if (budget == 0) return stop("refresh budget exhausted during stale member revocation");
       if (!ctrl_class_del(it->first, error, budget)) return false;
       it = managed_class_.erase(it);
+    }
+    // Phase 4: rotating drift sample. Re-asserting every entry every cycle would
+    // cost one helper call per classified task inside a millisecond budget; one
+    // read-back per cycle covers all entries within N cycles and catches an
+    // out-of-band class-set within one rotation. Compare in wire vocabulary:
+    // the map stores the policy name (COMPUTE), the kernel map the token (COMP).
+    if (!managed_class_.empty()) {
+      auto sample = managed_class_.lower_bound(class_sample_next_pid_);
+      if (sample == managed_class_.end()) sample = managed_class_.begin();
+      class_sample_next_pid_ = sample->first > std::numeric_limits<std::int64_t>::max() - 1
+                                   ? 0
+                                   : sample->first + 1;
+      const std::uint64_t budget = per_call();
+      if (budget == 0) return stop("refresh budget exhausted before the class drift sample");
+      Json present;
+      std::string get_error;
+      if (!ctrl_class_get(sample->first, &present, &get_error)) {
+        return stop("class drift sample unreadable (pid " + std::to_string(sample->first) +
+                    "): " + get_error);
+      }
+      const std::string wire = sample->second == "COMPUTE" ? "COMP" : sample->second;
+      const std::string kernel =
+          present.value("present", false) ? present.value("class", std::string("?"))
+                                          : std::string("no entry");
+      if (kernel != wire) {
+        const std::uint64_t fix_budget = per_call();
+        if (fix_budget == 0) {
+          return stop("refresh budget exhausted while correcting class drift");
+        }
+        if (!ctrl_class_set(sample->first, sample->second, error, fix_budget)) return false;
+        class_drift_corrections_++;
+        std::cerr << "[sched-skill] class drift corrected: pid " << sample->first
+                  << " wanted " << wire << ", kernel had " << kernel << "\n";
+      }
     }
     return true;
   }
