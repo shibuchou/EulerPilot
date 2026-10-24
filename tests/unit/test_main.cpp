@@ -13,6 +13,8 @@
 #include <string>
 #include <thread>
 
+#include "ep/cgroup_policy.hpp"
+#include "ep/cgroup_skill.hpp"
 #include "ep/autopilot.hpp"
 #include "ep/executor.hpp"
 #include "ep/features.hpp"
@@ -2389,6 +2391,162 @@ void test_lease_survives_unwritable_state_store() {
   std::filesystem::remove_all(dir);
 }
 
+// The cgroup domain has to answer the same questions the scheduling domain does: what
+// did you write, does the kernel agree, and can you undo it after a crash.
+void test_cgroup_skill_lifecycle() {
+  const auto dir = make_temp_dir("cgroup-skill");
+  const auto root = dir / "cg";
+  std::filesystem::create_directories(root / "scope-a");
+  std::filesystem::create_directories(root / "scope-b");
+  write_text_file(root / "cgroup.controllers", "cpu memory pids\n");
+  write_text_file(root / "scope-a" / "cpu.weight", "100\n");
+  write_text_file(root / "scope-b" / "cpu.weight", "200\n");
+
+  ep::CgroupPaths paths;
+  paths.state_dir = dir / "state";
+  paths.cgroup_root = root.string();
+  ep::CgroupSkill skill(paths);
+
+  const ep::SkillProbe probe = skill.probe();
+  CHECK(probe.ok);
+
+  const ep::Json policy{
+      {"apiVersion", "eulerpilot.io/v1alpha1"},
+      {"kind", "CgroupPolicy"},
+      {"metadata", {{"name", "unit-cgroup"}}},
+      {"spec",
+       {{"scope", "cgroup-effects"},
+        {"source", "human"},
+        {"effects",
+         ep::Json::array({ep::Json{{"path", "/sys/fs/cgroup/scope-a"}, {"cpu_weight", 300}},
+                          ep::Json{{"path", "/sys/fs/cgroup/scope-b"}, {"cpu_weight", 50}}})},
+        {"safety", {{"policy_ttl_ms", 30000}}}}}};
+
+  ep::Plan plan;
+  std::string error;
+  CHECK(skill.plan(policy, &plan, &error));
+  CHECK(plan.params.at("effects").size() == 2);
+
+  ep::Snapshot snapshot;
+  CHECK(skill.snapshot(plan, &snapshot, &error));
+  CHECK(snapshot.data.at("effects")[0]["previous"] == "100");
+  CHECK(snapshot.data.at("effects")[1]["previous"] == "200");
+  CHECK(read_text_file(root / "scope-a" / "cpu.weight") == "100");
+
+  ep::Applied applied;
+  const bool first_apply = skill.apply(plan, snapshot, ep::LeaseState{}, &applied, &error);
+  if (!first_apply) std::cerr << "[cgroup-apply-failed] " << error << "\n";
+  CHECK(first_apply);
+  CHECK(read_text_file(root / "scope-a" / "cpu.weight") == "300");
+  CHECK(read_text_file(root / "scope-b" / "cpu.weight") == "50");
+  CHECK(skill.verify(applied, 0).ok);
+  CHECK(std::filesystem::exists(paths.state_dir / "cgroup-effects.json"));
+
+  // An out-of-band write is corrected, not just noticed: cgroup knobs are plain files,
+  // so this domain can afford what the class map cannot.
+  write_text_file(root / "scope-a" / "cpu.weight", "77\n");
+  ep::RefreshContext context{ep::now_epoch_ms() + 1000};
+  CHECK(skill.refresh(applied, {}, context, &error));
+  CHECK(read_text_file(root / "scope-a" / "cpu.weight") == "300");
+
+  CHECK(skill.rollback(applied, snapshot, &error).ok);
+  CHECK(read_text_file(root / "scope-a" / "cpu.weight") == "100");
+  CHECK(read_text_file(root / "scope-b" / "cpu.weight") == "200");
+  CHECK(skill.verify_rolled_back(snapshot, 0).ok);
+  CHECK(!std::filesystem::exists(paths.state_dir / "cgroup-effects.json"));
+
+  // Crash with the effect in place: a fresh instance restores from the marker alone.
+  ep::Applied second;
+  CHECK(skill.apply(plan, snapshot, ep::LeaseState{}, &second, &error));
+  CHECK(read_text_file(root / "scope-a" / "cpu.weight") == "300");
+  ep::CgroupSkill reborn(paths);
+  const ep::RecoveryResult recovered = reborn.recover_orphan(&error);
+  CHECK(recovered.ok);
+  CHECK(read_text_file(root / "scope-a" / "cpu.weight") == "100");
+  const ep::RecoveryResult again = reborn.recover_orphan(&error);
+  CHECK(again.ok);  // a second pass has nothing left to restore
+  CHECK(!again.conflict);
+
+  // A knob that disappears between snapshot and write must not leave the first write in.
+  CHECK(skill.plan(policy, &plan, &error));
+  ep::Snapshot third;
+  CHECK(skill.snapshot(plan, &third, &error));
+  std::filesystem::remove(root / "scope-b" / "cpu.weight");
+  ep::Applied failed;
+  CHECK(!skill.apply(plan, third, ep::LeaseState{}, &failed, &error));
+  CHECK(read_text_file(root / "scope-a" / "cpu.weight") == "100");
+  std::filesystem::remove_all(dir);
+}
+
+// Each validator must refuse the other domain's document: an executor that writes cgroups
+// has no business applying a scheduling policy, and the reverse hides a second writer.
+void test_cgroup_policy_validation() {
+  const ep::Json good{
+      {"apiVersion", "eulerpilot.io/v1alpha1"},
+      {"kind", "CgroupPolicy"},
+      {"metadata", {{"name", "ok-case"}}},
+      {"spec",
+       {{"scope", "cgroup-effects"},
+        {"source", "human"},
+        {"effects", ep::Json::array({ep::Json{{"path", "/sys/fs/cgroup/a"}, {"cpu_weight", 1}}})},
+        {"safety", {{"policy_ttl_ms", 10000}}}}}};
+  ep::CgroupPolicySummary summary;
+  std::string error;
+  CHECK(ep::validate_cgroup_policy(good, &summary, &error));
+  CHECK(summary.effects.size() == 1);
+  CHECK(summary.effects[0].cpu_weight == 1);
+  CHECK(!ep::validate_scheduling_policy(good, nullptr, &error));
+  CHECK(error.find("kind must be SchedulingPolicy") != std::string::npos);
+  CHECK(!ep::validate_cgroup_policy(
+      ep::Json{{"kind", "SchedulingPolicy"}}, &summary, &error));
+
+  auto reject = [&summary, &error](const ep::Json& policy, const char* label) {
+    std::string reason;
+    const bool accepted = ep::validate_cgroup_policy(policy, &summary, &reason);
+    if (accepted) {
+      std::cerr << "[FAIL] cgroup policy accepted a bad case: " << label << "\n";
+      ++g_failures;
+      return;
+    }
+    std::cout << "[cgroup-policy] rejected " << label << ": " << reason << "\n";
+  };
+
+  ep::Json wrong_scope = good;
+  wrong_scope["spec"]["scope"] = "scheduler-instance";
+  reject(wrong_scope, "wrong scope");
+  ep::Json autonomous = good;
+  autonomous["spec"]["source"] = "rule-template";
+  reject(autonomous, "autonomous writer");
+  ep::Json zero_weight = good;
+  zero_weight["spec"]["effects"][0]["cpu_weight"] = 0;
+  reject(zero_weight, "cpu_weight 0");
+  ep::Json huge_weight = good;
+  huge_weight["spec"]["effects"][0]["cpu_weight"] = 100001;
+  reject(huge_weight, "cpu_weight above the cgroup range");
+  ep::Json float_weight = good;
+  float_weight["spec"]["effects"][0]["cpu_weight"] = 300.0;
+  reject(float_weight, "float for an integer field");
+  ep::Json traversal = good;
+  traversal["spec"]["effects"][0]["path"] = "/sys/fs/cgroup/../system.slice";
+  reject(traversal, "path traversal");
+  ep::Json outside = good;
+  outside["spec"]["effects"][0]["path"] = "/etc/passwd";
+  reject(outside, "path outside the hierarchy");
+  ep::Json duplicated = good;
+  duplicated["spec"]["effects"].push_back(
+      {{"path", "/sys/fs/cgroup/a"}, {"cpu_weight", 500}});
+  reject(duplicated, "same path twice");
+  ep::Json empty_effects = good;
+  empty_effects["spec"]["effects"] = ep::Json::array();
+  reject(empty_effects, "no effect declared");
+  ep::Json short_ttl = good;
+  short_ttl["spec"]["safety"]["policy_ttl_ms"] = 5000;
+  reject(short_ttl, "ttl below the floor");
+  ep::Json unknown = good;
+  unknown["spec"]["extra"] = 1;
+  reject(unknown, "unknown field");
+}
+
 int main() {
   test_policy_validation();
   test_target_resolution();
@@ -2427,6 +2585,8 @@ int main() {
   test_rollback_proves_class_removal();
   test_executor_shutdown_releases_active_effect();
   test_lease_survives_unwritable_state_store();
+  test_cgroup_policy_validation();
+  test_cgroup_skill_lifecycle();
   if (g_failures != 0) {
     std::cerr << g_failures << " check(s) failed\n";
     return 1;

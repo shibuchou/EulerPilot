@@ -1,0 +1,10 @@
+Test project /root/epv2-build
+    Start 1: unit
+1/2 Test #1: unit .............................   Passed   13.25 sec
+    Start 3: integration_cgroup
+2/2 Test #3: integration_cgroup ...............   Passed    2.49 sec
+
+100% tests passed, 0 tests failed out of 2
+
+Total Test time (real) =  15.75 sec
+ctest_rc=0

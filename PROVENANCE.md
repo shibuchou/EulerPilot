@@ -808,6 +808,36 @@
 - 未入库的逐块 dump（`evidence/` 下未跟踪部分）不含这些字符串，checked 4 处命中全在
   `.qoder-credits/`（已 gitignore 的工具产物）。
 
+## R5 第一步：cgroup 效果域（2026-10-24 追加）
+
+第二个效果域接入同一套事务骨架（快照→apply→verify→补偿→marker→启动恢复），不是旁路写接口。
+证据：`evidence/p4/cgroup-domain-20261024.txt` + 同名目录（真机集成逐步输出、ctest 摘要、
+环境快照、哈希）。
+
+- 新增：`include/ep/cgroup_policy.hpp 1760ab023a6a…`、`include/ep/cgroup_skill.hpp 9054de3d7c26…`、
+  `src/core/cgroup_policy.cpp b7324e9568b2…`、`src/skills/cgroup_skill.cpp 237f8c88dc4e…`、
+  `tests/integration_cgroup.sh 512a2fbb9d80…`、
+  `design/schemas/cgroup-policy.schema.json b6f94fdea71d…`、
+  `design/examples/cgroup-protect-scope.json e06fdb234d82…`。
+- 改动：`src/executor/executor.cpp 78fc46b74e04…`（kind/skill 域匹配 + 策略分派 + 恢复成功也记日志）、
+  `src/executor/main.cpp 4d331e42bcf9…`（`--skill cgroup`）、
+  `CMakeLists.txt 2c4dcf73ba20…`、`scripts/validate_design.py 10e8737667fa…`（新契约 + 4 个反例）、
+  `scripts/check_sp3_acceptance.py 7da645e50c32…`（必测项 6→7）。
+- **顺带做的一个去重**：调度域校验器里那套 JSON 字段检查（`check_keys/get_string/get_int/get_number/
+  get_enum/valid_cgroup_path`）移进 `src/core/policy_json.hpp 9a1b635ee469…`，两个域共用同一份规则；
+  `src/core/policy.cpp 9e44cd020e6b…` 删掉 109 行私有副本。理由不是整洁：两个契约如果对"未知字段、
+  整数字段不接受浮点、路径必须规范化"这类规则各有一份实现，就会各自漂移出一个能写内核的口子。
+- **两个由测试先发现的事实**（写在这里是因为它们决定了实现的形状）：写 knob 必须带 `O_TRUNC`
+  （普通文件上短值覆盖长值会留残尾，kernfs 忽略该标志所以真机看不出来）；策略字段
+  `cpu_weight` 与内部字段 `desired` 必须在唯一一处翻译，第一版没译，于是往内核写了 `0`。
+- 回归：unit 断言 443 → **478**；ctest **7/7**；验收 **r27 六轮 rc=0**
+  （`evidence/acceptance-sp3-20261024-r27/round1..6/`、`strict-round1..6.txt`、`driver.log`）。
+  二进制：`ep-executord 042d74a3a8c1…`、`ep 80da78b86752…`（未变）、
+  `ep_unit_tests 42f4df171799…`；`ep-sched-loader 45bdc3c0…`、`ep-schedctl af759004…` 未变，
+  BPF 对象与 skeleton 未改动。
+- **这一步不声称 R5 达成**：动作与恢复成立，但赛题要求的"真实 hook→决策→动作→恢复"还缺
+  eBPF 事件触发端；且 `source` 仅 human、旋钮仅 `cpu.weight`、未测任何收益。
+
 ## 许可检查
 
 2026-10-21 用户决定 v2 采用 **GPL-2.0**；根 `LICENSE` 为 GPL-2.0 全文，组件级说明见 `NOTICE`。

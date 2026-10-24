@@ -52,7 +52,8 @@ SP3 根目录的一键验收（需要已构建、sched_ext idle）：
 bash scripts/accept_sp3.sh /root/epv2-build /root/epv2-src
 ```
 
-新版强制 6 个 CTest 必测项无 SKIP、A/B/C liveness、产物哈希和收尾状态断言；
+新版强制 7 个 CTest 必测项无 SKIP（含 `integration_cgroup`：真 cgroup v2 上的写-读回-漂移-补偿-崩溃恢复）、
+A/B/C liveness、产物哈希和收尾状态断言；
 **不包含性能结论**。2026-10-22 已在 SP3 重跑通过，输出见
 [acceptance-sp3-strict-20261022.txt](evidence/acceptance-sp3-strict-20261022.txt)；
 旧脚本历史输出保留为 [acceptance-sp3-20261021.txt](evidence/acceptance-sp3-20261021.txt)。

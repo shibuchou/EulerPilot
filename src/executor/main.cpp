@@ -17,6 +17,7 @@
 
 #include "ep/executor.hpp"
 #include "ep/policy.hpp"
+#include "ep/cgroup_skill.hpp"
 #include "ep/mock_skill.hpp"
 #include "ep/sched_skill.hpp"
 #include "ep/unsupported_skill.hpp"
@@ -58,7 +59,7 @@ struct Options {
 
 void print_usage() {
   std::cout << "usage: ep-executord [--state-dir DIR] [--socket PATH] "
-               "[--skill sched|mock] [--loader PATH] [--sched-ctl PATH] "
+               "[--skill sched|sched-ref|cgroup|mock] [--loader PATH] [--sched-ctl PATH] "
                "[--test-mode] [--allow-any-uid] "
                "[--auto-apply --auto-policy FILE [--auto-owner ID] "
                "[--auto-min-interval-ms N] [--auto-lease-ttl-ms N]]\n"
@@ -273,6 +274,10 @@ int main(int argc, char** argv) {
   std::unique_ptr<ep::Skill> skill;
   if (options.test_mode || options.skill == "mock") {
     skill = std::make_unique<ep::MockSkill>(std::filesystem::path(options.state_dir) / "mock");
+  } else if (options.skill == "cgroup") {
+    ep::CgroupPaths paths;
+    paths.state_dir = options.state_dir;
+    skill = std::make_unique<ep::CgroupSkill>(paths);
   } else if (options.skill == "sched" || options.skill == "sched-ref") {
     ep::SchedPaths paths;
     paths.state_dir = options.state_dir;

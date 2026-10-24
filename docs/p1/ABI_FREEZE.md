@@ -13,6 +13,9 @@ attach/detach 与崩溃回收测试，`sched-ref` 保留子进程对照。BPF op
 | `policy.apply` / `policy.rollback` | 已实现（mock、sched、sched-ref） | 真实调度走 sched/sched-ref，见下 |
 | `sched`（FD 传递） | 已实现（SP3 实测） | loader 一次性 attach，SCM_RIGHTS 交 link FD；执行服务持有，崩溃时 FD 关闭即 detach |
 | `sched-ref`（子进程对照） | 已实现 | 子进程 loader + PDEATHSIG；用于对照与测试 |
+| `cgroup`（R5 动作域） | 已实现（SP3 真机集成） | `--skill cgroup` 写 cgroup v2 `cpu.weight`；写前快照、**写后读回**（`O_TRUNC` 必需：短值覆盖长值会留残尾）、逐周期漂移再断言、补偿回退、崩溃后由 marker 恢复。只接受 `kind=CgroupPolicy` |
+| `CgroupPolicy` 契约 | 已实现 | `design/schemas/cgroup-policy.schema.json`：`scope=cgroup-effects`、`source=human`（自主来源要先拿到与调度域同等的租约/权限约束）、`effects[1..8]{path,cpu_weight 1..10000}`、`safety.policy_ttl_ms`（复用既有的 TTL 自动回退） |
+| 策略 kind 与 skill 域匹配 | 已实现 | kind 与 `skill_->name()` 不符直接 `UNSUPPORTED` 拒绝，零副作用：一个执行服务只写它被授权的那个域，避免"看起来成功了其实什么都没写"或反向越域 |
 | 模式自报 | 已修正 | 同一个 `SchedSkill` 服务两种模式，原先 `name()` 恒为 `sched-ref`，`--skill sched`（link FD 生产路径）在 ready 日志与 `policy.status.skill` 里被标成对照模式；现按 `paths_.fd_passing` 返回 `sched`/`sched-ref`，`tests/integration_fd.sh` 断言生产实例报 `sched` |
 | 每实例 pin / ops | 已实现 | `/sys/fs/bpf/eulerpilot-v2/<instance>`；ops `eulerpilot` |
 | BACKGROUND → class_map | 已实现 | 显式 `role=BACKGROUND` 的 pid 目标直接写入；cgroup 目标扫描 `cgroup.procs` 展开（上限 256）；均为 BG/EXTERN，执行服务每 2s 刷新（条目 TTL 5s）；FOREGROUND/NEUTRAL 不映射 |

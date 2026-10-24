@@ -1,0 +1,12 @@
+start 2026-10-24T12:24:50+00:00 kernel=6.6.0-schedpilot-sp3
+[integration-cgroup] creating a systemd scope with CPUWeight=100
+[integration-cgroup] validate
+[integration-cgroup] apply
+[integration-cgroup] out-of-band change is corrected
+[integration-cgroup] rollback restores the pre-apply value
+[integration-cgroup] another domain is refused by this executor
+[integration-cgroup] a crash leaves the effect behind; the restart must undo it
+/root/epv2-src/tests/integration_cgroup.sh: line 151: 487405 Killed                  "$EXECUTORD" --state-dir "$STATE" --socket "$SOCK" --skill cgroup > "$STATE/daemon.log" 2>&1 9>&-
+[integration-cgroup] passing
+/root/epv2-src/tests/integration_cgroup.sh: line 30: 487397 Killed                  systemd-run --scope --unit "$UNIT" -p CPUWeight=100 -- sleep 600 > "$TMP/scope.log" 2>&1
+integration_rc=0

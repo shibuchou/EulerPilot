@@ -1,0 +1,82 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://eulerpilot.io/schemas/cgroup-policy-v1alpha1.json",
+  "title": "CgroupPolicy",
+  "description": "v1alpha1 cgroup effect contract: moves cgroup v2 cpu.weight knobs and nothing else. Written by the privileged executor only (--skill cgroup); every write is read back, the pre-apply value is captured first, and a marker file makes the effect recoverable across an executor restart.",
+  "type": "object",
+  "required": ["apiVersion", "kind", "metadata", "spec"],
+  "additionalProperties": false,
+  "properties": {
+    "apiVersion": {
+      "type": "string",
+      "const": "eulerpilot.io/v1alpha1"
+    },
+    "kind": {
+      "type": "string",
+      "const": "CgroupPolicy"
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{0,62}$"
+        }
+      }
+    },
+    "spec": {
+      "type": "object",
+      "required": ["scope", "source", "effects", "safety"],
+      "additionalProperties": false,
+      "properties": {
+        "scope": {
+          "type": "string",
+          "const": "cgroup-effects"
+        },
+        "source": {
+          "type": "string",
+          "enum": ["human"],
+          "description": "The event-driven (rule-template) path needs the same lease and authority discipline the scheduling domain enforces; it is not offered here until that exists for cgroups."
+        },
+        "effects": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": {
+            "type": "object",
+            "required": ["path", "cpu_weight"],
+            "additionalProperties": false,
+            "properties": {
+              "path": {
+                "type": "string",
+                "pattern": "^/sys/fs/cgroup/[A-Za-z0-9_./-]+$",
+                "minLength": 10,
+                "maxLength": 1024
+              },
+              "cpu_weight": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 10000
+              }
+            }
+          }
+        },
+        "safety": {
+          "type": "object",
+          "required": ["policy_ttl_ms"],
+          "additionalProperties": false,
+          "properties": {
+            "policy_ttl_ms": {
+              "type": "integer",
+              "minimum": 10000,
+              "maximum": 3600000,
+              "description": "After the TTL the executor compensates on its own: cgroup files outlive the process, so an abandoned effect would otherwise keep working forever."
+            }
+          }
+        }
+      }
+    }
+  }
+}

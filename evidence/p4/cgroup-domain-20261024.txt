@@ -1,0 +1,73 @@
+R5 动作域：cgroup Skill（真 cgroup v2 写-读回-补偿-崩溃恢复）
+============================================================
+
+日期：2026-10-24。机器：schedpilot-sp3（`6.6.0-schedpilot-sp3`，cgroup2fs，root 权限）。
+层级：**单元 + 真内核集成**。本文件不含任何性能结论——没有跑负载，也没有比较过任何 QPS/延迟。
+
+数据：本目录 `integration_cgroup.txt`（逐步输出真机集成测试）、`ctest-summary.txt`、
+`environment.txt`（内核/cgroup 控制器现状）、`SHA256SUMS`（被测二进制与源码）。
+
+1. 做了什么
+-----------
+第二个效果域接入执行服务，走的是与调度域完全相同的事务骨架（快照→apply→verify→补偿→
+marker→启动恢复），不是另起一个写接口：
+
+- `CgroupPolicy` 契约（`design/schemas/cgroup-policy.schema.json` + 语义校验
+  `src/core/cgroup_policy.cpp`）：`scope=cgroup-effects`、`source=human`、
+  `effects[1..8]{path, cpu_weight 1..10000}`、`safety.policy_ttl_ms`（复用既有 TTL 回退）。
+- `CgroupSkill`（`src/skills/cgroup_skill.cpp`）：`--skill cgroup`。写之前先读回旧值存进
+  marker 文件；每次写都立刻读回比对；`verify` 再读一次；`rollback` 恢复旧值并逐条读回确认；
+  执行服务**重启后**从 marker 恢复。
+- 策略的 `kind` 必须与该实例的 skill 域一致，否则 `UNSUPPORTED` 拒绝且零副作用。
+  一个执行服务只写它被授权的那个域——这条不是形式检查，它挡的是"看起来成功了其实写了
+  另一个域"和反向的越域。
+
+2. 真机读数（`integration_cgroup.txt` 全文为准）
+------------------------------------------------
+```
+creating a systemd scope with CPUWeight=100
+validate                       -> valid=true, domain=cgroup, 1 个 target binding
+apply                          -> VERIFIED, 内核侧 cpu.weight=300, marker 记着 previous=100
+out-of-band change is corrected -> 手工写 77，执行服务在刷新周期内改回 300，日志有
+                                   "cpu.weight drift corrected"
+rollback restores the pre-apply value -> ROLLED_BACK，cpu.weight=100，marker 已清除
+another domain is refused      -> 拿 SchedulingPolicy 打 cgroup 实例：REJECTED + UNSUPPORTED，
+                                   且 cpu.weight 没有被碰
+a crash leaves the effect behind; the restart must undo it
+                               -> apply 到 300 后 SIGKILL 执行服务：值仍是 300（cgroup 文件
+                                  不随进程消失），marker 仍在；重启后自动恢复到 100 并清 marker
+integration_rc=0；ctest unit+integration_cgroup 2/2
+```
+被 kill 的两行 job-control 提示（`Killed ...`）是测试自己发出的 SIGKILL 的回报，退出码 0。
+
+3. 这一步真正学到的三件事
+-------------------------
+- **`O_TRUNC` 是必需项，不是风格问题**（产品缺陷，单测抓到）。`cpu.weight` 从 `200` 写
+  成 `50` 时，若不带 `O_TRUNC`，普通文件会留下残尾读回 `500`；kernfs 会忽略这个标志，
+  所以真机上"看起来是对的"，替身文件系统才暴露。写 knob 的语义是**替换整个值**。
+- **内部与契约的字段名必须在唯一一处翻译**。策略里叫 `cpu_weight`，skill 内部记录叫
+  `desired`；`plan()` 最初把 `cpu_weight` 原样塞进 params，于是内部读到 `desired=0`，
+  真的往内核写了 `0`（集成/单元立刻失败）。修法是让 `plan()` 成为两个拼写唯一的交汇点。
+- **恢复必须有独立的落盘记录**。marker 是"cgroup 效应活过了写它的那个进程"这一事实的
+  唯一凭据；执行服务重启时若真的恢复了什么，日志要留下一行（本轮补上：
+  `[executor] orphan recovery: recovered 1 cgroup effect(s) ...`），否则事后无法区分
+  "恢复了"与"本来就没有"。
+
+4. 还不能声称什么
+-----------------
+- **R5 只完成一半**：动作与恢复成立，但赛题要求的是"至少一条真实 hook→决策→动作→恢复"。
+  **eBPF 事件触发端尚未接入**（任务 #31），所以本文件不支持"R5 已达成"的说法。
+- 只有一个旋钮 `cpu.weight`。`cpu.max`、io/memory 控制器、cgroup 创建/委托都没做；
+  SP3 根 cgroup 的 `cgroup.subtree_control` 一开始只有 `memory pids`（cpu 是 systemd 为带
+  CPUWeight 的 scope 打开的），所以对"手工建的裸 cgroup"能否委派 cpu 尚未系统验证。
+- `source` 只允许 human：自主/规则来源需要与调度域同等的租约与权限约束，没做完就不开。
+- 没有测过任何收益：本域改的是 CPU 份额，与旗舰矩阵那套 sched_ext 路径是**不同的**控制面，
+  两者叠加效果未测。
+
+5. 回归与验收
+-------------
+- unit 断言 443 → **478**（+35）。ctest 必测项 6 → **7**（`integration_cgroup` 加入
+  `scripts/check_sp3_acceptance.py` 的 REQUIRED_TESTS，跳过即判失败）。
+- 全量 ctest 7/7；验收 **r27 六轮 rc=0**（`evidence/acceptance-sp3-20261024-r27/`），
+  与被测同一份二进制：`ep-executord 042d74a3a8c1…`、`ep 80da78b86752…`、
+  `ep_unit_tests 42f4df171799…`。BPF 对象与 loader 未改。

@@ -1,0 +1,4 @@
+kernel=6.6.0-schedpilot-sp3
+cgroup-fs=cgroup2fs
+root-controllers=cpuset cpu io memory hugetlb pids rdma misc
+root-subtree=cpu memory pids

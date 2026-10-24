@@ -14,6 +14,7 @@ add_library(ep_core STATIC
   src/core/util.cpp
   src/core/domain.cpp
   src/core/policy.cpp
+  src/core/cgroup_policy.cpp
   src/core/target.cpp
   src/core/features.cpp
   src/core/router.cpp
@@ -24,6 +25,7 @@ add_library(ep_core STATIC
   src/executor/executor.cpp
   src/skills/mock_skill.cpp
   src/skills/sched_skill.cpp
+  src/skills/cgroup_skill.cpp
 )
 target_include_directories(ep_core PUBLIC include third_party)
 target_link_libraries(ep_core PUBLIC Threads::Threads)
@@ -83,6 +85,14 @@ add_test(NAME integration
   COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/tests/integration.sh
           $<TARGET_FILE:ep-executord> $<TARGET_FILE:ep>)
 set_tests_properties(integration PROPERTIES TIMEOUT 120)
+
+# cgroup v2 integration (kernel-integration layer for the R5 action domain): it starts a
+# real daemon, creates a systemd scope and writes cpu.weight through the kernel's own
+# interface. Skips (CTest SKIP) without root, cgroup2 or systemd-run.
+add_test(NAME integration_cgroup
+  COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/tests/integration_cgroup.sh
+          $<TARGET_FILE:ep-executord> $<TARGET_FILE:ep>)
+set_tests_properties(integration_cgroup PROPERTIES TIMEOUT 180 SKIP_RETURN_CODE 77 RUN_SERIAL TRUE)
 
 # Real-kernel test; skipped (CTest SKIP) unless a reference loader is provided
 # and the environment is idle. Run it explicitly on SP3 with:

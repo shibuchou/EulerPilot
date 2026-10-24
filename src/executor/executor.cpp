@@ -3,6 +3,7 @@
 #include <cmath>
 
 #include "ep/autopilot.hpp"
+#include "ep/cgroup_policy.hpp"
 #include "ep/policy.hpp"
 #include "ep/target.hpp"
 
@@ -106,6 +107,10 @@ bool Executor::init(std::string* error) {
     if (startup_degraded_reason_.empty()) startup_degraded_reason_ = "orphan recovery failed";
     if (orphan.conflict) startup_degraded_reason_ += "; foreign resources left untouched";
     std::cerr << "[executor] orphan recovery failed: " << startup_degraded_reason_ << "\n";
+  } else if (!orphan.detail.empty() && orphan.detail != "nothing to reconcile") {
+    // A recovery that did something has to be visible in the log: "the value came back"
+    // is exactly what an operator cannot re-derive after the fact.
+    std::cerr << "[executor] orphan recovery: " << orphan.detail << "\n";
   }
   std::vector<std::string> unresolved;
   if (!reconcile_all(&unresolved, error)) return false;
@@ -613,6 +618,30 @@ Json Executor::handle_validate(const Json& request) {
   const Json& policy = request.at("policy");
   PolicySummary summary;
   std::string error;
+  if (policy.is_object() && policy.value("kind", "") == "CgroupPolicy") {
+    CgroupPolicySummary cgroup;
+    if (!validate_cgroup_policy(policy, &cgroup, &error)) {
+      return rejection(request_id, ErrorCode::kSchemaInvalid, "policy validation failed", error);
+    }
+    std::vector<PolicyTarget> declared;
+    for (const auto& effect : cgroup.effects) {
+      declared.push_back({"cgroup", effect.path, "NEUTRAL", "explicit"});
+    }
+    std::vector<TargetBinding> bindings;
+    if (!resolve_targets(declared, &bindings, &error)) {
+      return rejection(request_id, ErrorCode::kTargetStale, "target resolution failed", error);
+    }
+    Json array = Json::array();
+    for (const auto& binding : bindings) array.push_back(binding.to_json());
+    return Json{{"request_id", request_id},
+                {"status", "OK"},
+                {"valid", true},
+                {"policy_sha256", sha256_hex(canonical_json(policy))},
+                {"name", cgroup.name},
+                {"domain", "cgroup"},
+                {"effects", static_cast<std::int64_t>(cgroup.effects.size())},
+                {"target_bindings", array}};
+  }
   if (!validate_scheduling_policy(policy, &summary, &error)) {
     return rejection(request_id, ErrorCode::kSchemaInvalid, "policy validation failed", error);
   }
@@ -671,7 +700,35 @@ Json Executor::handle_apply(const Json& request) {
 
   PolicySummary policy_summary;
   if (!options_.test_mode) {
-    if (!validate_scheduling_policy(payload, &policy_summary, &error)) {
+    const std::string kind = payload.is_object() ? payload.value("kind", "") : "";
+    // One executor, one effect domain: the policy names the domain and the skill decides
+    // whether this process is allowed to write it. Silently ignoring a policy for another
+    // domain is how a second writer gets created.
+    if (kind == "CgroupPolicy" && skill_->name() != "cgroup") {
+      return rejection(request_id, ErrorCode::kUnsupported,
+                       "CgroupPolicy needs an executor running --skill cgroup",
+                       "this instance writes domain '" + skill_->name() + "'");
+    }
+    if (kind != "CgroupPolicy" && skill_->name() == "cgroup") {
+      return rejection(request_id, ErrorCode::kUnsupported,
+                       "the cgroup skill only accepts CgroupPolicy",
+                       "got kind '" + kind + "'");
+    }
+    if (kind == "CgroupPolicy") {
+      CgroupPolicySummary cgroup;
+      if (!validate_cgroup_policy(payload, &cgroup, &error)) {
+        return rejection(request_id, ErrorCode::kSchemaInvalid, "policy validation failed", error);
+      }
+      // Fold the effects into the same target identities the scheduling domain already
+      // revalidates, so a cgroup replaced underneath us is caught before the write.
+      policy_summary.name = cgroup.name;
+      policy_summary.source = cgroup.source;
+      policy_summary.mode = "cgroup";
+      policy_summary.safety = cgroup.safety;
+      for (const auto& effect : cgroup.effects) {
+        policy_summary.targets.push_back({"cgroup", effect.path, "NEUTRAL", "explicit"});
+      }
+    } else if (!validate_scheduling_policy(payload, &policy_summary, &error)) {
       return rejection(request_id, ErrorCode::kSchemaInvalid, "policy validation failed", error);
     }
   }

@@ -12,6 +12,7 @@ JSON Schema采用Draft-07，JSON文件也可被YAML解析器读取；初版以JS
 | TargetBinding | boot_id、namespace、pidfd/starttime或cgroup FD/id、授权子树 | 退出/重建/迁出立即失效 |
 | FeatureWindow | 对齐窗口、身份、指标值/单位/有效性/来源/age | 到期不得用于决策 |
 | SchedulingPolicy | 白名单专家、实例级参数、目标角色和安全约束 | Schema+语义校验后生成计划 |
+| CgroupPolicy | cgroup v2 效果声明（当前仅 `cpu.weight`）、TTL 与安全约束 | Schema+语义校验；写入的域必须与执行服务 `--skill` 一致 |
 | PolicyPlan | 已解析身份、前置条件、差异、snapshot与补偿顺序 | 发布前再次校验 |
 | ActionEnvelope | 请求/幂等/所有权/generation/deadline与策略摘要 | 唯一执行服务处理 |
 | ActionResult | 实际状态、生效版本、验证/恢复结果 | 持久可追溯 |

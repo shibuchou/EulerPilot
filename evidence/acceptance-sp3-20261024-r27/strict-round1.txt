@@ -1,0 +1,73 @@
+{
+  "state": "disabled",
+  "pins": 0,
+  "loader_pids": [],
+  "executor_pids": [],
+  "phase": "initial",
+  "status": "PASS"
+}
+=== acceptance start 2026-10-24T12:19:03+00:00 ===
+kernel: 6.6.0-schedpilot-sp3
+build:  /root/epv2-build
+source: /root/epv2-src
+state:  disabled
+evidence: /root/epv2-build/acceptance.O0rdp9
+=== ctest ===
+Test project /root/epv2-build
+    Start 1: unit
+1/7 Test #1: unit .............................   Passed   13.27 sec
+    Start 2: integration
+2/7 Test #2: integration ......................   Passed    2.62 sec
+    Start 3: integration_cgroup
+3/7 Test #3: integration_cgroup ...............   Passed    2.31 sec
+    Start 4: integration_sched
+4/7 Test #4: integration_sched ................   Passed    1.96 sec
+    Start 5: integration_fd
+5/7 Test #5: integration_fd ...................   Passed    6.67 sec
+    Start 6: integration_lease
+6/7 Test #6: integration_lease ................   Passed    1.66 sec
+    Start 7: integration_ttl
+7/7 Test #7: integration_ttl ..................   Passed   11.09 sec
+
+100% tests passed, 0 tests failed out of 7
+
+Total Test time (real) =  39.58 sec
+{
+  "status": "PASS",
+  "layer": "integration-tests-only",
+  "tests": [
+    "integration",
+    "integration_cgroup",
+    "integration_fd",
+    "integration_lease",
+    "integration_sched",
+    "integration_ttl",
+    "unit"
+  ],
+  "passed": 7,
+  "skipped": 0
+}
+=== A/B/C liveness ===
+[abc] fair arm (sched_ext disabled)
+{"arm": "fair", "state": "disabled", "utime_before": 30, "utime_after": 230, "progress_ticks": 200}
+[abc] basic arm
+{"arm": "basic", "state": "enabled", "utime_before": 30, "utime_after": 230, "progress_ticks": 200}
+[abc] class arm
+{"arm": "class", "state": "enabled", "utime_before": 30, "utime_after": 230, "progress_ticks": 200}
+[abc] all arms made progress; sched_ext is disabled
+=== hashes ===
+80da78b867526da1e971c589f6b264bbbc09d05c2bb1f5bda5ea82fdf3993871  ep
+042d74a3a8c194b700c215ac8101b76b5d14d4296432818b7ad9251548ba2915  ep-executord
+45bdc3c0d64c8ab773d7bca0a4de0cbf81b5a6b4aaa1485822cf83405e52f8f7  ep-sched-loader
+af759004d5581ce1e6956525c88bf2cc73e8f5646b4c54deeecf8ca080d3227b  ep-schedctl
+=== final state ===
+{
+  "state": "disabled",
+  "pins": 0,
+  "loader_pids": [],
+  "executor_pids": [],
+  "phase": "final",
+  "status": "PASS"
+}
+=== integration acceptance OK 2026-10-24T12:19:52+00:00 ===
+This covers the named tests and single-task liveness, not performance, SLO, starvation or P1 closure.

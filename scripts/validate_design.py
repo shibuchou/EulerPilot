@@ -53,6 +53,13 @@ def check_policy_semantics(policy):
         raise ValueError("; ".join(errors))
 
 
+def check_cgroup_semantics(policy):
+    effects = policy["spec"]["effects"]
+    paths = [effect["path"] for effect in effects]
+    if len(set(paths)) != len(paths):
+        raise ValueError("one cgroup path may appear only once per policy")
+
+
 def check_skill_semantics(manifest):
     spec = manifest["spec"]
     caps = set(spec["capabilities"])
@@ -82,6 +89,7 @@ def validate(schema, value, semantic):
 def main():
     contracts = [
         ("scheduling-policy.schema.json", "redis-policy.json", check_policy_semantics),
+        ("cgroup-policy.schema.json", "cgroup-protect-scope.json", check_cgroup_semantics),
         ("skill-manifest.schema.json", "sched-skill.json", check_skill_semantics),
         ("action-envelope.schema.json", "apply-action.json", check_action_semantics),
         ("action-envelope.schema.json", "rollback-action.json", check_action_semantics),
@@ -111,6 +119,10 @@ def main():
         ("apply-action.json", ["operation"], "policy.rollback", "rollback lacks original action"),
         ("rollback-action.json", ["operation"], "policy.apply", "apply contains rollback reference"),
         ("redis-policy.json", ["spec", "safety", "min_bg_work_units_per_sec"], 0, "no online background floor"),
+        ("cgroup-protect-scope.json", ["spec", "effects", 0, "cpu_weight"], 0, "zero cpu weight"),
+        ("cgroup-protect-scope.json", ["spec", "effects", 0, "path"], "/sys/fs/cgroup/../system.slice", "cgroup path traversal"),
+        ("cgroup-protect-scope.json", ["spec", "source"], "rule-template", "autonomous cgroup writer"),
+        ("cgroup-protect-scope.json", ["spec", "safety", "policy_ttl_ms"], 5000, "ttl below floor"),
     ]
     for example_name, keys, value, label in cases:
         schema, example, semantic = validators[example_name]
