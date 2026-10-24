@@ -24,7 +24,7 @@
 | P4 扩展 | **R5 两半均已真机闭环**：动作端 cgroup 效果域（cpu.weight,崩溃 marker 恢复）+ 感知端 eBPF 事件链（raw_tp 采集 runnable 等待 → 只读泵 ep-evtmon → event.observe → 武装守卫经事务路径升权/补偿;杀泵门冻结+TTL 兜底）,`integration_events` 为第 8 个 CTest 必测项。见 `evidence/p4/events-link-20261025.txt` |
 | P5 交付 | 未开始 |
 
-回归基线（2026-10-25 冻结构建 `370180b`）：unit **550** 条断言、`ctest` **8/8**、验收 **r28** 六轮 rc=0、fail-safe **run9 17/17**；旗舰矩阵按同一冻结参数重跑中,重跑前 P3 数字仍属旧构建（见 `evidence/p1/frozen-build-20261025.txt`）。
+回归基线（2026-10-25 冻结构建 `370180b`）：unit **550** 条断言、`ctest` **8/8**、验收 **r28** 六轮 rc=0、fail-safe **run9 17/17**；旗舰矩阵按同一冻结参数重跑中,重跑前 P3 数字已在同一冻结集上重跑复现（C vs A0 GET **+1.83% [1.38,2.26] 20/0**、p99 −39.6%；D vs C 新构建统计打平；见 `evidence/p2/flagship-rerun-20261025.txt`）。
 
 阶段判定依据、逐项证据路径、硬天花板（内核行为与测量能力的边界）与工程约定见 [交接件](docs/HANDOVER_20261024.md)——接手本项目的第一份读物；进度明细见 [实施计划](docs/IMPLEMENTATION_PLAN.md)。
 
