@@ -1,0 +1,73 @@
+{
+  "experiment": "earms-supplement",
+  "frozen_at": "2026-10-25",
+  "frozen_by": "experiments/flagship_param_pilot_sp3.sh + analyze_openloop_raw.py + analyze_matrix_blocks.py",
+  "evidence": "evidence/p2/barms-20261025.txt (to be written)",
+  "blocks": 10,
+  "arms": [
+    "A0",
+    "E"
+  ],
+  "baseline": "A0",
+  "seed": 20261027,
+  "workload": {
+    "offered_rps": 60000,
+    "conns": 8,
+    "keypool": 100000,
+    "populate_requests": 100000,
+    "value_bytes": 64,
+    "warmup_s": 10,
+    "measure_s": 60,
+    "timeout_ms": 50,
+    "operations": [
+      "GET",
+      "SET"
+    ],
+    "persistence": "appendonly no; save ''",
+    "io_threads": 1,
+    "port": 7797
+  },
+  "slo": {
+    "threshold_ms": 5,
+    "reported_also_at_ms": [
+      1,
+      2,
+      5,
+      10
+    ],
+    "metric": "goodput_at_slo_rps counted per request from raw-*.bin, never inferred from quantiles"
+  },
+  "online_gate": {
+    "bg_window_s": 5,
+    "bg_work_unit": "probe5s",
+    "min_bg_work_units_per_sec": 140,
+    "max_bg_wait_ms": 50,
+    "max_foreground_p99_ms": 10,
+    "evaluation_min_bg_progress_ratio": 0.5,
+    "quiet_max_regression_pct": 5,
+    "max_observation_age_ms": 1000
+  },
+  "analysis": {
+    "comparison": "paired within block against A0",
+    "primary": "goodput@SLO gain percent per block, median across blocks",
+    "ci": "paired block bootstrap, 10000 resamples, seed 20261024, 95% level",
+    "bootstrap_resamples": 10000,
+    "sensitivity": [
+      "paired log-ratio",
+      "win/loss counts",
+      "good% at 1/2/10ms",
+      "per-block scatter"
+    ],
+    "invalid_block_rules": [
+      "block.invalid present",
+      "C/D without sched_ext enabled and ops=eulerpilot at attach",
+      "raw record count != summary completed"
+    ],
+    "never_dropped_for": [
+      "low throughput",
+      "high variance",
+      "an inconvenient result"
+    ]
+  },
+  "purpose": "supplementary arm E (reference schedpilotd, classification-only): old control plane on the same workload; ep-executord never runs. Same workload/slo/gate as flagship-20261023; 10 blocks preregistered."
+}

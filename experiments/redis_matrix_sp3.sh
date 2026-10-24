@@ -29,6 +29,12 @@ SVC="$HERE/service_load_probe"
 PIN_ROOT=/sys/fs/bpf/eulerpilot-v2
 BLOCKS="${BLOCKS:-1}"
 ARMS="${ARMS:-A0 A1 A2 B C D}"
+# Reference-control arm E: the SchedPilot daemon (P0 build) with its own
+# classifier, pointed at the same workload cgroups. It is the only arm that
+# never runs ep-executord; the flagship-quality comparison is E vs A0.
+E_DAEMON="${E_DAEMON:-/root/p0/schedpilot-0aeca0c/build/schedpilotd}"
+export E_DAEMON
+DAEMON_GRACE=0
 # Cc / Dc are C and D with exactly one thing added: the policy also declares a runtime
 # class for the cgroups the workload actually lives in. Targets, expert, parameters,
 # dataset and placement are shared with the plain arms on purpose, so a within-block
@@ -97,9 +103,14 @@ stop_all() {
       kill -KILL "$child" 2>/dev/null; wait "$child" 2>/dev/null
     done
   fi
+  if [ -n "${DAEMON:-}" ] && [ "$DAEMON_GRACE" = "1" ]; then
+    kill -TERM "$DAEMON" 2>/dev/null
+    for _ in $(seq 1 40); do kill -0 "$DAEMON" 2>/dev/null || break; sleep 0.25; done
+  fi
   for pid in "${OBS_PID}" "${BG_PID}" "${DAEMON}"; do
     [ -n "$pid" ] && kill -KILL "$pid" 2>/dev/null; wait "$pid" 2>/dev/null
   done
+  DAEMON_GRACE=0
   OBS_PID=""; BG_PID=""; DAEMON=""
   if [ -n "$REDIS_PID" ] && kill -0 "$REDIS_PID" 2>/dev/null; then
     redis-cli -p "$PORT" shutdown nosave >/dev/null 2>&1
@@ -429,6 +440,8 @@ json.dump({
                   "max_bg_wait_ms": float(bg_wait), "max_foreground_p99_ms": float(fg_ceiling)},
   "bg_unit": "service_load_probe bg window (same producer as the online gate)",
   "binaries": {"ep-executord": sha(executord), "ep": sha(ep), "ep-sched-loader": sha(loader),
+               "schedpilotd": (sha(os.environ["E_DAEMON"])
+                               if os.environ.get("E_DAEMON") and os.path.exists(os.environ["E_DAEMON"]) else None),
                "redis_openloop_probe": sha(probe), "service_load_probe": sha(svc),
                "redis_matrix_sp3.sh": sha(harness)},
   "sched_ext_at_start": (open("/sys/kernel/sched_ext/state").read().strip()
@@ -473,6 +486,62 @@ MANIFEST
   populate_keys "$d" || { stop_all; return 1; }
 
   case "$arm" in
+    E)
+      if [ ! -x "$E_DAEMON" ]; then
+        echo "arm E needs schedpilotd at E_DAEMON (have '$E_DAEMON')" >> "$d/block.invalid"
+        stop_all
+        return 1
+      fi
+      mkdir -p "$d/sp-logs"
+      cat >"$d/schedpilot.conf" <<SPCONF
+[targets]
+# comm matching plus the block's own service cgroup: the reference classifier
+# resolves names and cgroup.procs the way its P0 runs did.
+process_names = redis-server
+exclude_names = redis_openloop_, service_load_pr, schedpilotd, scx_schedpilot
+cgroup_paths = ${CG_SVC}
+[bg]
+cgroup_paths = ${CG_BG}
+[classifier]
+alpha = 0.3
+wake_hi = 500
+run_lo_ns = 2000000
+delay_lo_ns = 500000
+ipc_hi = 1.2
+mpki_hi = 10.0
+lat_moderate = true
+hysteresis_cycles = 10
+[policy]
+# classification-only: the C-equivalent of the reference control plane
+adaptive = false
+interval_ms = 100
+classify_pmu = true
+llc_affinity = true
+bg_contain = true
+preempt = true
+[log]
+dir = ${d}/sp-logs
+SPCONF
+      "$E_DAEMON" --config "$d/schedpilot.conf" \
+        --duration $((2 * (MEASURE_S + WARMUP_S) + 90)) >"$d/daemon.log" 2>&1 &
+      DAEMON=$!
+      DAEMON_GRACE=1
+      local attached=""
+      for _ in $(seq 1 150); do
+        if [ "$(cat /sys/kernel/sched_ext/state 2>/dev/null)" = "enabled" ] &&
+           grep -q schedpilot /sys/kernel/sched_ext/root/ops 2>/dev/null; then
+          attached=1
+          break
+        fi
+        kill -0 "$DAEMON" 2>/dev/null || break
+        sleep 0.1
+      done
+      if [ -z "$attached" ]; then
+        echo "arm E did not attach (state=$(cat /sys/kernel/sched_ext/state 2>/dev/null) ops=$(cat /sys/kernel/sched_ext/root/ops 2>/dev/null))"           >> "$d/block.invalid"
+        stop_all
+        return 1
+      fi
+      ;;
     A1)
       # Equal observation, shadow data plane: the control plane and telemetry run, but
       # nothing attaches, so the arm's only delta versus A0 is the software stack cost.
@@ -534,7 +603,7 @@ MANIFEST
   redis-cli -p "$PORT" info commandstats > "$d/redis.commandstats" 2>&1
   cat /sys/kernel/sched_ext/state > "$d/schedext.state" 2>/dev/null || echo missing > "$d/schedext.state"
   cat /sys/kernel/sched_ext/root/ops > "$d/schedext.ops" 2>/dev/null || true
-  if [ "$arm" != "A0" ]; then
+  if [ "$arm" != "A0" ] && [ "$arm" != "E" ]; then
     "$EP" status --socket "$RUN/executor.sock" > "$d/status.json" 2>&1
     [ -f "$RUN/state/journal.jsonl" ] && cp "$RUN/state/journal.jsonl" "$d/journal.jsonl"
   fi
