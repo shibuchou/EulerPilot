@@ -28,7 +28,7 @@ PROBE="$HERE/redis_openloop_probe"
 SVC="$HERE/service_load_probe"
 PIN_ROOT=/sys/fs/bpf/eulerpilot-v2
 BLOCKS="${BLOCKS:-1}"
-ARMS="${ARMS:-A0 A1 A2 C D}"
+ARMS="${ARMS:-A0 A1 A2 B C D}"
 # Cc / Dc are C and D with exactly one thing added: the policy also declares a runtime
 # class for the cgroups the workload actually lives in. Targets, expert, parameters,
 # dataset and placement are shared with the plain arms on purpose, so a within-block
@@ -135,10 +135,10 @@ cleanup() {
 }
 trap cleanup EXIT
 
-policy_json() {  # file ... svc_cgroup bg_cgroup class_routing ablation
-  python3 - "$1" "$2" "$3" "$4" "$BG_WINDOW_S" "$5" "$6" "$7" "$8" <<'POLICYGEN'
+policy_json() {  # file ... svc_cgroup bg_cgroup class_routing ablation [mode]
+  python3 - "$1" "$2" "$3" "$4" "$BG_WINDOW_S" "$5" "$6" "$7" "$8" "${9:-class}" <<'POLICYGEN'
 import json, os, sys
-path, name, expert, source, bg_window, svc_cg, bg_cg, class_routing, ablation = sys.argv[1:10]
+path, name, expert, source, bg_window, svc_cg, bg_cg, class_routing, ablation, mode = sys.argv[1:11]
 # Every threshold the online gate reads is taken from the environment, so the frozen
 # flagship numbers are one visible thing and not three literals inside a generator.
 slo = float(os.environ.get("SLO_MS", "5"))
@@ -159,7 +159,7 @@ policy = {
   "apiVersion": "eulerpilot.io/v1alpha1", "kind": "SchedulingPolicy",
   "metadata": {"name": name},
   "spec": {
-    "scope": "scheduler-instance", "mode": "class", "expert": expert, "source": source,
+    "scope": "scheduler-instance", "mode": mode, "expert": expert, "source": source,
     # Both arms target the same two cgroups; only the class declarations differ, so a
     # difference between C and Cc cannot be blamed on what is being protected.
     "targets": [
@@ -437,8 +437,12 @@ json.dump({
 MANIFEST
   # The policies name the cgroups this block creates, so they can only be generated
   # after the paths exist.
-  policy_json "$d/policy.json" "matrix-$(printf %s "$arm" | tr A-Z a-z)" latency-balanced human \
-    "$CG_SVC" "$CG_BG" "$CLASS_ROUTING" "$ABLATION"
+  arm_mode=class
+  [ "$arm" = "B" ] && arm_mode=basic
+  arm_expert=latency-balanced
+  if [ "$arm" = "B" ]; then arm_expert=safe-basic; fi
+  policy_json "$d/policy.json" "matrix-$(printf %s "$arm" | tr A-Z a-z)" "$arm_expert" human \
+    "$CG_SVC" "$CG_BG" "$CLASS_ROUTING" "$ABLATION" "$arm_mode"
   policy_json "$d/policy-adaptive.json" "matrix-$(printf %s "$arm" | tr A-Z a-z)-adaptive" \
     safe-basic human "$CG_SVC" "$CG_BG" "$CLASS_ROUTING" "$ABLATION"
 
@@ -478,7 +482,7 @@ MANIFEST
       DAEMON=$!
       for _ in $(seq 1 100); do "$EP" status --socket "$RUN/executor.sock" >/dev/null 2>&1 && break; sleep 0.1; done
       ;;
-    C|Cc)
+    B|C|Cc)
       rm -rf "$RUN/state"; mkdir -p "$RUN/state"
       "$EXECUTORD" --state-dir "$RUN/state" --socket "$RUN/executor.sock" --skill sched \
         --loader "$LOADER" --sched-ctl "$CTL" >"$d/daemon.log" 2>&1 &
@@ -487,7 +491,9 @@ MANIFEST
       "$EP" apply --file "$d/policy.json" --idempotency-key "matrix-$block-$arm-$RANDOM" --ttl-ms 900000 \
         --socket "$RUN/executor.sock" >"$d/apply.json" 2>&1
       require_attach "$d" "$base_arm" || return 1
-      assert_classes "$d" "$arm" || return 1
+      # B is the data-plane base-cost arm: mode basic has no class semantics, so
+      # unlike C/Cc there is no class routing to prove -- only the attach.
+      if [ "$arm" != "B" ]; then assert_classes "$d" "$arm" || return 1; fi
       ;;
     D|Dc|Dng|Dnv)
       rm -rf "$RUN/state"; mkdir -p "$RUN/state"
