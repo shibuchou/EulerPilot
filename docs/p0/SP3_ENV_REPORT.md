@@ -22,7 +22,7 @@ loader / daemon / BPF 对象，并完成 quiet 与 noisy 两组 A/B/C 最小实�
 | VM | libvirt `schedpilot-sp3`：8 vCPU / 16 GiB / 桥接 `phybr0` |
 | 客户机 | `schedpilot-sp3`，openEuler 24.03 (LTS-SP3)，`6.6.0-schedpilot-sp3` |
 | 地址 | `<SP3-IP>`（DHCP） |
-| 访问 | `ssh -i ~/.ssh/<vm-key> -J <JUMP-HOST> root@<SP3-IP>` |
+| 访问 | `ssh -i <SSH-KEY> -J <JUMP-HOST> root@<SP3-IP>` |
 | SP4 | `schedpilot-sp4` 已启动，`<SP4-IP>`，SP4 + `6.6.0-schedpilot`；已完成一次 attach/detach sanity（loader `76f0cad3…`），未做实验 |
 
 两台 VM 原先均关机。`~/.ssh/config` 里的网关端口 2226/2243 当前不可用，改用 `-J <JUMP-HOST>`。

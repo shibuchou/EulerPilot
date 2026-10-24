@@ -35,7 +35,7 @@
     "hostname": "schedpilot-sp3",
     "ipv4": "<SP3-IP>",
     "ip_source": "DHCP",
-    "ssh": "ssh -i ~/.ssh/<vm-key> -J <JUMP-HOST> root@<SP3-IP>",
+    "ssh": "ssh -i <SSH-KEY> -J <JUMP-HOST> root@<SP3-IP>",
     "os_release": "openEuler 24.03 (LTS-SP3)",
     "kernel": "6.6.0-schedpilot-sp3",
     "kernel_build": "#1 SMP Mon Oct  5 19:23:25 UTC 2026",
