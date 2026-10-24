@@ -5,3 +5,6 @@ build/
 evidence/runtime/
 *.qcow2
 *.ova
+# Qoder Desktop artifacts, never project content
+.qoder-credits/
+.qoder-*.py
