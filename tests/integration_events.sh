@@ -66,19 +66,22 @@ except Exception:
     print("")' "$1" "$2"; }
 weight() { cat "$CG/cpu.weight" 2>/dev/null | tr -d '[:space:]'; }
 
-sponges() { # <cgroup> <count> -- saturate CPUs, do not wake: this is contention
+sponges() { # <cgroup> <count> -- saturate CPUs, do not wake: this is contention.
+  # Reniced to -10 so a woken sleeper demonstrably waits behind them: at equal
+  # priority the steady-state wait lands at 3.8-4.3ms, right under the 5ms
+  # threshold, and the test would flap on which side a window falls.
   local i
   for i in $(seq 1 "$2"); do
-    setsid bash -c 'while :; do :; done' >/dev/null 2>&1 &
+    setsid nice -n -10 bash -c 'while :; do :; done' >/dev/null 2>&1 &
     ALL_PIDS+=($!)
     NOISE_PIDS+=($!)
     echo $! > "$1/cgroup.procs"
   done
 }
-sleepers() { # <cgroup> <count> -- wake every 50ms: this is the measured signal
+sleepers() { # <cgroup> <count> -- wake every 20ms: this is the measured signal
   local i
   for i in $(seq 1 "$2"); do
-    setsid bash -c 'while :; do sleep 0.05; done' >/dev/null 2>&1 &
+    setsid bash -c 'while :; do sleep 0.02; done' >/dev/null 2>&1 &
     ALL_PIDS+=($!)
     echo $! > "$1/cgroup.procs"
   done
@@ -163,7 +166,7 @@ esac
 
 echo "[integration-events] phase B: runnable starvation raises cpu.weight"
 sponges "$CG_NOISE" 8
-sleepers "$CG" 16
+sleepers "$CG" 24
 poll_weight 5000 40 || fail "cpu.weight never rose (last $(weight), hold: $(field "$("$EP" status --socket "$SOCK")" event.last_hold))"
 grep -q "event guard applied cpu.weight=5000" "$STATE/daemon.log" \
   || fail "the apply happened without the guard logging it"
@@ -178,7 +181,7 @@ echo "[integration-events] compensated at $(date +%T)"
 
 echo "[integration-events] phase D: pump death freezes the gate; TTL undoes the effect"
 sponges "$CG_NOISE" 8
-poll_weight 5000 40 || fail "re-starvation did not re-apply (weight $(weight))"
+poll_weight 5000 40 || fail "re-starvation did not re-apply (weight $(weight), hold: $(field "$("$EP" status --socket "$SOCK")" event.last_hold))"
 kill -TERM "$PUMP"; PUMP=""
 sleep 2
 poll_weight 100 25 || fail "the effect outlived both the pump and its TTL (weight $(weight))"

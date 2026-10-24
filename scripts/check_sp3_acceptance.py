@@ -9,6 +9,7 @@ import xml.etree.ElementTree as ET
 REQUIRED_TESTS = {
     "unit", "integration", "integration_sched", "integration_fd",
     "integration_lease", "integration_ttl", "integration_cgroup",
+    "integration_events",
 }
 
 

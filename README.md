@@ -68,7 +68,7 @@ SP3 根目录的一键验收（需要已构建、sched_ext idle）：
 bash scripts/accept_sp3.sh /root/epv2-build /root/epv2-src
 ```
 
-强制 7 个 CTest 必测项无 SKIP（含 `integration_cgroup`：真 cgroup v2 上的写-读回-漂移-补偿-崩溃恢复）、A/B/C liveness、产物哈希和收尾状态断言；**不包含性能结论**。多轮驱动用 `scripts/accept_sp3_rounds.sh`，最近一轮 r27（2026-10-24）六轮 rc=0。
+强制 8 个 CTest 必测项无 SKIP（含 `integration_cgroup` 与 `integration_events`：cgroup 域真机闭环与 R5 事件链五相时间线）、A/B/C liveness、产物哈希和收尾状态断言；**不包含性能结论**。多轮驱动用 `scripts/accept_sp3_rounds.sh`。
 
 SP3 协议 §8 fail-safe 矩阵（故障恢复层，17 条目，需要 root、sched_ext idle 且 pin 根为空）：
 

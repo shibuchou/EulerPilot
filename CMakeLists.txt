@@ -59,7 +59,16 @@ if(LIBBPF_INCLUDE_DIR AND EP_LIBBPF_LINK AND ELF_LIBRARY AND Z_LIBRARY AND
   target_compile_options(ep-sched-loader PRIVATE -w)
   target_link_libraries(ep-sched-loader PRIVATE
     ${EP_LIBBPF_LINK} ${ELF_LIBRARY} ${Z_LIBRARY} Threads::Threads)
-  message(STATUS "ep-sched-loader: enabled")
+  if(NOT EP_LIBBPF_STATIC STREQUAL "" AND EP_LIBBPF_LINK STREQUAL EP_LIBBPF_STATIC)
+    message(STATUS "ep-sched-loader: enabled")
+  else()
+    # SP3 fact, learned the hard way: the loader built against the system
+    # libbpf.so exits during startup with an empty log, which reads like an
+    # executor bug. Pass -DEP_LIBBPF_STATIC=<kernel-tree libbpf.a>.
+    message(WARNING "ep-sched-loader: enabled against the SYSTEM libbpf; "
+      "on SP3 this loader exits silently during startup. "
+      "Set -DEP_LIBBPF_STATIC=<kernel-tree libbpf.a>.")
+  endif()
 else()
   message(STATUS "ep-sched-loader: disabled (libbpf/elf/z or skeleton missing)")
 endif()
