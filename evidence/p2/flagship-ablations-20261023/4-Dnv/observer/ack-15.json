@@ -1,0 +1,13 @@
+{
+  "accepted": {
+    "expert": "latency-balanced",
+    "observed_at_ms": 1792776997241,
+    "window_ms": 5003,
+    "workload": "svc-resident"
+  },
+  "adverse_experts": {},
+  "observed_generation": 3,
+  "request_id": "req-b1e8da204a56223c",
+  "status": "OK",
+  "switch_outcome": {}
+}

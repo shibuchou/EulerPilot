@@ -1,0 +1,13 @@
+{"kind":"ServiceObservation","role":"background","expert":"safe-basic","observed_at_ms":1792831188519,"window_ms":5001,"samples":800,"work_units_per_sec":159.968006,"max_wait_ms":6.298414}
+{"kind":"ServiceObservation","role":"background","expert":"safe-basic","observed_at_ms":1792831193524,"window_ms":5004,"samples":794,"work_units_per_sec":158.673062,"max_wait_ms":5.854638}
+{"kind":"ServiceObservation","role":"background","expert":"safe-basic","observed_at_ms":1792831198529,"window_ms":5003,"samples":808,"work_units_per_sec":161.503098,"max_wait_ms":5.759194}
+{"kind":"ServiceObservation","role":"background","expert":"safe-basic","observed_at_ms":1792831203533,"window_ms":5003,"samples":790,"work_units_per_sec":157.905257,"max_wait_ms":5.494478}
+{"kind":"ServiceObservation","role":"background","expert":"safe-basic","observed_at_ms":1792831208540,"window_ms":5004,"samples":781,"work_units_per_sec":156.075140,"max_wait_ms":6.809140}
+{"kind":"ServiceObservation","role":"background","expert":"safe-basic","observed_at_ms":1792831213547,"window_ms":5005,"samples":799,"work_units_per_sec":159.640360,"max_wait_ms":4.629961}
+{"kind":"ServiceObservation","role":"background","expert":"safe-basic","observed_at_ms":1792831218556,"window_ms":5006,"samples":793,"work_units_per_sec":158.409908,"max_wait_ms":5.063115}
+{"kind":"ServiceObservation","role":"background","expert":"safe-basic","observed_at_ms":1792831223560,"window_ms":5003,"samples":799,"work_units_per_sec":159.704177,"max_wait_ms":6.530598}
+{"kind":"ServiceObservation","role":"background","expert":"safe-basic","observed_at_ms":1792831228562,"window_ms":5000,"samples":772,"work_units_per_sec":154.400000,"max_wait_ms":6.552161}
+{"kind":"ServiceObservation","role":"background","expert":"safe-basic","observed_at_ms":1792831233569,"window_ms":5003,"samples":809,"work_units_per_sec":161.702978,"max_wait_ms":6.298153}
+{"kind":"ServiceObservation","role":"background","expert":"safe-basic","observed_at_ms":1792831238576,"window_ms":5005,"samples":773,"work_units_per_sec":154.445554,"max_wait_ms":6.830897}
+{"kind":"ServiceObservation","role":"background","expert":"safe-basic","observed_at_ms":1792831243584,"window_ms":5005,"samples":811,"work_units_per_sec":162.037962,"max_wait_ms":6.563492}
+{"kind":"ServiceObservation","role":"background","expert":"safe-basic","observed_at_ms":1792831248590,"window_ms":5005,"samples":809,"work_units_per_sec":161.638362,"max_wait_ms":6.593136}

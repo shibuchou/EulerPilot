@@ -24,7 +24,7 @@
 | P4 扩展 | **R5 两半均已真机闭环**：动作端 cgroup 效果域（cpu.weight,崩溃 marker 恢复）+ 感知端 eBPF 事件链（raw_tp 采集 runnable 等待 → 只读泵 ep-evtmon → event.observe → 武装守卫经事务路径升权/补偿;杀泵门冻结+TTL 兜底）,`integration_events` 为第 8 个 CTest 必测项。见 `evidence/p4/events-link-20261025.txt` |
 | P5 交付 | 未开始 |
 
-回归基线（2026-10-25 冻结构建 `370180b`）：unit **550** 条断言、`ctest` **8/8**、验收 **r28** 六轮 rc=0、fail-safe **run9 17/17**；旗舰矩阵按同一冻结参数重跑中,重跑前 P3 数字已在同一冻结集上重跑复现（C vs A0 GET **+1.83% [1.38,2.26] 20/0**、p99 −39.6%；D vs C 新构建统计打平；见 `evidence/p2/flagship-rerun-20261025.txt`）。
+回归基线（2026-10-25 冻结构建 `370180b`）：unit **550** 条断言、`ctest` **8/8**、验收 **r28** 六轮 rc=0、fail-safe **run9 17/17**；旗舰矩阵按同一冻结参数重跑中,重跑前 P3 数字已在同一冻结集上重跑复现（C vs A0 GET **+1.83% [1.38,2.26] 20/0**、p99 −39.6%；D vs C 新构建统计打平；见 `evidence/p2/flagship-rerun-20261025.txt`）。补充对照：B（BASIC 基础成本）+1.75% 10/0、E（参考 daemon）GET +1.92% 10/0（`barms-20261025.txt`、`earms-20261025.txt`）。
 
 阶段判定依据、逐项证据路径、硬天花板（内核行为与测量能力的边界）与工程约定见 [交接件](docs/HANDOVER_20261024.md)——接手本项目的第一份读物；进度明细见 [实施计划](docs/IMPLEMENTATION_PLAN.md)。
 
@@ -94,7 +94,7 @@ bash experiments/fail_safe_matrix_sp3.sh /root/epv2-build/ep-executord /root/epv
 1. ~~R5 后半：eBPF 事件触发链路~~ **已完成（2026-10-25,真机五相时间线）**；剩余：watch 的 cgroup 重建身份拒绝、泵开销量化。
 2. **在冻结构建上重跑 A1/C/D 矩阵臂**：P1 收尾的四项控制面改动都晚于旗舰构建，重跑后 P3 数字才与交付构建一致；新旧并列报告，不许只留好看的那组。
 3. ~~class 逐条漂移的处置~~ 已完成（2026-10-25,抽样再断言,真机两场景）。
-4. **R6 对照臂**：E 臂（参考 `schedpilotd`，与 v2 互斥运行）与 X 臂（上游 scx）；补 B 臂（BASIC scx 基础成本）。
+4. ~~R6 对照臂~~ B 臂与 E 臂已完成（2026-10-25）：B vs A0 **+1.75%**（收益在 BASIC 形态就出现,class 额外贡献≈0）;E vs A0 GET **+1.92% [0.94,2.17]**、SET 打平（新旧控制面同量级）。X 臂：SP3 上无上游 scx 二进制,待构建后再评估。
 5. **P5 交付**：构建再冻结 → 受影响矩阵重跑 → SP3 镜像/手册 → 演示三次彩排 → 包校验 → 含负结果的验收报告。
 
 ## 许可

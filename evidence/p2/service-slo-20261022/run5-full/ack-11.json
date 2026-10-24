@@ -1,0 +1,20 @@
+{
+  "accepted": {
+    "expert": "latency-balanced",
+    "observed_at_ms": 1792686560615,
+    "window_ms": 4009,
+    "workload": "svc-sp3"
+  },
+  "adverse_experts": {
+    "latency-balanced": "FOREGROUND_REGRESSED: foreground p99 1.685044ms exceeds 5.000000% over the pre-switch 1.451745ms (2 consecutive windows)"
+  },
+  "observed_generation": 5,
+  "request_id": "req-bafc629b6b984cd5",
+  "status": "OK",
+  "switch_outcome": {
+    "detail": "measurement is labelled latency-balanced, still waiting for safe-basic",
+    "evaluated": false,
+    "from": "latency-balanced",
+    "to": "safe-basic"
+  }
+}

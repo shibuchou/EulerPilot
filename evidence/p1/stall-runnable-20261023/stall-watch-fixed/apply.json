@@ -1,0 +1,67 @@
+{
+  "action_id": "act-30772aa55ba4bef8497ae7ba",
+  "checks": [
+    {
+      "detail": "sched_ext disabled, pins empty, enable_seq=1135",
+      "name": "probe",
+      "ok": true
+    },
+    {
+      "detail": "params prepared",
+      "name": "plan",
+      "ok": true
+    },
+    {
+      "detail": "stall-watch/class/latency-balanced",
+      "name": "policy",
+      "ok": true
+    },
+    {
+      "detail": "1 cgroup binding(s)",
+      "name": "targets",
+      "ok": true
+    },
+    {
+      "detail": "snap-87e95ba1c6956be1ed7e35d599c0a6db",
+      "name": "snapshot",
+      "ok": true
+    },
+    {
+      "detail": "applied",
+      "name": "apply",
+      "ok": true
+    },
+    {
+      "detail": "loader pid=255883 mode=class enable_seq=1136",
+      "name": "verify",
+      "ok": true
+    }
+  ],
+  "error": null,
+  "observed_generation": 1,
+  "policy_sha256": "b32218fd985b6ef0929a665930609b03127a8469fa977abb848d5c6d6a29b9f6",
+  "request_id": "req-e3ffcf6963ddc6b00ff02443",
+  "rollback": {
+    "attempted": false,
+    "detail": "",
+    "status": "NOT_NEEDED"
+  },
+  "snapshot_id": "snap-87e95ba1c6956be1ed7e35d599c0a6db",
+  "status": "VERIFIED",
+  "target_bindings": [
+    {
+      "boot_id": "400be773-ed44-4c2d-b24e-0eae2e97acea",
+      "cgroup_id": 69,
+      "device": 26,
+      "identity": "cgroup2-kernfs",
+      "inode": 69,
+      "kind": "cgroup",
+      "path": "/sys/fs/cgroup/system.slice",
+      "pid": 0,
+      "role": "FOREGROUND",
+      "role_source": "explicit",
+      "starttime": 0
+    }
+  ],
+  "transaction_id": "txn-7126b016b3d495e323a7f727"
+}

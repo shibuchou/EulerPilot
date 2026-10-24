@@ -1,0 +1,2 @@
+[executord] ready state_dir=/tmp/ep-expert-gap/state socket=/tmp/ep-expert-gap/executor.sock skill=sched instance=inst-781ebe00b13a7abe generation=0 degraded=false
+[executord] shutting down

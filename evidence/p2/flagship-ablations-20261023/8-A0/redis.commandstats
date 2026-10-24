@@ -1,0 +1,8 @@
+# Commandstats
+cmdstat_config|set:calls=1,usec=31,usec_per_call=31.00,rejected_calls=0,failed_calls=0
+cmdstat_ping:calls=2,usec=9,usec_per_call=4.50,rejected_calls=0,failed_calls=0
+cmdstat_info:calls=2,usec=120,usec_per_call=60.00,rejected_calls=0,failed_calls=0
+cmdstat_echo:calls=1,usec=8,usec_per_call=8.00,rejected_calls=0,failed_calls=0
+cmdstat_dbsize:calls=1,usec=21,usec_per_call=21.00,rejected_calls=0,failed_calls=0
+cmdstat_get:calls=3600117,usec=2783904,usec_per_call=0.77,rejected_calls=0,failed_calls=0
+cmdstat_set:calls=3700127,usec=3660879,usec_per_call=0.99,rejected_calls=0,failed_calls=0

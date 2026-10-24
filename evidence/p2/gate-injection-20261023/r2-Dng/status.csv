@@ -1,0 +1,29 @@
+1792800812617,safe-basic;0;lease held by cli-7e78213ed11c9866;1.076382;177.222777;6009
+1792800814693,safe-basic;0;already in place: safe-basic;2.171866;180.491705;1763
+1792800816768,safe-basic;0;already in place: safe-basic;2.171866;180.491705;3839
+1792800818836,safe-basic;0;routing target stable 0ms of 5000ms required;2.171866;180.491705;5903
+1792800820910,safe-basic;0;routing target stable 2014ms of 5000ms required;2.170435;179.564087;1616
+1792800822983,safe-basic;0;routing target stable 4020ms of 5000ms required;2.170435;179.564087;3692
+1792800825058,latency-balanced;1;-;2.170435;179.564087;6234
+1792800827543,latency-balanced;1;already in place: latency-balanced;4.285384;176.329468;1907
+1792800829634,latency-balanced;1;already in place: latency-balanced;4.285384;176.329468;3997
+1792800831702,latency-balanced;1;already in place: latency-balanced;4.285384;176.329468;6068
+1792800833778,latency-balanced;1;already in place: latency-balanced;2.113602;179.4;1807
+1792800835848,latency-balanced;1;already in place: latency-balanced;2.113602;179.4;3876
+1792800837920,latency-balanced;1;already in place: latency-balanced;2.113602;179.4;5948
+1792800839987,latency-balanced;1;already in place: latency-balanced;2.23635;179.764047;1677
+1792800842056,latency-balanced;1;already in place: latency-balanced;2.23635;179.764047;3748
+1792800844126,latency-balanced;1;already in place: latency-balanced;2.23635;179.764047;5819
+1792800846195,latency-balanced;1;already in place: latency-balanced;2.010975;177.129148;1548
+1792800848265,latency-balanced;1;already in place: latency-balanced;2.010975;177.129148;3617
+1792800850338,latency-balanced;1;already in place: latency-balanced;2.010975;177.129148;5695
+1792800852407,latency-balanced;1;already in place: latency-balanced;2.426858;177.329068;1400
+1792800854496,latency-balanced;1;already in place: latency-balanced;2.426858;177.329068;3490
+1792800856581,latency-balanced;1;already in place: latency-balanced;2.426858;177.329068;5572
+1792800858655,latency-balanced;1;already in place: latency-balanced;2.122725;179.420579;1290
+1792800860719,latency-balanced;1;already in place: latency-balanced;2.122725;179.420579;3354
+1792800862781,latency-balanced;1;already in place: latency-balanced;2.122725;179.420579;5416
+1792800864842,latency-balanced;1;already in place: latency-balanced;0.125617;163.868905;1117
+1792800866899,latency-balanced;1;already in place: latency-balanced;0.125617;163.868905;3175
+1792800868959,latency-balanced;1;already in place: latency-balanced;0.125617;163.868905;5235
+1792800871001,latency-balanced;1;already in place: latency-balanced;0.130469;166.466827;1003

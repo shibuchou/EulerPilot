@@ -1,0 +1,1 @@
+[executord] ready state_dir=/tmp/ep-matrix/state socket=/tmp/ep-matrix/executor.sock skill=sched instance=inst-b8303b7d12fe1c6c generation=0 degraded=false

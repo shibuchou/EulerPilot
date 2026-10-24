@@ -1,0 +1,24 @@
+{
+  "accepted": {
+    "expert": "safe-basic",
+    "observed_at_ms": 1792686560921,
+    "window_ms": 4009,
+    "workload": "svc-sp3"
+  },
+  "adverse_experts": {
+    "latency-balanced": "FOREGROUND_REGRESSED: foreground p99 1.685044ms exceeds 5.000000% over the pre-switch 1.451745ms (2 consecutive windows)"
+  },
+  "observed_generation": 5,
+  "request_id": "req-c6ffab1b9b4cea2b",
+  "status": "OK",
+  "switch_outcome": {
+    "code": "BG_PROGRESS_REGRESSED",
+    "detail": "background progress ratio 0.380825 below declared 0.500000",
+    "evaluated": true,
+    "from": "latency-balanced",
+    "hurt": false,
+    "to": "safe-basic",
+    "windows_observed": 1,
+    "windows_required": 2
+  }
+}

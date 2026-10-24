@@ -1,0 +1,6 @@
+[executord] autopilot enabled owner=autopilot-v2 baseline=slo-feedback expert=safe-basic min_interval_ms=3000 dwell_ms=1000 candidate_hold_ms=1000 budget=10/600000ms outcome_windows=2
+[executord] ready state_dir=/tmp/ep-slo/state socket=/tmp/ep-slo/executor.sock skill=sched instance=inst-113d1671f5618c63 generation=0 degraded=false
+[executor] autopilot switched safe-basic -> latency-balanced; switch 1/10 in 600000ms window, projected unprotected 665ms
+[executor] latency-balanced: comparative check not run: declared sensitivity is finer than p99 noise 37.0%
+[executor] autopilot switched latency-balanced -> safe-basic; switch 2/10 in 600000ms window, projected unprotected 1330ms
+[executor] safe-basic: comparative check not run: declared sensitivity is finer than p99 noise 90.3%

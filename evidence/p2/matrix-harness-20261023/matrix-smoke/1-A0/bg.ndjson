@@ -1,0 +1,11 @@
+{"kind":"ServiceObservation","role":"background","expert":"safe-basic","observed_at_ms":1792726887574,"window_ms":5001,"samples":835,"work_units_per_sec":166.966607,"max_wait_ms":0.465619}
+{"kind":"ServiceObservation","role":"background","expert":"safe-basic","observed_at_ms":1792726892581,"window_ms":5004,"samples":816,"work_units_per_sec":163.069544,"max_wait_ms":0.265302}
+{"kind":"ServiceObservation","role":"background","expert":"safe-basic","observed_at_ms":1792726897585,"window_ms":5002,"samples":825,"work_units_per_sec":164.934026,"max_wait_ms":2.716489}
+{"kind":"ServiceObservation","role":"background","expert":"safe-basic","observed_at_ms":1792726902592,"window_ms":5004,"samples":839,"work_units_per_sec":167.665867,"max_wait_ms":4.716027}
+{"kind":"ServiceObservation","role":"background","expert":"safe-basic","observed_at_ms":1792726907599,"window_ms":5005,"samples":817,"work_units_per_sec":163.236763,"max_wait_ms":4.863703}
+{"kind":"ServiceObservation","role":"background","expert":"safe-basic","observed_at_ms":1792726912606,"window_ms":5003,"samples":813,"work_units_per_sec":162.502499,"max_wait_ms":4.786050}
+{"kind":"ServiceObservation","role":"background","expert":"safe-basic","observed_at_ms":1792726917614,"window_ms":5006,"samples":852,"work_units_per_sec":170.195765,"max_wait_ms":1.509132}
+{"kind":"ServiceObservation","role":"background","expert":"safe-basic","observed_at_ms":1792726922618,"window_ms":5001,"samples":816,"work_units_per_sec":163.167367,"max_wait_ms":3.617026}
+{"kind":"ServiceObservation","role":"background","expert":"safe-basic","observed_at_ms":1792726927624,"window_ms":5003,"samples":823,"work_units_per_sec":164.501299,"max_wait_ms":2.001037}
+{"kind":"ServiceObservation","role":"background","expert":"safe-basic","observed_at_ms":1792726932629,"window_ms":5002,"samples":827,"work_units_per_sec":165.333866,"max_wait_ms":2.963990}
+{"kind":"ServiceObservation","role":"background","expert":"safe-basic","observed_at_ms":1792726937636,"window_ms":5004,"samples":818,"work_units_per_sec":163.469225,"max_wait_ms":0.666113}

@@ -877,3 +877,12 @@ R5 动作端(cgroup Skill)见 2026-10-24 节。本轮改动晚于旗舰矩阵构
 evtmon `27522823…`、loader `e33496d4…`、schedctl `6fef4d43…`、events BPF `433653b1…`。
 ctest 8/8;验收 r28 六轮 rc=0;fail-safe run9 17/17。旗舰矩阵按同一冻结参数重跑中。
 详见 [evidence/p1/frozen-build-20261025.txt](evidence/p1/frozen-build-20261025.txt)。
+
+## 补充矩阵 B/E 与旗舰重跑产物(2026-10-25 追加)
+
+重跑与 B/E 补充全部使用 §"冻结构建"的二进制集;harness 为 `376a98f`(E 臂挂载流
+修复后)。输出目录(原始件留 SP3):`/root/epv2-evidence/flagship-rerun-20261025/`
+(20 block × 5 臂)、`barms-20261025/`(10 block × A0/B,seed 20261026)、
+`earms-20261025/`(10 block × A0/E,seed 20261027,含参考 loader/daemon 哈希入
+每块 manifest)。结论文件:`evidence/p2/flagship-rerun-20261025.txt`、
+`barms-20261025.txt`、`earms-20261025.txt`。

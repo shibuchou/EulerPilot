@@ -1,0 +1,67 @@
+{
+  "action_id": "act-3d342bf9880a56ea83bd3ad6",
+  "checks": [
+    {
+      "detail": "sched_ext disabled, pins empty, enable_seq=1221",
+      "name": "probe",
+      "ok": true
+    },
+    {
+      "detail": "params prepared",
+      "name": "plan",
+      "ok": true
+    },
+    {
+      "detail": "matrix-d-adaptive/class/safe-basic",
+      "name": "policy",
+      "ok": true
+    },
+    {
+      "detail": "1 cgroup binding(s)",
+      "name": "targets",
+      "ok": true
+    },
+    {
+      "detail": "snap-e7513ab0fa3079ac1f298d843f632880",
+      "name": "snapshot",
+      "ok": true
+    },
+    {
+      "detail": "applied",
+      "name": "apply",
+      "ok": true
+    },
+    {
+      "detail": "loader pid=279496 mode=class enable_seq=1222",
+      "name": "verify",
+      "ok": true
+    }
+  ],
+  "error": null,
+  "observed_generation": 1,
+  "policy_sha256": "17cd07d35ad19ac1aa2b7a39161d190f2f45369d7d17f632a5d7167fb10406eb",
+  "request_id": "req-847f622e31063e9c1b1e6626",
+  "rollback": {
+    "attempted": false,
+    "detail": "",
+    "status": "NOT_NEEDED"
+  },
+  "snapshot_id": "snap-e7513ab0fa3079ac1f298d843f632880",
+  "status": "VERIFIED",
+  "target_bindings": [
+    {
+      "boot_id": "400be773-ed44-4c2d-b24e-0eae2e97acea",
+      "cgroup_id": 69,
+      "device": 26,
+      "identity": "cgroup2-kernfs",
+      "inode": 69,
+      "kind": "cgroup",
+      "path": "/sys/fs/cgroup/system.slice",
+      "pid": 0,
+      "role": "FOREGROUND",
+      "role_source": "explicit",
+      "starttime": 0
+    }
+  ],
+  "transaction_id": "txn-a471e8d4e1ce34c7aa02d349"
+}

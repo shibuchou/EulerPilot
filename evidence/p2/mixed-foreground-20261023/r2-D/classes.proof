@@ -1,0 +1,1 @@
+declared_effective=[('', 'BG'), ('COMPUTE', 'COMPUTE'), ('LAT', 'LAT')] expected=[('', 'BG'), ('COMPUTE', 'COMPUTE'), ('LAT', 'LAT')] ok=yes

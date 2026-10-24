@@ -1,0 +1,3 @@
+[executor] orphan recovery failed: 
+[executord] ready state_dir=/tmp/ep-take-B/state socket=/tmp/ep-take-B/b.sock skill=sched-ref instance=inst-cd71027a8fbc1af1 generation=0 degraded=true
+[executord] shutting down

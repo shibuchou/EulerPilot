@@ -1,0 +1,1 @@
+{"workload": "svc-resident", "observed_at_ms": 1792776870750, "window_ms": 5005, "expert": "latency-balanced", "foreground": {"p99_latency_ms": 0.211788}, "background": {"work_units_per_sec": 163.636364, "max_wait_ms": 0.161171}}

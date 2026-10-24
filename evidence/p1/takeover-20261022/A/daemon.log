@@ -1,0 +1,2 @@
+[executord] ready state_dir=/tmp/ep-take-A/state socket=/tmp/ep-take-A/a.sock skill=sched-ref instance=inst-6a1b511cee11fe07 generation=0 degraded=false
+[executord] shutting down

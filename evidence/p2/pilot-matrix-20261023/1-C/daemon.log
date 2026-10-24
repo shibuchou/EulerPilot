@@ -1,0 +1,2 @@
+[executord] ready state_dir=/tmp/ep-pilot/state socket=/tmp/ep-pilot/executor.sock skill=sched instance=inst-e00f77798690a372 generation=0 degraded=false
+[executord] shutting down

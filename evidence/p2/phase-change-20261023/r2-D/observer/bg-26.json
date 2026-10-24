@@ -1,0 +1,1 @@
+{"kind":"ServiceObservation","role":"background","expert":"latency-balanced","observed_at_ms":1792823242092,"window_ms":5004,"samples":898,"work_units_per_sec":179.456435,"max_wait_ms":2.035128}

@@ -1,0 +1,4 @@
+[executord] autopilot enabled owner=autopilot-v2 baseline=matrix-d-adaptive expert=safe-basic min_interval_ms=3000 dwell_ms=20000 candidate_hold_ms=10000 budget=4/600000ms outcome_windows=2
+[executord] ready state_dir=/tmp/ep-matrix/state socket=/tmp/ep-matrix/executor.sock skill=sched instance=inst-9ec9841e790fc9fe generation=0 degraded=false
+[executor] autopilot switched safe-basic -> latency-balanced; switch 1/4 in 600000ms window, projected unprotected 665ms
+[executor] latency-balanced: comparative check not run: declared sensitivity is finer than p99 noise 9.9%

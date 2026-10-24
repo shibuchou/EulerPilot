@@ -1,0 +1,56 @@
+=== stage 1: offered-rate scan on the bare service (A0 only) ===
+A0 set n=1 goodput@SLO median 19998 rps | achieved 20000 | timeouts 0 stalls 0 cpu/s 0.31 | samples 1200000 | attach disabled
+   A0 bg units/s (median of window medians) 165.7
+
+NOTE block counts here are a harness smoke, not the flagship sample; the table is
+recomputable from raw-*.bin (protocol: raw records must rebuild the numbers).
+cleanup rc=0 state=disabled pins=0
+A0 set n=1 goodput@SLO median 39954 rps | achieved 39999 | timeouts 0 stalls 0 cpu/s 0.58 | samples 2400000 | attach disabled
+   A0 bg units/s (median of window medians) 163.9
+
+NOTE block counts here are a harness smoke, not the flagship sample; the table is
+recomputable from raw-*.bin (protocol: raw records must rebuild the numbers).
+cleanup rc=0 state=disabled pins=0
+A0 set n=1 goodput@SLO median 58185 rps | achieved 60001 | timeouts 0 stalls 0 cpu/s 0.63 | samples 3600144 | attach disabled
+   A0 bg units/s (median of window medians) 165.0
+
+NOTE block counts here are a harness smoke, not the flagship sample; the table is
+recomputable from raw-*.bin (protocol: raw records must rebuild the numbers).
+cleanup rc=0 state=disabled pins=0
+=== stage 2: arms at candidate rate 40000 ===
+A0 set n=1 goodput@SLO median 39942 rps | achieved 39999 | timeouts 0 stalls 0 cpu/s 0.59 | samples 2400000 | attach disabled
+   A0 bg units/s (median of window medians) 164.0
+
+NOTE block counts here are a harness smoke, not the flagship sample; the table is
+recomputable from raw-*.bin (protocol: raw records must rebuild the numbers).
+cleanup rc=0 state=disabled pins=0
+=== latency distributions rebuilt from the per-request raw records ===
+--- rate 20000 (A0) ---
+block  arm  op      p50ms    p95ms    p99ms    p99.9   samples good% @ 1/2/5/10
+1      A0   GET      0.08   0.9444   1.5567    2.043   1200000 95.52/99.87/100.0/100.0  [match]
+1      A0   SET    0.0821   0.9669   1.5889   2.3591   1200000 95.25/99.79/99.99/100.0  [match]
+
+A0 GET n=1 p50 0.08 p99 1.5567 | 1ms:95.52% 2ms:99.87% 5ms:100.0% 10ms:100.0%
+A0 SET n=1 p50 0.0821 p99 1.5889 | 1ms:95.25% 2ms:99.79% 5ms:99.99% 10ms:100.0%
+--- rate 40000 (A0) ---
+block  arm  op      p50ms    p95ms    p99ms    p99.9   samples good% @ 1/2/5/10
+1      A0   GET    0.0934   0.5649    1.698   5.0704   2400000 97.92/99.23/99.89/99.95  [match]
+1      A0   SET     0.099   0.6333   2.2518   5.5283   2400000 97.44/98.83/99.89/100.0  [match]
+
+A0 GET n=1 p50 0.0934 p99 1.698 | 1ms:97.92% 2ms:99.23% 5ms:99.89% 10ms:99.95%
+A0 SET n=1 p50 0.099 p99 2.2518 | 1ms:97.44% 2ms:98.83% 5ms:99.89% 10ms:100.0%
+--- rate 60000 (A0) ---
+block  arm  op      p50ms    p95ms    p99ms    p99.9   samples good% @ 1/2/5/10
+1      A0   GET    0.2481   2.0891   7.0185  15.5691   3600144 89.49/94.73/98.15/99.6  [match]
+1      A0   SET    0.2527   2.9126   8.3808  22.0781   3600144 88.68/93.45/96.97/99.4  [match]
+
+A0 GET n=1 p50 0.2481 p99 7.0185 | 1ms:89.49% 2ms:94.73% 5ms:98.15% 10ms:99.6%
+A0 SET n=1 p50 0.2527 p99 8.3808 | 1ms:88.68% 2ms:93.45% 5ms:96.97% 10ms:99.4%
+--- arms at 40000 ---
+block  arm  op      p50ms    p95ms    p99ms    p99.9   samples good% @ 1/2/5/10
+1      A0   GET    0.1017   0.6739     2.24   6.7024   2400000 97.51/98.85/99.84/100.0  [match]
+1      A0   SET    0.1085   0.7149   2.2859   5.6696   2400000 97.2/98.79/99.86/100.0  [match]
+
+A0 GET n=1 p50 0.1017 p99 2.24 | 1ms:97.51% 2ms:98.85% 5ms:99.84% 10ms:100.0%
+A0 SET n=1 p50 0.1085 p99 2.2859 | 1ms:97.2% 2ms:98.79% 5ms:99.86% 10ms:100.0%
+=== background work unit: what one window of the probe actually is ===

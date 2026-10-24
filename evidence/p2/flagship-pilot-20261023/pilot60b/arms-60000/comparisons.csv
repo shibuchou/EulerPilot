@@ -1,0 +1,5 @@
+arm,op,baseline,paired_blocks,goodput_gain_median_pct,ci_low_pct,ci_high_pct,wins,losses,p99_change_median_pct,log_ratio_median_pct,bg_vs_baseline_median,resamples,seed,threshold_ms
+C,GET,A0,2,1.432,0.566,2.297,2,0,-36.108,1.418,0.9994,4000,20261024,5.0
+C,SET,A0,2,1.691,1.684,1.698,2,0,-36.35,1.677,0.9994,4000,20261024,5.0
+D,GET,A0,2,1.302,1.049,1.555,2,0,-34.08,1.293,1.0014,4000,20261024,5.0
+D,SET,A0,2,1.755,1.431,2.079,2,0,-37.621,1.739,1.0014,4000,20261024,5.0

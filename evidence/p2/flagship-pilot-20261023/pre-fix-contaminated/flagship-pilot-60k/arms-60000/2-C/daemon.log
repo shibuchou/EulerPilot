@@ -1,0 +1,4 @@
+[executord] ready state_dir=/tmp/ep-matrix/state socket=/tmp/ep-matrix/executor.sock skill=sched instance=inst-c69b34706e897c07 generation=0 degraded=false
+[executor] liveness miss 1: sched_ext state is 'disabled', expected enabled
+[executor] liveness miss 2: sched_ext state is 'disabled', expected enabled
+[executor] auto fallback: scheduler lost: sched_ext state is 'disabled', expected enabled

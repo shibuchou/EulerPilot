@@ -1,0 +1,67 @@
+{
+  "auto_apply": {
+    "active_expert": "latency-balanced",
+    "baseline": "/tmp/ep-slo/baseline.json",
+    "budget_max_switches": 10,
+    "budget_window_ms": 600000,
+    "candidate_hold_ms": 1000,
+    "dwell_ms": 1000,
+    "enabled": true,
+    "last_action_at_ms": 1792685622987,
+    "last_expert": "latency-balanced",
+    "last_hold": "slo denied: SERVICE_EVIDENCE_DENIED",
+    "last_reason": "safe-basic -> latency-balanced",
+    "measured_downtime_ms": 665,
+    "min_interval_ms": 3000,
+    "owner": "autopilot-v2",
+    "projected_unprotected_ms": 665,
+    "switches_recorded": 1
+  },
+  "degraded": false,
+  "generation": 3,
+  "incomplete_transactions": [],
+  "instance_id": "inst-45f8171119f8bbf8",
+  "journal_records": 15,
+  "last_fallback": "",
+  "lease": {
+    "expires_at": "2026-10-22T16:28:33.277Z",
+    "expires_ms": 1792686513277,
+    "fence_epoch": 2,
+    "owner": "autopilot-v2"
+  },
+  "request_id": "req-c90f211aacf687e5",
+  "service": {
+    "adverse_experts": {
+      "latency-balanced": "FOREGROUND_REGRESSED: foreground p99 1.942113ms exceeds 5.000000% over the pre-switch 1.737277ms"
+    },
+    "age_ms": 2177,
+    "bg_max_wait_ms": 1.827779,
+    "bg_work_units_per_sec": 181.106298,
+    "declared_limits": {
+      "allow_affinity_change": false,
+      "bg_progress_window_ms": 5000,
+      "bg_work_unit": "requests",
+      "evaluation_min_bg_progress_ratio": 0.5,
+      "fallback": "verified-safe-profile",
+      "heartbeat_period_ms": 250,
+      "heartbeat_timeout_ms": 2000,
+      "max_bg_wait_ms": 5000,
+      "max_observation_age_ms": 1000,
+      "min_bg_work_units_per_sec": 1.0,
+      "min_dwell_ms": 5000,
+      "policy_ttl_ms": 900000,
+      "quiet_max_regression_pct": 5
+    },
+    "foreground_p99_ms": 1.942113,
+    "last_outcome": "latency-balanced regressed the service: FOREGROUND_REGRESSED (foreground p99 1.942113ms exceeds 5.000000% over the pre-switch 1.737277ms)",
+    "measured_expert": "latency-balanced",
+    "observed": true,
+    "observed_at_ms": 1792685638077,
+    "outcome_pending": false,
+    "window_ms": 12007,
+    "workload": "svc-sp3"
+  },
+  "skill": "sched-ref",
+  "startup_degraded_reason": "",
+  "status": "OK"
+}

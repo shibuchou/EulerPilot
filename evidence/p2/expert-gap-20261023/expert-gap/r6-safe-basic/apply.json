@@ -1,0 +1,84 @@
+{
+  "action_id": "act-c54b53250b569745ae41766e",
+  "checks": [
+    {
+      "detail": "sched_ext disabled, pins empty, enable_seq=1638",
+      "name": "probe",
+      "ok": true
+    },
+    {
+      "detail": "params prepared",
+      "name": "plan",
+      "ok": true
+    },
+    {
+      "detail": "expert-gap-safe-basic/class/safe-basic",
+      "name": "policy",
+      "ok": true
+    },
+    {
+      "detail": "2 cgroup binding(s)",
+      "name": "targets",
+      "ok": true
+    },
+    {
+      "detail": "snap-3975fa59b1d1700b87af8e0419050412",
+      "name": "snapshot",
+      "ok": true
+    },
+    {
+      "detail": "applied",
+      "name": "apply",
+      "ok": true
+    },
+    {
+      "detail": "loader pid=400015 mode=class enable_seq=1639",
+      "name": "verify",
+      "ok": true
+    }
+  ],
+  "error": null,
+  "observed_generation": 1,
+  "policy_sha256": "f96b99fcb529ed2f975fc55737ddef83252d5e69a2e213a30ef6fbebb852c6d0",
+  "request_id": "req-6d00ab596d50bf340a909f2e",
+  "rollback": {
+    "attempted": false,
+    "detail": "",
+    "status": "NOT_NEEDED"
+  },
+  "snapshot_id": "snap-3975fa59b1d1700b87af8e0419050412",
+  "status": "VERIFIED",
+  "target_bindings": [
+    {
+      "boot_id": "400be773-ed44-4c2d-b24e-0eae2e97acea",
+      "cgroup_id": 58638,
+      "class": "",
+      "device": 26,
+      "effective_class": "",
+      "identity": "cgroup2-kernfs",
+      "inode": 58638,
+      "kind": "cgroup",
+      "path": "/sys/fs/cgroup/gap-svc",
+      "pid": 0,
+      "role": "FOREGROUND",
+      "role_source": "explicit",
+      "starttime": 0
+    },
+    {
+      "boot_id": "400be773-ed44-4c2d-b24e-0eae2e97acea",
+      "cgroup_id": 58680,
+      "class": "",
+      "device": 26,
+      "effective_class": "BG",
+      "identity": "cgroup2-kernfs",
+      "inode": 58680,
+      "kind": "cgroup",
+      "path": "/sys/fs/cgroup/gap-bg",
+      "pid": 0,
+      "role": "BACKGROUND",
+      "role_source": "explicit",
+      "starttime": 0
+    }
+  ],
+  "transaction_id": "txn-b75bbc408e2c769ff95f9ac3"
+}

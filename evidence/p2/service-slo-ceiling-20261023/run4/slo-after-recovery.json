@@ -1,0 +1,63 @@
+{
+  "allowed": true,
+  "checks": [
+    {
+      "detail": "latency-balanced",
+      "name": "expert",
+      "ok": true
+    },
+    {
+      "detail": "svc-resident age_ms=2570",
+      "name": "service_fresh",
+      "ok": true
+    },
+    {
+      "detail": "within floor",
+      "name": "bg_progress_floor",
+      "ok": true
+    },
+    {
+      "detail": "within ceiling",
+      "name": "bg_wait_ceiling",
+      "ok": true
+    },
+    {
+      "detail": "within ceiling",
+      "name": "foreground_ceiling",
+      "ok": true
+    },
+    {
+      "detail": "age_ms=639",
+      "name": "features_fresh",
+      "ok": true
+    },
+    {
+      "detail": "avg=3.560845",
+      "name": "cpu",
+      "ok": true
+    },
+    {
+      "detail": "avg10=32.604000",
+      "name": "psi",
+      "ok": true
+    },
+    {
+      "detail": "within budget",
+      "name": "pressure_budget",
+      "ok": true
+    },
+    {
+      "detail": "not evaluated: no quiet baseline in this window",
+      "name": "quiet_regression",
+      "ok": true
+    }
+  ],
+  "code": "",
+  "expert": "latency-balanced",
+  "feature_age_ms": 639,
+  "max_observation_age_ms": 1000,
+  "reason": "",
+  "request_id": "req-1c8209d00fd25bda",
+  "service_evidence": "present",
+  "status": "OK"
+}

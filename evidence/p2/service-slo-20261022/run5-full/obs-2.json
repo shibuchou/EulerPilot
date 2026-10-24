@@ -1,0 +1,1 @@
+{"workload": "svc-sp3", "observed_at_ms": 1792686497799, "window_ms": 12006, "expert": "latency-balanced", "foreground": {"p99_latency_ms": 1.922978}, "background": {"work_units_per_sec": 181.242712, "max_wait_ms": 1.027081}}

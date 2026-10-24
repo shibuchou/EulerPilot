@@ -1,0 +1,1 @@
+{"kind":"ServiceObservation","role":"foreground","expert":"safe-basic","observed_at_ms":1792720255024,"window_ms":15001,"samples":14998,"p99_latency_ms":2.006279}

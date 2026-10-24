@@ -1,0 +1,99 @@
+{
+  "action_id": "act-13cbd67b064c53926ae8f21c",
+  "checks": [
+    {
+      "detail": "sched_ext disabled, pins empty, enable_seq=1668",
+      "name": "probe",
+      "ok": true
+    },
+    {
+      "detail": "params prepared",
+      "name": "plan",
+      "ok": true
+    },
+    {
+      "detail": "mixed-fg/class/safe-basic",
+      "name": "policy",
+      "ok": true
+    },
+    {
+      "detail": "3 cgroup binding(s)",
+      "name": "targets",
+      "ok": true
+    },
+    {
+      "detail": "snap-338ee6bb8414874d7afd498b10fa02c4",
+      "name": "snapshot",
+      "ok": true
+    },
+    {
+      "detail": "applied",
+      "name": "apply",
+      "ok": true
+    },
+    {
+      "detail": "loader pid=408498 mode=class enable_seq=1669",
+      "name": "verify",
+      "ok": true
+    }
+  ],
+  "error": null,
+  "observed_generation": 1,
+  "policy_sha256": "e386583971e170c504956add97da87c26d7f572b0576fa409a910355cfc50b2e",
+  "request_id": "req-ac9b2a8e7ad2e101d7d9b423",
+  "rollback": {
+    "attempted": false,
+    "detail": "",
+    "status": "NOT_NEEDED"
+  },
+  "snapshot_id": "snap-338ee6bb8414874d7afd498b10fa02c4",
+  "status": "VERIFIED",
+  "target_bindings": [
+    {
+      "boot_id": "400be773-ed44-4c2d-b24e-0eae2e97acea",
+      "cgroup_id": 59436,
+      "class": "LAT",
+      "device": 26,
+      "effective_class": "LAT",
+      "identity": "cgroup2-kernfs",
+      "inode": 59436,
+      "kind": "cgroup",
+      "path": "/sys/fs/cgroup/mf-a",
+      "pid": 0,
+      "role": "FOREGROUND",
+      "role_source": "explicit",
+      "starttime": 0
+    },
+    {
+      "boot_id": "400be773-ed44-4c2d-b24e-0eae2e97acea",
+      "cgroup_id": 59478,
+      "class": "COMPUTE",
+      "device": 26,
+      "effective_class": "COMPUTE",
+      "identity": "cgroup2-kernfs",
+      "inode": 59478,
+      "kind": "cgroup",
+      "path": "/sys/fs/cgroup/mf-b",
+      "pid": 0,
+      "role": "FOREGROUND",
+      "role_source": "explicit",
+      "starttime": 0
+    },
+    {
+      "boot_id": "400be773-ed44-4c2d-b24e-0eae2e97acea",
+      "cgroup_id": 59142,
+      "class": "",
+      "device": 26,
+      "effective_class": "BG",
+      "identity": "cgroup2-kernfs",
+      "inode": 59142,
+      "kind": "cgroup",
+      "path": "/sys/fs/cgroup/mf-bg",
+      "pid": 0,
+      "role": "BACKGROUND",
+      "role_source": "explicit",
+      "starttime": 0
+    }
+  ],
+  "transaction_id": "txn-e20e932a0b28b2860209575c"
+}

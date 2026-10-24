@@ -1,0 +1,9 @@
+cycle,observed_at_ms,window_ms,expert,p99_ms,bg_units,bg_wait_ms,ack
+1,1792726939490,5004,safe-basic,0.129,163.3,0.174,OK evaluated=None hurt=None code=
+2,1792726945795,5002,safe-basic,0.137,165.5,0.324,OK evaluated=None hurt=None code=
+3,1792726952048,5002,safe-basic,0.158,163.6,0.197,OK evaluated=None hurt=None code=
+4,1792726958354,5001,safe-basic,0.133,163.8,1.249,OK evaluated=None hurt=None code=
+5,1792726964647,5005,safe-basic,0.132,168.6,0.251,OK evaluated=None hurt=None code=
+6,1792726970937,5001,safe-basic,0.128,164.4,0.166,OK evaluated=None hurt=None code=
+7,1792726977229,5002,safe-basic,0.133,166.8,1.434,OK evaluated=False hurt=None code=
+8,1792726983535,5005,latency-balanced,0.118,163.2,0.209,OK evaluated=True hurt=False code=

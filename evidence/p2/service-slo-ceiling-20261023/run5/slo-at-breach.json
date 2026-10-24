@@ -1,0 +1,63 @@
+{
+  "allowed": false,
+  "checks": [
+    {
+      "detail": "latency-balanced",
+      "name": "expert",
+      "ok": true
+    },
+    {
+      "detail": "svc-resident age_ms=854",
+      "name": "service_fresh",
+      "ok": true
+    },
+    {
+      "detail": "within floor",
+      "name": "bg_progress_floor",
+      "ok": true
+    },
+    {
+      "detail": "within ceiling",
+      "name": "bg_wait_ceiling",
+      "ok": true
+    },
+    {
+      "detail": "foreground p99 2.080850ms > declared 1.000000ms",
+      "name": "foreground_ceiling",
+      "ok": false
+    },
+    {
+      "detail": "age_ms=151",
+      "name": "features_fresh",
+      "ok": true
+    },
+    {
+      "detail": "avg=51.440401",
+      "name": "cpu",
+      "ok": true
+    },
+    {
+      "detail": "avg10=20.053333",
+      "name": "psi",
+      "ok": true
+    },
+    {
+      "detail": "within budget",
+      "name": "pressure_budget",
+      "ok": true
+    },
+    {
+      "detail": "not evaluated: no quiet baseline in this window",
+      "name": "quiet_regression",
+      "ok": true
+    }
+  ],
+  "code": "FOREGROUND_P99_EXCEEDED",
+  "expert": "latency-balanced",
+  "feature_age_ms": 151,
+  "max_observation_age_ms": 1000,
+  "reason": "measured foreground p99 is above the declared absolute ceiling",
+  "request_id": "req-bc4edfc1c91906e6",
+  "service_evidence": "present",
+  "status": "OK"
+}

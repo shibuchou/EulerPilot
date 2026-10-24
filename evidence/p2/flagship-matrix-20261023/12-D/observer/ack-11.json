@@ -1,0 +1,18 @@
+{
+  "accepted": {
+    "expert": "safe-basic",
+    "observed_at_ms": 1792746289008,
+    "window_ms": 5005,
+    "workload": "svc-resident"
+  },
+  "adverse_experts": {},
+  "observed_generation": 3,
+  "request_id": "req-e25fa35c7fc50ddc",
+  "status": "OK",
+  "switch_outcome": {
+    "detail": "measurement is labelled safe-basic, still waiting for latency-balanced",
+    "evaluated": false,
+    "from": "safe-basic",
+    "to": "latency-balanced"
+  }
+}

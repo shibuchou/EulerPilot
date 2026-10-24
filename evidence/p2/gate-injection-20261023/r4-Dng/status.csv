@@ -1,0 +1,29 @@
+1792801178653,safe-basic;0;lease held by cli-c2b8614464185522;2.478041;176.764647;6127
+1792801180726,safe-basic;0;already in place: safe-basic;2.435604;180.0;1885
+1792801182802,safe-basic;0;already in place: safe-basic;2.435604;180.0;3964
+1792801184874,safe-basic;0;routing target stable 0ms of 5000ms required;2.435604;180.0;6037
+1792801186956,safe-basic;0;routing target stable 2016ms of 5000ms required;2.097058;178.928429;1760
+1792801189030,safe-basic;0;routing target stable 4024ms of 5000ms required;2.097058;178.928429;3835
+1792801191113,latency-balanced;1;-;2.097058;178.928429;6342
+1792801193555,latency-balanced;1;already in place: latency-balanced;4.219761;175.764847;2012
+1792801195621,latency-balanced;1;already in place: latency-balanced;4.219761;175.764847;4075
+1792801197693,latency-balanced;1;already in place: latency-balanced;4.219761;175.764847;6149
+1792801199764,latency-balanced;1;already in place: latency-balanced;2.376385;178.764247;1844
+1792801201830,latency-balanced;1;already in place: latency-balanced;2.376385;178.764247;3910
+1792801203900,latency-balanced;1;already in place: latency-balanced;2.376385;178.764247;5979
+1792801205977,latency-balanced;1;already in place: latency-balanced;2.150834;178.728509;1712
+1792801208047,latency-balanced;1;already in place: latency-balanced;2.150834;178.728509;3786
+1792801210117,latency-balanced;1;already in place: latency-balanced;2.150834;178.728509;5854
+1792801212186,latency-balanced;1;already in place: latency-balanced;2.201153;179.4;1576
+1792801214268,latency-balanced;1;already in place: latency-balanced;2.201153;179.4;3657
+1792801216341,latency-balanced;1;already in place: latency-balanced;2.201153;179.4;5731
+1792801218413,latency-balanced;1;already in place: latency-balanced;2.305523;177.022977;1477
+1792801220480,latency-balanced;1;already in place: latency-balanced;2.305523;177.022977;3541
+1792801222553,latency-balanced;1;already in place: latency-balanced;2.305523;177.022977;5614
+1792801224629,latency-balanced;1;already in place: latency-balanced;2.711008;177.622378;1350
+1792801226679,latency-balanced;1;already in place: latency-balanced;2.711008;177.622378;3401
+1792801228713,latency-balanced;1;already in place: latency-balanced;2.711008;177.622378;5434
+1792801230758,latency-balanced;1;already in place: latency-balanced;0.136654;163.868905;1155
+1792801232819,latency-balanced;1;already in place: latency-balanced;0.136654;163.868905;3216
+1792801234884,latency-balanced;1;already in place: latency-balanced;0.136654;163.868905;5280
+1792801236944,latency-balanced;1;already in place: latency-balanced;0.135713;164.602477;1074

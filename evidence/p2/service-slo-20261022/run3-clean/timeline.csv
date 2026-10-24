@@ -1,0 +1,4 @@
+round,phase,active_expert,switches,gate,p99_ms,bg_units,bg_wait_ms
+1,loaded_before,safe-basic,0,lease held by cli-918e5642b389b711,1.550,181.5,1.472
+2,loaded_after,latency-balanced,1,already in place: latency-balanced,1.513,181.2,1.512
+3,loaded2,latency-balanced,1,already in place: latency-balanced,1.765,181.2,2.625

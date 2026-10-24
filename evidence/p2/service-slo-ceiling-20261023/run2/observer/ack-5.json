@@ -1,0 +1,13 @@
+{
+  "accepted": {
+    "expert": "safe-basic",
+    "observed_at_ms": 1792718175066,
+    "window_ms": 15005,
+    "workload": "svc-resident"
+  },
+  "adverse_experts": {},
+  "observed_generation": 1,
+  "request_id": "req-e4933c56d1780bc2",
+  "status": "OK",
+  "switch_outcome": {}
+}

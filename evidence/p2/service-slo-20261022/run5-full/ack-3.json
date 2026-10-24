@@ -1,0 +1,24 @@
+{
+  "accepted": {
+    "expert": "latency-balanced",
+    "observed_at_ms": 1792686512044,
+    "window_ms": 12008,
+    "workload": "svc-sp3"
+  },
+  "adverse_experts": {
+    "latency-balanced": "FOREGROUND_REGRESSED: foreground p99 1.685044ms exceeds 5.000000% over the pre-switch 1.451745ms (2 consecutive windows)"
+  },
+  "observed_generation": 3,
+  "request_id": "req-e10227a0f84a4ce5",
+  "status": "OK",
+  "switch_outcome": {
+    "code": "FOREGROUND_REGRESSED",
+    "detail": "foreground p99 1.685044ms exceeds 5.000000% over the pre-switch 1.451745ms",
+    "evaluated": true,
+    "from": "safe-basic",
+    "hurt": true,
+    "to": "latency-balanced",
+    "windows_observed": 2,
+    "windows_required": 2
+  }
+}

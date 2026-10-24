@@ -1,0 +1,9 @@
+{
+  "expires_at": "2026-10-23T17:30:10.705Z",
+  "expires_ms": 1792776610705,
+  "fence_epoch": 2,
+  "lease_owner": "autopilot-v2",
+  "observed_generation": 1,
+  "request_id": "req-e36d5a2f6f923ad3db4cb08b",
+  "status": "OK"
+}

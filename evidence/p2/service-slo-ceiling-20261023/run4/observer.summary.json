@@ -1,0 +1,12 @@
+{
+  "coverage_pct": 91.7,
+  "cycles_attempted": 6,
+  "elapsed_ms": 98169,
+  "ingest_failures": 0,
+  "ingested": 6,
+  "longest_gap_ms": 16554,
+  "measured_ms": 90021,
+  "probe_failures": 0,
+  "skipped_no_policy": 0,
+  "window_s": 15
+}

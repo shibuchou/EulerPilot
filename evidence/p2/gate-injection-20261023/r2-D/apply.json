@@ -1,0 +1,84 @@
+{
+  "action_id": "act-e8e4dd7ecc4f0a037ca67544",
+  "checks": [
+    {
+      "detail": "sched_ext disabled, pins empty, enable_seq=1614",
+      "name": "probe",
+      "ok": true
+    },
+    {
+      "detail": "params prepared",
+      "name": "plan",
+      "ok": true
+    },
+    {
+      "detail": "gateinj-d/class/safe-basic",
+      "name": "policy",
+      "ok": true
+    },
+    {
+      "detail": "2 cgroup binding(s)",
+      "name": "targets",
+      "ok": true
+    },
+    {
+      "detail": "snap-48f9c6abb275a16776472f6d9727fe28",
+      "name": "snapshot",
+      "ok": true
+    },
+    {
+      "detail": "applied",
+      "name": "apply",
+      "ok": true
+    },
+    {
+      "detail": "loader pid=395061 mode=class enable_seq=1615",
+      "name": "verify",
+      "ok": true
+    }
+  ],
+  "error": null,
+  "observed_generation": 1,
+  "policy_sha256": "94b457f3d4b46802316637127f5e9524aa91df6893da837ecdd166df87e0dc19",
+  "request_id": "req-3443efdeec0d64c2ae66adfa",
+  "rollback": {
+    "attempted": false,
+    "detail": "",
+    "status": "NOT_NEEDED"
+  },
+  "snapshot_id": "snap-48f9c6abb275a16776472f6d9727fe28",
+  "status": "VERIFIED",
+  "target_bindings": [
+    {
+      "boot_id": "400be773-ed44-4c2d-b24e-0eae2e97acea",
+      "cgroup_id": 58260,
+      "class": "",
+      "device": 26,
+      "effective_class": "",
+      "identity": "cgroup2-kernfs",
+      "inode": 58260,
+      "kind": "cgroup",
+      "path": "/sys/fs/cgroup/gateinj-svc",
+      "pid": 0,
+      "role": "FOREGROUND",
+      "role_source": "explicit",
+      "starttime": 0
+    },
+    {
+      "boot_id": "400be773-ed44-4c2d-b24e-0eae2e97acea",
+      "cgroup_id": 58302,
+      "class": "",
+      "device": 26,
+      "effective_class": "BG",
+      "identity": "cgroup2-kernfs",
+      "inode": 58302,
+      "kind": "cgroup",
+      "path": "/sys/fs/cgroup/gateinj-bg",
+      "pid": 0,
+      "role": "BACKGROUND",
+      "role_source": "explicit",
+      "starttime": 0
+    }
+  ],
+  "transaction_id": "txn-250dd049646cc90b1f94f417"
+}

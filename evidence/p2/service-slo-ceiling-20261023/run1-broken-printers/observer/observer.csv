@@ -1,0 +1,5 @@
+cycle,observed_at_ms,window_ms,expert,p99_ms,bg_units,bg_wait_ms,ack
+1,1792717761764,15003,safe-basic,0.128,164.1,0.265,OK evaluated=None hurt=None code=
+2,1792717777950,15003,safe-basic,1.547,179.4,2.475,OK evaluated=None hurt=None code=
+3,1792717794136,15001,safe-basic,1.664,179.1,2.554,OK evaluated=None hurt=None code=
+4,1792717810356,15004,safe-basic,1.372,168.8,2.966,OK evaluated=None hurt=None code=

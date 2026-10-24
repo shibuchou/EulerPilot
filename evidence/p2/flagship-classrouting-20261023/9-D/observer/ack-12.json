@@ -1,0 +1,24 @@
+{
+  "accepted": {
+    "expert": "latency-balanced",
+    "observed_at_ms": 1792765682991,
+    "window_ms": 5006,
+    "workload": "svc-resident"
+  },
+  "adverse_experts": {},
+  "observed_generation": 3,
+  "request_id": "req-259e03675e4e0bce",
+  "status": "OK",
+  "switch_outcome": {
+    "comparable": false,
+    "detail": "comparative check not run: declared sensitivity is finer than p99 noise 15.7%",
+    "evaluated": true,
+    "from": "safe-basic",
+    "hurt": false,
+    "noise_bg_progress_pct": 2.611374692023013,
+    "noise_p99_pct": 15.687558754180206,
+    "to": "latency-balanced",
+    "windows_observed": 1,
+    "windows_required": 2
+  }
+}

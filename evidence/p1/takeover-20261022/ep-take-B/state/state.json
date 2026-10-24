@@ -1,0 +1,12 @@
+{
+  "apiVersion": "eulerpilot.io/v1alpha1",
+  "generation": 0,
+  "instance_id": "inst-cd71027a8fbc1af1",
+  "lease": {
+    "expires_at": "2026-10-22T10:49:50.925Z",
+    "expires_ms": 1792666190925,
+    "fence_epoch": 1,
+    "owner": "cli-3a37df3adcfaf859"
+  },
+  "updated_at": "2026-10-22T10:49:20.925Z"
+}

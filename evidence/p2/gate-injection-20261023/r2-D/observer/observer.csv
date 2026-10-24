@@ -1,0 +1,15 @@
+cycle,observed_at_ms,window_ms,expert,p99_ms,bg_units,bg_wait_ms,ack
+1,1792800879105,5004,safe-basic,0.105,164.3,0.168,OK evaluated=None hurt=None code=
+2,1792800885363,5003,safe-basic,0.150,163.7,0.337,OK evaluated=None hurt=None code=
+3,1792800891664,5004,safe-basic,0.136,163.9,0.253,OK evaluated=None hurt=None code=
+4,1792800897922,5005,safe-basic,2.135,176.0,2.050,OK evaluated=None hurt=None code=
+5,1792800904237,5003,safe-basic,3.237,179.9,3.763,OK evaluated=None hurt=None code=
+6,1792800910588,5004,safe-basic,2.111,178.7,4.034,OK evaluated=None hurt=None code=
+7,1792800916917,5004,safe-basic,2.414,179.5,3.281,OK evaluated=None hurt=None code=
+8,1792800923279,5002,safe-basic,2.165,179.7,2.888,OK evaluated=None hurt=None code=
+9,1792800929631,5004,safe-basic,2.116,179.9,3.504,OK evaluated=None hurt=None code=
+10,1792800936005,5003,safe-basic,2.144,179.7,2.786,OK evaluated=None hurt=None code=
+11,1792800942345,5002,safe-basic,2.161,179.9,1.814,OK evaluated=None hurt=None code=
+12,1792800948707,5002,safe-basic,2.031,177.8,2.077,OK evaluated=None hurt=None code=
+13,1792800955074,5003,safe-basic,0.129,163.1,0.578,OK evaluated=None hurt=None code=
+14,1792800961352,5002,safe-basic,0.200,164.9,0.495,OK evaluated=False hurt=None code=

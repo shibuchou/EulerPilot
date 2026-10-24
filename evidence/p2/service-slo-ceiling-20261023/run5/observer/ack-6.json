@@ -1,0 +1,23 @@
+{
+  "accepted": {
+    "expert": "safe-basic",
+    "observed_at_ms": 1792720840256,
+    "window_ms": 15002,
+    "workload": "svc-resident"
+  },
+  "adverse_experts": {},
+  "observed_generation": 5,
+  "request_id": "req-a9587ba53891fb65",
+  "status": "OK",
+  "switch_outcome": {
+    "comparable": true,
+    "evaluated": true,
+    "from": "latency-balanced",
+    "hurt": false,
+    "noise_bg_progress_pct": 0.0,
+    "noise_p99_pct": 0.0,
+    "to": "safe-basic",
+    "windows_observed": 1,
+    "windows_required": 2
+  }
+}

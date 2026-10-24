@@ -1,0 +1,10 @@
+{
+  "alert_max_age_ms": 60000,
+  "breaches": 0,
+  "heartbeat_limit_ms": 60000,
+  "max_heartbeat_age_ms": 5690,
+  "max_observation_age_ms_seen": 6347,
+  "polls": 12,
+  "status_failures": 0,
+  "verdict": "clean"
+}

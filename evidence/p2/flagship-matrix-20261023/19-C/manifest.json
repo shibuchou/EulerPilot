@@ -1,0 +1,45 @@
+{
+  "arm": "C",
+  "bg_unit": "service_load_probe bg window (same producer as the online gate)",
+  "binaries": {
+    "ep": "80da78b867526da1e971c589f6b264bbbc09d05c2bb1f5bda5ea82fdf3993871",
+    "ep-executord": "a1ac7715c0ce68b7bc2245e549fd4c4aef624f9c93843878df362f68ef9d23fb",
+    "ep-sched-loader": "45bdc3c0d64c8ab773d7bca0a4de0cbf81b5a6b4aaa1485822cf83405e52f8f7",
+    "redis_matrix_sp3.sh": "f2b78bfb76edac856b3ea4ee7b4f3acac09452040f775051b5e2c86156593b7a",
+    "redis_openloop_probe": "86b62652aed2821ef3d9cf2cab0011923ca870348f80db94c253a890cbe6562b",
+    "service_load_probe": "95cb89e6c8e2074c4f6d45078622d68e2eccf0feec98eab2c55a2b8d9ff95a6f"
+  },
+  "block": 19,
+  "cpus": 8,
+  "kernel": "6.6.0-schedpilot-sp3",
+  "loadavg_before": [
+    2.1533203125,
+    1.97509765625,
+    1.88427734375
+  ],
+  "online_gate": {
+    "bg_window_s": 5,
+    "max_bg_wait_ms": 50.0,
+    "max_foreground_p99_ms": 10.0,
+    "min_bg_work_units_per_sec": 140.0
+  },
+  "sched_ext_at_start": "disabled",
+  "seed": 20261024,
+  "started_at": "2026-10-23T10:20:44+00:00",
+  "workload": {
+    "conns": 8,
+    "generator": "redis_openloop_probe (paced, per-request raw records)",
+    "io_threads": 1,
+    "keypool": 100000,
+    "measure_s": 60,
+    "offered_rps": 60000.0,
+    "persistence": "appendonly no; save ''",
+    "populate_requests": 100000,
+    "port": 7797,
+    "redis_version": "build=2bca19bd4223c1c8",
+    "slo_ms": 5.0,
+    "timeout_ms": 50.0,
+    "value_bytes": 64,
+    "warmup_s": 10
+  }
+}

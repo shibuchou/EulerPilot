@@ -1,0 +1,84 @@
+{
+  "action_id": "act-f3231a02d033c93b248206a2",
+  "checks": [
+    {
+      "detail": "sched_ext disabled, pins empty, enable_seq=1387",
+      "name": "probe",
+      "ok": true
+    },
+    {
+      "detail": "params prepared",
+      "name": "plan",
+      "ok": true
+    },
+    {
+      "detail": "matrix-d-adaptive/class/safe-basic",
+      "name": "policy",
+      "ok": true
+    },
+    {
+      "detail": "2 cgroup binding(s)",
+      "name": "targets",
+      "ok": true
+    },
+    {
+      "detail": "snap-ba097597ca127b73641652e5e7a4b7a0",
+      "name": "snapshot",
+      "ok": true
+    },
+    {
+      "detail": "applied",
+      "name": "apply",
+      "ok": true
+    },
+    {
+      "detail": "loader pid=331431 mode=class enable_seq=1388",
+      "name": "verify",
+      "ok": true
+    }
+  ],
+  "error": null,
+  "observed_generation": 1,
+  "policy_sha256": "5c179ddc8ab19e0df9016b37199e6f04d33f907e9ca26dea7158c3e1d101efc2",
+  "request_id": "req-73491fbd0802f36c7829c656",
+  "rollback": {
+    "attempted": false,
+    "detail": "",
+    "status": "NOT_NEEDED"
+  },
+  "snapshot_id": "snap-ba097597ca127b73641652e5e7a4b7a0",
+  "status": "VERIFIED",
+  "target_bindings": [
+    {
+      "boot_id": "400be773-ed44-4c2d-b24e-0eae2e97acea",
+      "cgroup_id": 48688,
+      "class": "",
+      "device": 26,
+      "effective_class": "",
+      "identity": "cgroup2-kernfs",
+      "inode": 48688,
+      "kind": "cgroup",
+      "path": "/sys/fs/cgroup/matrix-scope/8-svc",
+      "pid": 0,
+      "role": "FOREGROUND",
+      "role_source": "explicit",
+      "starttime": 0
+    },
+    {
+      "boot_id": "400be773-ed44-4c2d-b24e-0eae2e97acea",
+      "cgroup_id": 48707,
+      "class": "",
+      "device": 26,
+      "effective_class": "BG",
+      "identity": "cgroup2-kernfs",
+      "inode": 48707,
+      "kind": "cgroup",
+      "path": "/sys/fs/cgroup/matrix-scope/8-bg",
+      "pid": 0,
+      "role": "BACKGROUND",
+      "role_source": "explicit",
+      "starttime": 0
+    }
+  ],
+  "transaction_id": "txn-cc6b5e855a69efeec6817afb"
+}

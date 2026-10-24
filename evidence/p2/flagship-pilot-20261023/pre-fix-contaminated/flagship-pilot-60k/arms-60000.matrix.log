@@ -1,0 +1,23 @@
+seed=20261024 arms=A0 C D measure=60s offered=60000rps conns=8
+1 C A0 D
+2 C A0 D
+block 1 arm C done 05:17:07
+block 1 arm A0 done 05:19:18
+block 1 arm D done 05:21:31
+block 2 arm C done 05:23:43
+block 2 arm A0 done 05:25:54
+block 2 arm D done 05:28:07
+blocks collected: 6
+A0 get n=2 goodput@SLO median 58405 rps | achieved 60001 | timeouts 0 stalls 0 cpu/s 0.63 | samples 7200284 | attach disabled
+A0 set n=2 goodput@SLO median 58576 rps | achieved 60002 | timeouts 0 stalls 0 cpu/s 0.64 | samples 7200280 | attach disabled
+   A0 bg units/s (median of window medians) 164.2
+C get n=2 goodput@SLO median 59175 rps | achieved 60002 | timeouts 0 stalls 0 cpu/s 0.47 | samples 7200280 | attach disabled
+C set n=2 goodput@SLO median 58196 rps | achieved 60001 | timeouts 0 stalls 0 cpu/s 0.63 | samples 7200283 | attach disabled
+   C bg units/s (median of window medians) 164.8
+D get n=2 goodput@SLO median 59982 rps | achieved 60002 | timeouts 0 stalls 0 cpu/s 0.35 | samples 7200272 | attach disabled
+D set n=2 goodput@SLO median 58813 rps | achieved 60000 | timeouts 0 stalls 0 cpu/s 0.47 | samples 7200283 | attach disabled
+   D bg units/s (median of window medians) 164.3
+
+NOTE block counts here are a harness smoke, not the flagship sample; the table is
+recomputable from raw-*.bin (protocol: raw records must rebuild the numbers).
+cleanup rc=0 state=disabled pins=0

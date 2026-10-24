@@ -1,0 +1,11 @@
+cycle,observed_at_ms,window_ms,expert,p99_ms,bg_units,bg_wait_ms,ack
+1,1792831060023,5004,safe-basic,0.630,170.3,1.604,OK evaluated=None hurt=None code=
+2,1792831066244,5002,safe-basic,1.365,179.2,2.492,OK evaluated=None hurt=None code=
+3,1792831072472,5003,safe-basic,1.034,179.7,2.677,OK evaluated=None hurt=None code=
+4,1792831078693,5005,safe-basic,3.031,174.9,20.559,OK evaluated=False hurt=None code=
+5,1792831084925,5000,latency-balanced,1.111,179.2,3.006,OK evaluated=True hurt=False code=
+6,1792831091146,5005,latency-balanced,1.573,179.3,1.953,OK evaluated=None hurt=None code=
+7,1792831097362,5001,latency-balanced,1.498,178.6,2.337,OK evaluated=None hurt=None code=
+8,1792831103589,5004,latency-balanced,1.184,179.3,3.039,OK evaluated=None hurt=None code=
+9,1792831109801,5004,latency-balanced,1.144,179.3,3.067,OK evaluated=None hurt=None code=
+10,1792831116023,5000,latency-balanced,0.802,179.6,2.550,OK evaluated=None hurt=None code=

@@ -1,0 +1,4 @@
+[executord] autopilot enabled owner=autopilot-v2 baseline=gateinj-d expert=safe-basic min_interval_ms=3000 dwell_ms=5000 candidate_hold_ms=5000 budget=8/900000ms outcome_windows=2
+[executord] ready state_dir=/tmp/ep-gate-injection/state socket=/tmp/ep-gate-injection/executor.sock skill=sched instance=inst-2c2b0c576de7dd27 generation=0 degraded=false
+[executor] autopilot switched safe-basic -> latency-balanced; switch 1/8 in 900000ms window, projected unprotected 665ms
+[executord] shutting down

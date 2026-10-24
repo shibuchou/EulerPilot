@@ -1,0 +1,22 @@
+{
+  "accepted": {
+    "expert": "latency-balanced",
+    "observed_at_ms": 1792686497799,
+    "window_ms": 12006,
+    "workload": "svc-sp3"
+  },
+  "adverse_experts": {},
+  "observed_generation": 3,
+  "request_id": "req-c1ecc8ad3b5cc977",
+  "status": "OK",
+  "switch_outcome": {
+    "code": "FOREGROUND_REGRESSED",
+    "detail": "foreground p99 1.922978ms exceeds 5.000000% over the pre-switch 1.451745ms",
+    "evaluated": true,
+    "from": "safe-basic",
+    "hurt": false,
+    "to": "latency-balanced",
+    "windows_observed": 1,
+    "windows_required": 2
+  }
+}

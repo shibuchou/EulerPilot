@@ -1,0 +1,8 @@
+[executord] autopilot enabled owner=autopilot-v2 baseline=slo-feedback expert=safe-basic min_interval_ms=3000 dwell_ms=1000 candidate_hold_ms=1000 budget=10/600000ms outcome_windows=2
+[executord] ready state_dir=/tmp/ep-slo/state socket=/tmp/ep-slo/executor.sock skill=sched-ref instance=inst-a9c27a48c49506ca generation=0 degraded=false
+[executor] autopilot switched safe-basic -> latency-balanced; switch 1/10 in 600000ms window, projected unprotected 665ms
+[executor] suspected FOREGROUND_REGRESSED in window 1 of 2 for latency-balanced; confirming
+[executor] service evidence against latency-balanced: FOREGROUND_REGRESSED (foreground p99 1.685044ms exceeds 5.000000% over the pre-switch 1.451745ms) over 2 windows
+[executor] autopilot switched latency-balanced -> safe-basic; switch 2/10 in 600000ms window, projected unprotected 1330ms
+[executor] suspected BG_PROGRESS_REGRESSED in window 1 of 2 for safe-basic; confirming
+[executor] service evidence against safe-basic: BG_PROGRESS_REGRESSED (background progress ratio 0.380825 below declared 0.500000) over 2 windows

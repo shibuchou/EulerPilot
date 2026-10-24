@@ -1,0 +1,33 @@
+# E 臂补充矩阵:参考 schedpilotd 对照(新旧控制面一致性,2026-10-25)
+
+协议 §3 的 E 臂:参考 daemon(`schedpilotd`,P0 构建 `/root/p0/schedpilot-0aeca0c/`,
+二进制哈希入每块 manifest)与 v2 在同负载下对照。冻结构建 `370180b` 同一冻结二进制集;
+预注册 `experiments/flagship_params_earms.json`(10 block × A0/E、同旗舰工作负载/SLO/
+gate、seed 20261027)。E 臂运行方式:参考 loader `scx_schedpilot --mode class` 挂载并
+持有 link,`schedpilotd` 写 cfg/class map(它自己不 attach——这是本轮调试出的
+事实:daemon 只写 pinned map);停止走优雅 TERM,收尾 `state=disabled`、pins=0。
+先以 1 block 冒烟(n=1)验证整链,再跑正式 10 block。
+
+## 1. 完整性
+
+20/20 臂有效、`CHECK_RAW_REBUILDS_SUMMARY=yes`(≤0.5%)、驱动 rc=0。
+
+## 2. 结果(配对 vs A0,n=10)
+
+| 对照 | goodput@5ms | 胜/负 | p99 | BG |
+|---|---|---|---|---|
+| **E vs A0 GET** | **+1.92% [0.94, 2.17]** | **10/0** | **−49.4%** | ×1.006 |
+| E vs A0 SET | +0.03% [−0.56, 0.73] | 5/5 | −6.8% | ×1.006 |
+
+阈值敏感性:GET **@1ms +7.0%、@2ms +4.4%**(远尾收益明显);SET 各档 ≈0。
+
+## 3. 读数
+
+参考控制面在该负载上 GET 收益与 v2 的 C(重跑轮 +1.83%)同量级,SET 打平——
+**新旧控制面一致性成立**(R6 的 E 臂判据:同块配对、给 CI 与胜负数,已满足)。
+探索性观察(须标明):E 的 @1ms +7.0% 高于 v2 C 的 +2.5%,参考实现在 1ms 极尾
+上可能更好,n=10 不足以定论。与 B 臂结论拼起来:该负载上同量级收益既不依赖 v2
+控制面、也不依赖分类——两套系统都主要吃到数据面切片/预算形态的红利。
+
+边界:单机单负载单 SLO;n=10;E 的分类器参数用参考实现默认值(其 P0 形态),
+没有为这台机器调优——对比语义是"参考实现原样 vs v2 原样"。

@@ -1,0 +1,35 @@
+1792728941716 STALE_EPISODE channel went stale 1 time(s) between polls (high-water 11798ms)
+1792728941743 STALE_NOW the live measurement is already stale: age 11876ms > 2 x window 5005ms
+1792728943917 STALE_EPISODE channel went stale 1 time(s) between polls (high-water 13807ms)
+1792728943938 STALE_NOW the live measurement is already stale: age 14042ms > 2 x window 5005ms
+1792728946120 STALE_EPISODE channel went stale 1 time(s) between polls (high-water 15816ms)
+1792728946144 STALE_MEMORY the channel was dark for at least 15816ms (alert limit 15000ms)
+1792728946176 STALE_NOW the live measurement is already stale: age 16245ms > 2 x window 5005ms
+1792728946244 PRODUCER_SILENT producer heartbeat is 17212ms old (limit 15000ms)
+1792728948410 STALE_EPISODE channel went stale 1 time(s) between polls (high-water 17825ms)
+1792728948443 STALE_MEMORY the channel was dark for at least 17825ms (alert limit 15000ms)
+1792728948475 STALE_NOW the live measurement is already stale: age 18531ms > 2 x window 5005ms
+1792728948544 PRODUCER_SILENT producer heartbeat is 19513ms old (limit 15000ms)
+1792728950707 STALE_EPISODE channel went stale 1 time(s) between polls (high-water 19835ms)
+1792728950739 STALE_MEMORY the channel was dark for at least 19835ms (alert limit 15000ms)
+1792728950777 STALE_NOW the live measurement is already stale: age 20832ms > 2 x window 5005ms
+1792728950844 PRODUCER_SILENT producer heartbeat is 21813ms old (limit 15000ms)
+1792728952998 STALE_EPISODE channel went stale 1 time(s) between polls (high-water 21844ms)
+1792728953029 STALE_MEMORY the channel was dark for at least 21844ms (alert limit 15000ms)
+1792728953060 STALE_NOW the live measurement is already stale: age 23126ms > 2 x window 5005ms
+1792728953125 PRODUCER_SILENT producer heartbeat is 24094ms old (limit 15000ms)
+1792728955256 STALE_EPISODE channel went stale 1 time(s) between polls (high-water 23853ms)
+1792728955277 STALE_MEMORY the channel was dark for at least 23853ms (alert limit 15000ms)
+1792728955295 STALE_NOW the live measurement is already stale: age 25410ms > 2 x window 5005ms
+1792728955359 PRODUCER_SILENT producer heartbeat is 26327ms old (limit 15000ms)
+1792728957508 STALE_EPISODE channel went stale 3 time(s) between polls (high-water 26037ms)
+1792728957538 STALE_MEMORY the channel was dark for at least 26037ms (alert limit 15000ms)
+1792728957566 STALE_NOW the live measurement is already stale: age 21527ms > 2 x window 5005ms
+1792728957596 REJECTIONS control plane refused 1 more observation(s): observation is too old to describe the present
+1792728957661 PRODUCER_SILENT producer heartbeat is 28631ms old (limit 15000ms)
+1792728959822 STALE_EPISODE channel went stale 2 time(s) between polls (high-water 26037ms)
+1792728959855 STALE_MEMORY the channel was dark for at least 26037ms (alert limit 15000ms)
+1792728959888 STALE_NOW the live measurement is already stale: age 23840ms > 2 x window 5005ms
+1792728959953 PRODUCER_SILENT producer heartbeat is 30922ms old (limit 15000ms)
+1792728962113 STALE_MEMORY the channel was dark for at least 26037ms (alert limit 15000ms)
+1792728962186 PRODUCER_SILENT producer heartbeat is 33154ms old (limit 15000ms)

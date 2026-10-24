@@ -1,0 +1,21 @@
+{
+  "action_id": "",
+  "checks": [],
+  "error": {
+    "code": "GENERATION_CONFLICT",
+    "detail": "committed generation 1, current 3",
+    "message": "later policy changes exist; rollback would discard them"
+  },
+  "observed_generation": 3,
+  "policy_sha256": "",
+  "request_id": "req-b56e2fd9895086b5d5e68771",
+  "rollback": {
+    "attempted": false,
+    "detail": "",
+    "status": "NOT_NEEDED"
+  },
+  "snapshot_id": "",
+  "status": "REJECTED",
+  "target_bindings": [],
+  "transaction_id": ""
+}

@@ -1,0 +1,84 @@
+{
+  "action_id": "act-0d09baa4e32e7c9ade1d0daf",
+  "checks": [
+    {
+      "detail": "sched_ext disabled, pins empty, enable_seq=1358",
+      "name": "probe",
+      "ok": true
+    },
+    {
+      "detail": "params prepared",
+      "name": "plan",
+      "ok": true
+    },
+    {
+      "detail": "matrix-c/class/latency-balanced",
+      "name": "policy",
+      "ok": true
+    },
+    {
+      "detail": "2 cgroup binding(s)",
+      "name": "targets",
+      "ok": true
+    },
+    {
+      "detail": "snap-dce4361ec34255bed7f636196f0206f3",
+      "name": "snapshot",
+      "ok": true
+    },
+    {
+      "detail": "applied",
+      "name": "apply",
+      "ok": true
+    },
+    {
+      "detail": "loader pid=321554 mode=class enable_seq=1359",
+      "name": "verify",
+      "ok": true
+    }
+  ],
+  "error": null,
+  "observed_generation": 1,
+  "policy_sha256": "d280af1fdbd08eabd9d42d9d5e395405fffe9c235e500b6ea31b37356552330b",
+  "request_id": "req-67fb7e92a72d6f4ef1f8e3a5",
+  "rollback": {
+    "attempted": false,
+    "detail": "",
+    "status": "NOT_NEEDED"
+  },
+  "snapshot_id": "snap-dce4361ec34255bed7f636196f0206f3",
+  "status": "VERIFIED",
+  "target_bindings": [
+    {
+      "boot_id": "400be773-ed44-4c2d-b24e-0eae2e97acea",
+      "cgroup_id": 46604,
+      "class": "",
+      "device": 26,
+      "effective_class": "",
+      "identity": "cgroup2-kernfs",
+      "inode": 46604,
+      "kind": "cgroup",
+      "path": "/sys/fs/cgroup/matrix-scope/3-svc",
+      "pid": 0,
+      "role": "FOREGROUND",
+      "role_source": "explicit",
+      "starttime": 0
+    },
+    {
+      "boot_id": "400be773-ed44-4c2d-b24e-0eae2e97acea",
+      "cgroup_id": 46623,
+      "class": "",
+      "device": 26,
+      "effective_class": "BG",
+      "identity": "cgroup2-kernfs",
+      "inode": 46623,
+      "kind": "cgroup",
+      "path": "/sys/fs/cgroup/matrix-scope/3-bg",
+      "pid": 0,
+      "role": "BACKGROUND",
+      "role_source": "explicit",
+      "starttime": 0
+    }
+  ],
+  "transaction_id": "txn-25a5253fabac0a0e1ad88137"
+}

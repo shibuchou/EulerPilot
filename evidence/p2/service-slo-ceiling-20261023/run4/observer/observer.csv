@@ -1,0 +1,7 @@
+cycle,observed_at_ms,window_ms,expert,p99_ms,bg_units,bg_wait_ms,ack
+1,1792720222367,15003,safe-basic,0.138,164.9,0.994,OK evaluated=None hurt=None code=
+2,1792720238679,15003,safe-basic,2.526,179.7,2.541,OK evaluated=None hurt=None code=
+3,1792720255027,15004,safe-basic,2.006,179.3,2.051,OK evaluated=None hurt=None code=
+4,1792720271347,15003,safe-basic,1.304,168.3,2.035,OK evaluated=None hurt=None code=
+5,1792720287656,15003,safe-basic,0.143,165.2,2.313,OK evaluated=None hurt=None code=
+6,1792720303967,15005,safe-basic,0.133,164.5,0.523,OK evaluated=True hurt=False code=

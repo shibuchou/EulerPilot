@@ -1,0 +1,4 @@
+[executord] autopilot enabled owner=autopilot-v2 baseline=pilot-adaptive expert=latency-balanced min_interval_ms=3000 dwell_ms=10000 candidate_hold_ms=5000 budget=4/600000ms outcome_windows=2
+[executord] ready state_dir=/tmp/ep-pilot/state socket=/tmp/ep-pilot/executor.sock skill=sched instance=inst-c49ac666f4c481a3 generation=0 degraded=false
+[executor] autopilot switched latency-balanced -> safe-basic; switch 1/4 in 600000ms window, projected unprotected 665ms
+[executord] shutting down

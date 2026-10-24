@@ -1,0 +1,21 @@
+{
+  "action_id": "",
+  "checks": [],
+  "error": {
+    "code": "SCHEMA_INVALID",
+    "detail": "spec.safety.max_bg_wait_ms must be an integer",
+    "message": "policy validation failed"
+  },
+  "observed_generation": 0,
+  "policy_sha256": "",
+  "request_id": "req-cdd5791f842c9c14603cbecb",
+  "rollback": {
+    "attempted": false,
+    "detail": "",
+    "status": "NOT_NEEDED"
+  },
+  "snapshot_id": "",
+  "status": "REJECTED",
+  "target_bindings": [],
+  "transaction_id": ""
+}

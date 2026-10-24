@@ -1,0 +1,1 @@
+[executord] ready state_dir=/tmp/ep-matrix/state socket=/tmp/ep-matrix/executor.sock skill=mock instance=inst-0d792359b802ee10 generation=0 degraded=false

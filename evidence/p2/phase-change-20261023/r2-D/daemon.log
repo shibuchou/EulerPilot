@@ -1,0 +1,5 @@
+[executord] autopilot enabled owner=autopilot-v2 baseline=phase-d expert=safe-basic min_interval_ms=3000 dwell_ms=20000 candidate_hold_ms=10000 budget=8/900000ms outcome_windows=2
+[executord] ready state_dir=/tmp/ep-phase-change/state socket=/tmp/ep-phase-change/executor.sock skill=sched instance=inst-a2c88d4370c61bd9 generation=0 degraded=false
+[executor] autopilot switched safe-basic -> latency-balanced; switch 1/8 in 900000ms window, projected unprotected 665ms
+[executor] latency-balanced: comparative check not run: declared sensitivity is finer than p99 noise 26.5%
+[executord] shutting down

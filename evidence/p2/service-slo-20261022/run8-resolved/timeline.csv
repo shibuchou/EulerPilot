@@ -1,0 +1,13 @@
+round,phase,active_expert,switches,gate,p99_ms,bg_units,bg_wait_ms
+1,loaded_before,safe-basic,0,lease held by cli-e1971b84aa0f2b22,2.005,181.1,2.304
+2,loaded_before,safe-basic,0,lease held by cli-e1971b84aa0f2b22,1.212,180.9,3.557
+3,loaded_after,latency-balanced,1,already in place: latency-balanced,1.830,181.0,2.551
+4,loaded2,latency-balanced,1,already in place: latency-balanced,1.639,180.9,2.563
+5,returning,latency-balanced,1,already in place: latency-balanced,0.098,165.3,0.457
+6,returning,latency-balanced,1,already in place: latency-balanced,0.121,163.6,1.414
+7,returning,latency-balanced,1,already in place: latency-balanced,0.124,163.4,0.239
+8,returning,latency-balanced,1,already in place: latency-balanced,0.105,163.2,0.158
+9,returning,latency-balanced,1,already in place: latency-balanced,0.136,163.8,0.220
+10,returning,latency-balanced,1,already in place: latency-balanced,0.136,170.9,0.378
+11,returning,latency-balanced,1,already in place: latency-balanced,0.138,162.7,0.150
+12,returning,latency-balanced,1,routing target stable 0ms of 1000ms required,0.117,167.4,0.293

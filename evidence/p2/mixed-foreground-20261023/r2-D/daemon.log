@@ -1,0 +1,5 @@
+[executord] autopilot enabled owner=autopilot-v2 baseline=mixed-fg expert=safe-basic min_interval_ms=3000 dwell_ms=20000 candidate_hold_ms=10000 budget=8/900000ms outcome_windows=2
+[executord] ready state_dir=/tmp/ep-mixed-fg/state socket=/tmp/ep-mixed-fg/executor.sock skill=sched instance=inst-c41d29c0e44a6c82 generation=0 degraded=false
+[executor] autopilot switched safe-basic -> latency-balanced; switch 1/8 in 900000ms window, projected unprotected 665ms
+[executor] latency-balanced: comparative check not run: declared sensitivity is finer than p99 noise 116.7%
+[executord] shutting down

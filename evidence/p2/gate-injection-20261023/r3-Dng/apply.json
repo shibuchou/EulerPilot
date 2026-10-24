@@ -1,0 +1,84 @@
+{
+  "action_id": "act-330e42255d6faf5a66ac5eed",
+  "checks": [
+    {
+      "detail": "sched_ext disabled, pins empty, enable_seq=1618",
+      "name": "probe",
+      "ok": true
+    },
+    {
+      "detail": "params prepared",
+      "name": "plan",
+      "ok": true
+    },
+    {
+      "detail": "gateinj-dng/class/safe-basic",
+      "name": "policy",
+      "ok": true
+    },
+    {
+      "detail": "2 cgroup binding(s)",
+      "name": "targets",
+      "ok": true
+    },
+    {
+      "detail": "snap-45c6a61f5cf4882e0997d5a58cc331c5",
+      "name": "snapshot",
+      "ok": true
+    },
+    {
+      "detail": "applied",
+      "name": "apply",
+      "ok": true
+    },
+    {
+      "detail": "loader pid=396148 mode=class enable_seq=1619",
+      "name": "verify",
+      "ok": true
+    }
+  ],
+  "error": null,
+  "observed_generation": 1,
+  "policy_sha256": "3a8022455a2198cbc4ac887e6ea10cbe947cfad9dc154534804a4dc5cc7ad21d",
+  "request_id": "req-416751d959ee9b7a51286c8c",
+  "rollback": {
+    "attempted": false,
+    "detail": "",
+    "status": "NOT_NEEDED"
+  },
+  "snapshot_id": "snap-45c6a61f5cf4882e0997d5a58cc331c5",
+  "status": "VERIFIED",
+  "target_bindings": [
+    {
+      "boot_id": "400be773-ed44-4c2d-b24e-0eae2e97acea",
+      "cgroup_id": 58260,
+      "class": "",
+      "device": 26,
+      "effective_class": "",
+      "identity": "cgroup2-kernfs",
+      "inode": 58260,
+      "kind": "cgroup",
+      "path": "/sys/fs/cgroup/gateinj-svc",
+      "pid": 0,
+      "role": "FOREGROUND",
+      "role_source": "explicit",
+      "starttime": 0
+    },
+    {
+      "boot_id": "400be773-ed44-4c2d-b24e-0eae2e97acea",
+      "cgroup_id": 58302,
+      "class": "",
+      "device": 26,
+      "effective_class": "BG",
+      "identity": "cgroup2-kernfs",
+      "inode": 58302,
+      "kind": "cgroup",
+      "path": "/sys/fs/cgroup/gateinj-bg",
+      "pid": 0,
+      "role": "BACKGROUND",
+      "role_source": "explicit",
+      "starttime": 0
+    }
+  ],
+  "transaction_id": "txn-b8581d1919907bfdd0afdaf5"
+}

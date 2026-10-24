@@ -1,0 +1,28 @@
+{
+  "action_id": "rbk-1077bd2a853b5f625058901f",
+  "checks": [
+    {
+      "detail": "detached and removed 5 owned pin(s)",
+      "name": "rollback",
+      "ok": true
+    },
+    {
+      "detail": "detached, pins cleaned, runtime marker removed",
+      "name": "verify",
+      "ok": true
+    }
+  ],
+  "error": null,
+  "observed_generation": 2,
+  "policy_sha256": "161e8b007ab288f0600fde4a22e1e23a4dbd17697e70b11da21e4378f859b450",
+  "request_id": "req-95fa44525ae8dae36cfb632c",
+  "rollback": {
+    "attempted": true,
+    "detail": "detached and removed 5 owned pin(s)",
+    "status": "ROLLED_BACK"
+  },
+  "snapshot_id": "snap-b55d74cd156b2d0f059f414b52e294ee",
+  "status": "ROLLED_BACK",
+  "target_bindings": [],
+  "transaction_id": "txn-b82e5d79f338ecb33174042f"
+}
