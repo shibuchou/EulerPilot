@@ -1,0 +1,115 @@
+2026-10-24T09:38:56+00:00 pin dirs at scenario start: 0
+{
+  "action_id": "act-3b54afb3e9c8fe4a060f43b7",
+  "checks": [
+    {
+      "detail": "sched_ext disabled, pins empty, enable_seq=1742",
+      "name": "probe",
+      "ok": true
+    },
+    {
+      "detail": "params prepared",
+      "name": "plan",
+      "ok": true
+    },
+    {
+      "detail": "fault-s01/class/latency-balanced",
+      "name": "policy",
+      "ok": true
+    },
+    {
+      "detail": "2 cgroup binding(s)",
+      "name": "targets",
+      "ok": true
+    },
+    {
+      "detail": "snap-a1bc24e1842b8f964cae62cbb796e8ce",
+      "name": "snapshot",
+      "ok": true
+    },
+    {
+      "detail": "applied",
+      "name": "apply",
+      "ok": true
+    },
+    {
+      "detail": "loader pid=432038 mode=class enable_seq=1743",
+      "name": "verify",
+      "ok": true
+    }
+  ],
+  "error": null,
+  "observed_generation": 1,
+  "policy_sha256": "31f3a5a30bbc9a119bd9ba1fabc00fe525aeea330fefbfb1c43a047d46a2dec7",
+  "request_id": "req-9fa6f1318dc26590a3d216de",
+  "rollback": {
+    "attempted": false,
+    "detail": "",
+    "status": "NOT_NEEDED"
+  },
+  "snapshot_id": "snap-a1bc24e1842b8f964cae62cbb796e8ce",
+  "status": "VERIFIED",
+  "target_bindings": [
+    {
+      "boot_id": "400be773-ed44-4c2d-b24e-0eae2e97acea",
+      "cgroup_id": 60096,
+      "class": "LAT",
+      "device": 26,
+      "effective_class": "LAT",
+      "identity": "cgroup2-kernfs",
+      "inode": 60096,
+      "kind": "cgroup",
+      "path": "/sys/fs/cgroup/fault-matrix/svc",
+      "pid": 0,
+      "role": "FOREGROUND",
+      "role_source": "explicit",
+      "starttime": 0
+    },
+    {
+      "boot_id": "400be773-ed44-4c2d-b24e-0eae2e97acea",
+      "cgroup_id": 60115,
+      "class": "",
+      "device": 26,
+      "effective_class": "BG",
+      "identity": "cgroup2-kernfs",
+      "inode": 60115,
+      "kind": "cgroup",
+      "path": "/sys/fs/cgroup/fault-matrix/bg",
+      "pid": 0,
+      "role": "BACKGROUND",
+      "role_source": "explicit",
+      "starttime": 0
+    }
+  ],
+  "transaction_id": "txn-25f614a4a54a5eed48fbd970"
+}
+2026-10-24T09:38:57+00:00 kernel class_map read-back while active: svc=LAT bg=BG
+{
+  "action_id": "rbk-d28db9030f1b91ddd84feb79",
+  "checks": [
+    {
+      "detail": "detached and removed 5 owned pin(s)",
+      "name": "rollback",
+      "ok": true
+    },
+    {
+      "detail": "detached, pins cleaned, runtime marker removed; no class or cfg outlives the unpin",
+      "name": "verify",
+      "ok": true
+    }
+  ],
+  "error": null,
+  "observed_generation": 2,
+  "policy_sha256": "31f3a5a30bbc9a119bd9ba1fabc00fe525aeea330fefbfb1c43a047d46a2dec7",
+  "request_id": "req-cb50b0b1dbe3a6838912e9d9",
+  "rollback": {
+    "attempted": true,
+    "detail": "detached and removed 5 owned pin(s)",
+    "status": "ROLLED_BACK"
+  },
+  "snapshot_id": "snap-a1bc24e1842b8f964cae62cbb796e8ce",
+  "status": "ROLLED_BACK",
+  "target_bindings": [],
+  "transaction_id": "txn-c3e239d3554d82f25dad3947"
+}
+2026-10-24T09:38:57+00:00 rollback reply status=ROLLED_BACK

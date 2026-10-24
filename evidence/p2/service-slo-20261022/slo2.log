@@ -1,0 +1,32 @@
+load raised; measuring the baseline under the expert that is in place
+MEASURE expert=safe-basic p99_ms=1.737 bg_units=181.0 bg_wait_ms=3.031 samples_fg=5999 samples_bg=1087
+OBSERVE ack=OK expert=safe-basic outcome_evaluated=None hurt=None code=
+ADVERSE {}
+Traceback (most recent call last):
+  File "<stdin>", line 10, in <module>
+  File "<stdin>", line 10, in <genexpr>
+TypeError: argument of type 'int' is not iterable
+lease handed to the autopilot; it should move within a couple of polls
+  switched up 10s after the round-1 measurement
+ARMED outcome_pending=True last_outcome=''
+MEASURE expert=latency-balanced p99_ms=1.942 bg_units=181.1 bg_wait_ms=1.828 samples_fg=5999 samples_bg=1087
+OBSERVE ack=OK expert=latency-balanced outcome_evaluated=True hurt=True code=FOREGROUND_REGRESSED
+OUTCOME safe-basic -> latency-balanced: foreground p99 1.942113ms exceeds 5.000000% over the pre-switch 1.737277ms
+ADVERSE {"latency-balanced": "FOREGROUND_REGRESSED: foreground p99 1.942113ms exceeds 5.000000% over the pre-switch 1.737277ms"}
+Traceback (most recent call last):
+  File "<stdin>", line 10, in <module>
+  File "<stdin>", line 10, in <genexpr>
+TypeError: argument of type 'int' is not iterable
+MEASURE expert=latency-balanced p99_ms=1.892 bg_units=180.6 bg_wait_ms=3.019 samples_fg=5998 samples_bg=1084
+OBSERVE ack=OK expert=latency-balanced outcome_evaluated=None hurt=None code=
+ADVERSE {"latency-balanced": "FOREGROUND_REGRESSED: foreground p99 1.942113ms exceeds 5.000000% over the pre-switch 1.737277ms"}
+Traceback (most recent call last):
+  File "<stdin>", line 10, in <module>
+  File "<stdin>", line 10, in <genexpr>
+TypeError: argument of type 'int' is not iterable
+now starve the declared floor from outside and see whether the autopilot stops
+SLO_AFTER_STARVE allowed=False code=SERVICE_EVIDENCE_DENIED service_evidence=present
+STARVE_HOLD=slo denied: SERVICE_EVIDENCE_DENIED
+RESULT switch_up_at_s=10 switches_before_starve=1 switches_after=1 hold=slo denied: SERVICE_EVIDENCE_DENIED
+CHECK_STARVE_STOPS_AUTOPILOT=yes
+cleanup rc=0 state=disabled pins=0

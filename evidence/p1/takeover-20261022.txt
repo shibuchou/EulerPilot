@@ -1,0 +1,98 @@
+EulerPilot v2 — 真实内核同名顶替实验（未达成，但得到架构结论并修掉一个可观测性缺陷）
+记录时间 2026-10-22，机器 schedpilot-sp3（<SP3-IP>），内核 6.6.0-schedpilot-sp3。
+用户批准范围："批准真实顶替实验"。
+
+## 1. 目的与设计
+
+验证 `Skill::liveness` 与 `enable_seq` 等值判定能否在**真实 sched_ext** 上发现顶替，
+并顺带补上"`fd_passing` 生产分支无在位性覆盖"的缺口。
+
+- A：生产路径 `--skill sched`（loader 一次性 attach 后经 SCM_RIGHTS 交 link FD 并退出，执行服务持有 FD）。
+- B：第二个 v2 实例 `--skill sched-ref`（子进程 loader），不同 state dir、不同 instance id、独立 flock。
+- 预期：B attach 使 `scx_enable_seq` +1，而 `state=enabled` 与 `root/ops=eulerpilot` 都不变，
+  A 应在约 3s 内报 `scheduler lost / enable_seq moved` 并自动回退。
+- 断言还包含"A 的回退不得破坏 B"（B 的 pin 目录与 inode 不变、调度器仍在位）。
+
+## 2. 过程中的自身错误（如实记录，共 3 次未达成运行）
+
+1. 脚本漏建 `/tmp/ep-take-{A,B}` → 两个执行服务都启动失败，实验没开始；机器全程 `disabled`、0 pin。
+2. policy 的 `spec.targets` 给了空数组 → schema 要求 1..64 项，apply 被拒 `SCHEMA_INVALID`；仍未 attach。
+3. `ep rollback` 需要 `--of/--transaction/--snapshot/--policy-sha256`，脚本收尾最初缺参数，
+   改为从 B 的 apply 响应中提取（避免失败留场）。
+以上都没有改变系统调度器状态，三次运行的收尾均为 `state=disabled`、`pins=0`、无残留进程。
+
+## 3. 第三次运行的结果
+
+```
+pre_state=disabled pre_seq=521
+A_apply: VERIFIED                       # 生产 FD 传递路径在真实内核上 attach 成功
+A_instance=inst-6a1b511cee11fe07 seq_after_A=522 ops=eulerpilot
+B_apply: RECOVERY_REQUIRED
+   {'code':'RECOVERY_REQUIRED','detail':'run transaction.reconcile',
+    'message':'executor is degraded; reconcile before applying'}
+B_instance=inst-cd71027a8fbc1af1 seq_after_B=522 ops=eulerpilot state=enabled
+A_status: degraded=False                # A 全程没有检测到任何东西，因为没有发生顶替
+```
+
+**顶替没有发生**，原因不是检测失败，而是 v2 自身的架构门禁把 B 挡在 attach 之前：
+B 启动时 `recover_orphan()` 发现 `state=enabled` 且 `root/ops` 含 `eulerpilot`，而 B 自己
+没有 runtime marker，于是判为冲突（`eulerpilot is attached but no runtime marker exists`）、
+置 `degraded=true`，其 apply 直接被 `RECOVERY_REQUIRED` 拒绝。`list_pins()` 只扫本实例目录，
+所以这不是"误把别人的 pin 当成孤儿"，而是刻意不允许第二个实例在别人持有时接管。
+
+结论：**同名顶替在 v2 内部不可达**，是"唯一写者"约束的体现。因此本轮无法用它验证顶替检测，
+三条断言全部 FAIL 属于实验设计无效，不是产品缺陷，也没有任何数据可以支持"顶替检测在真实内核上有效"。
+`evidence/p1/liveness-watch-20261022.txt` 第 5 节第 4 条的"真实顶替未验证"状态**继续成立**。
+
+顺带取得的正面证据：A 走的是 `fd_passing` 生产路径，真实 attach、`enable_seq` 从 521 发布到 522、
+`apply → VERIFIED`、收尾 detach 干净，且没有触发任何误报——这是对发布窗口修正在真实内核上的
+一次正向验证（与 `enable-seq-publish-20261022.txt` 的两轮 ctest 互补）。
+
+## 4. 附带发现并修复的真实缺陷
+
+B 的日志是 `[executor] orphan recovery failed: ` —— 冒号后是空的。原因是 `init()` 打印的是
+`recover_orphan` 的出参 `error`，而该路径的说明写在返回值的 `detail` 里，从没被使用；
+更糟的是用户侧 apply 拒绝时 detail 只有笼统的 `run transaction.reconcile`。
+也就是说：一个健康实例因别人的正常存在而拒绝启动时，**没有人能看出为什么**。
+
+修复（`src/executor/executor.cpp`、`include/ep/executor.hpp`）：
+
+- 新增 `startup_degraded_reason_`，由 `recover_orphan` 的 detail（出参为空时回退到出参）与
+  未完成事务列表共同填充，冲突时追加 `foreign resources left untouched`；
+- `policy.status` 增加 `startup_degraded_reason` 字段；
+- `policy.apply` 的 `RECOVERY_REQUIRED` detail 由笼统提示改为该原因；
+- 自动回退的原因仍由 `last_fallback` 承载，两者语义分开，不混淆启动期与运行期。
+
+修复后同一场景的日志：
+
+```
+[executor] orphan recovery failed: eulerpilot is attached but no runtime marker exists; foreign resources left untouched
+```
+
+单测 `test_startup_degraded_reason_surfaced`（假 sysfs，无需 root）断言：启动即 degraded、
+`startup_degraded_reason` 含该原因、apply 返回 `RECOVERY_REQUIRED` 且 error.detail 带上同一原因。
+
+## 5. 回归
+
+- `ctest` 6/6、0 跳过（`unit` 11.52s，含新增用例）。
+- `accept_sp3.sh` 连跑 2 轮 rc=0（`evidence/acceptance-sp3-strict-20261022-r11-round1..2.txt`，
+  末轮 `evidence/acceptance-sp3-20261022-r11/`：ctest `passed=6, skipped=0`、A/B/C liveness、
+  收尾 `state=disabled`、pins=0）。
+- 产物：`ep-executord 9510860e… → 600268435b996e69…`、`ep_unit_tests → f9423a09b4caa636…`；
+  `ep 6b33142a…`、`ep-sched-loader d29aa3bb…`、`ep-schedctl af759004…` 未变。
+- 实验现场 `/tmp/ep-take-A`、`/tmp/ep-take-B` 已删除；副本留存于
+  `evidence/p1/takeover-20261022/ep-take-{A,B}/`（含两个 daemon.log 与 apply/status JSON）。
+
+## 6. 要验证真实顶替，只剩第三方这一条路
+
+v2 自己造不出顶替，就必须让**另一个 ops 名的调度器**真 attach（例如 SchedPilot 参考实现的
+`scx_schedpilot`，`root/ops` 会变成 `schedpilot`）。这会与项目规则"对照用 schedpilotd 必须互斥运行"
+正面冲突——实验的本质就是让两套调度器时间重叠，因此需要单独确认后才做。
+
+该实验还有一个此前未设计的观测点：A 检测到失位并回退时会关闭自己那个**已 inactive 的 link FD**，
+需要观测它会不会把当时正在生效的第三方调度器一起 detach（`bpf_struct_ops_link_lops.release` 为空
+暗示不会，但未实测）。如果会，v2 的"回退"就会变成干扰邻居的动作，这属于必须知道的边界。
+
+保留待验证项：`enable_seq` 等值判定的实用价值已明显收窄——v2 内部不可达，第三方不同名时
+`ops` 检查已先命中；它仍然覆盖的场景是"外部 attach 了同样注册为 `eulerpilot` 的构建"
+以及重复 enable/重启类事件。是否值得为它保留内核级验证，等第三方实验一并决定。

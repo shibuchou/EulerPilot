@@ -1,0 +1,87 @@
+2026-10-24T10:18:50+00:00 pin dirs at scenario start: 0
+{
+  "action_id": "act-5149301082f4b374bcb0e247",
+  "checks": [
+    {
+      "detail": "sched_ext disabled, pins empty, enable_seq=1888",
+      "name": "probe",
+      "ok": true
+    },
+    {
+      "detail": "params prepared",
+      "name": "plan",
+      "ok": true
+    },
+    {
+      "detail": "fault-s07/basic/safe-basic",
+      "name": "policy",
+      "ok": true
+    },
+    {
+      "detail": "2 cgroup binding(s)",
+      "name": "targets",
+      "ok": true
+    },
+    {
+      "detail": "snap-0c9458387e22cafc28d2cb4ac32455f8",
+      "name": "snapshot",
+      "ok": true
+    },
+    {
+      "detail": "applied",
+      "name": "apply",
+      "ok": true
+    },
+    {
+      "detail": "loader pid=467766 mode=basic enable_seq=1889",
+      "name": "verify",
+      "ok": true
+    }
+  ],
+  "error": null,
+  "observed_generation": 1,
+  "policy_sha256": "e4c3c3038f8cd7e87bb3d2ec4421722d1ea743819a388662b93e47fc41c4ba84",
+  "request_id": "req-d0c3170bbb29203c984ed305",
+  "rollback": {
+    "attempted": false,
+    "detail": "",
+    "status": "NOT_NEEDED"
+  },
+  "snapshot_id": "snap-0c9458387e22cafc28d2cb4ac32455f8",
+  "status": "VERIFIED",
+  "target_bindings": [
+    {
+      "boot_id": "400be773-ed44-4c2d-b24e-0eae2e97acea",
+      "cgroup_id": 61038,
+      "class": "",
+      "device": 26,
+      "effective_class": "",
+      "identity": "cgroup2-kernfs",
+      "inode": 61038,
+      "kind": "cgroup",
+      "path": "/sys/fs/cgroup/fault-matrix/svc",
+      "pid": 0,
+      "role": "FOREGROUND",
+      "role_source": "explicit",
+      "starttime": 0
+    },
+    {
+      "boot_id": "400be773-ed44-4c2d-b24e-0eae2e97acea",
+      "cgroup_id": 61057,
+      "class": "",
+      "device": 26,
+      "effective_class": "BG",
+      "identity": "cgroup2-kernfs",
+      "inode": 61057,
+      "kind": "cgroup",
+      "path": "/sys/fs/cgroup/fault-matrix/bg",
+      "pid": 0,
+      "role": "BACKGROUND",
+      "role_source": "explicit",
+      "starttime": 0
+    }
+  ],
+  "transaction_id": "txn-d216833dc2d4a4865bc1feec"
+}
+2026-10-24T10:18:51+00:00 policy TTL 10000ms with a long lease
+2026-10-24T10:19:01+00:00 fallback reason: [executor] auto fallback: policy TTL expired

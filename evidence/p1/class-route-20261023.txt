@@ -1,0 +1,81 @@
+EulerPilot v2 — 把 LAT/CACHE 接入控制面，并在新路径上重做存活压测
+记录时间 2026-10-23，schedpilot-sp3（<SP3-IP>），8 vCPU，内核 6.6.0-schedpilot-sp3。
+数据 `evidence/p1/class-route-soak-20261023/`（`state.polls.csv` 539 次每秒轮询、
+`stats-mid-*.txt` 为挂载期间 bpftool **只读** dump）。构建：控制面 `ep-executord`（本轮改动后重建）
++ 数据面 `ep-sched-loader 45bdc3c0…`（沿用 runnable-task-stall 修复后的 BPF 构建，本轮未改 BPF）。
+本轮不测性能，只回答"接上之后能不能活"。
+
+## 1. 为什么要接
+
+`lookup_class()` 只认 `class_map`，而 `class_map` 此前只有 **BACKGROUND 目标**一条写入路径
+（`src/skills/sched_skill.cpp`），于是数据面里的 `SP_DSQ_LAT`、`SP_DSQ_CACHE_*`、`SP_DSQ_SHARED`
+在交付形态下永远没有流量。上一轮正式矩阵因此实际只测到 NORMAL→COMP 路径 + BG；
+而 runnable-task-stall 的调查也恰好没经过这些路径（那轮所有任务 `enq_lat/enq_cache` 都是 0）。
+**没跑过的路径不能声称正确**，所以先把 class 声明接进策略白名单，再在接上之后重做存活压测。
+
+## 2. 实现：class 与 role 正交，且 BG 档不可单独声明
+
+- schema：`spec.targets[].class` 可选，枚举 `NORMAL|LAT|COMPUTE|CACHE|BG`
+  （`design/schemas/scheduling-policy.schema.json`，仍 `additionalProperties:false`）。
+- 语义校验（`src/core/policy.cpp`）两条不对称规则：
+  - `class=BG` **必须** `role=BACKGROUND`，否则拒绝（`class BG requires role BACKGROUND`）；
+  - `role=BACKGROUND` 一旦声明 class，只能是 `BG`（否则两个字段对"要不要被保护/被约束"的说法互相矛盾）。
+  这条不变量把项目规则"禁止把陌生任务降为 BG"变成结构性的：不显式写下业务角色就拿不到 BG 档。
+- 生效类的唯一出口 `effective_runtime_class(role, declared)`（`src/core/target.cpp`）：
+  声明了就用它；没声明则 `BACKGROUND→BG`、其它角色 **不写 class_map**（保持旧行为，
+  已有策略与上一轮矩阵的语义逐字不变）。apply 与 2s 刷新共用这一个函数，不可能一处认为 BG、另一处认为 NORMAL。
+- `NORMAL` 是"无条目"而不是"写一个 NORMAL 项"：`ctrl_class_set` 对 NORMAL 直接返回，
+  否则一个复用该 PID 的无关进程会继承这条策略从未声明过的分类。
+- 运行时标记由 `bg_pids/bg_cgroups` 改为 **`classified: [{pid|path, class}]`**，
+  因为刷新要按声明的档重述；`managed_bg_pids_` → `managed_class_`（pid→class）。
+  刷新时区分三种情况：类没变→保留；**类变了→就地重设**（先删后设会让任务在一个周期内以 NORMAL 运行）；
+  目标撤下→`class-del` 撤销。
+- 事务回报里每个绑定新增 `class`/`effective_class` 两字段，`policy.status` 与 journal 一致可见。
+
+## 3. 测试层级
+
+| 层级 | 内容 |
+|---|---|
+| 设计 | schema 可选键 + 枚举，未知字段仍整体拒绝 |
+| 单元 | `test_policy_class_declaration`：声明 LAT 通过并落到 `PolicyTarget.runtime_class`；`effective_runtime_class` 的真值表（含"不声明=旧行为"）；四条拒绝（BG 无角色 ×2、BACKGROUND 声称非 BG、未知类名）。unit 总计 **375** 条断言，`ctest` 6/6 |
+| 真内核集成 | `tests/integration_fd.sh`：策略对 pid 目标声明 `LAT`、对 BACKGROUND 声明 `BG` → apply 回报 `declared/effective = [('', 'BG'), ('CACHE','CACHE'), ('LAT','LAT')]`，再用 `ep-schedctl class-get` **从内核 map 读回 `LAT`**；BG 成员退出后仍按原路径撤销 |
+| 存活压测 | 见下节 |
+
+## 4. 压测：三个档位同时被喂，跑满 3×90s 服务负载
+
+布局（全部由本运行自己的 cgroup 承载，**执行服务仍是唯一写者**）：`ep-soak-fg` 放 redis-server
+并声明 `class=LAT`、`ep-soak-cache` 放 2 个 64MB 工作集的内存密集进程并声明 `class=CACHE`、
+`ep-soak-bg` 放在线门控同单位的 BG 生产者（`role=BACKGROUND`）。挂载期间只读 dump `stats`：
+
+```
+POLLS samples=539 enabled=539 not_enabled=0
+FINAL degraded=False last_fallback=''
+STATS {"enq_lat":282,"dsp_lat":282,"run_lat":1390389,
+       "enq_cache":762,"dsp_cache":762,"run_cache":974,
+       "enq_bg":3,"run_bg":59915,"enq_comp":530,"dsp_comp":533,
+       "classmap_hit":4353584,"classmap_miss":4373618,
+       "enq_pinned_local":7566,"enq_kick":1499,"idx24(bg_vtime_penalty)":59934}
+CHECK_FEEDS_ENQ_LAT=yes  CHECK_FEEDS_ENQ_CACHE=yes  CHECK_FEEDS_ENQ_BG=yes
+CHECK_FEEDS_DSP_LAT=yes  CHECK_FEEDS_DSP_CACHE=yes
+CHECK_SURVIVES_WITH_CLASS_ROUTING=yes
+```
+
+LAT 与 CACHE 都有真实入队/派发/运行计数，BG 受约束计数在动；539 次轮询全 `enabled`，
+dmesg 增量里没有一条 `runnable task stall`，执行服务 `degraded=false` 且从未回退。
+`enq_pinned_local=7566` 说明上一轮的绑定任务修复路径在这次也持续生效。
+
+第一次运行 `enq_cache=0` —— 是我脚本的缺陷不是产品的：子 shell 里 `$$` 是**调用方 shell** 的 PID，
+`echo $$ > cgroup.procs` 把脚本自己搬进了 cache cgroup，而真正该搬的子进程没搬。改用 `$BASHPID`
+后 CACHE 才有流量（762 次入队）。这条记在这里，因为"没流量"和"没接上"在计数器上长得一样。
+
+## 5. 这不能声称的
+
+- **不是性能结论。** 这次压测只判存活与"路径确实被喂"。class 路由对 goodput/尾延迟的影响要另跑矩阵
+  ——上一轮正式矩阵是在**没有 class 声明**的形态下测的，它作为"NOMAL→COMP 路径 + BG"的结果依然成立，
+  但不能拿本轮的接入去追认它测过四分类路由。
+- CACHE 档在这台机器上没有 LLC 亲和（`llc_affinity=False`），走的是 `SP_DSQ_CACHE_BASE` 单队列；
+  LLC 亲和下的 CACHE 路由仍未压测。
+- `SP_DSQ_SHARED`（关闭 CLASS_DSQ 标志时的共享队列）不在本轮范围内，控制面也没有开关它。
+- BG 档本轮 `enq_bg=3` 偏低（长时运行任务不再重复入队，`run_bg=59915` 才是它的真实运行证据），
+  不要把 `enq_bg` 当进度指标。
+- 单次 3×90s、单负载。策略刷新撤销、成员迁出等路径由 unit + integration 覆盖，不是这里证明的。

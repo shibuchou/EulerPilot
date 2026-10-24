@@ -1,0 +1,72 @@
+rounds=6 tag=r21 evidence=/root/epv2-evidence
+=== round 1 start 2026-10-23T06:24:41+00:00 ===
+round 1 rc=0 evidence=/root/epv2-build/acceptance.D8H5gn log=/root/epv2-evidence/acc-r21-1.txt
+=== round 2 start 2026-10-23T06:25:27+00:00 ===
+round 2 rc=0 evidence=/root/epv2-build/acceptance.5NK85i log=/root/epv2-evidence/acc-r21-2.txt
+=== round 3 start 2026-10-23T06:26:12+00:00 ===
+round 3 rc=0 evidence=/root/epv2-build/acceptance.pcUeZJ log=/root/epv2-evidence/acc-r21-3.txt
+=== round 4 start 2026-10-23T06:26:58+00:00 ===
+round 4 rc=0 evidence=/root/epv2-build/acceptance.y6iyGC log=/root/epv2-evidence/acc-r21-4.txt
+=== round 5 start 2026-10-23T06:27:43+00:00 ===
+round 5 rc=0 evidence=/root/epv2-build/acceptance.Wdd5bd log=/root/epv2-evidence/acc-r21-5.txt
+=== round 6 start 2026-10-23T06:28:29+00:00 ===
+round 6 rc=0 evidence=/root/epv2-build/acceptance.80NMM7 log=/root/epv2-evidence/acc-r21-6.txt
+ALL_ROUNDS_PASS tag=r21 rounds=6
+=== stage 1: offered-rate scan on the bare service (A0 only) ===
+(skipped: RATES is empty)
+=== stage 2: arms at candidate rate 60000 ===
+D set n=2 goodput@SLO median 59332 rps | achieved 60002 | timeouts 0 stalls 0 cpu/s 0.37 | samples 7200274 | attach enabled
+   D bg units/s (median of window medians) 164.7
+
+NOTE block counts here are a harness smoke, not the flagship sample; the table is
+recomputable from raw-*.bin (protocol: raw records must rebuild the numbers).
+cleanup rc=0 state=disabled pins=0
+=== latency distributions rebuilt from the per-request raw records ===
+--- arms at 60000 ---
+block  arm  op      p50ms    p95ms    p99ms    p99.9   samples good% @ 1/2/5/10
+1      A0   GET    0.2228   3.1251   9.6246  20.0295   3600144 88.97/93.18/96.86/99.1  [match]
+1      A0   SET    0.2406   2.5907   8.2039   14.411   3600095 89.78/93.98/97.36/99.46  [match]
+1      C    GET    0.2537   2.4432   4.8773   8.3047   3600134 91.89/93.97/99.08/99.93  [match]
+1      C    SET    0.2662   2.4667    5.008   9.8385   3600143 92.84/94.42/98.99/99.92  [match]
+1      D    GET    0.2627   2.6451   6.6669  18.9066   3600135 90.36/92.95/98.36/99.58  [match]
+1      D    SET    0.2664   2.7361   5.4006    11.81   3600131 91.85/93.8/98.75/99.88  [match]
+2      A0   GET      0.22   1.8431   7.2616  16.9796   3600144 91.22/95.41/98.12/99.43  [match]
+2      A0   SET    0.2558   2.9613   8.4086  15.7357   3600034 88.59/93.15/97.0/99.31  [match]
+2      C    GET    0.2562   2.4688   5.5993   9.9826   3600140 92.15/94.03/98.68/99.9  [match]
+2      C    SET    0.2653   3.1921   5.5712   8.4594   3600140 90.47/92.63/98.65/99.96  [match]
+2      D    GET     0.248    2.123   4.5436  13.1372   3600140 92.06/94.61/99.15/99.85  [match]
+2      D    SET    0.2668   2.6851   4.9551   9.8422   3600143 91.3/93.58/99.02/99.9  [match]
+
+A0 GET n=2 p50 0.2228 p99 9.6246 | 1ms:91.22% 2ms:95.41% 5ms:98.12% 10ms:99.43%
+A0 SET n=2 p50 0.2558 p99 8.4086 | 1ms:89.78% 2ms:93.98% 5ms:97.36% 10ms:99.46%
+C GET n=2 p50 0.2562 p99 5.5993 | 1ms:92.15% 2ms:94.03% 5ms:99.08% 10ms:99.93%
+C SET n=2 p50 0.2662 p99 5.5712 | 1ms:92.84% 2ms:94.42% 5ms:98.99% 10ms:99.96%
+D GET n=2 p50 0.2627 p99 6.6669 | 1ms:92.06% 2ms:94.61% 5ms:99.15% 10ms:99.85%
+D SET n=2 p50 0.2668 p99 5.4006 | 1ms:91.85% 2ms:93.8% 5ms:99.02% 10ms:99.9%
+=== background work unit: what one window of the probe actually is ===
+=== stage 1: offered-rate scan on the bare service (A0 only) ===
+(skipped: RATES is empty)
+=== stage 2: arms at candidate rate 40000 ===
+D set n=1 goodput@SLO median 39985 rps | achieved 40000 | timeouts 0 stalls 0 cpu/s 0.36 | samples 2399990 | attach enabled
+   D bg units/s (median of window medians) 163.6
+
+NOTE block counts here are a harness smoke, not the flagship sample; the table is
+recomputable from raw-*.bin (protocol: raw records must rebuild the numbers).
+cleanup rc=0 state=disabled pins=0
+=== latency distributions rebuilt from the per-request raw records ===
+--- arms at 40000 ---
+block  arm  op      p50ms    p95ms    p99ms    p99.9   samples good% @ 1/2/5/10
+1      A0   GET    0.1117   0.6685   2.1186   5.2077   2399999 97.65/98.94/99.88/100.0  [match]
+1      A0   SET    0.1214   0.6619    1.778   4.6634   2400000 97.72/99.17/99.94/100.0  [match]
+1      C    GET    0.1105   0.7811   1.2887   3.1526   2399984 98.36/99.5/100.0/100.0  [match]
+1      C    SET    0.1162   0.8509   1.3196   4.0023   2399998 97.99/99.48/99.98/100.0  [match]
+1      D    GET     0.127   0.7861   1.3953   3.0732   2399998 97.95/99.54/100.0/100.0  [match]
+1      D    SET     0.135   0.8801   1.3135   3.4242   2399990 97.61/99.51/99.96/100.0  [match]
+
+A0 GET n=1 p50 0.1117 p99 2.1186 | 1ms:97.65% 2ms:98.94% 5ms:99.88% 10ms:100.0%
+A0 SET n=1 p50 0.1214 p99 1.778 | 1ms:97.72% 2ms:99.17% 5ms:99.94% 10ms:100.0%
+C GET n=1 p50 0.1105 p99 1.2887 | 1ms:98.36% 2ms:99.5% 5ms:100.0% 10ms:100.0%
+C SET n=1 p50 0.1162 p99 1.3196 | 1ms:97.99% 2ms:99.48% 5ms:99.98% 10ms:100.0%
+D GET n=1 p50 0.127 p99 1.3953 | 1ms:97.95% 2ms:99.54% 5ms:100.0% 10ms:100.0%
+D SET n=1 p50 0.135 p99 1.3135 | 1ms:97.61% 2ms:99.51% 5ms:99.96% 10ms:100.0%
+=== background work unit: what one window of the probe actually is ===

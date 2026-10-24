@@ -1,0 +1,16 @@
+S01  PASS  class 模式挂载+回退：内核 class 读回与撤销证明           assertions held, sched_ext disabled, no pins added by this scenario
+S02  PASS  basic 模式挂载+回退干净                                  assertions held, sched_ext disabled, no pins added by this scenario
+S03  PASS  adaptive 模式在真实 RPC 上被拒（fail-closed）            assertions held, sched_ext disabled, no pins added by this scenario
+S04  PASS  挂载状态下 SIGKILL 执行服务：崩溃后 fair 接管与重启对账  assertions held, sched_ext disabled, no pins added by this scenario
+S05  PASS  sched-ref 下 SIGKILL loader：存活检测与补偿回退          assertions held, sched_ext disabled, no pins added by this scenario
+S06  PASS  租约到期（心跳停止的等价路径）自动回退                   assertions held, sched_ext disabled, no pins added by this scenario
+S07  PASS  策略 TTL 到期自动回退（basic）                           assertions held, sched_ext disabled, no pins added by this scenario
+S08  PASS  无效策略在真实 RPC 上被拒且无副作用                      assertions held, sched_ext disabled, no pins added by this scenario
+S09  PASS  越界与错误类型的阈值被拒                                 assertions held, sched_ext disabled, no pins added by this scenario
+S10  PASS  generation 冲突被拒且无副作用                            assertions held, sched_ext disabled, no pins added by this scenario
+S11  PASS  第二实例拒绝                                             assertions held, sched_ext disabled, no pins added by this scenario
+S12  PASS  外部改值：cfg 漂移检测与再断言                           assertions held, sched_ext disabled, no pins added by this scenario
+S13  PASS  成员迁出：class 撤销并读回为不存在                       assertions held, sched_ext disabled, no pins added by this scenario
+S14  FAIL  日志盘满（tmpfs ENOSPC）下的回退可见性                   assertion failed (rc=1), see S14.log
+S15  PASS  CPU 热插拔不误判为调度器丢失                             assertions held, sched_ext disabled, no pins added by this scenario
+S16  PASS  无法在 v2 中构造的场景如实标注                           assertions held, sched_ext disabled, no pins added by this scenario

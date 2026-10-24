@@ -1,0 +1,45 @@
+2026-10-24T10:10:34+00:00 pin dirs at scenario start: 0
+{
+  "action_id": "",
+  "checks": [],
+  "error": {
+    "code": "SCHEMA_INVALID",
+    "detail": "spec has unknown field 'unknown_field'",
+    "message": "policy validation failed"
+  },
+  "observed_generation": 0,
+  "policy_sha256": "",
+  "request_id": "req-7ce1183a2c8dfc5667db2db1",
+  "rollback": {
+    "attempted": false,
+    "detail": "",
+    "status": "NOT_NEEDED"
+  },
+  "snapshot_id": "",
+  "status": "REJECTED",
+  "target_bindings": [],
+  "transaction_id": ""
+}
+2026-10-24T10:10:35+00:00 unknown field -> status=REJECTED
+{
+  "action_id": "",
+  "checks": [],
+  "error": {
+    "code": "SCHEMA_INVALID",
+    "detail": "spec.targets[0].class has invalid value 'SUPER'",
+    "message": "policy validation failed"
+  },
+  "observed_generation": 0,
+  "policy_sha256": "",
+  "request_id": "req-7457aa9203e79315ca67db43",
+  "rollback": {
+    "attempted": false,
+    "detail": "",
+    "status": "NOT_NEEDED"
+  },
+  "snapshot_id": "",
+  "status": "REJECTED",
+  "target_bindings": [],
+  "transaction_id": ""
+}
+2026-10-24T10:10:35+00:00 bad class value -> status=REJECTED

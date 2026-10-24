@@ -1,0 +1,8 @@
+2026-10-24T09:40:05+00:00 pin dirs at scenario start: 0
+2026-10-24T09:40:05+00:00 PMU refusal: v2 has no PMU consumer (scripts/doctor.py reports pmu_read_test NOT_RUN),
+2026-10-24T09:40:05+00:00   so there is no code path that could refuse it -- UNSUPPORTED, not a pass.
+2026-10-24T09:40:05+00:00 heartbeat stop: heartbeat_ns is only consulted in adaptive mode, which v2 refuses at
+2026-10-24T09:40:05+00:00   apply (S03), and nothing in v2 ever writes it -- UNSUPPORTED by design.
+2026-10-24T09:40:05+00:00 PID re-creation: a pidfd is held for the transaction, so a recycled pid cannot be
+2026-10-24T09:40:05+00:00   re-interpreted under it; task death is covered here and in tests/integration_fd.sh.
+2026-10-24T09:40:05+00:00 TID targets: v2 binds tgids only (class_map is keyed by tgid) -- out of scope for P1.

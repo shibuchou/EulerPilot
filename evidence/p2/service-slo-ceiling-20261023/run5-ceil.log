@@ -1,0 +1,19 @@
+resident observer started (window 15s)
+load raised; waiting for a measured p99 above the 1ms ceiling
+  measured breach at +15s
+AT_BREACH expert=safe-basic switches=0 hold='routing target stable 0ms of 1000ms required'
+AT_BREACH measured p99=2.08085 ceiling=1 adverse={}
+SLO_LATENCY allowed=False code=FOREGROUND_P99_EXCEEDED
+CHECK_CEILING_DENIES_ON_MEASURED_BREACH=yes
+CHECK_HELD_ON_BREACH=yes (switches stayed 0)
+CHECK_TELEMETRY_NOT_STALE=yes
+AFTER_DROP expert=safe-basic switches=0 hold='slo denied: FOREGROUND_P99_EXCEEDED' p99=1.093922 age_ms=8425 accepted=4
+waiting for a compliant window (p99 under 1ms) to land
+  compliant window after 2 polls: p99=0.138758ms age=2529ms
+CHECK_GATE_REOPENS_AFTER_RECOVERY=yes (code=none hold=none)
+TELEMETRY rejections_executor=0 last_rejection=
+TELEMETRY ingested=6 accepted_by_executor=6 rejected_by_executor=0 coverage=91.73%
+CHECK_OBSERVER_AND_EXECUTOR_AGREE=yes
+CHECK_OBSERVATION_COVERAGE=yes (91.73% >= 80%)
+RESULT ceiling_ms=1 window_s=15 breach_at_s=15 switches_at_breach=0 hold=routing target stable 0ms of 1000ms required
+cleanup rc=0 state=disabled pins=0

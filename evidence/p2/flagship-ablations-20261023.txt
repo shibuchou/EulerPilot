@@ -1,0 +1,75 @@
+EulerPilot v2 — 消融轮（探索性）：服务门控与 BG vtime 惩罚
+记录时间 2026-10-23 17:02–18:33 UTC，schedpilot-sp3（<SP3-IP>），8 vCPU，
+内核 6.6.0-schedpilot-sp3，redis 7.2.15。
+构建：`ep-executord 23e23975…`（含 class 声明与刷新三阶段对账修复）、`ep-sched-loader 45bdc3c0…`（未变）、
+`ep_unit_tests 3a80b1c7…`。预注册 `experiments/flagship_params_ablations.json`
+（sha256 `6a79181af3aa…`，`protocol.json` 已记录），**10 block、探索性、不进旗舰表**。
+数据 `evidence/p2/flagship-ablations-20261023/`（40 块派生件 + `per_run.csv` +
+`comparisons.csv` + `attempts.jsonl` + `analysis.txt`）。
+
+## 1. 设计：一次只改一个已声明的量
+
+| 臂 | 相对 D 的唯一改动 | 实际落地值（从每块 `policy-adaptive.json` 读回） |
+|---|---|---|
+| D | — | floor 140 单位/秒、wait 50ms、ceil 10ms、`bg_vtime_pct=200` |
+| **Dng** | 服务门控**不可能触发** | floor **0.001**、wait **10000**、ceil **60000**、vtime 200 |
+| **Dnv** | 去掉后台 vtime 惩罚 | floor 140、wait 50、ceil 10、`bg_vtime_pct=**100**` |
+
+"no gate" 只能表达成"永不 bind"：这些字段在 schema 里是必填，且 floor 的 schema 约束是
+`exclusiveMinimum: 0`，所以 0 不合法。本文件与报告都按这个措辞写，不写"删掉了门"。
+
+## 2. 完整性
+
+| 检查 | 结果 |
+|---|---|
+| 块数 | 40/40：`attempts.jsonl` valid=40、invalid=0 |
+| 挂载 | 三个臂每块结束 `enabled`；切换 1 次/块（与 D 的既有行为一致） |
+| 原始件重建 | `CHECK_RAW_REBUILDS_SUMMARY=yes` |
+| 调度器存活 | dmesg 新增 `runnable task stall` **0 条**（全局计数保持 8，全部为此前历史） |
+| 策略落地 | 逐块读回 `policy-adaptive.json`：三个臂的 safety/parameters 与上表完全一致 |
+| **manifest 字段缺陷（如实记）** | 每块 `manifest.json` 的 `ablation` 字段记录的是**同一块上一个臂**的值（`1-D` 记为 `no-service-gate`、`1-Dng` 记为 `none`）。原因：决策块原先写在 manifest 之后。**已在 harness 中修正（决策前移，`redis_matrix_sp3.sh` 后续版本）**，但本轮的 manifest 未重写；本轮消融归属以每块 `policy-adaptive.json` 的读回值为准（已逐块核对），不要引用 manifest 的该字段 |
+
+## 3. 结果（10 块中位数 + 块内配对）
+
+| 臂 | 操作 | goodput@5ms | p99 | p99.9 | BG 单位/秒 |
+|---|---|---|---|---|---|
+| A0 | GET | 58204 | 9.36 | 17.06 | 163.2 |
+| D | GET | 59147 | 5.84 | 13.06 | 163.5 |
+| Dng | GET | 59201 | 5.61 | 10.02 | 163.7 |
+| Dnv | GET | 59275 | 5.45 | 11.76 | 163.5 |
+| A0 | SET | 57967 | 9.43 | 17.24 | 163.2 |
+| D | SET | 58696 | 6.61 | 12.91 | 163.5 |
+| Dng | SET | 58892 | 6.20 | 11.39 | 163.7 |
+| Dnv | SET | 58578 | 6.83 | 14.72 | 163.5 |
+
+块内配对（10000 次 bootstrap，seed 20261024）：
+
+| 对照 | GET | SET | 胜负 |
+|---|---|---|---|
+| **Dng vs D** | **+0.21% [−0.22, +0.60]** | **−0.24% [−0.78, +0.99]** | 7/3、4/6 |
+| **Dnv vs D** | **+0.25% [−0.13, +0.65]** | **−0.30% [−1.06, +0.22]** | 5/5、3/7 |
+| Dng vs A0 | +1.87% [1.63, 2.67] | +1.07% [0.70, 2.05] | 10/0、9/1 |
+| Dnv vs A0 | +1.84% [1.57, 2.83] | （见 `comparisons.csv`） | 10/0 |
+
+## 4. 这两个 null 的含义完全不同
+
+1. **Dng vs D 是"结构性无信息"，不能读成"门没用"。** 三档策略共 30 个自适应块里，
+   `policy.status.auto_apply.last_hold` **全部**是 `already in place: latency-balanced`，
+   **没有一次 `slo denied`**，也没有任何 `adverse_experts` 条目。也就是说本轮的门从来没有拦过
+   任何东西：D 与 Dng 的差别只是"一个从不开火的门的阈值"。这个对照能说明的只有一件事——
+   **在这条负载上，一个不触发的门不带来可测开销**（−0.24%…+0.21%，CI 均跨 0）。
+   要衡量门的价值，必须构造它**应该**触发的情形（例如后台饥饿注入、或前向 p99 越过绝对上限），
+   再比较 D 与 Dng。这不在本轮范围内，列为下一步。
+2. **Dnv vs D 是有信息量的 null**：把 `bg_vtime_pct` 从 200 降到 100（取消 BG 的 vtime 惩罚），
+   前台 goodput 没有可测变化（+0.25% / −0.30%，CI 跨 0），**BG 进度也没有变化**
+   （163.5 vs 163.5 单位/秒）。在这条负载的 BG 强度下，这个惩罚既几乎不伤前台、也几乎没在起作用。
+   它的意义是"这条护栏目前接近免费"，而不是"护栏不必要"——BG 强度更高时结论可能不同。
+
+## 5. 本轮不能声称的
+
+- 10 block、单机、单负载、探索性；不进旗舰表，不与旗舰表的块混算。
+- 门控消融**没有覆盖门真正生效的路径**（见 §4.1）；本轮不构成"门有用/无用"的证据。
+- `no-preempt`（只有阈值范围、没有开关）、`no-pmu`（无 PMU 集成，UNSUPPORTED）、
+  `no-llc`（`llc_affinity=false` 就是当前默认，`true` 路径未验证）、`no-router`（即已有的
+  C 臂，已在旗舰表里）——这四项本轮**没有**做，原因各自不同，不得用本轮数据代填。
+- 本轮 manifest 的 `ablation` 字段错位（§2），已修正 harness，但证据文件按原样保留。

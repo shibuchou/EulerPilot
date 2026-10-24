@@ -1,0 +1,29 @@
+{
+  "auto_apply": {
+    "active_expert": "latency-balanced",
+    "baseline": "/tmp/ep-auto-pilot/baseline.json",
+    "enabled": true,
+    "last_action_at_ms": 1792668189996,
+    "last_expert": "latency-balanced",
+    "last_hold": "",
+    "last_reason": "safe-basic -> latency-balanced",
+    "min_interval_ms": 4000,
+    "owner": "autopilot-v2"
+  },
+  "degraded": false,
+  "generation": 3,
+  "incomplete_transactions": [],
+  "instance_id": "inst-eaa8d1dd26be23b6",
+  "journal_records": 15,
+  "last_fallback": "",
+  "lease": {
+    "expires_at": "2026-10-22T11:23:30.130Z",
+    "expires_ms": 1792668210130,
+    "fence_epoch": 2,
+    "owner": "autopilot-v2"
+  },
+  "request_id": "req-f7c5e64241720785",
+  "skill": "sched-ref",
+  "startup_degraded_reason": "",
+  "status": "OK"
+}

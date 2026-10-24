@@ -1,0 +1,4 @@
+[executord] autopilot enabled owner=autopilot-v2 baseline=suppress-probe expert=safe-basic min_interval_ms=3000 dwell_ms=60000 candidate_hold_ms=15000 budget=2/600000ms
+[executord] ready state_dir=/tmp/ep-suppress/state socket=/tmp/ep-suppress/executor.sock skill=sched-ref instance=inst-6719244d46ce208b generation=0 degraded=false
+[executor] autopilot switched safe-basic -> latency-balanced; switch 1/2 in 600000ms window, projected unprotected 665ms
+[executor] autopilot switched latency-balanced -> safe-basic; switch 2/2 in 600000ms window, projected unprotected 1330ms

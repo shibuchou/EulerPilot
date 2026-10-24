@@ -1,0 +1,23 @@
+blocks: {'A0': 20, 'A1': 20, 'A2': 20, 'C': 20, 'D': 20} | dropped/not-evidence: none
+wrote /root/epv2-evidence/flagship-main/per_run.csv
+CHECK_RAW_REBUILDS_SUMMARY=yes (every recompute at the probe's own threshold agrees within 0.5%%)
+
+=== paired comparisons against A0, within each block ===
+A1 GET n=20 goodput -0.82% [-1.07, -0.36] (paired block bootstrap, seed=20261024, 10000 resamples) wins/losses 5/15 | p99 +14.42% | bg x0.997
+      goodput gain by threshold: 5ms=-0.821%  1ms=-1.474%  2ms=-1.136%  10ms=-0.225%
+A1 SET n=20 goodput -0.38% [-1.05, -0.03] (paired block bootstrap, seed=20261024, 10000 resamples) wins/losses 5/15 | p99 +10.98% | bg x0.997
+      goodput gain by threshold: 5ms=-0.381%  1ms=-1.277%  2ms=-1.011%  10ms=-0.143%
+A2 GET n=20 goodput -0.27% [-0.65, 0.09] (paired block bootstrap, seed=20261024, 10000 resamples) wins/losses 7/13 | p99 +10.94% | bg x0.999
+      goodput gain by threshold: 5ms=-0.274%  1ms=-0.757%  2ms=-0.488%  10ms=-0.147%
+A2 SET n=20 goodput -0.32% [-0.64, 0.10] (paired block bootstrap, seed=20261024, 10000 resamples) wins/losses 7/13 | p99 +6.12% | bg x0.999
+      goodput gain by threshold: 5ms=-0.316%  1ms=-0.017%  2ms=-0.503%  10ms=-0.112%
+C GET n=20 goodput +1.62% [1.53, 1.82] (paired block bootstrap, seed=20261024, 10000 resamples) wins/losses 20/0 | p99 -47.86% | bg x1.000
+      goodput gain by threshold: 5ms=1.625%  1ms=2.606%  2ms=0.553%  10ms=0.509%
+C SET n=20 goodput +1.28% [0.83, 1.83] (paired block bootstrap, seed=20261024, 10000 resamples) wins/losses 19/1 | p99 -32.46% | bg x1.000
+      goodput gain by threshold: 5ms=1.285%  1ms=3.027%  2ms=-0.172%  10ms=0.518%
+D GET n=20 goodput +1.51% [1.22, 1.80] (paired block bootstrap, seed=20261024, 10000 resamples) wins/losses 20/0 | p99 -41.06% | bg x1.001
+      goodput gain by threshold: 5ms=1.514%  1ms=1.727%  2ms=-0.001%  10ms=0.43%
+D SET n=20 goodput +0.96% [0.44, 1.30] (paired block bootstrap, seed=20261024, 10000 resamples) wins/losses 19/1 | p99 -27.62% | bg x1.001
+      goodput gain by threshold: 5ms=0.964%  1ms=2.225%  2ms=-0.57%  10ms=0.383%
+
+wrote /root/epv2-evidence/flagship-main/comparisons.csv

@@ -1,0 +1,121 @@
+EulerPilot v2 — 常驻服务观测与前向延迟的绝对上限
+记录时间 2026-10-23，schedpilot-sp3（<SP3-IP>），8 vCPU，内核 6.6.0-schedpilot-sp3。
+实验 `experiments/service_observer_sp3.sh` + `experiments/auto_apply_slo_ceiling_sp3.sh`，
+数据 `evidence/p2/service-slo-ceiling-20261023/run2/`（`observer/observer.csv` 为逐轮测量）。承接 `evidence/p2/service-slo-20261022.txt` §8
+与前向 SLO 口径 `docs/EXPERIMENT_PROTOCOL.md` §5.1。本轮不测性能。
+
+## 1. 这一步要回答的两件事
+
+§5.1 把口径写死了两句可检验的话：
+①接了服务门控就必须接**常驻**测量，否则观测过期后自动通道永远不动；
+②前向延迟的在线保护**暂时只能用绝对量**，因为实测 p99 相邻窗抖动 3.8–20% 大于策略的 5% 相对预算。
+之前两条都只停在文档上。本轮各做一条真机验证，并把②变成策略可以声明的字段。
+
+## 2. 实现
+
+- **绝对前向上限**：`spec.safety.max_foreground_p99_ms`（可选，1..60000ms）。
+  schema 加为可选属性（不进 `required`，已有策略不受影响）；`validate_scheduling_policy`
+  允许该键并做范围校验，越界拒绝而不是钳制；SloGate 服务半区新增 `foreground_ceiling` 检查，
+  超界报 `FOREGROUND_P99_EXCEEDED`。它排在比较类之前、且**不受分辨率护栏豁免**：
+  单窗事实不需要重复测量。未声明或没有前向测量时只报 `not evaluated`。
+  该检查是纯函数式的当前观测判断，不写入 `adverse_experts`，所以上限恢复即放行——
+  不会把一次超限变成永久禁令（unit 双向覆盖：超限被拒 / 达标放行）。
+- **常驻观测者** `service_observer_sp3.sh`：独立进程，按 `window_s/interval_s` 循环
+  ①从 `policy.status` 读当前 expert；②并行跑前台 1ms 唤醒探针与后台进度探针；
+  ③合并成一个观测文件；④`ep observe` 摄取；直到时长结束或收到 SIGTERM。
+  切换进行中 `active_expert` 为空时**跳过该轮**而不是贴错标签。
+  它是建议数据的生产端，不取租约、不写调度器。
+
+## 3. 真机结果（`run2/`；run1 见 §5）
+
+策略声明 `max_foreground_p99_ms = 1`，观测者 15s 窗常驻，负载在起观测后约 17s 拉起：
+
+| 轮 | 在位 expert | 前向 p99 | 背景进度 | 等待 | 摄取 |
+|---|---|---|---|---|---|
+| 1 | safe-basic | 0.129ms | 164.2/s | 0.281ms | OK |
+| 2（加载后） | safe-basic | **1.545ms** | 179.4/s | 2.548ms | OK |
+| 3 | safe-basic | **1.282ms** | 180.5/s | 2.190ms | OK |
+| 4 | safe-basic | **1.201ms** | 169.0/s | 2.036ms | OK |
+| 5（撤载后） | safe-basic | 0.139ms | 165.1/s | 1.318ms | OK |
+
+- `AT_BREACH measured p99=1.545333 ceiling=1 adverse={}`：超限是**测出来的**，不是注入的。
+- `SLO_LATENCY allowed=False code=FOREGROUND_P99_EXCEEDED`，检查列表明写
+  `foreground p99 1.545333ms > declared 1.000000ms`，同期宿主特征全部合格
+  （`features_fresh age_ms=153`、`cpu 51.4%`、`psi avg10 22.1`），`service_fresh age_ms=1002`
+  即观测并未过期 ⇒ 拒绝来自服务上限本身。
+- `CHECK_CEILING_DENIES_ON_MEASURED_BREACH=yes`、`CHECK_HELD_ON_BREACH=yes`：整个运行
+  自动通道 **0 次切换**（路由确实想升到 latency-balanced，PSI 22.1 已越过阈值）。
+- `CHECK_TELEMETRY_NEVER_STALE=no`（hold 里从未出现 `STALE`）：5 轮连续观测下门控从未因过期而拒动，
+  这是①的正面证据。
+- 撤载后第 5 轮 p99 回到 0.139ms（重新达标）。
+
+## 4. 一个读序假象，不是产品行为
+
+`AFTER_DROP` 那行打印的是 `hold='slo denied: FOREGROUND_P99_EXCEEDED'`、`p99=1.201058`——
+它在第 5 轮完成**之前**取样，看到的还是第 4 轮的超限观测。脚本在那之后没有再取 status，
+所以"超限撤销后重新放行"这一步本轮没有真机演示，只有 §2 的论证 + unit 的双向断言支撑。
+写在这里是为了不把"第 5 轮已达标"误读成"观察到门重新打开"。
+
+## 5. 本轮自身踩到并修掉的三处
+
+1. run1（`run1-broken-printers/`）三个 python 内嵌块用 `json.load(sys.stdin)` 读脚本、
+   却把 JSON 作为 argv 传入 → 直接抛异常，`AT_BREACH/SLO_/AFTER_` 三行都没打出来；
+   产品侧证据（`slo-at-breach.json`：`code=FOREGROUND_P99_EXCEEDED`）仍然有效，run2 全部打印。
+2. 观测者最初把"切换中"的轮次贴成上一个 expert；改为 `active_expert` 为空时跳过该轮。
+3. 违反绝对上限一度被理解为可能永久锁死；确认该检查不写入 `adverse_experts`（那是比较类判定用的
+   记忆），只由当前观测决定，因此超限消失即放行。这一条决定了它不需要人工清除口。
+
+## 6. 仍未收口
+
+1. 前向延迟的保护只有绝对量可用；相对退化判定仍处"实现但被分辨率否决"。
+2. §4 的"重新放行"没有真机取样，下次运行补一个撤载后再等一轮的 status 快照即可。
+3. 常驻观测者仍是脚本级生产者：无重试、无背压、进程死了没人告警（`reliability.丢失观测` 仍是空白项）。
+4. 观测与调度决策仍不同源：探针自己是普通进程，不属于被管资源；`bg_work_unit=requests` 是合成工作量，
+   不是真实业务请求。任何"服务级"表述到此为止，不得升级为业务 SLO 结论。
+5. `fd_passing` 的在位性：正分支由 `tests/integration_fd.sh` 在真内核集成层覆盖（`--skill sched` apply 断言 `VERIFIED`，`verify` 走的同一个 `presence_ok`）；负分支（`link_fd_ < 0`）在 unit 层不可达且不为它加产品侧后门，按 UNSUPPORTED-at-unit 记录。性能矩阵仍未开始；自动 apply 仍默认关闭；P1 未收口。
+
+附：两次运行的控制台输出 `run1-ceil.log`、`run2-ceil.log` 与全量重建/ctest/验收日志
+`evidence/rebuild5.log`、`evidence/ctest5.log`、`evidence/acceptance-sp3-20261023-r18/round1..6/`。
+
+## 7. 观测可靠性与"解除后重新放行"（同日的 ①②两项，run3..run5）
+
+### 7.1 两侧对账（①）
+观测者改成自带健康账：每阶段重试（默认 2 次）、错误写 `observer.errors`、每次成功落一次
+`observer.heartbeat`，退出时写 `observer.summary.json`
+（`cycles_attempted / ingested / skipped_no_policy / probe_failures / ingest_failures /
+coverage_pct / longest_gap_ms`）。执行服务侧同时把消费端的账报出来：
+`policy.status.service` 新增 `observations_accepted / observations_rejected / last_rejection`。
+两侧数字必须相等才算"没丢观测"，任一侧单独报平安不作数。
+
+run5（`run5/`，seed 无关）实测：
+`TELEMETRY ingested=6 accepted_by_executor=6 rejected_by_executor=0 coverage=91.73%`
+`CHECK_OBSERVER_AND_EXECUTOR_AGREE=yes`、`CHECK_OBSERVATION_COVERAGE=yes (91.73% >= 80%)`、
+`CHECK_TELEMETRY_NOT_STALE=yes`；summary：`probe_failures=0`、`ingest_failures=0`、
+`longest_gap_ms=16602`（=一个窗口+间隔，属预期节奏而非中断）。
+
+### 7.2 解除拦截的真机取样（②）
+`AFTER_DROP` 之后不再立即取样，而是**等一个合规窗口落地**再判：
+`compliant window after 2 polls: p99=0.138758ms age=2529ms` →
+`CHECK_GATE_REOPENS_AFTER_RECOVERY=yes (code=none hold=none)`。
+之前"没有真机取样"的缺口（§4）就此补上，run2 那个读序假象的成因也写在 §4。
+
+### 7.3 过程中抓到的三个真问题
+1. **run3（`run3/`）：观测者一行取档位用 `json.loads(sys.argv[1])` 却把 JSON 从管道喂进去** →
+   107 个周期全部"skipped (no policy in place)"，整场没有任何观测被摄取。
+   这次意外得到一个必须写清的语义不对称：**从未有过观测 ⇒ 服务门不拦**（`not evaluated`），
+   **有过观测然后断供 ⇒ 过期即拦**（`SERVICE_OBSERVATION_STALE`）。
+   所以"生产者从来没启动"和"生产者中途死了"在控制面上是两种不同状态，不能混为一谈。
+2. **run4（`run4/`）：生产者 6 / 消费者 5 的假告警** —— 我的对账在两个不同时刻取数
+   （生产者还在跑就读了消费者快照）。修正为"先停生产者、再取最终快照、然后比对"。
+   产品计数本身没有错，是检验设计错了。
+3. **run5 的最终快照暴露一个不能回避的事实**：`switches=2 generation=5`
+   —— 上限解除之后，本实验把 `dwell/candidate_hold` 都设在 1000ms 下限，
+   于是 PSI 衰减沿上通道**来回切了两次**（升档再回落，每次约 665ms 空窗）。
+   因此"绝对上限挡住切换"只能声明为"**在被超限观测覆盖的时间段内没有动作**"
+   （`switches_at_breach=0`、`CHECK_HELD_ON_BREACH=yes` 都是那个时段的事实），
+   不能声明"整场零切换"；同时再次说明：抑制参数压在下限时，一旦拦截解除就会立刻抖一轮。
+
+### 7.4 这一项还没做完的部分
+- 生产者的 watchdog：现在有 heartbeat 文件、覆盖率统计与消费端的过期拒绝，但**没有主动告警链路**
+  （谁在观测者死掉时通知人）。协议里 `reliability.丢失观测` 要的不仅是"能算出丢了"。
+- `ep observe` 的重放/补报语义（断供后补一个旧窗口会被年龄判定拒绝）未测。

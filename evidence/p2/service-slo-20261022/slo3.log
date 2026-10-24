@@ -1,0 +1,20 @@
+load raised; measuring the baseline under the expert that is in place
+MEASURE expert=safe-basic p99_ms=1.550 bg_units=181.5 bg_wait_ms=1.472 samples_fg=5999 samples_bg=1089
+OBSERVE ack=OK expert=safe-basic outcome_evaluated=None hurt=None code=
+ADVERSE {}
+lease handed to the autopilot; it should move within a couple of polls
+  switched up 10s after the round-1 measurement
+ARMED outcome_pending=True last_outcome=''
+MEASURE expert=latency-balanced p99_ms=1.513 bg_units=181.2 bg_wait_ms=1.512 samples_fg=5999 samples_bg=1087
+OBSERVE ack=OK expert=latency-balanced outcome_evaluated=True hurt=False code=
+OUTCOME safe-basic -> latency-balanced: within the declared limits
+ADVERSE {}
+MEASURE expert=latency-balanced p99_ms=1.765 bg_units=181.2 bg_wait_ms=2.625 samples_fg=5998 samples_bg=1088
+OBSERVE ack=OK expert=latency-balanced outcome_evaluated=None hurt=None code=
+ADVERSE {}
+now starve the declared floor from outside and see whether the autopilot stops
+SLO_AFTER_STARVE allowed=False code=BG_PROGRESS_FLOOR service_evidence=present
+STARVE_HOLD=slo denied: BG_PROGRESS_FLOOR
+RESULT switch_up_at_s=10 switches_before_starve=1 switches_after=1 hold=slo denied: BG_PROGRESS_FLOOR
+CHECK_STARVE_STOPS_AUTOPILOT=yes
+cleanup rc=0 state=disabled pins=0

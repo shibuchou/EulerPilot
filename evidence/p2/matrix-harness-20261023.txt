@@ -1,0 +1,81 @@
+EulerPilot v2 — 逐请求开环负载、发生器标定与矩阵 smoke
+记录时间 2026-10-23，schedpilot-sp3（<SP3-IP>），8 vCPU，openEuler 24.03-LTS-SP3，
+redis-7.2.15。资产：`experiments/redis_openloop_probe.c`、
+`experiments/redis_rate_calibration_sp3.sh`、`experiments/redis_matrix_sp3.sh`；
+数据 `evidence/p2/matrix-harness-20261023/`（派生件 + 哈希；97MB `raw-*.bin` 留在
+`SP3:/root/epv2-evidence/{matrix-smoke,matrix-a2,rate-calibration}/`，逐块 `SHA256SUMS` 已入库）。
+本文件里的 rps/延迟仍不是性能结论。
+
+## 1. 为什么先做发生器
+
+pilot 的 8 条问题里，前四条（0.4s 突发、块内切换与窗同量级、goodput@SLO 算不出、
+客户端未标定）都是**测量端**的问题：不修掉，臂与臂的比较没有意义。所以这一步不做实验，
+只做能支撑正式矩阵的测量件。
+
+## 2. `redis_openloop_probe`：开环 + 逐请求原始件
+
+- 固定到达率排程（不是"收到响应才发下一条"），服务变慢时**offered 不下降**，
+  表观差异不会被协调遗漏掩盖；每条完成写 8 字节 ns 到 `--raw`，分位数/goodput 都能从原始件重算
+  （协议的重现要求）。goodput@SLO 由逐请求判 `latency ≤ --slo-ms` 直接计数，不从分位数表推算。
+- 同时报 `achieved/offered/deficit`、`timeouts`、`stalls`、`peak_inflight` 与发生器自身 CPU，
+  用来判断瓶颈在客户端还是服务端。
+
+自己写的这个工具在第一版里带了 4 个缺陷，全部是靠"看原始分布"而不是看汇总发现的：
+
+| 缺陷 | 表现 | 发现方式 |
+|---|---|---|
+| level-triggered 注册 `EPOLLOUT` | `epoll_wait` 立即返回 → 发生器空转，5k rps 时报 `cpu_per_second=0.95` 且**随速率上升而下降** | 标定数据非单调，不合常理 |
+| 排程后等到下一轮才 flush | 5k rps 下 36% 请求落在 5.18–6.40ms 的**悬崖**（正好是 5ms 的 `epoll_wait` 超时），goodput 被压到 64% | 直接看 raw 的 p50/p95/超阈占比 |
+| `$-1`（nil bulk）按 `-1` 长度处理 | GET 一半请求错配、假超时 47480 次、reconnect 级联 | 只 SET 正常、GET 崩坏的不对称 |
+| `tmp[k]=='\0'` 转义在补丁过程中被吃掉 | 文件里出现裸换行/NUL，编译出的比较语义被改变 | 逐字节检查源码 |
+
+修好后（同一台机器、无调度器）：
+
+| offered | achieved | goodput@5ms | p50 | p99 | 超阈占比 | 发生器 CPU/核 |
+|---|---|---|---|---|---|---|
+| 5k | 4998 | 4998 | 0.475ms | 0.942ms | 0 | 0.044→0.082 |
+| 20k | 19988 | 19866 | 0.351ms | 0.910ms | 0.6% | 0.209 |
+| 40k | ~40000 | 39900+ | — | — | 少量 | 0.35–0.61 |
+| 80k | 79991 | 72364 | 0.256ms | 12.382ms | 9.5% | 0.641 |
+
+## 3. ② 发生器标定结论（决定旗舰参数）
+
+- **10 点扫描（5k–80k × GET/SET，各 20s）**：`achieved/offered = 100%`、`timeouts=0`、`stalls=0`
+  一直到 80k，说明这个单进程开环客户端在 80k rps 以内不是瓶颈；CPU 占核 ≤0.64。
+- 但**服务端在 80k 已经进入排队区**（p99 12.4ms、9.5% 超 5ms SLO），所以旗舰的 offered 率必须
+  落在"SLO 还没崩、但仍有可测压力"的区间；本文件采用 **40k rps**（goodput≈achieved，p99 亚毫秒）
+  作为 smoke 值，正式矩阵应在 20k/40k/60k 三档各做 pilot 后再冻结，而不是现在拍。
+- 这份标定只说明"发生器能打到哪里"，不是系统容量。
+
+## 4. ③④ 矩阵 harness（`redis_matrix_sp3.sh`）smoke 结果
+
+5 臂 × 1 块 × 20s（`MEASURE_S=20 RATE=40000 CONNS=8 KEYPOOL=100000 SLO_MS=5`，
+种子 20261023，真实臂序 `arm-order.txt`），每臂每命令约 80 万条逐请求记录：
+
+| 臂 | 语义 | attach 证明 | GET goodput@SLO | SET goodput@SLO | BG units/s |
+|---|---|---|---|---|---|
+| A0 | 默认 fair，仅必要测量 | `schedext.state=disabled` | 39904 | 39940 | 164.7 |
+| A1 | fair + 同等观测与控制面（`--skill mock`，不 attach） | `disabled` | 39975 | 39966 | 163.8 |
+| A2 | fair + 静态 CPU 权重（systemd scope，**读回 `cpu.weight=200`** 为证） | `disabled` | 39904 | 39979 | 163.9 |
+| C | CLASS + 固定 expert | `enabled` + `ops=eulerpilot` | 40000 | 40000 | 165.1 |
+| D | ADAPTIVE + 路由/门控 + 常驻观测 | `enabled` | 40000 | 40000 | 164.0 |
+
+④ 单位口径已统一：BG 就是在线门控读的同一个生产者（`service_load_probe bg`，5s 窗），
+所以离线表的 BG 列与在线 `min_bg_work_units_per_sec` 是同一货币，不再各算各的。
+
+smoke 也暴露了 harness 自己的 5 个问题，都已修：
+幂等键 `"m-1-C"` 短于契约的 8 字符 ⇒ apply 被拒、C/D 在**没挂调度器**的情况下交出"完整数据"
+（现在 `require_attach` 会核对 apply 状态与 `sched_ext.state`，不合格就把块标成 invalid 并中止）；
+`metadata.name` 含大写被 schema 拒；`policy_json` 参数错位把 `spec.source` 写成 `"5"`；
+A2 手写 `cpu.weight` 因根 cgroup 未委派 cpu 控制器而 Permission denied（改 systemd scope 并把权重读回证明）；
+两次运行共用一棵证据树互相删目录（加 `flock` 互斥，与验收脚本同一把锁族）。
+
+## 5. 还没做（不掩饰）
+
+1. **正式 20 block 矩阵未跑**；本节数字是 1 block/臂的管道验证，`n=1`，没有 CI、没有配对差。
+2. 旗舰的 offered 率、SLO 阈值、BG 工作单位仍需 pilot（3–5 block）后冻结；本文件给的 40k 只是起点。
+3. ⑤ 观测者 watchdog 与"断供后补报"语义仍未实现（现在只能事后算出丢了多久的观测，没人被通知）。
+4. A1 用 `--skill mock` 代表"同等观测 + shadow"，它包含控制面与观测开销但**不含真实 attach 与数据面成本**，
+   正式表里这一格的解释要按此收窄，不能叫"Agent 全部开销"。
+5. redis 只是场景之一；协议里的 Nginx/MySQL 场景与 `noisy-mixed`、`phase-change` 还都没有测量件。
+6. 自动 apply 仍默认关闭，P1 未收口，v2 仍无任何性能结论。

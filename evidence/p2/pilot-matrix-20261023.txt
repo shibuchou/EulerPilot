@@ -1,0 +1,78 @@
+EulerPilot v2 — 实验矩阵 pilot（协议 §6.1：查工具、预热、client 饱和、BG 数据与方差）
+记录时间 2026-10-23，schedpilot-sp3（<SP3-IP>），8 vCPU，内核 6.6.0-schedpilot-sp3，
+redis-7.2.15。实验 `experiments/pilot_matrix_sp3.sh`，数据 `evidence/p2/pilot-matrix-20261023/`。
+**本文件里的任何 rps/延迟都不是性能结论，也不进正式表**；pilot 的产出是"harness 哪里在骗我们"。
+
+## 1. 冻结输入（每块相同，写在每块 `env.json`）
+
+| 项 | 值 |
+|---|---|
+| 随机种子 | 20261023；块内臂顺序洗牌，真实顺序 `arm-order.txt`：1 A0 D C / 2 D C A0 / 3 D C A0 |
+| redis | 7.2.15，port 7777，`save ""`、`appendonly no`、`io-threads 1`、`maxmemory 512mb` |
+| 压测参数 | `-c 50 -P 16 -n 200000 -r 100000 -d 64`，GET 与 SET **分开跑分开报**；keypool 先填满 100000 键 |
+| 时间 | 每臂预热 10s，块间 washout 15s |
+| BG | 独立进程导出的真实完成量：1 单位 = 200 次 64KB SHA-256 + 50ms 睡眠，计数落文件，前后取差 |
+| 构建 | `ep 80da78b8…`、`ep-executord 54b1500e…`（与 r19 验收的是同一构建，`env.json` 内有逐块哈希）、`ep-sched-loader d29aa3bb…` |
+| 残留检查 | 每块结束 `schedext.state/ops`、结束后所有权检查；本次收尾 `state=disabled pins=0` |
+
+臂：A0（默认 fair，只跑必要测量）、C（CLASS + 固定 `latency-balanced`，`source=human`，无自动通道）、
+D（ADAPTIVE：同一 class 策略 + 自动通道，dwell 10000 / hold 5000 / 预算 4/600000ms）。
+
+## 2. 逐块原始读数（从各块 `bench-*.csv` 与 `bg.before/after` 复算）
+
+| 块 | 臂 | GET rps | GET p99 | SET rps | SET p99 | 突发时长 | BG 单位 | 测量后 sched_ext |
+|---|---|---|---|---|---|---|---|---|
+| 1 | A0 | 481928 | 2.567ms | 543478 | 2.935ms | 0.41/0.37s | 7 | disabled |
+| 2 | A0 | 479616 | 3.311ms | 442478 | 2.063ms | 0.42/0.45s | 7 | disabled |
+| 3 | A0 | 456621 | 2.647ms | 445434 | 1.855ms | 0.44/0.45s | 8 | disabled |
+| 1 | C | 422833 | 2.279ms | 304414 | 5.703ms | 0.47/0.66s | 11 | enabled / eulerpilot |
+| 2 | C | 386100 | 4.015ms | 349650 | 4.767ms | 0.52/0.57s | 10 | enabled / eulerpilot |
+| 3 | C | 399202 | 3.519ms | 327869 | 4.543ms | 0.50/0.61s | 10 | enabled / eulerpilot |
+| 1 | D | 398406 | 4.975ms | 344234 | 3.599ms | 0.50/0.58s | 10 | enabled / eulerpilot |
+| 2 | D | 425532 | 4.415ms | 335008 | 4.087ms | 0.47/0.60s | 9 | enabled / eulerpilot |
+| 3 | D | 416667 | 3.871ms | 330033 | 5.399ms | 0.48/0.61s | 10 | enabled / eulerpilot |
+
+按臂汇总（n=3，仅作方差证据）：GET rps 中位 A0 479616 / C 399202 / D 416667，CV 2.4% / 3.8% / 2.7%；
+SET rps 中位 A0 445434 / C 327869 / D 335008，CV 9.8% / 5.6% / 1.7%。
+
+## 3. pilot 抓到的问题（这才是本次的产出）
+
+1. **测量窗与协议不符**：`-n 200000` 在此机器上只是一次 **0.37–0.66 秒** 的突发，而旗舰设定是"预热 10s + 测量 60s"。
+   现在这套 harness 根本没有 60s 的测量窗，把它叫"一轮 block"是名不副实的。
+2. **切换事件与测量窗同量级**：D 臂第 1 块的 daemon 日志记录了块内一次自动切换
+   （`latency-balanced -> safe-basic`，投影空窗 665ms），而单次突发只有约 500ms——
+   也就是说**一次切换可以占满整个测量窗**。任何短窗对比都被切换事件本身支配。
+   正式矩阵必须：测量窗 >> 空窗（≥100×），并逐块记录切换次数（本次已能从 `daemon.log`/`journal.jsonl` 还原）。
+3. **goodput@SLO 仍算不出来**：redis-benchmark 只给聚合 rps 与分位数，没有逐请求记录；
+   协议 §5 明确禁止从分位数表推算 goodput。需要自带客户端（逐请求时间戳直方图）才能上主指标。
+4. **客户端可能饱和，而我没证明它没饱和**：50 客户端 × pipeline 16 打出 ~500k rps，
+   单进程压测端与被测端谁先瓶颈没有测。pilot 的检查项里"client 饱和"这一条**没做完**，
+   正式表前必须用多进程压测端 + 服务端 `instantaneous_ops_per_sec` 对账来定这一点。
+5. **臂集合缺 A1/A2**：只跑了 A0/C/D。协议规定 A1（fair + 同等观测 + Agent shadow）用来把
+   "监控/控制面成本"从"调度器成本"里分离，A2 用来判断普通 cgroup 倾斜能解释多少收益。
+   现在 C/D 与 A0 的差里混着执行服务与测量本身的开销，**不能当作调度器收益或损失**。
+6. **manifest 时点错**：`env.json` 的 `sched_ext.state` 记在块开始时（恒为 disabled），
+   真正证明"这一臂确实挂上了"的是测量后写的 `schedext.state`/`schedext.ops`
+   （C/D 全部 `enabled` + `eulerpilot`，A0 全 `disabled`）。正式 harness 要同时记录两个时点。
+7. **BG 单位口径**：本次 1 单位 = 200×64KB SHA-256 + 50ms 睡眠，粒度粗（约 0.5–1s/单位），
+   与 `service_load_probe` 的"每秒工作量"不是同一单位——协议要求"不同工作单位分开检查、不得相加"，
+   这里必须在旗舰冻结前统一到一个可解释的单位上。
+8. **所有权/残留检查第一次不合格**：前两版 harness 每块跑完留下 3 个实例 pin 目录
+   （`evidence/p2/pilot-matrix-*` 之外的远端 `pilot-matrix-run1-analyzer-bug`、`run2-stale-copy` 就是这样留下的）。
+   另外分析脚本里 `rows` 变量被 CSV 行覆盖，报 "collected blocks: 3" 并崩溃。两处均已修
+   （每块结束在 sched_ext 已 disabled 且无执行服务时清掉本块 pin；变量改名），run3 收尾 `pins=0`、9 块齐收。
+
+## 4. 正式旗舰前必须落实的改动（由上面各条直接得出）
+
+1. 换成能导出逐请求时间戳的压测端；测量窗 ≥60s；每块记录切换事件与空窗时长。
+2. 臂集合补 A1、A2；顺序仍按记录在案的种子洗牌。
+3. 先做客户端瓶颈标定（多进程 + 服务端瞬时吞吐对账），再谈 rps 差异。
+4. BG 工作单位与在线门控用同一口径，冻结进 manifest。
+5. 用本次 CV（GET 2.4–3.8%、SET 1.7–9.8%）作为起点重估 n：在窗长和瓶颈问题解决之前，
+   20 块的初值只是占位，不是基于本次方差的最终判定——本次窗长只有 0.4s，方差不可外推。
+
+## 5. 状态
+
+工具链跑通（9/9 块有完整件、退出码、哈希、残留检查合格），但**协议要求的"60s 测量窗 + goodput@SLO +
+A1/A2 + 客户端未饱和证明"四项都没达到**，因此本轮明确记为 **pilot，不进正式表，不产出性能结论**。
+自动 apply 在 D 臂是真的在动（块内 1 次切换），这也说明正式实验里必须把切换空窗从测量窗里区分出来。

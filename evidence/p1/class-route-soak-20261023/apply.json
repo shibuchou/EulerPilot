@@ -1,0 +1,99 @@
+{
+  "action_id": "act-dfb4907b1be8fa48fe9a45f1",
+  "checks": [
+    {
+      "detail": "sched_ext disabled, pins empty, enable_seq=1280",
+      "name": "probe",
+      "ok": true
+    },
+    {
+      "detail": "params prepared",
+      "name": "plan",
+      "ok": true
+    },
+    {
+      "detail": "class-route-soak/class/latency-balanced",
+      "name": "policy",
+      "ok": true
+    },
+    {
+      "detail": "3 cgroup binding(s)",
+      "name": "targets",
+      "ok": true
+    },
+    {
+      "detail": "snap-837ea4b9824ea700dd2d51a19f8ed02a",
+      "name": "snapshot",
+      "ok": true
+    },
+    {
+      "detail": "applied",
+      "name": "apply",
+      "ok": true
+    },
+    {
+      "detail": "loader pid=301102 mode=class enable_seq=1281",
+      "name": "verify",
+      "ok": true
+    }
+  ],
+  "error": null,
+  "observed_generation": 1,
+  "policy_sha256": "1df73bbbb41b46fe47c99245d17aa22ff8797e729e81e6f6be3c7146484f6b2a",
+  "request_id": "req-758b90f9f55bc839e0b43d0e",
+  "rollback": {
+    "attempted": false,
+    "detail": "",
+    "status": "NOT_NEEDED"
+  },
+  "snapshot_id": "snap-837ea4b9824ea700dd2d51a19f8ed02a",
+  "status": "VERIFIED",
+  "target_bindings": [
+    {
+      "boot_id": "400be773-ed44-4c2d-b24e-0eae2e97acea",
+      "cgroup_id": 43902,
+      "class": "LAT",
+      "device": 26,
+      "effective_class": "LAT",
+      "identity": "cgroup2-kernfs",
+      "inode": 43902,
+      "kind": "cgroup",
+      "path": "/sys/fs/cgroup/ep-soak-fg",
+      "pid": 0,
+      "role": "FOREGROUND",
+      "role_source": "explicit",
+      "starttime": 0
+    },
+    {
+      "boot_id": "400be773-ed44-4c2d-b24e-0eae2e97acea",
+      "cgroup_id": 43944,
+      "class": "CACHE",
+      "device": 26,
+      "effective_class": "CACHE",
+      "identity": "cgroup2-kernfs",
+      "inode": 43944,
+      "kind": "cgroup",
+      "path": "/sys/fs/cgroup/ep-soak-cache",
+      "pid": 0,
+      "role": "NEUTRAL",
+      "role_source": "explicit",
+      "starttime": 0
+    },
+    {
+      "boot_id": "400be773-ed44-4c2d-b24e-0eae2e97acea",
+      "cgroup_id": 43986,
+      "class": "",
+      "device": 26,
+      "effective_class": "BG",
+      "identity": "cgroup2-kernfs",
+      "inode": 43986,
+      "kind": "cgroup",
+      "path": "/sys/fs/cgroup/ep-soak-bg",
+      "pid": 0,
+      "role": "BACKGROUND",
+      "role_source": "explicit",
+      "starttime": 0
+    }
+  ],
+  "transaction_id": "txn-5e955994fcc1bce3bea08d15"
+}

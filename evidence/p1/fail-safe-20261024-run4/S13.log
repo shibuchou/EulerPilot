@@ -1,0 +1,116 @@
+2026-10-24T09:39:34+00:00 pin dirs at scenario start: 0
+{
+  "action_id": "act-9e29180370f6d38d68ff6190",
+  "checks": [
+    {
+      "detail": "sched_ext disabled, pins empty, enable_seq=1750",
+      "name": "probe",
+      "ok": true
+    },
+    {
+      "detail": "params prepared",
+      "name": "plan",
+      "ok": true
+    },
+    {
+      "detail": "fault-s13/class/latency-balanced",
+      "name": "policy",
+      "ok": true
+    },
+    {
+      "detail": "2 cgroup binding(s)",
+      "name": "targets",
+      "ok": true
+    },
+    {
+      "detail": "snap-d1f8fbaf4f27ea68ad0f87904cd06c49",
+      "name": "snapshot",
+      "ok": true
+    },
+    {
+      "detail": "applied",
+      "name": "apply",
+      "ok": true
+    },
+    {
+      "detail": "loader pid=433772 mode=class enable_seq=1751",
+      "name": "verify",
+      "ok": true
+    }
+  ],
+  "error": null,
+  "observed_generation": 1,
+  "policy_sha256": "aae7979dd3e21cd45a31e35652837d53d02da9e499ff26d52e46b8ebe8433ca4",
+  "request_id": "req-b2a6f4cab14eae7a69d6b79b",
+  "rollback": {
+    "attempted": false,
+    "detail": "",
+    "status": "NOT_NEEDED"
+  },
+  "snapshot_id": "snap-d1f8fbaf4f27ea68ad0f87904cd06c49",
+  "status": "VERIFIED",
+  "target_bindings": [
+    {
+      "boot_id": "400be773-ed44-4c2d-b24e-0eae2e97acea",
+      "cgroup_id": 60096,
+      "class": "LAT",
+      "device": 26,
+      "effective_class": "LAT",
+      "identity": "cgroup2-kernfs",
+      "inode": 60096,
+      "kind": "cgroup",
+      "path": "/sys/fs/cgroup/fault-matrix/svc",
+      "pid": 0,
+      "role": "FOREGROUND",
+      "role_source": "explicit",
+      "starttime": 0
+    },
+    {
+      "boot_id": "400be773-ed44-4c2d-b24e-0eae2e97acea",
+      "cgroup_id": 60115,
+      "class": "",
+      "device": 26,
+      "effective_class": "BG",
+      "identity": "cgroup2-kernfs",
+      "inode": 60115,
+      "kind": "cgroup",
+      "path": "/sys/fs/cgroup/fault-matrix/bg",
+      "pid": 0,
+      "role": "BACKGROUND",
+      "role_source": "explicit",
+      "starttime": 0
+    }
+  ],
+  "transaction_id": "txn-b2ed0813f02565fa3eaed5b7"
+}
+2026-10-24T09:39:35+00:00 moved the BG worker pid 432015 out of the declared cgroup
+2026-10-24T09:39:37+00:00 class entry revoked and read back as absent from the kernel map
+2026-10-24T09:39:39+00:00 re-entry re-classified to BG
+{
+  "action_id": "rbk-1f0aba68e6c1607e169aa9bb",
+  "checks": [
+    {
+      "detail": "detached and removed 5 owned pin(s)",
+      "name": "rollback",
+      "ok": true
+    },
+    {
+      "detail": "detached, pins cleaned, runtime marker removed; no class or cfg outlives the unpin",
+      "name": "verify",
+      "ok": true
+    }
+  ],
+  "error": null,
+  "observed_generation": 2,
+  "policy_sha256": "aae7979dd3e21cd45a31e35652837d53d02da9e499ff26d52e46b8ebe8433ca4",
+  "request_id": "req-ad063bf1e4accdf30ee93d68",
+  "rollback": {
+    "attempted": true,
+    "detail": "detached and removed 5 owned pin(s)",
+    "status": "ROLLED_BACK"
+  },
+  "snapshot_id": "snap-d1f8fbaf4f27ea68ad0f87904cd06c49",
+  "status": "ROLLED_BACK",
+  "target_bindings": [],
+  "transaction_id": "txn-8b9c7f019a479948d47bfe82"
+}

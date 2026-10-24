@@ -1,0 +1,67 @@
+{
+  "action_id": "act-6046bdf7bc8c82f9319718ad",
+  "checks": [
+    {
+      "detail": "sched_ext disabled, pins empty, enable_seq=679",
+      "name": "probe",
+      "ok": true
+    },
+    {
+      "detail": "params prepared",
+      "name": "plan",
+      "ok": true
+    },
+    {
+      "detail": "suppress-probe/class/safe-basic",
+      "name": "policy",
+      "ok": true
+    },
+    {
+      "detail": "1 cgroup binding(s)",
+      "name": "targets",
+      "ok": true
+    },
+    {
+      "detail": "snap-87a2954eb7749d8769ca257be614dc84",
+      "name": "snapshot",
+      "ok": true
+    },
+    {
+      "detail": "applied",
+      "name": "apply",
+      "ok": true
+    },
+    {
+      "detail": "loader pid=150818 mode=class enable_seq=680",
+      "name": "verify",
+      "ok": true
+    }
+  ],
+  "error": null,
+  "observed_generation": 1,
+  "policy_sha256": "a4b455d84ecf85be0d0dd6d89fa91ee163265be374ecafb1e7057e6cb6fd0463",
+  "request_id": "req-e18883541580333d372680c2",
+  "rollback": {
+    "attempted": false,
+    "detail": "",
+    "status": "NOT_NEEDED"
+  },
+  "snapshot_id": "snap-87a2954eb7749d8769ca257be614dc84",
+  "status": "VERIFIED",
+  "target_bindings": [
+    {
+      "boot_id": "400be773-ed44-4c2d-b24e-0eae2e97acea",
+      "cgroup_id": 0,
+      "device": 0,
+      "identity": "pidfd+starttime",
+      "inode": 0,
+      "kind": "pid",
+      "path": "",
+      "pid": 1,
+      "role": "FOREGROUND",
+      "role_source": "explicit",
+      "starttime": 19
+    }
+  ],
+  "transaction_id": "txn-f53b435ad45e051d2dfcc263"
+}

@@ -1,0 +1,225 @@
+{
+  "watch_rows": 312,
+  "sched_ext_enable_seq_moves": [
+    {
+      "at_ns": 119529997203485,
+      "kind": "enable_seq",
+      "from": 596,
+      "to": 597
+    },
+    {
+      "at_ns": 119546977069253,
+      "kind": "enable_seq",
+      "from": 597,
+      "to": 598
+    }
+  ],
+  "attach_detach_edges": [
+    {
+      "at_ns": 119529996042047,
+      "kind": "attach"
+    },
+    {
+      "at_ns": 119546356063927,
+      "kind": "detach"
+    },
+    {
+      "at_ns": 119546977069253,
+      "kind": "attach"
+    }
+  ],
+  "switch_gaps": [
+    {
+      "detach_ns": 119546356063927,
+      "attach_ns": 119546977069253,
+      "downtime_ms": 621.005
+    }
+  ],
+  "probes": {
+    "probe1.bin": {
+      "baseline_no_v2": {
+        "count": 6401,
+        "p50_us": 81.587,
+        "p90_us": 98.876,
+        "p99_us": 136.379,
+        "p999_us": 156.197,
+        "max_us": 479.526,
+        "over_1ms": 0,
+        "over_5ms": 0,
+        "over_20ms": 0
+      },
+      "in_gap_1": {
+        "count": 621,
+        "p50_us": 1118.934,
+        "p90_us": 2119.358,
+        "p99_us": 11166.726,
+        "p999_us": 16139.265,
+        "max_us": 17131.119,
+        "over_1ms": 418,
+        "over_5ms": 15,
+        "over_20ms": 0
+      },
+      "after_attach_1": {
+        "count": 5000,
+        "p50_us": 131.449,
+        "p90_us": 279.507,
+        "p99_us": 1217.124,
+        "p999_us": 2164.358,
+        "max_us": 2211.632,
+        "over_1ms": 480,
+        "over_5ms": 0,
+        "over_20ms": 0
+      },
+      "whole_run": {
+        "count": 30677,
+        "p50_us": 115.091,
+        "p90_us": 198.906,
+        "p99_us": 2112.665,
+        "p999_us": 3117.601,
+        "max_us": 17131.119,
+        "over_1ms": 2201,
+        "over_5ms": 15,
+        "over_20ms": 0
+      }
+    },
+    "probe2.bin": {
+      "baseline_no_v2": {
+        "count": 6400,
+        "p50_us": 81.449,
+        "p90_us": 96.435,
+        "p99_us": 121.258,
+        "p999_us": 219.206,
+        "max_us": 3259.686,
+        "over_1ms": 3,
+        "over_5ms": 0,
+        "over_20ms": 0
+      },
+      "in_gap_1": {
+        "count": 621,
+        "p50_us": 1866.81,
+        "p90_us": 2863.378,
+        "p99_us": 8916.923,
+        "p999_us": 13877.374,
+        "max_us": 14869.838,
+        "over_1ms": 416,
+        "over_5ms": 15,
+        "over_20ms": 0
+      },
+      "after_attach_1": {
+        "count": 5000,
+        "p50_us": 826.882,
+        "p90_us": 914.331,
+        "p99_us": 1891.067,
+        "p999_us": 2881.632,
+        "max_us": 2888.525,
+        "over_1ms": 262,
+        "over_5ms": 0,
+        "over_20ms": 0
+      },
+      "whole_run": {
+        "count": 30677,
+        "p50_us": 98.501,
+        "p90_us": 891.031,
+        "p99_us": 2858.975,
+        "p999_us": 3259.686,
+        "max_us": 14869.838,
+        "over_1ms": 1492,
+        "over_5ms": 15,
+        "over_20ms": 0
+      }
+    },
+    "probe3.bin": {
+      "baseline_no_v2": {
+        "count": 6400,
+        "p50_us": 81.954,
+        "p90_us": 91.649,
+        "p99_us": 127.979,
+        "p999_us": 198.802,
+        "max_us": 3714.57,
+        "over_1ms": 3,
+        "over_5ms": 0,
+        "over_20ms": 0
+      },
+      "in_gap_1": {
+        "count": 621,
+        "p50_us": 1357.91,
+        "p90_us": 2386.827,
+        "p99_us": 16544.56,
+        "p999_us": 21522.89,
+        "max_us": 22514.106,
+        "over_1ms": 418,
+        "over_5ms": 20,
+        "over_20ms": 3
+      },
+      "after_attach_1": {
+        "count": 5000,
+        "p50_us": 344.626,
+        "p90_us": 432.694,
+        "p99_us": 1384.551,
+        "p999_us": 2375.795,
+        "max_us": 2409.649,
+        "over_1ms": 373,
+        "over_5ms": 0,
+        "over_20ms": 0
+      },
+      "whole_run": {
+        "count": 30676,
+        "p50_us": 101.098,
+        "p90_us": 394.504,
+        "p99_us": 2339.181,
+        "p999_us": 3353.21,
+        "max_us": 22514.106,
+        "over_1ms": 1843,
+        "over_5ms": 20,
+        "over_20ms": 3
+      }
+    },
+    "probe4.bin": {
+      "baseline_no_v2": {
+        "count": 6399,
+        "p50_us": 80.683,
+        "p90_us": 94.819,
+        "p99_us": 124.778,
+        "p999_us": 254.894,
+        "max_us": 3285.972,
+        "over_1ms": 3,
+        "over_5ms": 0,
+        "over_20ms": 0
+      },
+      "in_gap_1": {
+        "count": 621,
+        "p50_us": 1947.466,
+        "p90_us": 2977.12,
+        "p99_us": 16901.163,
+        "p999_us": 21880.035,
+        "max_us": 22873.623,
+        "over_1ms": 426,
+        "over_5ms": 19,
+        "over_20ms": 3
+      },
+      "after_attach_1": {
+        "count": 5000,
+        "p50_us": 652.885,
+        "p90_us": 949.589,
+        "p99_us": 1932.369,
+        "p999_us": 2921.756,
+        "max_us": 2959.918,
+        "over_1ms": 222,
+        "over_5ms": 0,
+        "over_20ms": 0
+      },
+      "whole_run": {
+        "count": 30676,
+        "p50_us": 87.768,
+        "p90_us": 934.876,
+        "p99_us": 2337.907,
+        "p999_us": 3329.092,
+        "max_us": 22873.623,
+        "over_1ms": 1322,
+        "over_5ms": 19,
+        "over_20ms": 3
+      }
+    }
+  },
+  "note": "downtime is the interval with no v2 scheduler applied during a switch; probes wake every 1ms against an absolute deadline"
+}

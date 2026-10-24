@@ -1,0 +1,332 @@
+{
+  "watch_rows": 1202,
+  "sched_ext_enable_seq_moves": [
+    {
+      "at_ns": 118618023199869,
+      "kind": "enable_seq",
+      "from": 593,
+      "to": 594
+    },
+    {
+      "at_ns": 118635052055757,
+      "kind": "enable_seq",
+      "from": 594,
+      "to": 595
+    },
+    {
+      "at_ns": 118681336707140,
+      "kind": "enable_seq",
+      "from": 595,
+      "to": 596
+    }
+  ],
+  "attach_detach_edges": [
+    {
+      "at_ns": 118618022054819,
+      "kind": "attach"
+    },
+    {
+      "at_ns": 118634387011681,
+      "kind": "detach"
+    },
+    {
+      "at_ns": 118635052055757,
+      "kind": "attach"
+    },
+    {
+      "at_ns": 118681031415284,
+      "kind": "detach"
+    },
+    {
+      "at_ns": 118681334514845,
+      "kind": "attach"
+    }
+  ],
+  "switch_gaps": [
+    {
+      "detach_ns": 118634387011681,
+      "attach_ns": 118635052055757,
+      "downtime_ms": 665.044
+    },
+    {
+      "detach_ns": 118681031415284,
+      "attach_ns": 118681334514845,
+      "downtime_ms": 303.1
+    }
+  ],
+  "probes": {
+    "probe1.bin": {
+      "baseline_no_v2": {
+        "count": 6370,
+        "p50_us": 81.546,
+        "p90_us": 101.964,
+        "p99_us": 132.075,
+        "p999_us": 1405.48,
+        "max_us": 3884.164,
+        "over_1ms": 8,
+        "over_5ms": 0,
+        "over_20ms": 0
+      },
+      "in_gap_1": {
+        "count": 665,
+        "p50_us": 1200.786,
+        "p90_us": 2204.783,
+        "p99_us": 13238.213,
+        "p999_us": 19212.407,
+        "max_us": 20206.057,
+        "over_1ms": 436,
+        "over_5ms": 16,
+        "over_20ms": 1
+      },
+      "after_attach_1": {
+        "count": 5000,
+        "p50_us": 183.472,
+        "p90_us": 256.974,
+        "p99_us": 1209.911,
+        "p999_us": 2189.539,
+        "max_us": 2215.42,
+        "over_1ms": 356,
+        "over_5ms": 0,
+        "over_20ms": 0
+      },
+      "in_gap_2": {
+        "count": 303,
+        "p50_us": 79.669,
+        "p90_us": 110.993,
+        "p99_us": 186.276,
+        "p999_us": 278.654,
+        "max_us": 278.654,
+        "over_1ms": 0,
+        "over_5ms": 0,
+        "over_20ms": 0
+      },
+      "after_attach_2": {
+        "count": 5000,
+        "p50_us": 83.017,
+        "p90_us": 102.2,
+        "p99_us": 139.726,
+        "p999_us": 337.383,
+        "max_us": 1597.441,
+        "over_1ms": 2,
+        "over_5ms": 0,
+        "over_20ms": 0
+      },
+      "whole_run": {
+        "count": 119999,
+        "p50_us": 84.177,
+        "p90_us": 174.575,
+        "p99_us": 1184.643,
+        "p999_us": 2201.375,
+        "max_us": 20206.057,
+        "over_1ms": 1892,
+        "over_5ms": 19,
+        "over_20ms": 1
+      }
+    },
+    "probe2.bin": {
+      "baseline_no_v2": {
+        "count": 6370,
+        "p50_us": 63.376,
+        "p90_us": 110.799,
+        "p99_us": 137.035,
+        "p999_us": 1330.008,
+        "max_us": 3543.917,
+        "over_1ms": 7,
+        "over_5ms": 0,
+        "over_20ms": 0
+      },
+      "in_gap_1": {
+        "count": 665,
+        "p50_us": 1058.152,
+        "p90_us": 3039.968,
+        "p99_us": 16095.233,
+        "p999_us": 22068.654,
+        "max_us": 23059.122,
+        "over_1ms": 528,
+        "over_5ms": 25,
+        "over_20ms": 4
+      },
+      "after_attach_1": {
+        "count": 5000,
+        "p50_us": 67.41,
+        "p90_us": 1051.61,
+        "p99_us": 2047.551,
+        "p999_us": 2081.226,
+        "max_us": 3046.625,
+        "over_1ms": 806,
+        "over_5ms": 0,
+        "over_20ms": 0
+      },
+      "in_gap_2": {
+        "count": 303,
+        "p50_us": 64.385,
+        "p90_us": 91.98,
+        "p99_us": 117.602,
+        "p999_us": 298.781,
+        "max_us": 298.781,
+        "over_1ms": 0,
+        "over_5ms": 0,
+        "over_20ms": 0
+      },
+      "after_attach_2": {
+        "count": 5000,
+        "p50_us": 66.537,
+        "p90_us": 85.652,
+        "p99_us": 122.872,
+        "p999_us": 450.655,
+        "max_us": 2219.392,
+        "over_1ms": 4,
+        "over_5ms": 0,
+        "over_20ms": 0
+      },
+      "whole_run": {
+        "count": 119999,
+        "p50_us": 67.602,
+        "p90_us": 97.056,
+        "p99_us": 1065.916,
+        "p999_us": 3038.609,
+        "max_us": 23059.122,
+        "over_1ms": 3599,
+        "over_5ms": 29,
+        "over_20ms": 4
+      }
+    },
+    "probe3.bin": {
+      "baseline_no_v2": {
+        "count": 6369,
+        "p50_us": 81.18,
+        "p90_us": 96.108,
+        "p99_us": 131.288,
+        "p999_us": 3237.388,
+        "max_us": 8079.579,
+        "over_1ms": 12,
+        "over_5ms": 4,
+        "over_20ms": 0
+      },
+      "in_gap_1": {
+        "count": 665,
+        "p50_us": 1609.61,
+        "p90_us": 2614.607,
+        "p99_us": 15877.259,
+        "p999_us": 21851.332,
+        "max_us": 22843.95,
+        "over_1ms": 448,
+        "over_5ms": 20,
+        "over_20ms": 3
+      },
+      "after_attach_1": {
+        "count": 5000,
+        "p50_us": 490.957,
+        "p90_us": 616.98,
+        "p99_us": 1600.628,
+        "p999_us": 2593.822,
+        "max_us": 2611.93,
+        "over_1ms": 170,
+        "over_5ms": 0,
+        "over_20ms": 0
+      },
+      "in_gap_2": {
+        "count": 304,
+        "p50_us": 80.124,
+        "p90_us": 99.777,
+        "p99_us": 259.05,
+        "p999_us": 476.863,
+        "max_us": 476.863,
+        "over_1ms": 0,
+        "over_5ms": 0,
+        "over_20ms": 0
+      },
+      "after_attach_2": {
+        "count": 5000,
+        "p50_us": 84.487,
+        "p90_us": 101.464,
+        "p99_us": 157.685,
+        "p999_us": 1658.067,
+        "max_us": 3100.944,
+        "over_1ms": 7,
+        "over_5ms": 0,
+        "over_20ms": 0
+      },
+      "whole_run": {
+        "count": 119999,
+        "p50_us": 84.044,
+        "p90_us": 146.015,
+        "p99_us": 927.843,
+        "p999_us": 2608.487,
+        "max_us": 22843.95,
+        "over_1ms": 1195,
+        "over_5ms": 27,
+        "over_20ms": 3
+      }
+    },
+    "probe4.bin": {
+      "baseline_no_v2": {
+        "count": 6369,
+        "p50_us": 79.33,
+        "p90_us": 94.99,
+        "p99_us": 126.347,
+        "p999_us": 968.744,
+        "max_us": 4033.815,
+        "over_1ms": 6,
+        "over_5ms": 0,
+        "over_20ms": 0
+      },
+      "in_gap_1": {
+        "count": 665,
+        "p50_us": 1516.271,
+        "p90_us": 2515.287,
+        "p99_us": 15683.891,
+        "p999_us": 21657.901,
+        "max_us": 22649.477,
+        "over_1ms": 448,
+        "over_5ms": 20,
+        "over_20ms": 3
+      },
+      "after_attach_1": {
+        "count": 5000,
+        "p50_us": 516.051,
+        "p90_us": 557.462,
+        "p99_us": 1536.501,
+        "p999_us": 2523.039,
+        "max_us": 2537.424,
+        "over_1ms": 257,
+        "over_5ms": 0,
+        "over_20ms": 0
+      },
+      "in_gap_2": {
+        "count": 304,
+        "p50_us": 86.341,
+        "p90_us": 109.596,
+        "p99_us": 183.77,
+        "p999_us": 388.723,
+        "max_us": 388.723,
+        "over_1ms": 0,
+        "over_5ms": 0,
+        "over_20ms": 0
+      },
+      "after_attach_2": {
+        "count": 5000,
+        "p50_us": 87.909,
+        "p90_us": 112.217,
+        "p99_us": 144.709,
+        "p999_us": 268.08,
+        "max_us": 1487.981,
+        "over_1ms": 1,
+        "over_5ms": 0,
+        "over_20ms": 0
+      },
+      "whole_run": {
+        "count": 119999,
+        "p50_us": 84.907,
+        "p90_us": 418.469,
+        "p99_us": 1514.887,
+        "p999_us": 2515.916,
+        "max_us": 22649.477,
+        "over_1ms": 1513,
+        "over_5ms": 22,
+        "over_20ms": 3
+      }
+    }
+  },
+  "note": "downtime is the interval with no v2 scheduler applied during a switch; probes wake every 1ms against an absolute deadline"
+}

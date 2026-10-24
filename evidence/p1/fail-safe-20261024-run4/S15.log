@@ -1,0 +1,96 @@
+2026-10-24T09:39:58+00:00 pin dirs at scenario start: 0
+{
+  "action_id": "act-b21d65f1a00913969d64cc19",
+  "checks": [
+    {
+      "detail": "sched_ext disabled, pins empty, enable_seq=1752",
+      "name": "probe",
+      "ok": true
+    },
+    {
+      "detail": "params prepared",
+      "name": "plan",
+      "ok": true
+    },
+    {
+      "detail": "fault-s15/class/latency-balanced",
+      "name": "policy",
+      "ok": true
+    },
+    {
+      "detail": "2 cgroup binding(s)",
+      "name": "targets",
+      "ok": true
+    },
+    {
+      "detail": "snap-9f6615a63736e687b460b03a4446da52",
+      "name": "snapshot",
+      "ok": true
+    },
+    {
+      "detail": "applied",
+      "name": "apply",
+      "ok": true
+    },
+    {
+      "detail": "loader pid=435649 mode=class enable_seq=1753",
+      "name": "verify",
+      "ok": true
+    }
+  ],
+  "error": null,
+  "observed_generation": 1,
+  "policy_sha256": "4a86d405c4d1c5aa9eb91e9dd0964141b21671ff9181237903cde19944ede6b7",
+  "request_id": "req-4f3ed2ba0d8c07ef33839a82",
+  "rollback": {
+    "attempted": false,
+    "detail": "",
+    "status": "NOT_NEEDED"
+  },
+  "snapshot_id": "snap-9f6615a63736e687b460b03a4446da52",
+  "status": "VERIFIED",
+  "target_bindings": [
+    {
+      "boot_id": "400be773-ed44-4c2d-b24e-0eae2e97acea",
+      "cgroup_id": 60096,
+      "class": "LAT",
+      "device": 26,
+      "effective_class": "LAT",
+      "identity": "cgroup2-kernfs",
+      "inode": 60096,
+      "kind": "cgroup",
+      "path": "/sys/fs/cgroup/fault-matrix/svc",
+      "pid": 0,
+      "role": "FOREGROUND",
+      "role_source": "explicit",
+      "starttime": 0
+    },
+    {
+      "boot_id": "400be773-ed44-4c2d-b24e-0eae2e97acea",
+      "cgroup_id": 60115,
+      "class": "",
+      "device": 26,
+      "effective_class": "BG",
+      "identity": "cgroup2-kernfs",
+      "inode": 60115,
+      "kind": "cgroup",
+      "path": "/sys/fs/cgroup/fault-matrix/bg",
+      "pid": 0,
+      "role": "BACKGROUND",
+      "role_source": "explicit",
+      "starttime": 0
+    }
+  ],
+  "transaction_id": "txn-4b2c2a4bd606f7015a33d858"
+}
+2026-10-24T09:39:59+00:00 offlined cpu7 while the scheduler was attached
+2026-10-24T09:40:03+00:00 sched_ext state during the offline: disabled
+[283719.743649] sched_ext: BPF scheduler "eulerpilot" enabled
+[283720.128613] smpboot: CPU 7 is now offline
+[283720.162320] sched_ext: BPF scheduler "eulerpilot" disabled (unregistered from the main kernel)
+[283722.158550] smpboot: Booting Node 0 Processor 7 APIC 0x7
+2026-10-24T09:40:05+00:00 this kernel unregisters the BPF scheduler on cpu hotplug (see the dmesg lines above);
+2026-10-24T09:40:05+00:00   enable_seq 1753, hotplug_seq 11 -> 13
+2026-10-24T09:40:05+00:00   hotplug is therefore a scheduler-lifecycle event on this kernel, not a benign no-op
+2026-10-24T09:40:05+00:00 executor detected the loss: [executor] auto fallback: scheduler lost: sched_ext state is 'disabled', expected enabled
+2026-10-24T09:40:05+00:00 shutdown after the loss left no pins of ours

@@ -1,0 +1,17 @@
+Test project /root/epv2-build
+    Start 1: unit
+1/6 Test #1: unit .............................   Passed   11.59 sec
+    Start 2: integration
+2/6 Test #2: integration ......................   Passed    2.79 sec
+    Start 3: integration_sched
+3/6 Test #3: integration_sched ................   Passed    2.01 sec
+    Start 4: integration_fd
+4/6 Test #4: integration_fd ...................   Passed    6.92 sec
+    Start 5: integration_lease
+5/6 Test #5: integration_lease ................   Passed    1.57 sec
+    Start 6: integration_ttl
+6/6 Test #6: integration_ttl ..................   Passed   11.16 sec
+
+100% tests passed, 0 tests failed out of 6
+
+Total Test time (real) =  36.05 sec

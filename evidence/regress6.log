@@ -1,0 +1,17 @@
+rebuild rc=0 warning_lines=0
+ctest rc=0
+100% tests passed, 0 tests failed out of 6
+
+Total Test time (real) =  36.10 sec
+round 1 rc=0
+round 2 rc=0
+round 3 rc=0
+round 4 rc=0
+round 5 rc=0
+round 6 rc=0
+80da78b867526da1e971c589f6b264bbbc09d05c2bb1f5bda5ea82fdf3993871  /root/epv2-build/ep
+54b1500e6408622d9ed2b2731f4f62735d58b33d69902cfcbca9b3ab58afee6e  /root/epv2-build/ep-executord
+d29aa3bb855c289ce33a504770ade31cf18ee6a66b8e5b8d03f54b0ae9b74a5d  /root/epv2-build/ep-sched-loader
+af759004d5581ce1e6956525c88bf2cc73e8f5646b4c54deeecf8ca080d3227b  /root/epv2-build/ep-schedctl
+c0d2d2fcc0d96f33d50e7138436dec348e8bc5baa4829964901df56893c463f2  /root/epv2-build/ep_unit_tests
+########## regression4 done

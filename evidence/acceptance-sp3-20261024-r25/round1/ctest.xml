@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="(empty)"
+	tests="6"
+	failures="0"
+	disabled="0"
+	skipped="0"
+	hostname=""
+	time="37"
+	timestamp="2026-10-24T09:40:50"
+	>
+	<testcase name="unit" classname="unit" time="13.1071" status="run">
+		<system-out>cgroup_id=1
+deadline exceeded after apply -&gt; compensated
+[executor] reconciled txn-crash-0001: applied value detected and rolled back to snapshot
+[executor] ROLLBACK_PREPARED append failed: injected journal append failure
+rejected as expected (class BG without BACKGROUND role): spec.targets[0].class BG requires role BACKGROUND
+rejected as expected (class BG on a NEUTRAL target): spec.targets[0].class BG requires role BACKGROUND
+rejected as expected (BACKGROUND claiming a non-BG class): spec.targets[0].role BACKGROUND must use class BG
+rejected as expected (unknown class name): spec.targets[0].class has invalid value 'SUPER'
+[executor] liveness miss 1: ops does not contain eulerpilot: thirdparty
+[executor] liveness miss 1: sched_ext enable_seq moved from 1 to 99; sched_ext was re-enabled
+[executor] liveness miss 2: sched_ext enable_seq moved from 1 to 99; sched_ext was re-enabled
+[executor] auto fallback: scheduler lost: sched_ext enable_seq moved from 1 to 99; sched_ext was re-enabled
+[executor] orphan recove...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+	<testcase name="integration" classname="integration" time="2.74816" status="run">
+		<system-out>[integration] state=/tmp/ep-integration.ZaOULa/state
+[integration] restart persistence
+[integration] second instance must be rejected
+[integration] synthetic crash reconcile
+[integration] all checks passed
+</system-out>
+	</testcase>
+	<testcase name="integration_sched" classname="integration_sched" time="2.04101" status="run">
+		<system-out>[integration-sched] loader=/root/epv2-build/ep-sched-loader
+[integration-sched] instance=inst-5da4433d46062d34 pin_dir=/sys/fs/bpf/eulerpilot-v2/inst-5da4433d46062d34
+[integration-sched] validate policy
+[integration-sched] apply
+[integration-sched] cfg parameters
+[integration-sched] cfg generation 2
+[integration-sched] rollback
+[integration-sched] crash + orphan recovery
+[integration-sched] all checks passed
+</system-out>
+	</testcase>
+	<testcase name="integration_fd" classname="integration_fd" time="7.02696" status="run">
+		<system-out>[integration-fd] loader=/root/epv2-build/ep-sched-loader
+[integration-fd] instance=inst-426f9d91403648e3 pin_dir=/sys/fs/bpf/eulerpilot-v2/inst-426f9d91403648e3
+[integration-fd] validate policy
+[integration-fd] non-human SLO veto
+[integration-fd] non-human apply denied: SLO_DENIED
+[integration-fd] apply
+[integration-fd] executor holds a CLOEXEC bpf link fd; loader has exited
+[integration-fd] cfg parameters
+[integration-fd] cfg generation 2
+[integration-fd] fairness cfg fields
+[integration-fd] fairness cfg set 50 50 10
+[integration-fd] fairness cfg restored
+[integration-fd] cgroup_id 69
+[integration-fd] pid target 1 19
+[integration-fd] declared/effective classes: [('BG', 'BG'), ('COMPUTE', 'COMPUTE'), ('LAT', 'LAT')]
+[integration-fd] background class map
+[integration-fd] declared class read back from the kernel map: LAT
+[integration-fd] background pid class BG
+[integration-fd] slo denied: FEATURES_INSUFFICIENT
+[integration-fd] service observation
+[integration-fd] observation accepted for latency-balanced
+[inte...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+	<testcase name="integration_lease" classname="integration_lease" time="1.59284" status="run">
+		<system-out>[integration-lease] loader=/root/epv2-build/ep-sched-loader
+[integration-lease] instance=inst-79cd397638da6804 pin_dir=/sys/fs/bpf/eulerpilot-v2/inst-79cd397638da6804
+[integration-lease] validate policy
+[integration-lease] apply
+[integration-lease] executor holds a bpf link fd; loader has exited
+[integration-lease] cfg parameters
+[integration-lease] cfg generation 2
+[integration-lease] cgroup_id 69
+[integration-lease] pid target 1 19
+[integration-lease] waiting for lease expiry fallback
+[integration-lease] lease expiry detached the scheduler and cleaned pins
+[integration-lease] all checks passed
+</system-out>
+	</testcase>
+	<testcase name="integration_ttl" classname="integration_ttl" time="11.1706" status="run">
+		<system-out>[integration-ttl] loader=/root/epv2-build/ep-sched-loader
+[integration-ttl] instance=inst-0724a35bd97f9139 pin_dir=/sys/fs/bpf/eulerpilot-v2/inst-0724a35bd97f9139
+[integration-ttl] validate policy
+[integration-ttl] apply
+[integration-ttl] executor holds a bpf link fd; loader has exited
+[integration-ttl] cfg parameters
+[integration-ttl] cfg generation 2
+[integration-ttl] cgroup_id 69
+[integration-ttl] pid target 1 19
+[integration-ttl] waiting for policy TTL fallback
+[integration-ttl] policy TTL detached the scheduler and cleaned pins
+[integration-ttl] all checks passed
+</system-out>
+	</testcase>
+</testsuite>

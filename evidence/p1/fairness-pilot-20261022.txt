@@ -48,3 +48,15 @@ Artifacts (SP3)
 Next
   - diagnose why LAT share stays ~31% while throttle=0 (class_map hit/slice
     accounting), then recalibrate pilot values and freeze before formal runs.
+
+Correction (2026-10-22, later run; numbers above left byte-for-byte intact)
+  - CLASSMAP_HIT 14 / CLASSMAP_MISS 1080 were read WITHOUT summing the
+    BPF_MAP_TYPE_PERCPU_ARRAY across CPUs. Re-aggregating the same raw dump
+    gives hit 2318 (all on CPU7), miss 1848 (750 on CPU7), invalid 0,
+    expired 0. The class_map hypothesis below is therefore void.
+  - throttle=0 was self-consistent, not a dead counter: at 31% LAT never
+    reaches the 60% cap. The share is set by the slice-length ratio because
+    DSQ_LAT empties as soon as LAT is moved out; lat_budget_pct only caps.
+  - Fixed by per-CPU summation in the pilot, a slice quota
+    (lat_slice = comp_slice * pct / (100 - pct)) and wall-time accounting in
+    stopping(). See evidence/p1/fairness-budget-20261022.txt.

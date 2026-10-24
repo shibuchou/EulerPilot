@@ -1,0 +1,65 @@
+EulerPilot v2 — mixed-foreground：两个前台服务竞争时，联合 SLO 的差别
+记录时间 2026-10-23 21:5x–22:0x UTC，schedpilot-sp3（<SP3-IP>），8 vCPU，
+内核 6.6.0-schedpilot-sp3，redis 7.2.15。
+构建 `ep-executord 23e23975…`（含 COMPUTE→COMP 修复，见 §1）、loader `45bdc3c0…`、探针 `5f0213fd…`。
+驱动 `experiments/mixed_foreground_sp3.sh`（本轮新增）；数据
+`evidence/p2/mixed-foreground-20261023/`（3 轮 × 2 臂，逐服务原始件 + 类声明证明）。
+
+## 1. 先修一个产品缺陷：策略说 COMPUTE，helper 只认 COMP
+
+class 白名单写的是 `COMPUTE`（与项目"LAT/COMPUTE/CACHE 是运行特征"的措辞一致），
+但数据面 helper `ep-schedctl` 的 `parse_class` 只接受 `COMP`。此前的 class 集成测试只声明过
+`LAT`/`BG`，所以这条路径从未被走过——本轮第一次给前台服务声明 `COMPUTE` 时，`class-set` 直接失败、
+整次 apply 被拒。修复放在唯一该翻译的边界 `SchedSkill::ctrl_class_set`（策略词汇 → 线上 token），
+并在 `tests/integration_fd.sh` 增加一条 `COMPUTE` 目标与 `('COMPUTE','COMPUTE')` 断言
+（正是这条测试本该早发现的问题）。
+
+## 2. 场景
+
+两个前台服务同时服务，诉求不同，各在自己的 cgroup：
+
+| 服务 | offered | SLO | 声明 class |
+|---|---|---|---|
+| svc-A | 30k rps | 5ms | **LAT** |
+| svc-B | 15k rps | 2ms | **COMPUTE** |
+
+外加 8 个 spinner 作为噪声邻居——**没有稀缺就没有竞争**：空载时两个服务都轻松达标（smoke 第一版，
+两边 joint=yes，什么也没测到）。臂：`A0` 裸服务（不启动执行服务），`D` 执行服务 + autopilot
+（开局交租约，dwell 20s/候选保持 10s）。每个服务一个开环 probe、60s、逐请求原始件。
+判据：`met` 定义为该服务 **≥99% 的请求在预算内**；`joint` = 两个都 met。
+
+## 3. 结果（3 轮）
+
+| 轮 | 臂 | svc-A goodput / p99 | svc-B goodput / p99 | joint |
+|---|---|---|---|---|
+| r1 | A0 | 29933 / 4.05 | **12250 / 4.02** MISS | no |
+| r1 | D | 30000 / 1.30 | 14842 / 2.05 MISS | no |
+| r2 | A0 | 29928 / 4.44 | **10214 / 4.03** MISS | no |
+| r2 | D | 30000 / 1.32 | 14860 / 1.98 ok | yes |
+| r3 | A0 | 29909 / 4.90 | **11495 / 4.02** MISS | no |
+| r3 | D | 30000 / 1.22 | 14899 / 1.74 ok | yes |
+
+汇总（中位数/命中数）：
+- **A0**：svc-A 29928、p99 4.44、3/3 达标；svc-B **11495**（offered 15000 的 77%）、p99 **4.02**、**0/3 达标**；
+  **joint 0/3**。
+- **D**：svc-A 30000、p99 1.30、3/3；svc-B **14860**（99%）、p99 **1.98**、**2/3 达标**；**joint 2/3**。
+- D 的 miss（r1）是 svc-B **p99 2.05ms**，卡在 2ms 预算边缘的 5%——不是崩塌；A0 的 miss 是 svc-B
+  丢掉 23–32% 的请求、p99 恒定 4.02ms。
+
+## 4. 读法
+
+1. **两个前台争抢时，内核默认调度让"预算更紧的那个"先崩**：svc-B 的 SLO 是 2ms，A0 下它只交付
+   77% 的请求、p99 4.02；而 svc-A（5ms 预算）在 A0 下仍达标。这是"联合 SLO"与"单服务达标"不同的
+   地方——只看 svc-A 会得出"没问题"的结论。
+2. **声明 LAT/COMPUTE 之后两个都保住**：svc-A 满额且 p99 1.30（A0 4.44），svc-B 交付 99%、
+   p99 1.98。D 的 r1 在 2ms 处擦线未达（99% 判据），所以结论应写成
+   "**把 B 的达标率从 0/3 提到 2/3，且 B 的 p99 从 4.02 降到 1.7–2.05**"，而不是"两个都稳定达标"。
+3. 本轮不能把收益归因给"class 分离"本身：D 与 A0 的差别同时包含调度器、expert 参数与观测栈。
+   要单独测 class 分离，需要 `D-no-class` 对照（同一调度器/参数、不声明 class），本轮没做。
+
+## 5. 不能声称的
+
+- 3 轮、单机；`met` 的 99% 阈值是本轮的操作性定义（协议只要求"联合 SLO"，没给百分比），换阈值结论会变。
+- 噪声邻居固定 8 个 spinner（等权重）；过载区间在这台机器上双稳（见 `expert-gap`），本轮刻意留在稳定区间。
+- 未测两服务各自的"饥饿"边界（例如把 svc-B 的预算降到 1ms 会怎样）。
+- 未做 `D-no-class` 消融，因此**不能声称"声明 class 是收益来源"**。

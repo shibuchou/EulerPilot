@@ -1,0 +1,90 @@
+2026-10-24T10:18:34+00:00 pin dirs at scenario start: 0
+{
+  "action_id": "act-0adaa9721ba36bf8f449288e",
+  "checks": [
+    {
+      "detail": "sched_ext disabled, pins empty, enable_seq=1885",
+      "name": "probe",
+      "ok": true
+    },
+    {
+      "detail": "params prepared",
+      "name": "plan",
+      "ok": true
+    },
+    {
+      "detail": "fault-s04/class/latency-balanced",
+      "name": "policy",
+      "ok": true
+    },
+    {
+      "detail": "2 cgroup binding(s)",
+      "name": "targets",
+      "ok": true
+    },
+    {
+      "detail": "snap-a8d8ae23fb852d885fd34fe0dffcc909",
+      "name": "snapshot",
+      "ok": true
+    },
+    {
+      "detail": "applied",
+      "name": "apply",
+      "ok": true
+    },
+    {
+      "detail": "loader pid=467111 mode=class enable_seq=1886",
+      "name": "verify",
+      "ok": true
+    }
+  ],
+  "error": null,
+  "observed_generation": 1,
+  "policy_sha256": "3f0eed8524792f2f5bc3d5bde916b27c8b4d93fe793372590a4fc10c7a32f11a",
+  "request_id": "req-cd65739d58315a8fb6ff8cec",
+  "rollback": {
+    "attempted": false,
+    "detail": "",
+    "status": "NOT_NEEDED"
+  },
+  "snapshot_id": "snap-a8d8ae23fb852d885fd34fe0dffcc909",
+  "status": "VERIFIED",
+  "target_bindings": [
+    {
+      "boot_id": "400be773-ed44-4c2d-b24e-0eae2e97acea",
+      "cgroup_id": 61038,
+      "class": "LAT",
+      "device": 26,
+      "effective_class": "LAT",
+      "identity": "cgroup2-kernfs",
+      "inode": 61038,
+      "kind": "cgroup",
+      "path": "/sys/fs/cgroup/fault-matrix/svc",
+      "pid": 0,
+      "role": "FOREGROUND",
+      "role_source": "explicit",
+      "starttime": 0
+    },
+    {
+      "boot_id": "400be773-ed44-4c2d-b24e-0eae2e97acea",
+      "cgroup_id": 61057,
+      "class": "",
+      "device": 26,
+      "effective_class": "BG",
+      "identity": "cgroup2-kernfs",
+      "inode": 61057,
+      "kind": "cgroup",
+      "path": "/sys/fs/cgroup/fault-matrix/bg",
+      "pid": 0,
+      "role": "BACKGROUND",
+      "role_source": "explicit",
+      "starttime": 0
+    }
+  ],
+  "transaction_id": "txn-515fa99944d22c1a925b2591"
+}
+2026-10-24T10:18:35+00:00 SIGKILL sent to executor pid 467096 while a class policy was active
+2026-10-24T10:18:35+00:00 sched_ext back to disabled: the struct_ops link died with the executor
+2026-10-24T10:18:35+00:00 pinned maps of inst-485f4a7ea40ccca5 are still in bpffs: a killed process unlinked nothing
+2026-10-24T10:18:37+00:00 same-instance restart swept the pins left by the crash
+2026-10-24T10:18:37+00:00 restart after SIGKILL: recovered without degradation

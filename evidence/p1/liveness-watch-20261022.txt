@@ -1,0 +1,97 @@
+EulerPilot v2 — 生效效果的持续在位性检查 — SP3 证据
+记录时间 2026-10-22，机器 schedpilot-sp3（<SP3-IP>），内核 6.6.0-schedpilot-sp3。
+
+## 1. 本轮要补的缺口
+
+`verify_20261022` 专项暴露出：执行服务的 500ms 监控只检查租约与策略 TTL，**不重跑在位性判断**。
+因此一次已 VERIFIED 的 apply 之后，若调度器被别的 struct_ops 调度器顶替，v2 会安静地以为自己仍在生效，
+`ep status` 继续报健康，既不降级也不回退。
+
+## 2. 实现
+
+- `include/ep/skill.hpp`：新增生命周期方法 `virtual bool liveness(const Applied&, std::string* detail)`
+  （默认返回 true）。契约上它与 `verify` 分工明确：`verify` 是 apply 后的权威校验，可以做 cfg 回读；
+  `liveness` 在监控 tick 上跑，**不得起 helper、不得读代价高的状态**，只回答"我们施加的效果还在不在"。
+- `src/skills/sched_skill.cpp`：把 `verify` 里的四段在位证据抽成私有 `presence_ok()`
+  （link FD 或 loader pid+starttime、`state=enabled`、`root/ops` 含 `eulerpilot`），
+  `verify` 与 `liveness` 共用同一份判断，避免两条路径漂移；`liveness` 不做 cfg 回读、不碰 `enable_seq`。
+- `src/executor/executor.cpp`：`monitor_loop` 每 1000ms 探测一次，**连续 3 次失败（≈3s）**才调用既有
+  `auto_fallback_locked("scheduler lost: " + detail)`；任一次成功即清零计数。
+  取 3 次而不是一次，是因为单次读取可能落在内核 re-enable 的瞬态里，误撤一个健康的调度器比晚 3 秒发现顶替更糟。
+  回退沿用既有事务路径（WAL `ROLLBACK_PREPARED` → `rollback` → `verify_rolled_back` → `ROLLED_BACK`），
+  失败则 `RECOVERY_REQUIRED` 并保留现场，不新增第二写者。
+
+## 3. 单测（`tests/unit/test_main.cpp` → `test_sched_liveness_takeover`）
+
+假 sched_ext 树 + 常驻假 loader，无需 root、不加载 BPF、不接触真实调度器：
+
+| 场景 | 期望 | 实测 |
+|---|---|---|
+| apply 后把 `root/ops` 改成 `thirdparty` 600ms 再改回 | 只记 1 次 miss，不回退，`degraded=false`、`state=enabled` | PASS |
+| 持续顶替 4.5s | `liveness miss 1 → miss 2 → auto fallback`，`degraded=true`、`last_fallback` 含 `scheduler lost`、runtime 标记已删、假 loader 收到 SIGTERM 后 `state=disabled` | PASS |
+
+运行日志与断言一致：
+
+    [executor] liveness miss 1: ops does not contain eulerpilot: thirdparty   (瞬态，恢复后计数归零)
+    [executor] liveness miss 1: ops does not contain eulerpilot: thirdparty
+    [executor] liveness miss 2: ops does not contain eulerpilot: thirdparty
+    [executor] auto fallback: scheduler lost: ops does not contain eulerpilot: thirdparty
+
+`./ep_unit_tests` → `all unit checks passed`，exit 0。
+
+## 4. 回归
+
+- `ctest` 6/6，0 跳过（`unit` 10.85s，含新增在位性用例；其余五项时长与改动前同量级）。
+- `scripts/accept_sp3.sh` 连跑 3 轮 rc=0（`evidence/acceptance-sp3-strict-20261022-r9-round1..3.txt`、
+  末轮完整目录 `evidence/acceptance-sp3-20261022-r9/`：ctest PASS 6/6、A/B/C liveness、
+  收尾 state=disabled、pins=0）。
+- 数据面未受影响：重跑 fairness pilot `evidence/p1/fair-liveness.json`，
+  LAT 58.12%（此前 3 轮 57.94–58.47%）、`throttle=7`、COMP/NORMAL 15.7%、BG 10.48%、最大间隔 38ms。
+  仍为单 CPU 封闭竞争的逻辑验证，不是性能结论。
+
+产物哈希：`ep-executord fe4314d9… → d2caa3a3f6a699c7…`，`ep_unit_tests → e414b48440556f50…`；
+（随后 `enable_seq` 发布窗口专项再次重建这两个产物，最新值为 `ep-executord 9510860e…`、
+`ep_unit_tests a3bdebf4…`，见 `evidence/p1/enable-seq-publish-20261022.txt`。）
+`ep 6b33142a…`、`ep-sched-loader d29aa3bb…`、`ep-schedctl af759004…` 未变。
+
+## 5. 未覆盖的边界（不得当作已解决）
+
+1. **同名顶替发现不了**。若顶替者是另一个 v2 实例，`root/ops` 里仍是 `eulerpilot`，`presence_ok` 会通过。
+   要区分需要比对我们持有的 link FD 的真实 attached 状态（例如 `bpf_obj_get_info_by_fd`）或实例级身份，
+   本轮未实现，也未假装实现。
+2. **`fd_passing`（生产 `sched` 模式）分支没有在位性单测**。假 loader 只走子进程对照模式，
+   生产分支目前只有与 `verify` 共用的代码路径审查这一层保证。
+3. **SP3 真实第三方顶替未做**。该实验要另一个 struct_ops 调度器真 attach 从而夺走调度器所有权，
+   与"对照实现必须互斥运行"的边界冲突，需要单独获批后再做；因此本文件的覆盖层级是
+   unit（假 sysfs）+ 真实回归（ctest/acceptance/pilot），顶替检测本身未经真实内核验证。
+4. 1000ms 间隔与 3 次计数是硬编码的设计折中，未做成策略参数，也没有针对"顶替后多久必须发现"给出
+   经测量的上界。
+5. P1 退出条件仍未满足；自动 apply 保持关闭；性能与真实服务 SLO 未开始。
+
+## 6. 同日后续更正（原文保留）
+
+本文件第 5 节第 1 条已被后续工作解决，第 2 节的描述也随之变化：
+
+- **同名顶替现在能发现**，但实现路线换了。读内核源码后确认 link FD 这条路走不通：
+  `struct bpf_struct_ops_link` 只有 `link` + `map`，`bpf_struct_ops_link_lops.release` 是空函数、
+  没有 `.detach`，UAPI `bpf_link_info` 的 struct_ops 分支只有 `map_id` —— 查不出"我是否仍在位"。
+  改用 `enable_seq`：它在 `scx_enable()` 内只有一个递增点，因此计数器变化等价于"sched_ext 被重新
+  enable 过"。`presence_ok()` 恢复该等值判定，`liveness()` 与 `verify()` 继续共用同一份判断；
+  `test_sched_liveness_takeover` 里"state/ops 都不变、只 bump 计数器"的断言即同名顶替场景。
+- 因此第 2 节那句"`liveness` 不碰 `enable_seq`"不再成立。它现在会读一次该 sysfs 计数器，
+  仍然不起 helper、不做 cfg 回读，成本是一次文件读。
+- 为避免把我方自己那次 enable 误判成顶替，apply 记录计数器前会等内核完成发布
+  （`wait_enable_seq_stable()`）。该背景与更完整的影响见 `evidence/p1/enable-seq-publish-20261022.txt`。
+- 仍然成立：第 5 节第 3 条（`fd_passing` 分支无在位性单测）与第 5 节第 1 条里"需要真实第二实例顶替
+  才能确认"的部分——本文件的顶替验证层级是 unit（假 sysfs），不是真实内核。
+
+## 7. 第三方顶替实测后的定位下调（同日，原文保留）
+
+`evidence/p1/takeover-thirdparty-20261022.txt` 的实测推翻了本文件把 `enable_seq` 说成
+“同名实例顶替唯一信号”的定位：已有调度器生效时，**第二次 struct_ops 注册被内核以 EBUSY 拒绝**（参考实现 `scx_schedpilot.c:376`、v2 自己的第二个 loader `sched/loader.c:468`），运行中的调度器、`root/ops` 与 `enable_seq` 都不变。
+也就是说“执行服务存活期间被顶替”在这台内核上无法构造，本文件第 5 节第 4 条
+“真实顶替未验证”**仍然成立**，顶替检测的证据层级停留在 unit（假 sysfs）。
+
+该等值判定的准确定位改为：应对“我们被 disable 后立刻有人 enable 同名构建”这类
+约 1s 轮询可能采不到的顺序接管场景的兜底；顺序接管一般先由 `state=disabled` 命中。
+代码注释已按此改写。

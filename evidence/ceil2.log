@@ -1,0 +1,12 @@
+resident observer started (window 15s)
+load raised; waiting for a measured p99 above the 1ms ceiling
+  measured breach at +15s
+AT_BREACH expert=safe-basic switches=0 hold='routing target stable 0ms of 1000ms required'
+AT_BREACH measured p99=1.545333 ceiling=1 adverse={}
+SLO_LATENCY allowed=False code=FOREGROUND_P99_EXCEEDED
+CHECK_CEILING_DENIES_ON_MEASURED_BREACH=yes
+CHECK_HELD_ON_BREACH=yes (switches stayed 0)
+CHECK_TELEMETRY_NEVER_STALE=no
+AFTER_DROP expert=safe-basic switches=0 hold='slo denied: FOREGROUND_P99_EXCEEDED' p99=1.201058
+RESULT ceiling_ms=1 window_s=15 breach_at_s=15 switches_at_breach=0 hold=routing target stable 0ms of 1000ms required
+cleanup rc=0 state=disabled pins=0

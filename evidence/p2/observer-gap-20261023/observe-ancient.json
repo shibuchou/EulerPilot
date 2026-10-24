@@ -1,0 +1,21 @@
+{
+  "action_id": "",
+  "checks": [],
+  "error": {
+    "code": "SCHEMA_INVALID",
+    "detail": "observed_at_ms=1792728835897 now_ms=1792728955920",
+    "message": "service observation is too old"
+  },
+  "observed_generation": 1,
+  "policy_sha256": "",
+  "request_id": "req-64b123f0387ed8fb",
+  "rollback": {
+    "attempted": false,
+    "detail": "",
+    "status": "NOT_NEEDED"
+  },
+  "snapshot_id": "",
+  "status": "REJECTED",
+  "target_bindings": [],
+  "transaction_id": ""
+}

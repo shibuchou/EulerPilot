@@ -1,0 +1,34 @@
+=== phase 1: healthy producer; the watchdog must find nothing
+  healthy watchdog rc=0
+WATCHDOG_CLEAN {"alert_max_age_ms": 60000, "breaches": 0, "heartbeat_limit_ms": 60000, "max_heartbeat_age_ms": 5690, "max_observation_age_ms_seen": 6347, "polls": 12, "status_failures": 0, "verdict": "clean"}
+CHECK_WATCHDOG_CLEAN_ON_HEALTHY=yes
+=== phase 2: producer killed (pid 237492)
+IN_GAP age_ms=26032 window_ms=5005 max_age_ms=25861 stale_checks=8
+IN_GAP hold='slo denied: SERVICE_OBSERVATION_STALE' switches=0 slo_allowed=False slo_code=SERVICE_OBSERVATION_STALE
+CHECK_GATE_DENIES_ON_STALE=yes
+CHECK_EVIDENCE_OUTRANKS_SUPPRESSION=yes
+=== phase 3: re-ingesting the dark period
+STAMP late.observed_at_ms=1792728935897 ancient.observed_at_ms=1792728835897 window_ms=5005
+  late ingest rc=0, ancient ingest rc=1
+REPLAY late_accepted=6 rejected_before=0 rejected_after=1
+REPLAY last_rejection='observation is too old to describe the present' observed_at_ms=1792728935897 (late was 1792728935897)
+REPLAY slo_code_after_late=SERVICE_OBSERVATION_STALE
+CHECK_LATE_INGEST_TOLERATED=yes
+CHECK_LATE_INGEST_STILL_DENIES_ACTION=yes
+CHECK_ANCIENT_INGEST_REFUSED=yes
+CHECK_ANCIENT_INGEST_DID_NOT_DISPLACE=yes
+=== phase 4: producer restarted; the gap must still be reported
+  fresh window landed after 3 polls
+AFTER_RECOVERY age_ms=1044 max_age_ms=26037 stale_checks=12 accepted=7 rejected=1
+AFTER_RECOVERY hold='already in place: safe-basic'
+CHECK_GAP_REMEMBERED_AFTER_RECOVERY=yes
+CHECK_STALE_HOLD_CLEARED=yes
+WATCHDOG_GAP {"alert_max_age_ms": 15000, "breaches": 35, "heartbeat_limit_ms": 15000, "max_heartbeat_age_ms": 33154, "max_observation_age_ms_seen": 26037, "polls": 15, "status_failures": 0, "verdict": "breached"}
+CHECK_WATCHDOG_SAW_STALE_EPISODE=yes
+CHECK_WATCHDOG_SAW_STALE_NOW=yes
+CHECK_WATCHDOG_SAW_STALE_MEMORY=yes
+CHECK_WATCHDOG_SAW_PRODUCER_SILENT=yes
+CHECK_WATCHDOG_SAW_REJECTIONS=yes
+  gap watchdog rc=1 (must be nonzero)
+CHECK_WATCHDOG_EXITS_ON_BREACH=yes
+cleanup rc=0 state=disabled pins=0

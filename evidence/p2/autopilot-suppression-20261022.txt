@@ -1,0 +1,159 @@
+EulerPilot v2 — 自动 apply 的切换抑制（dwell / 候选保持 / 租约 / 预算）
+记录时间 2026-10-22，schedpilot-sp3（<SP3-IP>），8 vCPU，内核 6.6.0-schedpilot-sp3。
+实验 `experiments/auto_apply_suppression_sp3.sh`，数据 `evidence/p2/auto-suppress-20261022/`
+（`timeline.csv` 为逐秒门状态）。本轮不测性能，测的是"会不会反复切换"。
+
+## 1. 为什么要做
+
+上一步量化给出两个事实：一次切换留下 621–665ms 无任何 v2 策略保护的空窗；
+而在同样的阶跃负载下，自动通道 120s 内来回切了两次，`--auto-min-interval-ms 3000` 完全没挡住。
+按这个代价，切换频率必须被限制，否则自动 apply 不可用。
+
+## 2. 实现（纯函数决策 + 执行服务记账）
+
+`src/core/autopilot.cpp` 的判定顺序分三层，顺序本身是契约的一部分：
+
+1. **权限门**（disabled / 无 owner / 无在位效果 / 租约在人手里 / 租约过期）
+   —— 必须排在最前，因为运维读这些字符串是为了判断"现在谁说了算"，
+   不能被"我选择不动"这类原因掩盖。
+2. **证据门**（路由退化 / SLO 拒绝 / 无目标 / 超出白名单 / 目标与现状相同）。
+3. **抑制门**（每一条都为那次实测空窗付账）：
+   - `dwell_ms`（默认 60000）：当前 expert 在位不足此时长不得离开；
+   - `candidate_hold_ms`（默认 15000）：路由目标必须稳定这么久，
+     在阈值附近反复横跳的负载本身就是"不该跟"的证据；
+   - `min_interval_ms`（原有冷却）：两次自动动作之间的最小间隔；
+   - **切换预算**：`budget_window_ms`（600000）内最多 `budget_max_switches`（2）次，
+     超了就 hold 并报 `switch budget N/M in Xms window`。
+
+配套语义决定：
+
+- **失败的动作照样消耗预算**。rollback 成功但 apply 失败、或 rollback 本身失败，
+  都已经真的付过一段空窗，因此都计入 `switch_times_ms`；把它当"免费重试"会导致
+  在最坏情况下反复撕开空窗。
+- 每次成功的切换在日志里带上预算占用与投影暴露时间；`policy.status` 的
+  `auto_apply` 段新增 `dwell_ms / candidate_hold_ms / budget_window_ms /
+  budget_max_switches / switches_recorded / projected_unprotected_ms /
+  measured_downtime_ms`，所以"为什么现在没动"和"到目前为止为自己争取了多少无保护时间"都可查。
+- 预算与切换历史只在内存：执行服务重启后必须重新被交予租约才会动作，因此预算也从零开始。
+- `--auto-measured-downtime-ms` 默认 665 是**实测值**，只用于状态里的暴露量报告，
+  不参与是否切换的判断（避免用估计的收益去博实测的代价）。
+
+## 3. 单测
+
+`test_autopilot_rules` 从 11 条扩到 17 条，新增：dwell 未满、候选未稳、预算耗尽、
+预算随窗口滑出后恢复、以及**权限优先于抑制**（同时违反 lease 与 dwell、预算时，
+报的是 `lease held by …`）。`ctest` 6/6、0 跳过，构建 0 警告。
+
+## 4. SP3 重放结果
+
+复现 run1 的负载剖面：交接租约 → 拉起 16 个忙等线程 → 等自动升档 → 撤载 → 观察 110s。
+
+| 观察 | 值 |
+|---|---|
+| 升档切换耗时（从负载起到动作） | t=51s（受 dwell 约束，效果年龄自人类 apply 起算） |
+| 撤载后是否立刻回落 | 否。逐秒记录到 `dwell 60000ms not met (in place 51721 → 59753ms)` |
+| 回落发生时刻 | 最后一次被挡时年龄 **59753ms / 60000ms**，下一拍即切 → dwell 被精确遵守 |
+| 全程切换次数 | 2（升 + 回），`switches_recorded` 与日志一致，未超预算 2/600s |
+| 各门出现次数（逐秒时间线） | lease 1、already-in-place 97、**dwell 60**、switch 3 |
+| 交接前那一拍 | `lease held by cli-6e45a89ab57429c1`，与属性 1 一致 |
+
+对照 run1：撤载后**几秒内**就切回；现在必须等满 60s，且这段等待是产品自己的记账报出来的，
+不是外部时钟相减（我第一版断言用"撤载后 54s"与 60s 比，锚点错了，已改为读 `in place` 数值）。
+
+## 5. 本轮没有验证到的（不得当作已生效）
+
+1. `candidate_hold_ms` 与切换预算**在真机上从未成为决定门**：dwell 60s 比它们更严格、先触发，
+   预算上限 2 恰好等于本轮实际切换次数而未被触发。两者的正确性目前只有单测证据。
+2. 抑制的代价是响应变慢：人类刚 apply 之后，第一次自动切换最快也要
+   `dwell + candidate_hold`（默认 75s）才会发生。本轮实测 51s 是因为效果年龄从人类 apply 起算、
+   负载在此之前已拉起。这对"突发压力需要立刻换挡"的场景是实质限制，参数需要按场景调，
+   而我没有做参数扫描。
+3. 预算只是**限速**，不是"收益大于代价"的判断：系统里没有服务级收益信号（加载场景 SLO 仍未实现），
+   所以无法证明"这次切换值得 0.6s 空窗"，只能保证单位时间内空窗总量有界。
+4. 只有 1 次端到端重放 + 1 次首次运行（rc=1，因观测窗口太短，不是产品失败），
+   样本量个位数；未测多种负载剖面、未测预算真的卡住时的行为。
+5. 自动 apply 仍**默认关闭**、不在验收脚本与交付路径里；P1 未收口；v2 仍无任何性能结论。
+
+## 6. 对本文件上半部分的更正（同日，必须一起读）
+
+1. **§3 的断言计数错了**：`test_autopilot_rules` 实际是 **20 条 `CHECK`**（不是 17 条）。
+   抑制相关的是其中 5 条：dwell 未满、候选未稳、预算耗尽、预算随窗口滑出后恢复、权限优先于抑制。
+2. **§4 引用的目录对错了运行**：`evidence/p2/auto-suppress-20261022/` 装的是第二次尝试
+   （`sup2.log`，rc=0）的产物；那张表的数字（t=51s 升档、撤载后 54s 回落、`in place 51721→59753ms`）
+   来自它。第三次尝试（`auto-suppress-20261022-run2/`，`sup3.log`）同负载重放得到同样的时刻，
+   但它打印的 `CHECK_DWELL_FROM_PRODUCT_ACCOUNTING=violated (last blocked age only 8027ms)`
+   **是断言自身的缺陷，不是 dwell 违约**：`awk` 里 `gsub` 之后 `$3` 变成字符串，
+   与未初始化变量比较走字符串序，于是 `"8027" > "59753"`。改为强制数值
+   （`v=$3+0`）并按门类型统一判定后，权威结果见第 7 节。
+3. **§5 第 1 条已被推翻**：当时说"candidate_hold 与切换预算在真机上从未成为决定门，只有单测证据"。
+   第 7 节用逐门关重放把两者都变成了真机观测。§5 其余各条仍然成立。
+
+## 7. 逐门关隔离重放（三门各有真机证据）
+
+同一条时间线、同一套断言，只改"哪一门关着、另外两门放到 CLI 下限 1000ms"。
+断言不看外部时钟，只看执行服务自己写进门状态里的数值：
+
+| 关 | 参数 | 被挡行数 | 最后一次被挡时的数值 | 结果 |
+|---|---|---|---|---|
+| dwell | dwell=60000 hold=15000 budget=2 | dwell 58 / cand 0 / budget 0 | `in place 59755ms` of 60000 | 升档 t=52s、撤载后 53s 回落，2 次切换，`CHECK_GATE_dwell=honored`，rc=0 |
+| candidate_hold | dwell=1000 hold=40000 budget=10 | dwell **0** / cand 69 / budget 0 | `routing target stable 38161ms` of 40000 | 升档 t=43s（负载起后约 43s，比 dwell 轮早 9s），撤载后 71s 回落，`CHECK_GATE_candidate_hold=honored`，rc=0 |
+| budget | dwell=1000 hold=1000 budget=1/600000 | dwell **0** / cand 3 / budget 65 | `switch budget 1/1 in 600000ms window` | 升档 t=11s；撤载后路由确实想回落，但**整段 100s 观察窗内都被预算拒绝**，`switches=1`，`returned_at_s=none`，`CHECK_GATE_budget` 成立，rc=0 |
+
+读法：candidate_hold 那一轮 `dwell=0` 行说明 1000ms 的下限从未成为约束，延迟完全由 40s 候选保持造成；
+budget 那一轮 `cand=3 dwell=0` 说明前两关都已放行，唯一挡住的确实是"窗口内已用完 1 次"。
+
+两次失败的尝试也留着：`auto-suppress-candidate-fail0-20261022/`、`auto-suppress-budget-fail0-20261022/`
+（rc=1，时间线整列为空）。原因是我把"放开另外两关"写成 `--auto-dwell-ms 0`，而这两个参数
+按设计只接受 1000..3600000，执行服务直接拒绝启动——**产品的输入校验是对的，脚本设计是我的错**。
+已给脚本补 fail-fast：等待就绪时要求 `status` 里真的出现 `auto_apply`，否则打印 daemon 日志并以 rc=1 退出，
+不再产出"看起来像结果"的空时间线。
+
+## 8. 本轮回归与产物
+
+- 先 `make clean` 全量重建：`rc=0`、`warning:` 行数 **0**（`rebuild.log`）。
+- `ctest` **6/6 通过、0 跳过**（`ctest.log`）；`ep_unit_tests` 尾部 `all unit checks passed`。
+- `scripts/accept_sp3.sh` 连跑 **6 轮全部 rc=0**，每轮 `final.json` 为 `PASS`、
+  `state=disabled`、`pins=0`、A/B/C 三臂 `progress_ticks=200`：
+  `evidence/acceptance-sp3-20261022-r14/round1..6/`、
+  `evidence/acceptance-sp3-strict-20261022-r14-round1..6.txt`。
+- 全量重建后哈希与增量构建一致（可复现）：`ep ce49fca9eb09e93b…`、
+  **`ep-executord ebfa88a4210bbcf0…`（本轮变化）**、`ep-sched-loader d29aa3bb855c289c…`、
+  `ep-schedctl af759004d5581ce1…`、**`ep_unit_tests ac6995d92aea7881…`（本轮变化）**。
+  验收 `SHA256SUMS` 里的 `ep-executord` 就是 `ebfa88a4…`，说明被验收的确实是带抑制的构建。
+- 逐秒原始数据：`auto-suppress-dwell-20261022/`、`auto-suppress-candidate-20261022/`、
+  `auto-suppress-budget-20261022/`（各含 `timeline.csv`、`daemon.log`、`apply.json`、`handover.json`），
+  控制台输出合并留在 `evidence/p2/gates.log`（dwell 轮）与 `evidence/p2/gates2.log`（两门重放）。
+- 抑制源码与 SP3 `/root/epv2-src` 逐字节一致：`include/ep/autopilot.hpp c88af3e7279ec6e1…`、
+  `src/core/autopilot.cpp efbc4e1cd6a46c57…`、`src/executor/executor.cpp 7facc892fb8880be…`、
+  `include/ep/executor.hpp 5d231260f4e0fea7…`、`src/executor/main.cpp b925d510d566349b…`、
+  `tests/unit/test_main.cpp 015020890d062bb1…`。实验脚本在补 fail-fast 后为
+  `experiments/auto_apply_suppression_sp3.sh c4382360d6271baa…`（第 7 节三次运行用的是补前的
+  `78d28badf75785a2…`，差异只在失败处理，不影响测到的门行为）。
+- 远端原始件仍在：`SP3:/root/epv2-build/r14-round1..6/`（本轮把 `acceptance.*` 按轮次改名而来）与
+  `SP3:/root/epv2-evidence/auto-suppress-{dwell,candidate2,budget2,candidate,budget}/`。
+  `gates.tar.gz`、`r14.tar.gz` 是取回用的打包件，未入库。
+
+## 9. 抑制参数扫描（同一条负载剖面，2026-10-22 追加）
+
+`SP3:/root/epv2-src/run_sweep.sh` 用同一个脚本换参数跑了三臂，默认臂复用第 7 节的 dwell 轮。
+数据 `evidence/p2/suppression-sweep-{loose,medium,strict}-20261022/`，控制台
+`suppression-sweep-20261022.log`。
+
+| 臂 | dwell/hold/budget | 升档耗时 | 撤载后回落 | 全程切换 | 被挡行数（dwell/cand/budget） |
+|---|---|---|---|---|---|
+| loose | 1000/1000/10 | t=11s | 36s | 2 | 0 / 3 / 0 |
+| medium | 30000/8000/4 | t=26s | 43s | 2 | 17 / 7 / 0 |
+| 默认 | 60000/15000/2 | t=52s | 53s | 2 | 58 / 0 / 0 |
+| strict | 120000/30000/1 | t=102s | 未回落 | 1 | 163 / 0 / 7 |
+
+三点结论：
+
+1. **这条剖面本身自带约 36s 的回落迟滞**：loose 臂所有抑制门都放到 CLI 下限，被挡行数为 0，
+   回落仍然发生在撤载后 36s——那是 PSI/load1 的衰减，不是门的功劳。所以第 7 节里
+   "candidate_hold 从未成为决定门"不是巧合，而是这个场景的自然迟滞比它更慢。
+2. 因此抑制的**可测代价是响应延迟**，收益是切换次数上限：升档从 11s（loose）到 52s（默认）
+   到 102s（strict），默认档把升档延迟放大约 4.7 倍，只换来回落从 36s 到 53s 的 +17s。
+   单次方波最多 2 次切换，所以三臂都≤预算；预算只在 strict 臂（1 次/10min）真正卡住。
+3. **默认档不是实测最优**，只是"把最坏暴露限住"的保守值；剖面不同（例如压力来回抖动）
+   结论会变。第 5 节第 2 条"没有做参数扫描"至此关闭，但**按场景选值仍没有依据**——
+   那需要服务级收益信号，正是 `evidence/p2/service-slo-20261022.txt` 在做的事。

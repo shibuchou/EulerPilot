@@ -1,0 +1,9 @@
+{
+  "expires_at": "2026-10-22T11:23:41.148Z",
+  "expires_ms": 1792668221148,
+  "fence_epoch": 3,
+  "lease_owner": "cli-operator-reclaim",
+  "observed_generation": 3,
+  "request_id": "req-b52e903d8d4abb031f5b77de",
+  "status": "OK"
+}

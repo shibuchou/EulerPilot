@@ -1,0 +1,23 @@
+blocks: {'A0': 20, 'C': 20, 'Cc': 20, 'D': 20, 'Dc': 20} | dropped/not-evidence: none
+wrote /root/epv2-evidence/flagship-classrouting/per_run.csv
+CHECK_RAW_REBUILDS_SUMMARY=yes (every recompute at the probe's own threshold agrees within 0.5%)
+
+=== paired comparisons against A0, within each block ===
+C GET n=20 goodput +1.61% [1.39, 1.79] (paired block bootstrap, seed=20261024, 10000 resamples) wins/losses 20/0 | p99 -41.02% | bg x1.004
+      goodput gain by threshold: 5ms=1.608%  1ms=1.853%  2ms=-0.3%  10ms=0.536%
+C SET n=20 goodput +1.23% [1.11, 1.52] (paired block bootstrap, seed=20261024, 10000 resamples) wins/losses 20/0 | p99 -31.22% | bg x1.004
+      goodput gain by threshold: 5ms=1.227%  1ms=1.414%  2ms=-0.903%  10ms=0.528%
+Cc GET n=20 goodput +1.48% [1.25, 2.06] (paired block bootstrap, seed=20261024, 10000 resamples) wins/losses 20/0 | p99 -37.50% | bg x1.001
+      goodput gain by threshold: 5ms=1.481%  1ms=1.432%  2ms=-0.297%  10ms=0.555%
+Cc SET n=20 goodput +1.29% [1.03, 1.76] (paired block bootstrap, seed=20261024, 10000 resamples) wins/losses 20/0 | p99 -29.73% | bg x1.001
+      goodput gain by threshold: 5ms=1.295%  1ms=0.81%  2ms=-1.08%  10ms=0.397%
+D GET n=20 goodput +1.64% [1.35, 2.02] (paired block bootstrap, seed=20261024, 10000 resamples) wins/losses 20/0 | p99 -44.69% | bg x1.003
+      goodput gain by threshold: 5ms=1.64%  1ms=1.29%  2ms=-0.423%  10ms=0.607%
+D SET n=20 goodput +1.32% [0.76, 1.86] (paired block bootstrap, seed=20261024, 10000 resamples) wins/losses 20/0 | p99 -31.08% | bg x1.003
+      goodput gain by threshold: 5ms=1.322%  1ms=1.31%  2ms=-0.764%  10ms=0.504%
+Dc GET n=20 goodput +1.50% [1.29, 1.74] (paired block bootstrap, seed=20261024, 10000 resamples) wins/losses 19/1 | p99 -38.20% | bg x1.003
+      goodput gain by threshold: 5ms=1.495%  1ms=1.653%  2ms=-0.46%  10ms=0.55%
+Dc SET n=20 goodput +1.20% [0.66, 1.59] (paired block bootstrap, seed=20261024, 10000 resamples) wins/losses 18/2 | p99 -28.14% | bg x1.003
+      goodput gain by threshold: 5ms=1.198%  1ms=1.321%  2ms=-0.945%  10ms=0.456%
+
+wrote /root/epv2-evidence/flagship-classrouting/comparisons.csv

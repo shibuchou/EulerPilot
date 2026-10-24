@@ -1,0 +1,152 @@
+{
+  "cpu": 7,
+  "window": {
+    "LAT": {
+      "pid": 55855,
+      "iters": 53122736,
+      "max_gap_ns": 15024454,
+      "runtime_ns": 1745986683,
+      "share_pct": 57.94
+    },
+    "COMP": {
+      "pid": 55856,
+      "iters": 14189589,
+      "max_gap_ns": 36036511,
+      "runtime_ns": 477143360,
+      "share_pct": 15.83
+    },
+    "NORMAL": {
+      "pid": 55857,
+      "iters": 14100243,
+      "max_gap_ns": 36019558,
+      "runtime_ns": 474532664,
+      "share_pct": 15.75
+    },
+    "BG": {
+      "pid": 55858,
+      "iters": 9297962,
+      "max_gap_ns": 43016583,
+      "runtime_ns": 315650960,
+      "share_pct": 10.48
+    }
+  },
+  "runtime_share_pct": {
+    "LAT": 57.94,
+    "COMP": 15.83,
+    "NORMAL": 15.75,
+    "BG": 10.48
+  },
+  "bpf_stats": {
+    "per_cpu_sum": {
+      "enq_lat": 240,
+      "dsp_lat": 240,
+      "dsp_comp": 389,
+      "run_lat": 240,
+      "run_bg": 80,
+      "direct_lat": 0,
+      "class_hit": 1202,
+      "class_miss": 1895,
+      "class_invalid": 0,
+      "cache_migrated": 0,
+      "bg_vtime_penalty": 80,
+      "dispatch_calls": 1111,
+      "class_expired": 0,
+      "lat_budget_throttle": 5,
+      "lat_idle_borrow": 0,
+      "aging_force": 54
+    },
+    "target_cpu": {
+      "enq_lat": 240,
+      "dsp_lat": 240,
+      "dsp_comp": 318,
+      "run_lat": 240,
+      "run_bg": 80,
+      "direct_lat": 0,
+      "class_hit": 1202,
+      "class_miss": 497,
+      "class_invalid": 0,
+      "cache_migrated": 0,
+      "bg_vtime_penalty": 80,
+      "dispatch_calls": 567,
+      "class_expired": 0,
+      "lat_budget_throttle": 5,
+      "lat_idle_borrow": 0,
+      "aging_force": 4
+    },
+    "note": "per-CPU counters summed; single-line reads of the raw dump understate them"
+  },
+  "fair_budget_window_samples": [
+    {
+      "sample": "1",
+      "raw_bytes": 32,
+      "window_start_ns": 106899098012151,
+      "lat_runtime_ns": 7000455,
+      "other_runtime_ns": 3000002,
+      "last_other_ns": 106899105013948,
+      "lat_share_pct": 70.0
+    },
+    {
+      "sample": "2",
+      "raw_bytes": 32,
+      "window_start_ns": 106899812008996,
+      "lat_runtime_ns": 13999404,
+      "other_runtime_ns": 12987697,
+      "last_other_ns": 106899831010112,
+      "lat_share_pct": 51.87
+    },
+    {
+      "sample": "3",
+      "raw_bytes": 32,
+      "window_start_ns": 106900525004535,
+      "lat_runtime_ns": 27997801,
+      "other_runtime_ns": 15990457,
+      "last_other_ns": 106900566005695,
+      "lat_share_pct": 63.65
+    },
+    {
+      "sample": "4",
+      "raw_bytes": 32,
+      "window_start_ns": 106901279012960,
+      "lat_runtime_ns": 0,
+      "other_runtime_ns": 0,
+      "last_other_ns": 106901103108054,
+      "lat_share_pct": null
+    },
+    {
+      "sample": "final",
+      "raw_bytes": 32,
+      "window_start_ns": 106901279012960,
+      "lat_runtime_ns": 0,
+      "other_runtime_ns": 22237,
+      "last_other_ns": 106901303046405,
+      "lat_share_pct": 0.0
+    }
+  ],
+  "fair_budget_note": "window covers budget_window_ms; share is accounted runtime, not wall clock",
+  "applied_cfg": {
+    "aging_ms": 20,
+    "bg_slice_ns": 2000000,
+    "bg_vtime_pct": 200,
+    "budget_window_ms": 100,
+    "cache_slice_ns": 4000000,
+    "comp_slice_ns": 4000000,
+    "flags": 11,
+    "generation": 3,
+    "heartbeat_ns": 0,
+    "heartbeat_seq": 0,
+    "intf_version": 3,
+    "lat_budget_pct": 60,
+    "lat_slice_ns": 6000000,
+    "lat_vtime_pct": 100,
+    "llc_affinity": false,
+    "migrate_penalty_ns": 2000000,
+    "mode": 1,
+    "pin_dir": "/sys/fs/bpf/eulerpilot-v2/inst-575a4d38a47c8fef",
+    "preempt_threshold_ns": 500000
+  },
+  "observed_ms_per_slice": {
+    "LAT": 7.275,
+    "OTHERS": 3.985
+  },
+  "observed_note": "share follows the slice-length quota; lat_budget_pct caps it from above (throttle fired 5 times on the target CPU)"
+}

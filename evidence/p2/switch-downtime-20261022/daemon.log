@@ -1,0 +1,8 @@
+[executord] autopilot enabled owner=autopilot-v2 baseline=downtime-probe expert=safe-basic min_interval_ms=3000
+[executord] ready state_dir=/tmp/ep-downtime/state socket=/tmp/ep-downtime/executor.sock skill=sched-ref instance=inst-397289835184bc70 generation=0 degraded=false
+[executor] autopilot switched safe-basic -> latency-balanced
+[executor] autopilot switched latency-balanced -> safe-basic
+[executor] autopilot renewed lease fence=3
+[executor] autopilot renewed lease fence=4
+[executor] auto fallback: policy TTL expired
+[executord] shutting down

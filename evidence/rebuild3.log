@@ -1,0 +1,13 @@
+[  8%] Built target ep-sched-loader
+[ 16%] Built target ep-schedctl
+[ 20%] Building CXX object CMakeFiles/ep_core.dir/src/skills/sched_skill.cpp.o
+[ 25%] Linking CXX static library libep_core.a
+[ 75%] Built target ep_core
+[ 79%] Building CXX object CMakeFiles/ep-executord.dir/src/executor/main.cpp.o
+[ 83%] Linking CXX executable ep
+[ 87%] Building CXX object CMakeFiles/ep_unit_tests.dir/tests/unit/test_main.cpp.o
+[ 91%] Built target ep
+[ 95%] Linking CXX executable ep-executord
+[ 95%] Built target ep-executord
+[100%] Linking CXX executable ep_unit_tests
+[100%] Built target ep_unit_tests

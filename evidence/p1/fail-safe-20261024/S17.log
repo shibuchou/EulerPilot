@@ -1,0 +1,143 @@
+2026-10-24T10:19:26+00:00 pin dirs at scenario start: 0
+{
+  "action_id": "act-e9a5e7a9579813680a6157a0",
+  "checks": [],
+  "error": {
+    "code": "APPLY_FAILED",
+    "detail": "no scheduler was attached",
+    "message": "ep-schedctl failed (exit 1): {\"ok\":false,\"error\":\"injected: this helper refuses class-set\"}"
+  },
+  "observed_generation": 0,
+  "policy_sha256": "93ce90436972f4abe3ef349a96c01703f83f2b136ab89caadc2c0b5f68f9663d",
+  "request_id": "req-f805d9c479e1f160dce52f07",
+  "rollback": {
+    "attempted": true,
+    "detail": "no scheduler was attached",
+    "status": "ROLLED_BACK"
+  },
+  "snapshot_id": "snap-20d49fa00322a5afc031ecda8cf780a2",
+  "status": "ROLLED_BACK",
+  "target_bindings": [],
+  "transaction_id": "txn-593fc6b8752ee8f83f87636c"
+}
+2026-10-24T10:19:27+00:00 apply whose second step (class-set) failed -> status=ROLLED_BACK
+2026-10-24T10:19:27+00:00 error.code=APPLY_FAILED
+2026-10-24T10:19:27+00:00 generation after the aborted apply: 0 (0 = nothing committed)
+helper calls seen:
+get --pin-dir /sys/fs/bpf/eulerpilot-v2/inst-a65f5fe135b0cb1c
+set --pin-dir /sys/fs/bpf/eulerpilot-v2/inst-a65f5fe135b0cb1c --json {"bg_slice_ns":2000000,"bg_vtime_pct":200,"cache_slice_ns":4000000,"comp_slice_ns":4000000,"lat_slice_ns":2000000,"llc_affinity":false,"preempt_threshold_ns":500000}
+class-set --pin-dir /sys/fs/bpf/eulerpilot-v2/inst-a65f5fe135b0cb1c --pid 466856 --class LAT --confidence 1000
+2026-10-24T10:19:27+00:00 step order recorded: get -> set -> class-set(refused)
+{
+  "action_id": "act-bfa166e6875ac7bfe0b847e4",
+  "checks": [
+    {
+      "detail": "sched_ext disabled, pins empty, enable_seq=1895",
+      "name": "probe",
+      "ok": true
+    },
+    {
+      "detail": "params prepared",
+      "name": "plan",
+      "ok": true
+    },
+    {
+      "detail": "fault-s17/class/latency-balanced",
+      "name": "policy",
+      "ok": true
+    },
+    {
+      "detail": "2 cgroup binding(s)",
+      "name": "targets",
+      "ok": true
+    },
+    {
+      "detail": "snap-1be4a933ef841767e792c3290b5c42f6",
+      "name": "snapshot",
+      "ok": true
+    },
+    {
+      "detail": "applied",
+      "name": "apply",
+      "ok": true
+    },
+    {
+      "detail": "loader pid=470395 mode=class enable_seq=1896",
+      "name": "verify",
+      "ok": true
+    }
+  ],
+  "error": null,
+  "observed_generation": 1,
+  "policy_sha256": "93ce90436972f4abe3ef349a96c01703f83f2b136ab89caadc2c0b5f68f9663d",
+  "request_id": "req-c94e0634f6fc93a4b29f607c",
+  "rollback": {
+    "attempted": false,
+    "detail": "",
+    "status": "NOT_NEEDED"
+  },
+  "snapshot_id": "snap-1be4a933ef841767e792c3290b5c42f6",
+  "status": "VERIFIED",
+  "target_bindings": [
+    {
+      "boot_id": "400be773-ed44-4c2d-b24e-0eae2e97acea",
+      "cgroup_id": 61038,
+      "class": "LAT",
+      "device": 26,
+      "effective_class": "LAT",
+      "identity": "cgroup2-kernfs",
+      "inode": 61038,
+      "kind": "cgroup",
+      "path": "/sys/fs/cgroup/fault-matrix/svc",
+      "pid": 0,
+      "role": "FOREGROUND",
+      "role_source": "explicit",
+      "starttime": 0
+    },
+    {
+      "boot_id": "400be773-ed44-4c2d-b24e-0eae2e97acea",
+      "cgroup_id": 61057,
+      "class": "",
+      "device": 26,
+      "effective_class": "BG",
+      "identity": "cgroup2-kernfs",
+      "inode": 61057,
+      "kind": "cgroup",
+      "path": "/sys/fs/cgroup/fault-matrix/bg",
+      "pid": 0,
+      "role": "BACKGROUND",
+      "role_source": "explicit",
+      "starttime": 0
+    }
+  ],
+  "transaction_id": "txn-580f5d8f123ef0b85b34cc7e"
+}
+2026-10-24T10:19:30+00:00 retry after the aborted apply verified normally
+{
+  "action_id": "rbk-bf13d1c5383a9ee6771ce77e",
+  "checks": [
+    {
+      "detail": "detached and removed 5 owned pin(s)",
+      "name": "rollback",
+      "ok": true
+    },
+    {
+      "detail": "detached, pins cleaned, runtime marker removed; no class or cfg outlives the unpin",
+      "name": "verify",
+      "ok": true
+    }
+  ],
+  "error": null,
+  "observed_generation": 2,
+  "policy_sha256": "93ce90436972f4abe3ef349a96c01703f83f2b136ab89caadc2c0b5f68f9663d",
+  "request_id": "req-9dfaf501da8b0dd6cef21b7d",
+  "rollback": {
+    "attempted": true,
+    "detail": "detached and removed 5 owned pin(s)",
+    "status": "ROLLED_BACK"
+  },
+  "snapshot_id": "snap-1be4a933ef841767e792c3290b5c42f6",
+  "status": "ROLLED_BACK",
+  "target_bindings": [],
+  "transaction_id": "txn-47536ee72b3eb9be4517429e"
+}

@@ -1,0 +1,4 @@
+[executord] autopilot enabled owner=autopilot-v2 baseline=downtime-probe expert=safe-basic min_interval_ms=3000
+[executord] ready state_dir=/tmp/ep-downtime/state socket=/tmp/ep-downtime/executor.sock skill=sched-ref instance=inst-b416a26b8cfd75ce generation=0 degraded=false
+[executor] autopilot switched safe-basic -> latency-balanced
+[executord] shutting down

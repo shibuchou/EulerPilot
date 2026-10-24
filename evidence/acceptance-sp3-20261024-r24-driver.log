@@ -1,0 +1,14 @@
+rounds=6 tag=r24 evidence=/root/epv2-evidence
+=== round 1 start 2026-10-24T08:42:38+00:00 ===
+round 1 rc=0 evidence=/root/epv2-build/acceptance.7oQMki log=/root/epv2-evidence/acc-r24-1.txt
+=== round 2 start 2026-10-24T08:43:24+00:00 ===
+round 2 rc=0 evidence=/root/epv2-build/acceptance.wL8XV6 log=/root/epv2-evidence/acc-r24-2.txt
+=== round 3 start 2026-10-24T08:44:09+00:00 ===
+round 3 rc=0 evidence=/root/epv2-build/acceptance.8K3q1Z log=/root/epv2-evidence/acc-r24-3.txt
+=== round 4 start 2026-10-24T08:44:55+00:00 ===
+round 4 rc=0 evidence=/root/epv2-build/acceptance.hDnStK log=/root/epv2-evidence/acc-r24-4.txt
+=== round 5 start 2026-10-24T08:45:41+00:00 ===
+round 5 rc=0 evidence=/root/epv2-build/acceptance.7HXPjp log=/root/epv2-evidence/acc-r24-5.txt
+=== round 6 start 2026-10-24T08:46:26+00:00 ===
+round 6 rc=0 evidence=/root/epv2-build/acceptance.cEPsaR log=/root/epv2-evidence/acc-r24-6.txt
+ALL_ROUNDS_PASS tag=r24 rounds=6

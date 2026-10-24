@@ -1,0 +1,93 @@
+EulerPilot v2 — 第三方顶替实验：并发顶替在本内核不可达
+记录时间 2026-10-22，机器 schedpilot-sp3（<SP3-IP>），内核 6.6.0-schedpilot-sp3。
+用户批准："批准"（针对用第三方调度器做真实顶替实验，并明确与"对照实现互斥运行"规则的时间重叠）。
+实验脚本：`evidence/p1/takeover-thirdparty-sp3.sh`；现场：`/tmp/ep-take3-A/`（已清理，日志摘录见下）。
+
+## 1. 实验一：参考实现调度器顶替 A
+
+A 走生产路径 `--skill sched`（loader 一次性 attach 后经 SCM_RIGHTS 交 link FD 并退出）。
+
+```
+PRE  state=disabled ops= seq=544
+PRE  ref_sha256=3da28c293b45fccb  v2_loader_sha256=d29aa3bb855c289c
+A_apply: VERIFIED
+A  instance=inst-55d1cc705e26ef74 seq_after_A=545 state=enabled ops=eulerpilot
+A_pin_inode=219515 /sys/fs/bpf/eulerpilot-v2/inst-55d1cc705e26ef74/cfg
+--- /root/p0/schedpilot-0aeca0c/build/scx_schedpilot --mode basic ---
+[SCX_BUG] scx_schedpilot.c:376 (Device or resource busy)
+Failed to attach struct_ops
+THIRD state=enabled ops=eulerpilot seq=545      ← 参考调度器没能注册，什么都没换
+D1 A_degraded=False  generation=1  last_fallback=""
+A_pin_inode_after=219515（同一 inode，未被任何人动过）
+```
+
+## 2. 实验二：第二个 v2 loader 并发 attach
+
+```
+A_apply=VERIFIED     after A: state=enabled ops=eulerpilot seq=546
+timeout 15 ep-sched-loader --mode class --pin-dir /sys/fs/bpf/ep-conc-probe
+second_v2_loader_exit=1
+[SCX_BUG] /root/epv2-src/sched/loader.c:468 (Device or resource busy)
+Failed to attach struct_ops
+after attempt: state=enabled ops=eulerpilot seq=546    ← 计数器没有变化
+```
+
+## 3. 结论：顶替不是并发事件，我前两轮的表述需要下调
+
+两台内核层面的一致事实：**已有 sched_ext 调度器生效时，第二次 struct_ops 注册被内核以 EBUSY
+直接拒绝**，参考实现如此，v2 自己的第二个 loader 也如此；运行中的调度器、`root/ops`、
+`enable_seq` 全部不变，A 也正确地没有任何反应（degraded=false、无 liveness miss）。
+
+因此：
+
+- "另一个实例在我们活着时接管调度器"这个场景**在本内核上无法构造**，所以本实验
+  **没有**产出"顶替检测在真实内核上有效"的证据；该检测仍然只有 unit（假 sysfs）层级证据。
+  这是能力上限，不是没做——执行服务存活期间不存在能让第二次 attach 成功的路径。
+- `liveness-watch-20261022.txt` 第 6 节和 `enable-seq-publish-20261022.txt` 第 5 节里
+  "`enable_seq` 是同名实例顶替的唯一可用信号"这句**被夸大**了：同名并发顶替不可达，
+  而顺序接管必然先经过 `state=disabled`，由 ops/state 检查先命中。
+  该判定的准确定位是**快速 disable+re-enable 时约 1s 轮询可能采不到的兜底**，
+  代码注释已按此改写（`src/skills/sched_skill.cpp` 的 `presence_ok()`，工作区 `f6b32dc4…`）。
+- 也说明上一轮 B 实例被拒不是"多此一举的门禁"：它和内核的 EBUSY 是同一约束的两道防线，
+  用户态那道至少让第二个执行服务在启动阶段就说明原因（`startup_degraded_reason`）。
+
+保留 `enable_seq` 等值判定的理由：成本是一次 sysfs 读；已确认它不会被 CPU 热插拔触发
+（`scx_hotplug_seq` 独立）；在"我们被 disable 后别人立刻 enable 同名构建"这种采样盲区里，
+它是唯一还能区分的信号。移除它并不更正确，只是少一层纵深。
+
+## 4. 正面产出
+
+- 生产 `fd_passing` 路径在真实内核上又一次 `apply → VERIFIED`（seq 544→545 正常发布），
+  且对不存在的威胁**没有误报**——这是对发布窗口修正的第二例真实内核正向验证。
+- 参考 loader 与 v2 loader 的并发 attach 行为、错误码与源码行号均已记录，
+  可作为后续威胁建模的事实基线。
+- `dmesg` 佐证：实验期间只有 `eulerpilot` 的 enabled/disabled 记录，没有第三方注册成功的痕迹。
+
+## 5. 收尾与自我更正
+
+实验二结束后机器遗留了一个 instance pin（我的脚本只对 `--pin-dir /sys/fs/bpf/ep-conc-probe`
+做了清理，没有清理执行服务 A 自己的 pin 目录）：
+
+```
+state=disabled leftover=inst-42f494163d4841dc
+removing /sys/fs/bpf/eulerpilot-v2/inst-42f494163d4841dc (5 entries)
+after_clean pins=0 root_exists=no
+procs exec=0 loader=0 ref=0
+```
+
+确认 `sched_ext=disabled` 后才删除，且只删本次实验留下的目录；
+`/sys/fs/bpf/schedpilot`（参考实现的 pin 空间）全程未被触碰，条目数前后都是 1。
+`/tmp/ep-conc`、`/tmp/ep-take3-A` 与远端临时运行脚本已删除。
+
+另外，本次实验还有一次自身失误：用于打印 A 存活状态的嵌套 python 命令被 shell 引号截断
+（`SyntaxError: '(' was never closed`），它只是少了一行输出，不影响判定，
+但暴露了"在 ssh 单引号里再嵌 python"这种做法的脆弱性；实验脚本已经改为文件传输，后续沿用。
+
+## 6. 回归
+
+注释修正后 `/root/epv2-build` 重建，`ctest` 6/6、0 跳过；
+产物 `ep-executord 60026843… → 4681d9e1c3141137…`、`ep_unit_tests f9423a09… → 2db00afcc2e9f43a…`；
+`ep`、`ep-sched-loader`、`ep-schedctl` 未变。本轮没有改动任何运行时逻辑。
+因产物哈希变化，对最终二进制补跑一轮严格验收：`accept_sp3.sh` rc=0、ctest 6/6 无跳过、
+收尾 `state=disabled`、pins=0，其 `SHA256SUMS` 即上述 `4681d9e1…`（
+`evidence/acceptance-sp3-20261022-r12/`、`evidence/acceptance-sp3-strict-20261022-r12.txt`）。

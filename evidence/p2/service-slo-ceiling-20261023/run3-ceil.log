@@ -1,0 +1,5 @@
+resident observer started (window 15s)
+load raised; waiting for a measured p99 above the 1ms ceiling
+RESULT never measured p99 above 1ms in 100s
+cycle,observed_at_ms,window_ms,expert,p99_ms,bg_units,bg_wait_ms,ack
+cleanup rc=1 state=disabled pins=0

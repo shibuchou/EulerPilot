@@ -1,0 +1,23 @@
+2026-10-24T10:10:06+00:00 pin dirs at scenario start: 0
+{
+  "action_id": "",
+  "checks": [],
+  "error": {
+    "code": "SCHEMA_INVALID",
+    "detail": "mode 'adaptive' is not supported by the P1 sched skill (adaptive needs schedpilotd and is deferred)",
+    "message": "plan rejected"
+  },
+  "observed_generation": 0,
+  "policy_sha256": "",
+  "request_id": "req-c64c222459d63c8f97e46e7a",
+  "rollback": {
+    "attempted": false,
+    "detail": "",
+    "status": "NOT_NEEDED"
+  },
+  "snapshot_id": "",
+  "status": "REJECTED",
+  "target_bindings": [],
+  "transaction_id": ""
+}
+2026-10-24T10:10:06+00:00 adaptive apply status=REJECTED detail={'code': 'SCHEMA_INVALID', 'detail': "mode 'adaptive' is not supported by the P1 sched skill (adaptive needs schedpilotd and is deferred)", 'message': 'plan rejected'}

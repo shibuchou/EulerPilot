@@ -1,0 +1,31 @@
+########## loose 13:52:39
+  switched up at t=11s
+load dropped; run1 switched back within seconds, this must now wait for dwell
+RESULT gate=dwell switches=2 returned_at_s=36 dwell_ms=1000 candidate_hold_ms=1000 budget=10/600000ms
+CHECK_HELD_AT_30S=yes
+CHECK_WITHIN_BUDGET=yes
+CHECK_GATE_dwell=never bound (no suppression row in timeline)
+GATE_CENSUS dwell=0 candidate=3 budget=0
+cleanup rc=0 state=disabled pins=0
+########## loose rc=0 13:54:38
+########## medium 13:54:43
+  switched up at t=26s
+load dropped; run1 switched back within seconds, this must now wait for dwell
+RESULT gate=dwell switches=2 returned_at_s=43 dwell_ms=30000 candidate_hold_ms=8000 budget=4/600000ms
+CHECK_HELD_AT_30S=yes
+CHECK_WITHIN_BUDGET=yes
+CHECK_GATE_dwell=honored (last blocked 28079ms of 30000ms, 17 rows)
+GATE_CENSUS dwell=17 candidate=7 budget=0
+cleanup rc=0 state=disabled pins=0
+########## medium rc=0 13:57:00
+########## strict 13:57:05
+  switched up at t=102s
+load dropped; run1 switched back within seconds, this must now wait for dwell
+RESULT gate=dwell switches=1 returned_at_s=none dwell_ms=120000 candidate_hold_ms=30000 budget=1/600000ms
+CHECK_HELD_AT_30S=yes
+CHECK_WITHIN_BUDGET=yes
+CHECK_GATE_dwell=honored (last blocked 118311ms of 120000ms, 163 rows)
+GATE_CENSUS dwell=163 candidate=0 budget=7
+cleanup rc=0 state=disabled pins=0
+########## strict rc=0 14:01:15
+########## sweep done 14:01:20

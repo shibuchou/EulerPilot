@@ -1,0 +1,51 @@
+load raised; measuring the baseline under the expert that is in place
+MEASURE expert=safe-basic p99_ms=1.184 bg_units=180.4 bg_wait_ms=10.540 samples_fg=5999 samples_bg=1083
+OBSERVE ack=OK expert=safe-basic outcome_evaluated=None hurt=None code=
+ADVERSE {}
+Traceback (most recent call last):
+  File "<stdin>", line 2, in <module>
+  File "/usr/lib64/python3.11/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib64/python3.11/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib64/python3.11/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+  switched up 1s after the round-1 measurement
+ARMED outcome_pending=False last_outcome='no service measurement before safe-basic -> latency-balanced; outcome not evaluated'
+MEASURE expert=latency-balanced p99_ms=1.201 bg_units=180.9 bg_wait_ms=3.750 samples_fg=5999 samples_bg=1086
+OBSERVE ack=OK expert=latency-balanced outcome_evaluated=None hurt=None code=
+ADVERSE {}
+Traceback (most recent call last):
+  File "<stdin>", line 2, in <module>
+  File "/usr/lib64/python3.11/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib64/python3.11/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib64/python3.11/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+MEASURE expert=latency-balanced p99_ms=3.051 bg_units=181.3 bg_wait_ms=1.022 samples_fg=5996 samples_bg=1088
+OBSERVE ack=OK expert=latency-balanced outcome_evaluated=None hurt=None code=
+ADVERSE {}
+Traceback (most recent call last):
+  File "<stdin>", line 2, in <module>
+  File "/usr/lib64/python3.11/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib64/python3.11/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib64/python3.11/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+now starve the declared floor from outside and see whether the autopilot stops
+SLO_AFTER_STARVE allowed=False code=BG_PROGRESS_FLOOR service_evidence=present
+STARVE_HOLD=slo denied: BG_PROGRESS_FLOOR
+RESULT switch_up_at_s=1 switches_before_starve=1 switches_after=1 hold=slo denied: BG_PROGRESS_FLOOR
+CHECK_STARVE_STOPS_AUTOPILOT=yes
+cleanup rc=0 state=disabled pins=0

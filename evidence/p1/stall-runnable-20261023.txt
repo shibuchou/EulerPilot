@@ -1,0 +1,116 @@
+EulerPilot v2 — 持续服务负载下调度器被内核摘除（runnable task stall）
+记录时间 2026-10-23，schedpilot-sp3（<SP3-IP>），8 vCPU，内核 6.6.0-schedpilot-sp3。
+实验 `experiments/stall_watch_sp3.sh`（复现与验证）、`experiments/flagship_param_pilot_sp3.sh`
+（首次暴露问题）；数据 `evidence/p1/stall-runnable-20261023/`。
+构建：`ep-sched-loader 45bdc3c0d64c…`（BPF 对象 `eb53ca5d80a7…`、skeleton `d1c4e59804af…`，
+由 `scripts/build_bpf_sp3.sh` 重建）。本轮不测性能，只判存活。
+
+## 1. 现象：旗舰 pilot 里每一个挂载臂都被内核摘除
+
+冻结旗舰参数的 pilot 在 A0（裸 redis）之外跑了 C/D 两个挂载臂，**每个挂载臂都在块中途丢掉调度器**：
+矩阵 harness 结束时记录的 `schedext.state` 是 `disabled`，执行服务侧 `degraded=true`、
+`last_fallback="scheduler lost: sched_ext state is 'disabled', expected enabled"`。
+内核侧同一时刻的记录：
+
+```
+[181856.905471] sched_ext: BPF scheduler "eulerpilot" disabled (runnable task stall)
+[181856.906777] sched_ext: eulerpilot: kworker/6:1[233996] failed to run for 34.422s
+```
+
+pilot 阶段 2 的 60k 与 40k 两组共 6 个挂载块，**6 次全部**出现该记录，受害者一律是
+**per-CPU kworker**（kworker/2:0、/3:1、/6:1、/7:2），报告时间 34.4–45.1s（阈值 30s，
+`scx_watchdog_workfn` 每 `timeout/2` 复查）。每次摘除后 3s 内执行服务都检测到并回退，
+控制面这条链是按设计工作的——问题全在数据面。
+
+## 2. 归因过程（含一次失败的假设）
+
+第一步是配料分离，每个条件 90s、每秒轮询 `sched_ext/state`：
+
+| 配料 | 结果 |
+|---|---|
+| 只挂载，不加载 | 90 poll 全 enabled，0 次 stall |
+| 挂载 + 仅后台负载（service_load_probe bg） | 90 poll 全 enabled，0 次 stall |
+| 挂载 + 仅服务负载（60k rps redis） | **76/90 enabled，第 46s 被摘除**（kworker/5:0，30.656s） |
+| 挂载 + 两者 | **被摘除**（pilot 里 6/6） |
+
+即：**触发条件是服务负载本身**，与后台负载、与切换/门控无关（C 臂没有自动切换也一样）。
+
+第二步读 `stats` map（bpftool 只读 dump，执行服务仍是唯一写者）：
+
+```
+redis 场景  enq_comp=447  dsp_comp=447   enq_lat=0 enq_cache=0 enq_bg=0 enq_shared=0
+            dispatch_calls=4883  direct_normal=334237
+```
+
+`enq_comp == dsp_comp` 说明**没有任何任务卡在我们自己的 DSQ 里等着被取走**——
+"某个类的 DSQ 没人排空"这一类假设被这条数据直接否掉。
+
+于是回到内核本身读代码（`kernel/sched/ext.c`）：
+
+- `scx_bpf_dsq_move_to_local()` → `scx_dsq_move()` → `find_dsq_for_dispatch(this_rq, dsq_id, p)`；
+  目标是别的 CPU 的 local DSQ 时，`move_task_between_dsqs()` 用
+  `task_allowed_on_cpu(p, cpu)` 判定，不允许就 `find_global_dsq(p)` **改投全局 DSQ**；
+- 全局 DSQ 只在某个 CPU 做 balance 时被 `consume_global_dsq()` 排空；
+- `Documentation/scheduler/sched-ext.rst:228`：**唤醒 idle CPU 是调度器的责任**
+  （`scx_bpf_kick_cpu()`，或借 `ops.select_cpu()` 的副作用）。
+
+把三条拼起来，per-CPU kworker 的死循环是：它被投进一个共享类 DSQ → 任意别的 CPU 在
+`ops.dispatch()` 里把它拉出来，内核发现它不能在该 CPU 跑，于是改投全局 DSQ →
+唯一能把它从全局 DSQ 取走的只有它自己那个 CPU → 而那个 CPU 此时是 idle 的，
+没有任何东西去 balance 它 → 35s 后看门狗摘除调度器。受害者只会是绑定类任务，
+正好对上"每次都是 kworker"。
+
+第一个修复假设是"非唤醒的 enqueue 没人唤醒目标 CPU"，于是加了
+`kick_idle_for()`（`SCX_ENQ_WAKEUP` 之外用 `scx_bpf_pick_idle_cpu`+`SCX_KICK_IDLE` 补唤醒）。
+真机结果：**仍然摘除**（`184057.514996`，kworker/3:1，45.056s），且计数器显示这条路径
+90s 内只走了 6–9 次（`enq_kick=6`）——它对本案几乎不生效，因为被困的任务根本不在我们的 DSQ 里。
+该改动本身是正确的（也是内核文档要求的），保留，但它不是这个缺陷的解。
+
+## 3. 修复
+
+`sched/scx_schedpilot.bpf.c` `schedpilot_enqueue()`：允许 CPU 集合只有一个的任务
+（`p->nr_cpus_allowed == 1`）**不进共享类 DSQ**，直接投到自己那个 CPU 的 local DSQ 并唤醒它：
+
+```c
+	if (p->nr_cpus_allowed == 1) {
+		s32 cpu = scx_bpf_task_cpu(p);
+
+		stat_inc(SP_STAT_ENQ_PINNED_LOCAL);
+		scx_bpf_dsq_insert(p, SCX_DSQ_LOCAL_ON | cpu, slice, enq_flags);
+		scx_bpf_kick_cpu(cpu, SCX_KICK_IDLE);
+		return;
+	}
+```
+
+绑定任务本来就只可能在那一个 CPU 上跑，把它放进共享 DSQ 不会带来任何负载均衡收益，
+只会制造上面那条改投路径。用 `nr_cpus_allowed` 而不是 `bpf_cpumask_weight()` 是为了
+不在每次 enqueue 上多一个 kfunc 调用（本机 `bpf_cpumask_weight` 确实是 kfunc，
+`kernel/bpf/cpumask.c:420`）。新增 `SP_STAT_ENQ_PINNED_LOCAL=38`，loader 侧命名
+`enq_pinned_local`。BPF 对象与 skeleton 由本轮新增的 `scripts/build_bpf_sp3.sh` 重建
+（此前重建流程只写在 `sched/README.md` 的散文里，无法按需复现——这个缺口也一并补掉）。
+
+## 4. 验证（存活，不是性能）
+
+同样的失败配料（挂载 + 仅 60k redis，3 轮 × 90s）：
+
+- `POLLS samples=269 enabled=269 not_enabled=0`；`DMESG_new_stall_lines=0`；
+- `FINAL degraded=False last_fallback='' generation=1`（generation 仍为 1 ⇒ 全程没有发生过回退）；
+- 计数器证明新路径确实在跑：`enq_pinned_local` 667（第 1 轮中段）→ 3290（第 3 轮中段），
+  同时 `enq_comp == dsp_comp`（63/63、230/230）保持不变；
+- 收尾 `state=disabled pins=0`，机器干净。
+
+修复前的对照是同一台机器、同一负载上的 6/6 失败与 1/1 失败（第一个假设），
+时间戳、kworker PID、秒数都记在本文第 1 节与 `dmesg` 摘录里。
+
+## 5. 本轮没有覆盖 / 不能声称的
+
+- **不能声称 stall 类缺陷已穷尽**。看门狗还能因别的原因摘除调度器（切片为 0、核间等待、
+  ops 报错等），本轮只证明了这一条路径被堵住。
+- 验证运行里 `enq_lat/enq_cache/enq_bg/enq_shared` 全是 0：策略只有一个 FOREGROUND cgroup
+  目标，所有任务都落在默认类。也就是说**LAT/CACHE/BG 三条类路由路径在这次调查里没有被压到**，
+  它们是否也有改投/饿死问题需要单独验证（旗舰矩阵会真实使用这些类，届时看门狗仍然是兜底）。
+- 单机单负载（redis GET/SET、8 vCPU、无 CPU 热插拔）。跨机、跨负载的普适性未知。
+- 不测性能。修复对性能的影响（每次绑定任务 enqueue 多一次 `SCX_KICK_IDLE`）尚未量化，
+  这正是旗舰矩阵要测的东西之一。
+- 控制面这一侧没有改动，也不需要改：它在 3s 内检测到、按补偿路径回退、清理了自己的 pin，
+  并把原因写进 `last_fallback` 与 `degraded`。这是这条链路第一次在真实数据面失效下被完整跑到。

@@ -1,0 +1,115 @@
+EulerPilot v2 — verify 的 enable_seq 校验语义修正 — SP3 证据
+记录时间 2026-10-22，机器 schedpilot-sp3（<SP3-IP>），内核 6.6.0-schedpilot-sp3。
+
+## 1. 现象
+
+`scripts/accept_sp3.sh` 里 `integration_sched` 报
+`VERIFY_FAILED / enable_seq changed since attach`，测试约 0.87s 即失败（正常 2.0–2.2s），
+执行服务按事务语义回滚（"detached and removed 5 owned pin(s)"），收尾 state=disabled、0 pin、
+无残留进程——失败路径本身是 fail-safe 的。
+
+排查过的可能性与结果：
+
+| 观测 | 结果 |
+|---|---|
+| 同一二进制 `ctest -R integration_sched` 单跑 4 次 | 全部通过 |
+| 同一二进制全量 `ctest` 2 次 | 全部通过（enable_seq 304→310、310→316，正常递增） |
+| 无观察器连跑 `accept_sp3.sh` 4 轮（`evidence/acceptance-sp3-strict-20261022-r7loop-1..4.txt`） | 全部通过，轮间 state=disabled、pins=0、无进程 |
+| 带 `/sys/kernel/sched_ext` 采样器的 `accept_sp3.sh` | 通过（采样本身不构成 attach 源） |
+
+修前合计 **7 次里失败 2 次**（`evidence/acceptance-sp3-strict-20261022-r7a-fail.txt`、
+`-r7b-fail.txt`；通过样本 `-r7c-pass.txt` 与 `-r7loop-1..4.txt`）。失败与机器上 sched_ext
+活动密度相关（当日 enable_seq 已到 3xx），窗口小但真实存在。
+
+## 2. 根因
+
+`SchedSkill::verify()` 在三项在位证据（`state=enabled`、`root/ops` 含 `eulerpilot`、
+`fd_passing` 下持有 link FD / 否则 loader pid+starttime 匹配）之后，还把
+**全局单调计数器 `enable_seq` 等于 attach 时记录值**当作必要条件
+（`src/skills/sched_skill.cpp:1129`，修改前）。
+
+`enable_seq` 不是本次 attach 的身份：任何第三方调度器的 attach/detach、CPU 热插拔引发的
+re-enable 都会使它递增，而此时本实例的 link FD、state 与 ops 完全未变。apply 记录该值之后
+还要执行 `wait_pins_settled(3000)`（同文件 :950–:951），这最多 3 秒的窗口进一步放大了撞上概率，
+于是健康的 apply 会随机被判失败。
+
+这与项目既有结论直接冲突：`include/ep/skill.hpp:98` 已写明回滚校验不能用"整快照比对"，
+原因正是"sched_ext 的 enable_seq 单调"；`verify_rolled_back` 按此实现了域语义校验，
+apply 后的 `verify` 却漏掉了同一条规则。
+
+## 3. 修改
+
+`src/skills/sched_skill.cpp`（HEAD `dcce47195fe6b5be` → 工作区 `be0b8b492487038c`）
+
+- 等值判定改为**只在计数器回退时失败**（`current < attached`），并把
+  `attached/current` 两个数值写进失败信息与成功 detail；原先只有一句无数字的文案，无法定位。
+- `state`、`ops`、link FD / pid+starttime、cfg 回读四项强证据保持不变。
+
+`tests/unit/test_main.cpp`（HEAD `0626b0d` → 工作区 `f2ecced4412a3979`）新增
+`test_sched_verify_seq_semantics`，用可注入的假 sched_ext 树 + 假 loader（fake loader 在 attach 时
+递增 `enable_seq`），不需要 root、不加载 BPF、不接触真实调度器：
+
+| 场景 | 期望 | 结果 |
+|---|---|---|
+| 第三方 bump（500）而 ops/state 仍属本实例 | verify 通过 | PASS |
+| 计数器回退（5） | verify 失败，detail 含 `regressed` | PASS |
+| `ops` 被真实顶替为 `thirdparty` | verify 失败，detail 含 `ops does not contain eulerpilot` | PASS |
+
+该路径此前从未被单测覆盖：原有假 loader 根本不写 `enable_seq`，读写两侧都停在默认 0，
+等值判定恰好恒真，所以这条语义错误在单测层不可见。
+
+## 4. 修后验证
+
+- 独立构建目录 `/root/epv2-unit-build` 编译并运行 `./ep_unit_tests` → `all unit checks passed`。
+- `epv2-build` 重构建后 `ctest` 6/6，0 跳过。
+- `accept_sp3.sh` 连跑 **6 轮全部通过**（`evidence/acceptance-sp3-strict-20261022-r8-round1..6.txt`），每轮
+  state=disabled、pins=0、executors=0、loaders=0；ctest 校验 `passed=6, skipped=0`。
+  证据 `evidence/acceptance-sp3-20261022-r8/`。
+
+产物哈希：`ep-executord 04163c90… → fe4314d9433d7b1c…`（含校验语义修正）；
+`ep_unit_tests` 随新单测变为 `efcd79c44ed34538…`；交付用 `ep 6b33142a…`、
+`ep-sched-loader d29aa3bb…`、`ep-schedctl af759004…` 未变。
+
+仓库源码与验收二进制已对齐：`/root/epv2-build` 在装入新 `tests/unit/test_main.cpp` 后重构建，
+`ctest` 仍 6/6、0 跳过（`unit` 4.08s 含新增的 4 条断言），收尾 state=disabled、pins=0。
+
+## 5. 剩余局限（不得当作已解决）
+
+1. 两次修前失败的**具体外部触发源未定位**。单测证明的是"该判定在任何第三方 bump 下必然误报"，
+   没有证明当日那两次就是同一原因（可能是其它 sched_ext 活动，也可能是尚未识别的路径）。
+   修后 6/6 不能反证根因唯一。
+2. 执行服务的 500ms 监控只检查租约与策略 TTL，**不会周期性重跑 `verify`**。因此"apply 成功之后
+   调度器被第三方顶替"目前不会被主动发现，只能靠下一次 apply/rollback 或人工 `ep status`。
+   这是本次修改暴露出的真实能力缺口，属于 P1/P2 待办，不是本轮已解决项。
+3. 本轮只动校验语义，未触碰控制面事务、WAL 与 active 生命周期；P1 退出条件仍未满足，
+   自动 apply 保持关闭，性能与真实服务 SLO 仍未开始。
+
+## 6. 本文第 2 节的根因判断已被推翻（同日后续调查；原文保留不改写）
+
+本文断言"`enable_seq` 是全局计数器，第三方 attach/detach 或 CPU 热插拔 re-enable 都会在本实例
+未受影响时递增它，所以等值判定必然误报"。这个前提是错的——当时没有查内核源码就下了结论并改了代码。
+
+2026-10-22 读 SP3 内核源码 `kernel/sched/ext.c`（6.6.0-145.3.34.165.oe2403sp3）后的事实：
+
+- `scx_enable_seq` 定义于 :949，全文件**只有一个递增点** :5518，位于 `scx_enable()` 内部；
+  没有别的路径能改这个计数。
+- CPU 热插拔用的是**独立的** `scx_hotplug_seq`（定义 :942、递增 :3433、sysfs :4364）。
+  本文把它当成误报来源，是错误。
+- 关键发布顺序（:5503–:5518）：
+
+      if (!scx_ops_tryset_enable_state(SCX_OPS_ENABLED, SCX_OPS_ENABLING)) ...  // sysfs 立刻可读
+      pr_info("sched_ext: BPF scheduler \"%s\" enabled...");
+      kobject_uevent(scx_root_kobj, KOBJ_ADD);                                  // 同步 uevent
+      mutex_unlock(&scx_ops_enable_mutex);
+      atomic_long_inc(&scx_enable_seq);                                          // 最后才递增
+
+所以修前那两次失败不是第三方干扰，而是**我们自己那次 attach 的发布窗口**：apply 用
+`wait_enabled()` 看到 `state=enabled` 就返回并读取 `enable_seq`，此刻内核可能尚未递增，
+于是记录到旧值，verify 随后读到新值并报 `changed`。
+
+由此，本文第 3 节"只在计数器回退时失败"是**方向错误的修复**：它确实消除了误报，代价是把一个
+本来有效的信号整个丢掉——而同名实例顶替只能靠这个信号发现。正确修法是等计数器发布后再记录，
+并把判定恢复为等值。该修复及其验证见 `evidence/p1/enable-seq-publish-20261022.txt`。
+
+本文第 1 节的失败率（修前 7 次失败 2 次、无观察器 4 轮全过）与第 4 节的通过数据仍然有效，
+只是成因解释不同；第 5 节第 1、2 条分别由本次更正和 `liveness-watch` 专项解决。

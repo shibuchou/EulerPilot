@@ -1,0 +1,89 @@
+EulerPilot v2 — enable_seq 发布窗口修正与同名顶替检测 — SP3 证据
+记录时间 2026-10-22，机器 schedpilot-sp3（<SP3-IP>），内核 6.6.0-schedpilot-sp3。
+本文件取代 `enable-seq-verify-20261022.txt` 第 3 节的修复方案；该文件的根因判断更正见其第 6 节。
+
+## 1. 内核事实（读源码，不靠推测）
+
+`kernel/sched/ext.c`（6.6.0-145.3.34.165.oe2403sp3）：
+
+- `scx_enable_seq`（:949）全文**只有一个递增点** :5518，位于 `scx_enable()` 内部。
+- CPU 热插拔使用独立的 `scx_hotplug_seq`（:942/:3433/:4364），**不会**动 `enable_seq`。
+- 发布顺序（:5503–:5518）：先把状态置为 `SCX_OPS_ENABLED`（sysfs `state` 立刻可读 `enabled`），
+  再 `pr_info` 打印、`kobject_uevent(KOBJ_ADD)`（同步）、`mutex_unlock`，**最后**才
+  `atomic_long_inc(&scx_enable_seq)`。
+- `struct bpf_struct_ops_link`（bpf_struct_ops.c:56）只有 `link` + `map`，
+  `bpf_struct_ops_link_lops` 的 `.release` 是空函数且没有 `.detach`；
+  UAPI `bpf_link_info` 的 struct_ops 分支只有 `map_id`。
+  **所以执行服务持有的 link FD 查不出"我是否仍是当前生效调度器"**，指望用它识破顶替是不成立的。
+
+推论：`state=enabled` 与 `enable_seq` 递增之间存在一个由内核打印和同步 uevent 决定的窗口。
+apply 一看到 `enabled` 就读计数器，就会读到递增前的值。
+
+## 2. 修复
+
+`src/skills/sched_skill.cpp`（HEAD `dcce4719…` → 工作区 `20b077c0…`）
+
+- 新增 `wait_enable_seq_stable(previous_seq, timeout_ms)`：以 snapshot 记录的 **pre-enable** 值为基准，
+  轮询直到计数器离开该值并连续两次读数一致，最多 1000ms；超时则返回当前观测值。
+- `apply()` 记录 `runtime.enable_seq` 改为调用它（`apply` 的 `Snapshot` 参数原先匿名，为此命名）。
+- `presence_ok()` 恢复 `seq != runtime.enable_seq` **等值判定**，文案带上两个数值：
+  `sched_ext enable_seq moved from A to B; sched_ext was re-enabled`。
+- `verify()` 与 `liveness()` 继续共用 `presence_ok()`，因此两处语义一致；上一版为消除误报而加的
+  "只判回退"分支已删除。
+
+为什么这次可以安全地用等值：计数器只可能因一次成功的 enable 而变化，而我方一次 apply 只 enable 一次，
+且记录点已经跨过发布窗口。同名实例顶替必然经历它自己的 `scx_enable()`，因此一定被这条判定抓到——
+这正是上一版把信号丢掉后发现不了的东西。
+
+超时后的语义是**保守失败**（记录到旧值 → verify 报 moved → 回退），不是静默通过。
+SP3 实测 apply 路径未见触发；1000ms 的依据是 `pr_info` + 同步 uevent 通常远小于该值，未做分布测量。
+
+## 3. 单测（`tests/unit/test_main.cpp`）
+
+原先 4 个假 loader 场景都不写 `enable_seq`，读写双方恒为 0，这条语义在单测层完全不可见；
+本轮统一让假 loader 初始化 `enable_seq` 并在 attach 时递增，并复刻内核的发布顺序。
+
+| 用例 | 断言 |
+|---|---|
+| `test_sched_enable_seq_semantics` | 计数器改为 500 → verify 失败且 detail 含 `enable_seq moved`；改为 5 → 失败；`ops` 被顶替 → 在到达计数器前先失败；计数器/ops/state/loader 全不变 → verify 通过 |
+| `test_sched_enable_seq_publish_window` | 假 loader 先置 `state=enabled`、**延迟 400ms** 才递增计数器（即修前会 VERIFY_FAILED 的场景）→ apply 仍 `VERIFIED`，runtime 记录 `enable_seq=1`，`degraded=false` |
+| `test_sched_liveness_takeover` | 同名顶替模拟：`state`/`ops` 保持不变，只 bump `enable_seq` → 监控在约 3s 内 `liveness miss×3` → 走既有自动回退，`last_fallback` 同时含 `scheduler lost` 与 `enable_seq moved` |
+
+`./ep_unit_tests` → `all unit checks passed`，exit 0。
+
+## 4. 真实内核回归
+
+`/root/epv2-build` 重建后 `ctest` **连跑两轮全 6/6、0 跳过**
+（`unit` 11.5s、`integration_sched` 2.18/2.00s、`integration_fd` 6.53/6.23s、
+`integration_lease` 1.56/1.62s、`integration_ttl` 11.1s），收尾 `state=disabled`、pins=0。
+`integration_sched` 走的是真实 `sched-ref` attach，即真实 `scx_enable()` 发布顺序。
+
+`accept_sp3.sh` 修后连跑 **6 轮全部 rc=0**（`evidence/acceptance-sp3-strict-20261022-r10-round1..6.txt`，
+末轮完整目录 `evidence/acceptance-sp3-20261022-r10/`：ctest `passed=6, skipped=0`、A/B/C liveness、
+收尾 `state=disabled`、pins=0）。六轮日志里 `enable_seq moved` 出现 **0 次**——等值判定已经恢复，
+但在真实 `scx_enable()` 发布顺序下不再误报，这正是本次修复要同时满足的两件事。
+末轮产物哈希与本文一致：`ep-executord 9510860ed338116b…`、`ep-sched-loader d29aa3bb…`。
+
+## 5. 剩余边界
+
+1. `enable_seq` 是**全局**计数：只要机器上发生过任何一次别的 enable，本实例就会被判失位并回退。
+   这是有意的保守选择（ sched_ext 同时只跑一个调度器，别的 enable 确实意味着我们不再生效），
+   但它的正确性依赖内核这个属性，若上游语义变化需要重新评估。
+2. 顶替检测的最坏发现时间约 3s（1000ms 探测间隔 × 3 次计数），未做参数化，也没有实测上界。
+3. `fd_passing`（生产 `sched` 模式）分支仍没有在位性单测：假 loader 无法产生真实 struct_ops link FD。
+   本轮把 `presence_ok` 做成两条路径共用，减少了漂移面，但生产分支的覆盖层级仍是"真实回归测试通过"，
+   不是"专门用例覆盖"。
+4. 真实第三方/同名第二实例的**内核级顶替实验仍未做**（需要第二个实例真 attach 夺走调度器所有权，
+   与"对照实现互斥运行"的边界冲突，待单独获批）。因此第 3 节的顶替断言层级是 unit（假 sysfs）。
+5. P1 未收口；自动 apply 关闭；性能与真实服务 SLO 未开始。
+
+## 7. 第三方顶替实测后的定位下调（同日，原文保留）
+
+`evidence/p1/takeover-thirdparty-20261022.txt` 的实测推翻了本文件把 `enable_seq` 说成
+“同名实例顶替唯一信号”的定位：已有调度器生效时，**第二次 struct_ops 注册被内核以 EBUSY 拒绝**（参考实现 `scx_schedpilot.c:376`、v2 自己的第二个 loader `sched/loader.c:468`），运行中的调度器、`root/ops` 与 `enable_seq` 都不变。
+也就是说“执行服务存活期间被顶替”在这台内核上无法构造，本文件第 5 节第 4 条
+“真实顶替未验证”**仍然成立**，顶替检测的证据层级停留在 unit（假 sysfs）。
+
+该等值判定的准确定位改为：应对“我们被 disable 后立刻有人 enable 同名构建”这类
+约 1s 轮询可能采不到的顺序接管场景的兜底；顺序接管一般先由 `state=disabled` 命中。
+代码注释已按此改写。

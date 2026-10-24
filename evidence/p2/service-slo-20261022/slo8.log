@@ -1,0 +1,60 @@
+load raised; measuring the baseline under the expert that is in place
+MEASURE expert=safe-basic p99_ms=2.005 bg_units=181.1 bg_wait_ms=2.304 samples_fg=14999 samples_bg=2717
+OBSERVE ack=OK expert=safe-basic outcome_evaluated=None hurt=None code=
+ADVERSE {}
+MEASURE expert=safe-basic p99_ms=1.212 bg_units=180.9 bg_wait_ms=3.557 samples_fg=14998 samples_bg=2713
+OBSERVE ack=OK expert=safe-basic outcome_evaluated=None hurt=None code=
+ADVERSE {}
+lease handed to the autopilot; it should move within a couple of polls
+  switched up 10s after the round-1 measurement
+ARMED outcome_pending=True last_outcome=''
+MEASURE expert=latency-balanced p99_ms=1.830 bg_units=181.0 bg_wait_ms=2.551 samples_fg=14999 samples_bg=2715
+OBSERVE ack=OK expert=latency-balanced outcome_evaluated=True hurt=False code=
+OUTCOME safe-basic -> latency-balanced: comparative check not run: declared sensitivity is finer than p99 noise 39.6%
+ADVERSE {}
+MEASURE expert=latency-balanced p99_ms=1.639 bg_units=180.9 bg_wait_ms=2.563 samples_fg=14999 samples_bg=2715
+OBSERVE ack=OK expert=latency-balanced outcome_evaluated=None hurt=None code=
+ADVERSE {}
+drop the load; keep measuring so the service evidence stays fresh
+MEASURE expert=latency-balanced p99_ms=0.098 bg_units=165.3 bg_wait_ms=0.457 samples_fg=1999 samples_bg=331
+OBSERVE ack=OK expert=latency-balanced outcome_evaluated=None hurt=None code=
+ADVERSE {}
+  refresh 1 still latency-balanced (hold: already in place: latency-balanced)
+MEASURE expert=latency-balanced p99_ms=0.121 bg_units=163.6 bg_wait_ms=1.414 samples_fg=1999 samples_bg=328
+OBSERVE ack=OK expert=latency-balanced outcome_evaluated=None hurt=None code=
+ADVERSE {}
+  refresh 2 still latency-balanced (hold: already in place: latency-balanced)
+MEASURE expert=latency-balanced p99_ms=0.124 bg_units=163.4 bg_wait_ms=0.239 samples_fg=1999 samples_bg=327
+OBSERVE ack=OK expert=latency-balanced outcome_evaluated=None hurt=None code=
+ADVERSE {}
+  refresh 3 still latency-balanced (hold: already in place: latency-balanced)
+MEASURE expert=latency-balanced p99_ms=0.105 bg_units=163.2 bg_wait_ms=0.158 samples_fg=1999 samples_bg=327
+OBSERVE ack=OK expert=latency-balanced outcome_evaluated=None hurt=None code=
+ADVERSE {}
+  refresh 4 still latency-balanced (hold: already in place: latency-balanced)
+MEASURE expert=latency-balanced p99_ms=0.136 bg_units=163.8 bg_wait_ms=0.220 samples_fg=1999 samples_bg=328
+OBSERVE ack=OK expert=latency-balanced outcome_evaluated=None hurt=None code=
+ADVERSE {}
+  refresh 5 still latency-balanced (hold: already in place: latency-balanced)
+MEASURE expert=latency-balanced p99_ms=0.136 bg_units=170.9 bg_wait_ms=0.378 samples_fg=1999 samples_bg=342
+OBSERVE ack=OK expert=latency-balanced outcome_evaluated=None hurt=None code=
+ADVERSE {}
+  refresh 6 still latency-balanced (hold: already in place: latency-balanced)
+MEASURE expert=latency-balanced p99_ms=0.138 bg_units=162.7 bg_wait_ms=0.150 samples_fg=1999 samples_bg=326
+OBSERVE ack=OK expert=latency-balanced outcome_evaluated=None hurt=None code=
+ADVERSE {}
+  refresh 7 still latency-balanced (hold: already in place: latency-balanced)
+MEASURE expert=latency-balanced p99_ms=0.117 bg_units=167.4 bg_wait_ms=0.293 samples_fg=1999 samples_bg=335
+OBSERVE ack=OK expert=latency-balanced outcome_evaluated=False hurt=None code=
+ADVERSE {}
+  returned to safe-basic at refresh 8
+ARMED_AFTER_RETURN outcome_pending=True required_windows=2
+NOISE p99=30.0% progress=8.6% pending=True last_outcome='latency-balanced: comparative check not run: declared sensitivity is finer than p99 noise 39.6%'
+CHECK_NO_SPURIOUS_CONDEMN=yes
+CHECK_GUARD_EXPLAINS_ITSELF=yes
+now starve the declared floor from outside and see whether the autopilot stops
+SLO_AFTER_STARVE allowed=False code=BG_PROGRESS_FLOOR service_evidence=present
+STARVE_HOLD=slo denied: BG_PROGRESS_FLOOR
+RESULT switch_up_at_s=10 returned_at_s=8 switches_up=2 switches_after_return=2 switches_at_starve=2 hold=slo denied: BG_PROGRESS_FLOOR
+CHECK_STARVE_STOPS_AUTOPILOT=yes
+cleanup rc=0 state=disabled pins=0

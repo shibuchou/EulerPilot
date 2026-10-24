@@ -1,0 +1,63 @@
+load raised; measuring the baseline under the expert that is in place
+MEASURE expert=safe-basic p99_ms=1.452 bg_units=180.9 bg_wait_ms=2.817 samples_fg=5999 samples_bg=1086
+OBSERVE ack=OK expert=safe-basic outcome_evaluated=None hurt=None code=
+ADVERSE {}
+lease handed to the autopilot; it should move within a couple of polls
+  switched up 10s after the round-1 measurement
+ARMED outcome_pending=True last_outcome=''
+MEASURE expert=latency-balanced p99_ms=1.923 bg_units=181.2 bg_wait_ms=1.027 samples_fg=5999 samples_bg=1088
+OBSERVE ack=OK expert=latency-balanced outcome_evaluated=True hurt=False code=FOREGROUND_REGRESSED
+OUTCOME safe-basic -> latency-balanced: foreground p99 1.922978ms exceeds 5.000000% over the pre-switch 1.451745ms
+ADVERSE {}
+MEASURE expert=latency-balanced p99_ms=1.685 bg_units=181.0 bg_wait_ms=1.548 samples_fg=5999 samples_bg=1087
+OBSERVE ack=OK expert=latency-balanced outcome_evaluated=True hurt=True code=FOREGROUND_REGRESSED
+OUTCOME safe-basic -> latency-balanced: foreground p99 1.685044ms exceeds 5.000000% over the pre-switch 1.451745ms
+ADVERSE {"latency-balanced": "FOREGROUND_REGRESSED: foreground p99 1.685044ms exceeds 5.000000% over the pre-switch 1.451745ms (2 consecutive windows)"}
+drop the load; keep measuring so the service evidence stays fresh
+MEASURE expert=latency-balanced p99_ms=0.164 bg_units=170.2 bg_wait_ms=0.333 samples_fg=1999 samples_bg=341
+OBSERVE ack=OK expert=latency-balanced outcome_evaluated=None hurt=None code=
+ADVERSE {"latency-balanced": "FOREGROUND_REGRESSED: foreground p99 1.685044ms exceeds 5.000000% over the pre-switch 1.451745ms (2 consecutive windows)"}
+  refresh 1 still latency-balanced (hold: slo denied: SERVICE_EVIDENCE_DENIED)
+MEASURE expert=latency-balanced p99_ms=0.131 bg_units=162.8 bg_wait_ms=0.181 samples_fg=1999 samples_bg=326
+OBSERVE ack=OK expert=latency-balanced outcome_evaluated=None hurt=None code=
+ADVERSE {"latency-balanced": "FOREGROUND_REGRESSED: foreground p99 1.685044ms exceeds 5.000000% over the pre-switch 1.451745ms (2 consecutive windows)"}
+  refresh 2 still latency-balanced (hold: slo denied: SERVICE_EVIDENCE_DENIED)
+MEASURE expert=latency-balanced p99_ms=0.160 bg_units=162.8 bg_wait_ms=0.170 samples_fg=1999 samples_bg=326
+OBSERVE ack=OK expert=latency-balanced outcome_evaluated=None hurt=None code=
+ADVERSE {"latency-balanced": "FOREGROUND_REGRESSED: foreground p99 1.685044ms exceeds 5.000000% over the pre-switch 1.451745ms (2 consecutive windows)"}
+  refresh 3 still latency-balanced (hold: slo denied: SERVICE_EVIDENCE_DENIED)
+MEASURE expert=latency-balanced p99_ms=0.129 bg_units=162.9 bg_wait_ms=2.587 samples_fg=1999 samples_bg=326
+OBSERVE ack=OK expert=latency-balanced outcome_evaluated=None hurt=None code=
+ADVERSE {"latency-balanced": "FOREGROUND_REGRESSED: foreground p99 1.685044ms exceeds 5.000000% over the pre-switch 1.451745ms (2 consecutive windows)"}
+  refresh 4 still latency-balanced (hold: slo denied: SERVICE_EVIDENCE_DENIED)
+MEASURE expert=latency-balanced p99_ms=0.101 bg_units=163.5 bg_wait_ms=0.157 samples_fg=1999 samples_bg=328
+OBSERVE ack=OK expert=latency-balanced outcome_evaluated=None hurt=None code=
+ADVERSE {"latency-balanced": "FOREGROUND_REGRESSED: foreground p99 1.685044ms exceeds 5.000000% over the pre-switch 1.451745ms (2 consecutive windows)"}
+  refresh 5 still latency-balanced (hold: slo denied: SERVICE_EVIDENCE_DENIED)
+MEASURE expert=latency-balanced p99_ms=0.156 bg_units=170.5 bg_wait_ms=0.238 samples_fg=1999 samples_bg=342
+OBSERVE ack=OK expert=latency-balanced outcome_evaluated=None hurt=None code=
+ADVERSE {"latency-balanced": "FOREGROUND_REGRESSED: foreground p99 1.685044ms exceeds 5.000000% over the pre-switch 1.451745ms (2 consecutive windows)"}
+  refresh 6 still latency-balanced (hold: slo denied: SERVICE_EVIDENCE_DENIED)
+MEASURE expert=latency-balanced p99_ms=0.130 bg_units=171.7 bg_wait_ms=2.017 samples_fg=1999 samples_bg=344
+OBSERVE ack=OK expert=latency-balanced outcome_evaluated=None hurt=None code=
+ADVERSE {"latency-balanced": "FOREGROUND_REGRESSED: foreground p99 1.685044ms exceeds 5.000000% over the pre-switch 1.451745ms (2 consecutive windows)"}
+  refresh 7 still latency-balanced (hold: slo denied: SERVICE_EVIDENCE_DENIED)
+MEASURE expert=latency-balanced p99_ms=0.113 bg_units=163.5 bg_wait_ms=0.165 samples_fg=1999 samples_bg=328
+OBSERVE ack=OK expert=latency-balanced outcome_evaluated=False hurt=None code=
+ADVERSE {"latency-balanced": "FOREGROUND_REGRESSED: foreground p99 1.685044ms exceeds 5.000000% over the pre-switch 1.451745ms (2 consecutive windows)"}
+  returned to safe-basic at refresh 8
+ARMED_AFTER_RETURN outcome_pending=True required_windows=2
+WINDOW1 evaluated=True hurt=False windows=1/2 adverse={"latency-balanced": "FOREGROUND_REGRESSED: foreground p99 1.685044ms exceeds 5.000000% over the pre-switch 1.451745ms (2 consecutive windows)"}
+CHECK_SINGLE_WINDOW_DOES_NOT_CONDEMN=no
+WINDOW2 hurt=True code=BG_PROGRESS_REGRESSED windows=2/2 adverse={"latency-balanced": "FOREGROUND_REGRESSED: foreground p99 1.685044ms exceeds 5.000000% over the pre-switch 1.451745ms (2 consecutive windows)", "safe-basic": "BG_PROGRESS_REGRESSED: background progress ratio 0.380825 below declared 0.500000 (2 consecutive windows)"}
+CHECK_CONFIRMED_EVIDENCE=yes
+SLO_SAFE_BASIC allowed=False code=SERVICE_EVIDENCE_DENIED
+CHECK_EXPERT_CONDEMNED=yes
+SLO_LATENCY code=SERVICE_EVIDENCE_DENIED allowed=False
+CHECK_EVIDENCE_IS_PER_EXPERT=no
+now starve the declared floor from outside and see whether the autopilot stops
+SLO_AFTER_STARVE allowed=False code=BG_PROGRESS_FLOOR service_evidence=present
+STARVE_HOLD=slo denied: SERVICE_EVIDENCE_DENIED
+RESULT switch_up_at_s=10 returned_at_s=8 switches_up=2 switches_after_return=2 switches_at_starve=2 hold=slo denied: SERVICE_EVIDENCE_DENIED
+CHECK_STARVE_STOPS_AUTOPILOT=yes
+cleanup rc=0 state=disabled pins=0

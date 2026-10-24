@@ -1,0 +1,87 @@
+2026-10-24T10:18:37+00:00 pin dirs at scenario start: 0
+{
+  "action_id": "act-c6bcfdf3438ee087c7d68799",
+  "checks": [
+    {
+      "detail": "sched_ext disabled, pins empty, enable_seq=1886",
+      "name": "probe",
+      "ok": true
+    },
+    {
+      "detail": "params prepared",
+      "name": "plan",
+      "ok": true
+    },
+    {
+      "detail": "fault-s05/class/latency-balanced",
+      "name": "policy",
+      "ok": true
+    },
+    {
+      "detail": "2 cgroup binding(s)",
+      "name": "targets",
+      "ok": true
+    },
+    {
+      "detail": "snap-1d530ac3a704d566ecfb31477117514f",
+      "name": "snapshot",
+      "ok": true
+    },
+    {
+      "detail": "applied",
+      "name": "apply",
+      "ok": true
+    },
+    {
+      "detail": "loader pid=467253 mode=class enable_seq=1887",
+      "name": "verify",
+      "ok": true
+    }
+  ],
+  "error": null,
+  "observed_generation": 1,
+  "policy_sha256": "d6538d8aad90eabde582824426f7967129f2c1b9a9d23cf0733140ae90d96959",
+  "request_id": "req-d30ccbce5b2b3631a3f0c7a3",
+  "rollback": {
+    "attempted": false,
+    "detail": "",
+    "status": "NOT_NEEDED"
+  },
+  "snapshot_id": "snap-1d530ac3a704d566ecfb31477117514f",
+  "status": "VERIFIED",
+  "target_bindings": [
+    {
+      "boot_id": "400be773-ed44-4c2d-b24e-0eae2e97acea",
+      "cgroup_id": 61038,
+      "class": "LAT",
+      "device": 26,
+      "effective_class": "LAT",
+      "identity": "cgroup2-kernfs",
+      "inode": 61038,
+      "kind": "cgroup",
+      "path": "/sys/fs/cgroup/fault-matrix/svc",
+      "pid": 0,
+      "role": "FOREGROUND",
+      "role_source": "explicit",
+      "starttime": 0
+    },
+    {
+      "boot_id": "400be773-ed44-4c2d-b24e-0eae2e97acea",
+      "cgroup_id": 61057,
+      "class": "",
+      "device": 26,
+      "effective_class": "BG",
+      "identity": "cgroup2-kernfs",
+      "inode": 61057,
+      "kind": "cgroup",
+      "path": "/sys/fs/cgroup/fault-matrix/bg",
+      "pid": 0,
+      "role": "BACKGROUND",
+      "role_source": "explicit",
+      "starttime": 0
+    }
+  ],
+  "transaction_id": "txn-7bfffb9ed19858ad4e5f8b82"
+}
+2026-10-24T10:18:38+00:00 SIGKILL sent to the sched-ref loader pid 467253
+2026-10-24T10:18:41+00:00 executor reported: [executor] auto fallback: scheduler lost: loader process is gone or was replaced

@@ -1,0 +1,1121 @@
+start 2026-10-24T10:10:03+00:00 kernel=6.6.0-schedpilot-sp3
+=== fail-safe matrix start 2026-10-24T10:10:03+00:00 ===
+kernel: 6.6.0-schedpilot-sp3
+executor: /root/epv2-build/ep-executord
+out: /root/epv2-evidence/fail-safe-20261024
+
+=== S01: class 模式挂载+回退：内核 class 读回与撤销证明 ===
+    pin dirs at scenario start: 0
+ep: connect /tmp/ep-fault.5lJTU3/s01/executor.sock: No such file or directory
+{
+  "auto_apply": {
+    "active_expert": "",
+    "baseline": "",
+    "budget_max_switches": 2,
+    "budget_window_ms": 600000,
+    "candidate_hold_ms": 15000,
+    "dwell_ms": 60000,
+    "enabled": false,
+    "last_action_at_ms": 0,
+    "last_expert": "",
+    "last_hold": "",
+    "last_reason": "",
+    "measured_downtime_ms": 665,
+    "min_interval_ms": 15000,
+    "owner": "",
+    "projected_unprotected_ms": 0,
+    "switches_recorded": 0
+  },
+  "degraded": false,
+  "generation": 0,
+  "incomplete_transactions": [],
+  "instance_id": "inst-ae11879e2d7e75ac",
+  "journal_records": 0,
+  "last_fallback": "",
+  "lease": {
+    "expires_ms": 0,
+    "fence_epoch": 0,
+    "owner": ""
+  },
+  "request_id": "req-66559276a10b4013",
+  "service": {
+    "adverse_experts": {},
+    "age_ms": 0,
+    "bg_max_wait_ms": null,
+    "bg_work_units_per_sec": null,
+    "declared_limits": {},
+    "foreground_p99_ms": null,
+    "last_outcome": "",
+    "last_rejection": "",
+    "measured_expert": "",
+    "noise_bg_progress_pct": 0.0,
+    "noise_p99_pct": 0.0,
+    "observation_max_age_ms": 0,
+    "observations_accepted": 0,
+    "observations_rejected": 0,
+    "observed": false,
+    "observed_at_ms": 0,
+    "outcome_pending": false,
+    "outcome_windows": 0,
+    "outcome_windows_required": 2,
+    "stale_checks": 0,
+    "window_ms": 0,
+    "workload": ""
+  },
+  "skill": "sched",
+  "startup_degraded_reason": "",
+  "status": "OK",
+  "store_warning": ""
+}
+    kernel class_map read-back while active: svc=LAT bg=BG
+    rollback reply status=ROLLED_BACK
+S01	PASS	class 模式挂载+回退：内核 class 读回与撤销证明	assertions held, sched_ext disabled, no pins added by this scenario
+
+=== S02: basic 模式挂载+回退干净 ===
+    pin dirs at scenario start: 0
+ep: connect /tmp/ep-fault.5lJTU3/s02/executor.sock: No such file or directory
+{
+  "auto_apply": {
+    "active_expert": "",
+    "baseline": "",
+    "budget_max_switches": 2,
+    "budget_window_ms": 600000,
+    "candidate_hold_ms": 15000,
+    "dwell_ms": 60000,
+    "enabled": false,
+    "last_action_at_ms": 0,
+    "last_expert": "",
+    "last_hold": "",
+    "last_reason": "",
+    "measured_downtime_ms": 665,
+    "min_interval_ms": 15000,
+    "owner": "",
+    "projected_unprotected_ms": 0,
+    "switches_recorded": 0
+  },
+  "degraded": false,
+  "generation": 0,
+  "incomplete_transactions": [],
+  "instance_id": "inst-236b050b6a2f1078",
+  "journal_records": 0,
+  "last_fallback": "",
+  "lease": {
+    "expires_ms": 0,
+    "fence_epoch": 0,
+    "owner": ""
+  },
+  "request_id": "req-18f13d61dc96699d",
+  "service": {
+    "adverse_experts": {},
+    "age_ms": 0,
+    "bg_max_wait_ms": null,
+    "bg_work_units_per_sec": null,
+    "declared_limits": {},
+    "foreground_p99_ms": null,
+    "last_outcome": "",
+    "last_rejection": "",
+    "measured_expert": "",
+    "noise_bg_progress_pct": 0.0,
+    "noise_p99_pct": 0.0,
+    "observation_max_age_ms": 0,
+    "observations_accepted": 0,
+    "observations_rejected": 0,
+    "observed": false,
+    "observed_at_ms": 0,
+    "outcome_pending": false,
+    "outcome_windows": 0,
+    "outcome_windows_required": 2,
+    "stale_checks": 0,
+    "window_ms": 0,
+    "workload": ""
+  },
+  "skill": "sched",
+  "startup_degraded_reason": "",
+  "status": "OK",
+  "store_warning": ""
+}
+    basic mode with an undeclared class: bg=BG (BG is implied by the role)
+    basic mode detached cleanly: status=ROLLED_BACK
+S02	PASS	basic 模式挂载+回退干净	assertions held, sched_ext disabled, no pins added by this scenario
+
+=== S03: adaptive 模式在真实 RPC 上被拒（fail-closed） ===
+    pin dirs at scenario start: 0
+{
+  "auto_apply": {
+    "active_expert": "",
+    "baseline": "",
+    "budget_max_switches": 2,
+    "budget_window_ms": 600000,
+    "candidate_hold_ms": 15000,
+    "dwell_ms": 60000,
+    "enabled": false,
+    "last_action_at_ms": 0,
+    "last_expert": "",
+    "last_hold": "",
+    "last_reason": "",
+    "measured_downtime_ms": 665,
+    "min_interval_ms": 15000,
+    "owner": "",
+    "projected_unprotected_ms": 0,
+    "switches_recorded": 0
+  },
+  "degraded": false,
+  "generation": 0,
+  "incomplete_transactions": [],
+  "instance_id": "inst-a1b49c3dce277ad3",
+  "journal_records": 0,
+  "last_fallback": "",
+  "lease": {
+    "expires_ms": 0,
+    "fence_epoch": 0,
+    "owner": ""
+  },
+  "request_id": "req-0c9ffc721853ba44",
+  "service": {
+    "adverse_experts": {},
+    "age_ms": 0,
+    "bg_max_wait_ms": null,
+    "bg_work_units_per_sec": null,
+    "declared_limits": {},
+    "foreground_p99_ms": null,
+    "last_outcome": "",
+    "last_rejection": "",
+    "measured_expert": "",
+    "noise_bg_progress_pct": 0.0,
+    "noise_p99_pct": 0.0,
+    "observation_max_age_ms": 0,
+    "observations_accepted": 0,
+    "observations_rejected": 0,
+    "observed": false,
+    "observed_at_ms": 0,
+    "outcome_pending": false,
+    "outcome_windows": 0,
+    "outcome_windows_required": 2,
+    "stale_checks": 0,
+    "window_ms": 0,
+    "workload": ""
+  },
+  "skill": "sched",
+  "startup_degraded_reason": "",
+  "status": "OK",
+  "store_warning": ""
+}
+    adaptive apply status=REJECTED detail={'code': 'SCHEMA_INVALID', 'detail': "mode 'adaptive' is not supported by the P1 sched skill (adaptive needs schedpilotd and is deferred)", 'message': 'plan rejected'}
+S03	PASS	adaptive 模式在真实 RPC 上被拒（fail-closed）	assertions held, sched_ext disabled, no pins added by this scenario
+
+=== S04: 挂载状态下 SIGKILL 执行服务：崩溃后 fair 接管与重启对账 ===
+    pin dirs at scenario start: 0
+ep: connect /tmp/ep-fault.5lJTU3/s04/executor.sock: No such file or directory
+{
+  "auto_apply": {
+    "active_expert": "",
+    "baseline": "",
+    "budget_max_switches": 2,
+    "budget_window_ms": 600000,
+    "candidate_hold_ms": 15000,
+    "dwell_ms": 60000,
+    "enabled": false,
+    "last_action_at_ms": 0,
+    "last_expert": "",
+    "last_hold": "",
+    "last_reason": "",
+    "measured_downtime_ms": 665,
+    "min_interval_ms": 15000,
+    "owner": "",
+    "projected_unprotected_ms": 0,
+    "switches_recorded": 0
+  },
+  "degraded": false,
+  "generation": 0,
+  "incomplete_transactions": [],
+  "instance_id": "inst-154502eb13aa94c7",
+  "journal_records": 0,
+  "last_fallback": "",
+  "lease": {
+    "expires_ms": 0,
+    "fence_epoch": 0,
+    "owner": ""
+  },
+  "request_id": "req-db6a6d7d4f1dc6e6",
+  "service": {
+    "adverse_experts": {},
+    "age_ms": 0,
+    "bg_max_wait_ms": null,
+    "bg_work_units_per_sec": null,
+    "declared_limits": {},
+    "foreground_p99_ms": null,
+    "last_outcome": "",
+    "last_rejection": "",
+    "measured_expert": "",
+    "noise_bg_progress_pct": 0.0,
+    "noise_p99_pct": 0.0,
+    "observation_max_age_ms": 0,
+    "observations_accepted": 0,
+    "observations_rejected": 0,
+    "observed": false,
+    "observed_at_ms": 0,
+    "outcome_pending": false,
+    "outcome_windows": 0,
+    "outcome_windows_required": 2,
+    "stale_checks": 0,
+    "window_ms": 0,
+    "workload": ""
+  },
+  "skill": "sched",
+  "startup_degraded_reason": "",
+  "status": "OK",
+  "store_warning": ""
+}
+    SIGKILL sent to executor pid 450558 while a class policy was active
+/root/epv2-src/experiments/fail_safe_matrix_sp3.sh: line 79: 450558 Killed                  "$EXECUTORD" --state-dir "$STATE" --socket "$SOCK" --skill "$skill" --loader "$LOADER" --sched-ctl "$CTL" >> "$STATE/daemon.log" 2>&1 9>&-
+    sched_ext back to disabled: the struct_ops link died with the executor
+    pinned maps of inst-154502eb13aa94c7 are still in bpffs: a killed process unlinked nothing
+ep: connect /tmp/ep-fault.5lJTU3/s04/executor.sock: Connection refused
+{
+  "auto_apply": {
+    "active_expert": "",
+    "baseline": "",
+    "budget_max_switches": 2,
+    "budget_window_ms": 600000,
+    "candidate_hold_ms": 15000,
+    "dwell_ms": 60000,
+    "enabled": false,
+    "last_action_at_ms": 0,
+    "last_expert": "",
+    "last_hold": "",
+    "last_reason": "",
+    "measured_downtime_ms": 665,
+    "min_interval_ms": 15000,
+    "owner": "",
+    "projected_unprotected_ms": 0,
+    "switches_recorded": 0
+  },
+  "degraded": false,
+  "generation": 1,
+  "incomplete_transactions": [],
+  "instance_id": "inst-154502eb13aa94c7",
+  "journal_records": 6,
+  "last_fallback": "",
+  "lease": {
+    "expires_at": "2026-10-24T10:10:37.311Z",
+    "expires_ms": 1792836637311,
+    "fence_epoch": 1,
+    "owner": "cli-0cbcd2566375dd3b"
+  },
+  "request_id": "req-78cf0b1aeb36a0be",
+  "service": {
+    "adverse_experts": {},
+    "age_ms": 0,
+    "bg_max_wait_ms": null,
+    "bg_work_units_per_sec": null,
+    "declared_limits": {},
+    "foreground_p99_ms": null,
+    "last_outcome": "",
+    "last_rejection": "",
+    "measured_expert": "",
+    "noise_bg_progress_pct": 0.0,
+    "noise_p99_pct": 0.0,
+    "observation_max_age_ms": 0,
+    "observations_accepted": 0,
+    "observations_rejected": 0,
+    "observed": false,
+    "observed_at_ms": 0,
+    "outcome_pending": false,
+    "outcome_windows": 0,
+    "outcome_windows_required": 2,
+    "stale_checks": 0,
+    "window_ms": 0,
+    "workload": ""
+  },
+  "skill": "sched",
+  "startup_degraded_reason": "",
+  "status": "OK",
+  "store_warning": ""
+}
+    same-instance restart swept the pins left by the crash
+    restart after SIGKILL: recovered without degradation
+S04	PASS	挂载状态下 SIGKILL 执行服务：崩溃后 fair 接管与重启对账	assertions held, sched_ext disabled, no pins added by this scenario
+
+=== S05: sched-ref 下 SIGKILL loader：存活检测与补偿回退 ===
+    pin dirs at scenario start: 0
+ep: connect /tmp/ep-fault.5lJTU3/s05/executor.sock: No such file or directory
+{
+  "auto_apply": {
+    "active_expert": "",
+    "baseline": "",
+    "budget_max_switches": 2,
+    "budget_window_ms": 600000,
+    "candidate_hold_ms": 15000,
+    "dwell_ms": 60000,
+    "enabled": false,
+    "last_action_at_ms": 0,
+    "last_expert": "",
+    "last_hold": "",
+    "last_reason": "",
+    "measured_downtime_ms": 665,
+    "min_interval_ms": 15000,
+    "owner": "",
+    "projected_unprotected_ms": 0,
+    "switches_recorded": 0
+  },
+  "degraded": false,
+  "generation": 0,
+  "incomplete_transactions": [],
+  "instance_id": "inst-ae9bd98744ea2e3e",
+  "journal_records": 0,
+  "last_fallback": "",
+  "lease": {
+    "expires_ms": 0,
+    "fence_epoch": 0,
+    "owner": ""
+  },
+  "request_id": "req-fd5a490f8a1ba00c",
+  "service": {
+    "adverse_experts": {},
+    "age_ms": 0,
+    "bg_max_wait_ms": null,
+    "bg_work_units_per_sec": null,
+    "declared_limits": {},
+    "foreground_p99_ms": null,
+    "last_outcome": "",
+    "last_rejection": "",
+    "measured_expert": "",
+    "noise_bg_progress_pct": 0.0,
+    "noise_p99_pct": 0.0,
+    "observation_max_age_ms": 0,
+    "observations_accepted": 0,
+    "observations_rejected": 0,
+    "observed": false,
+    "observed_at_ms": 0,
+    "outcome_pending": false,
+    "outcome_windows": 0,
+    "outcome_windows_required": 2,
+    "stale_checks": 0,
+    "window_ms": 0,
+    "workload": ""
+  },
+  "skill": "sched-ref",
+  "startup_degraded_reason": "",
+  "status": "OK",
+  "store_warning": ""
+}
+    SIGKILL sent to the sched-ref loader pid 450717
+    executor reported: [executor] auto fallback: scheduler lost: loader process is gone or was replaced
+S05	PASS	sched-ref 下 SIGKILL loader：存活检测与补偿回退	assertions held, sched_ext disabled, no pins added by this scenario
+
+=== S06: 租约到期（心跳停止的等价路径）自动回退 ===
+    pin dirs at scenario start: 0
+ep: connect /tmp/ep-fault.5lJTU3/s06/executor.sock: No such file or directory
+{
+  "auto_apply": {
+    "active_expert": "",
+    "baseline": "",
+    "budget_max_switches": 2,
+    "budget_window_ms": 600000,
+    "candidate_hold_ms": 15000,
+    "dwell_ms": 60000,
+    "enabled": false,
+    "last_action_at_ms": 0,
+    "last_expert": "",
+    "last_hold": "",
+    "last_reason": "",
+    "measured_downtime_ms": 665,
+    "min_interval_ms": 15000,
+    "owner": "",
+    "projected_unprotected_ms": 0,
+    "switches_recorded": 0
+  },
+  "degraded": false,
+  "generation": 0,
+  "incomplete_transactions": [],
+  "instance_id": "inst-40f93047b758ec92",
+  "journal_records": 0,
+  "last_fallback": "",
+  "lease": {
+    "expires_ms": 0,
+    "fence_epoch": 0,
+    "owner": ""
+  },
+  "request_id": "req-c6c97267bb4fe3ad",
+  "service": {
+    "adverse_experts": {},
+    "age_ms": 0,
+    "bg_max_wait_ms": null,
+    "bg_work_units_per_sec": null,
+    "declared_limits": {},
+    "foreground_p99_ms": null,
+    "last_outcome": "",
+    "last_rejection": "",
+    "measured_expert": "",
+    "noise_bg_progress_pct": 0.0,
+    "noise_p99_pct": 0.0,
+    "observation_max_age_ms": 0,
+    "observations_accepted": 0,
+    "observations_rejected": 0,
+    "observed": false,
+    "observed_at_ms": 0,
+    "outcome_pending": false,
+    "outcome_windows": 0,
+    "outcome_windows_required": 2,
+    "stale_checks": 0,
+    "window_ms": 0,
+    "workload": ""
+  },
+  "skill": "sched",
+  "startup_degraded_reason": "",
+  "status": "OK",
+  "store_warning": ""
+}
+    lease issued with ttl 4000ms and never renewed (the heartbeat-stop path)
+    fallback reason: [executor] auto fallback: lease expired
+S06	PASS	租约到期（心跳停止的等价路径）自动回退	assertions held, sched_ext disabled, no pins added by this scenario
+
+=== S07: 策略 TTL 到期自动回退（basic） ===
+    pin dirs at scenario start: 0
+ep: connect /tmp/ep-fault.5lJTU3/s07/executor.sock: No such file or directory
+{
+  "auto_apply": {
+    "active_expert": "",
+    "baseline": "",
+    "budget_max_switches": 2,
+    "budget_window_ms": 600000,
+    "candidate_hold_ms": 15000,
+    "dwell_ms": 60000,
+    "enabled": false,
+    "last_action_at_ms": 0,
+    "last_expert": "",
+    "last_hold": "",
+    "last_reason": "",
+    "measured_downtime_ms": 665,
+    "min_interval_ms": 15000,
+    "owner": "",
+    "projected_unprotected_ms": 0,
+    "switches_recorded": 0
+  },
+  "degraded": false,
+  "generation": 0,
+  "incomplete_transactions": [],
+  "instance_id": "inst-bf0679f05f22aee7",
+  "journal_records": 0,
+  "last_fallback": "",
+  "lease": {
+    "expires_ms": 0,
+    "fence_epoch": 0,
+    "owner": ""
+  },
+  "request_id": "req-eff4f2c9d532d6b9",
+  "service": {
+    "adverse_experts": {},
+    "age_ms": 0,
+    "bg_max_wait_ms": null,
+    "bg_work_units_per_sec": null,
+    "declared_limits": {},
+    "foreground_p99_ms": null,
+    "last_outcome": "",
+    "last_rejection": "",
+    "measured_expert": "",
+    "noise_bg_progress_pct": 0.0,
+    "noise_p99_pct": 0.0,
+    "observation_max_age_ms": 0,
+    "observations_accepted": 0,
+    "observations_rejected": 0,
+    "observed": false,
+    "observed_at_ms": 0,
+    "outcome_pending": false,
+    "outcome_windows": 0,
+    "outcome_windows_required": 2,
+    "stale_checks": 0,
+    "window_ms": 0,
+    "workload": ""
+  },
+  "skill": "sched",
+  "startup_degraded_reason": "",
+  "status": "OK",
+  "store_warning": ""
+}
+    policy TTL 10000ms with a long lease
+    fallback reason: [executor] auto fallback: policy TTL expired
+S07	PASS	策略 TTL 到期自动回退（basic）	assertions held, sched_ext disabled, no pins added by this scenario
+
+=== S08: 无效策略在真实 RPC 上被拒且无副作用 ===
+    pin dirs at scenario start: 0
+ep: connect /tmp/ep-fault.5lJTU3/s08/executor.sock: No such file or directory
+{
+  "auto_apply": {
+    "active_expert": "",
+    "baseline": "",
+    "budget_max_switches": 2,
+    "budget_window_ms": 600000,
+    "candidate_hold_ms": 15000,
+    "dwell_ms": 60000,
+    "enabled": false,
+    "last_action_at_ms": 0,
+    "last_expert": "",
+    "last_hold": "",
+    "last_reason": "",
+    "measured_downtime_ms": 665,
+    "min_interval_ms": 15000,
+    "owner": "",
+    "projected_unprotected_ms": 0,
+    "switches_recorded": 0
+  },
+  "degraded": false,
+  "generation": 0,
+  "incomplete_transactions": [],
+  "instance_id": "inst-11e6c70dc4f8c7e5",
+  "journal_records": 0,
+  "last_fallback": "",
+  "lease": {
+    "expires_ms": 0,
+    "fence_epoch": 0,
+    "owner": ""
+  },
+  "request_id": "req-9d8a3d2a71210b8f",
+  "service": {
+    "adverse_experts": {},
+    "age_ms": 0,
+    "bg_max_wait_ms": null,
+    "bg_work_units_per_sec": null,
+    "declared_limits": {},
+    "foreground_p99_ms": null,
+    "last_outcome": "",
+    "last_rejection": "",
+    "measured_expert": "",
+    "noise_bg_progress_pct": 0.0,
+    "noise_p99_pct": 0.0,
+    "observation_max_age_ms": 0,
+    "observations_accepted": 0,
+    "observations_rejected": 0,
+    "observed": false,
+    "observed_at_ms": 0,
+    "outcome_pending": false,
+    "outcome_windows": 0,
+    "outcome_windows_required": 2,
+    "stale_checks": 0,
+    "window_ms": 0,
+    "workload": ""
+  },
+  "skill": "sched",
+  "startup_degraded_reason": "",
+  "status": "OK",
+  "store_warning": ""
+}
+    unknown field -> status=REJECTED
+    bad class value -> status=REJECTED
+S08	PASS	无效策略在真实 RPC 上被拒且无副作用	assertions held, sched_ext disabled, no pins added by this scenario
+
+=== S09: 越界与错误类型的阈值被拒 ===
+    pin dirs at scenario start: 0
+ep: connect /tmp/ep-fault.5lJTU3/s09/executor.sock: No such file or directory
+{
+  "auto_apply": {
+    "active_expert": "",
+    "baseline": "",
+    "budget_max_switches": 2,
+    "budget_window_ms": 600000,
+    "candidate_hold_ms": 15000,
+    "dwell_ms": 60000,
+    "enabled": false,
+    "last_action_at_ms": 0,
+    "last_expert": "",
+    "last_hold": "",
+    "last_reason": "",
+    "measured_downtime_ms": 665,
+    "min_interval_ms": 15000,
+    "owner": "",
+    "projected_unprotected_ms": 0,
+    "switches_recorded": 0
+  },
+  "degraded": false,
+  "generation": 0,
+  "incomplete_transactions": [],
+  "instance_id": "inst-4efb1b8fb52f25b6",
+  "journal_records": 0,
+  "last_fallback": "",
+  "lease": {
+    "expires_ms": 0,
+    "fence_epoch": 0,
+    "owner": ""
+  },
+  "request_id": "req-abe409924cef71da",
+  "service": {
+    "adverse_experts": {},
+    "age_ms": 0,
+    "bg_max_wait_ms": null,
+    "bg_work_units_per_sec": null,
+    "declared_limits": {},
+    "foreground_p99_ms": null,
+    "last_outcome": "",
+    "last_rejection": "",
+    "measured_expert": "",
+    "noise_bg_progress_pct": 0.0,
+    "noise_p99_pct": 0.0,
+    "observation_max_age_ms": 0,
+    "observations_accepted": 0,
+    "observations_rejected": 0,
+    "observed": false,
+    "observed_at_ms": 0,
+    "outcome_pending": false,
+    "outcome_windows": 0,
+    "outcome_windows_required": 2,
+    "stale_checks": 0,
+    "window_ms": 0,
+    "workload": ""
+  },
+  "skill": "sched",
+  "startup_degraded_reason": "",
+  "status": "OK",
+  "store_warning": ""
+}
+    max_bg_wait_ms=20000 -> status=REJECTED
+    max_foreground_p99_ms=5000.0 (float for an integer field) -> status=REJECTED
+S09	PASS	越界与错误类型的阈值被拒	assertions held, sched_ext disabled, no pins added by this scenario
+
+=== S10: generation 冲突被拒且无副作用 ===
+    pin dirs at scenario start: 0
+ep: connect /tmp/ep-fault.5lJTU3/s10/executor.sock: No such file or directory
+{
+  "auto_apply": {
+    "active_expert": "",
+    "baseline": "",
+    "budget_max_switches": 2,
+    "budget_window_ms": 600000,
+    "candidate_hold_ms": 15000,
+    "dwell_ms": 60000,
+    "enabled": false,
+    "last_action_at_ms": 0,
+    "last_expert": "",
+    "last_hold": "",
+    "last_reason": "",
+    "measured_downtime_ms": 665,
+    "min_interval_ms": 15000,
+    "owner": "",
+    "projected_unprotected_ms": 0,
+    "switches_recorded": 0
+  },
+  "degraded": false,
+  "generation": 0,
+  "incomplete_transactions": [],
+  "instance_id": "inst-23504f814abe4443",
+  "journal_records": 0,
+  "last_fallback": "",
+  "lease": {
+    "expires_ms": 0,
+    "fence_epoch": 0,
+    "owner": ""
+  },
+  "request_id": "req-8a123e8f17d817ab",
+  "service": {
+    "adverse_experts": {},
+    "age_ms": 0,
+    "bg_max_wait_ms": null,
+    "bg_work_units_per_sec": null,
+    "declared_limits": {},
+    "foreground_p99_ms": null,
+    "last_outcome": "",
+    "last_rejection": "",
+    "measured_expert": "",
+    "noise_bg_progress_pct": 0.0,
+    "noise_p99_pct": 0.0,
+    "observation_max_age_ms": 0,
+    "observations_accepted": 0,
+    "observations_rejected": 0,
+    "observed": false,
+    "observed_at_ms": 0,
+    "outcome_pending": false,
+    "outcome_windows": 0,
+    "outcome_windows_required": 2,
+    "stale_checks": 0,
+    "window_ms": 0,
+    "workload": ""
+  },
+  "skill": "sched",
+  "startup_degraded_reason": "",
+  "status": "OK",
+  "store_warning": ""
+}
+    apply with expected_generation +7 -> {"status": "REJECTED", "code": "GENERATION_CONFLICT", "detail": "expected 9, current 2"}
+S10	PASS	generation 冲突被拒且无副作用	assertions held, sched_ext disabled, no pins added by this scenario
+
+=== S11: 第二实例拒绝 ===
+    pin dirs at scenario start: 0
+ep: connect /tmp/ep-fault.5lJTU3/s11/executor.sock: No such file or directory
+{
+  "auto_apply": {
+    "active_expert": "",
+    "baseline": "",
+    "budget_max_switches": 2,
+    "budget_window_ms": 600000,
+    "candidate_hold_ms": 15000,
+    "dwell_ms": 60000,
+    "enabled": false,
+    "last_action_at_ms": 0,
+    "last_expert": "",
+    "last_hold": "",
+    "last_reason": "",
+    "measured_downtime_ms": 665,
+    "min_interval_ms": 15000,
+    "owner": "",
+    "projected_unprotected_ms": 0,
+    "switches_recorded": 0
+  },
+  "degraded": false,
+  "generation": 0,
+  "incomplete_transactions": [],
+  "instance_id": "inst-5c9fa130000aba01",
+  "journal_records": 0,
+  "last_fallback": "",
+  "lease": {
+    "expires_ms": 0,
+    "fence_epoch": 0,
+    "owner": ""
+  },
+  "request_id": "req-a1e8c508af6fcd39",
+  "service": {
+    "adverse_experts": {},
+    "age_ms": 0,
+    "bg_max_wait_ms": null,
+    "bg_work_units_per_sec": null,
+    "declared_limits": {},
+    "foreground_p99_ms": null,
+    "last_outcome": "",
+    "last_rejection": "",
+    "measured_expert": "",
+    "noise_bg_progress_pct": 0.0,
+    "noise_p99_pct": 0.0,
+    "observation_max_age_ms": 0,
+    "observations_accepted": 0,
+    "observations_rejected": 0,
+    "observed": false,
+    "observed_at_ms": 0,
+    "outcome_pending": false,
+    "outcome_windows": 0,
+    "outcome_windows_required": 2,
+    "stale_checks": 0,
+    "window_ms": 0,
+    "workload": ""
+  },
+  "skill": "sched",
+  "startup_degraded_reason": "",
+  "status": "OK",
+  "store_warning": ""
+}
+    second instance refused: [executord] init failed: another executor instance holds /tmp/ep-fault.5lJTU3/s11/executor.lock 
+S11	PASS	第二实例拒绝	assertions held, sched_ext disabled, no pins added by this scenario
+
+=== S12: 外部改值：cfg 漂移检测与再断言 ===
+    pin dirs at scenario start: 0
+ep: connect /tmp/ep-fault.5lJTU3/s12/executor.sock: No such file or directory
+{
+  "auto_apply": {
+    "active_expert": "",
+    "baseline": "",
+    "budget_max_switches": 2,
+    "budget_window_ms": 600000,
+    "candidate_hold_ms": 15000,
+    "dwell_ms": 60000,
+    "enabled": false,
+    "last_action_at_ms": 0,
+    "last_expert": "",
+    "last_hold": "",
+    "last_reason": "",
+    "measured_downtime_ms": 665,
+    "min_interval_ms": 15000,
+    "owner": "",
+    "projected_unprotected_ms": 0,
+    "switches_recorded": 0
+  },
+  "degraded": false,
+  "generation": 0,
+  "incomplete_transactions": [],
+  "instance_id": "inst-4438685b1f7cb010",
+  "journal_records": 0,
+  "last_fallback": "",
+  "lease": {
+    "expires_ms": 0,
+    "fence_epoch": 0,
+    "owner": ""
+  },
+  "request_id": "req-4a5cbbc679aa2732",
+  "service": {
+    "adverse_experts": {},
+    "age_ms": 0,
+    "bg_max_wait_ms": null,
+    "bg_work_units_per_sec": null,
+    "declared_limits": {},
+    "foreground_p99_ms": null,
+    "last_outcome": "",
+    "last_rejection": "",
+    "measured_expert": "",
+    "noise_bg_progress_pct": 0.0,
+    "noise_p99_pct": 0.0,
+    "observation_max_age_ms": 0,
+    "observations_accepted": 0,
+    "observations_rejected": 0,
+    "observed": false,
+    "observed_at_ms": 0,
+    "outcome_pending": false,
+    "outcome_windows": 0,
+    "outcome_windows_required": 2,
+    "stale_checks": 0,
+    "window_ms": 0,
+    "workload": ""
+  },
+  "skill": "sched",
+  "startup_degraded_reason": "",
+  "status": "OK",
+  "store_warning": ""
+}
+    cfg before injection: lat_slice_ns=2000000
+    cfg after injection: lat_slice_ns=4000000
+    cfg re-asserted by the executor (drift check in refresh)
+    external class change: before=COMP after=COMP
+    LIMITATION: per-entry class drift is not re-asserted by refresh (recorded, not fixed)
+    cost of one map read-back used by the drift check: 4ms
+S12	PASS	外部改值：cfg 漂移检测与再断言	assertions held, sched_ext disabled, no pins added by this scenario
+
+=== S13: 成员迁出：class 撤销并读回为不存在 ===
+    pin dirs at scenario start: 0
+ep: connect /tmp/ep-fault.5lJTU3/s13/executor.sock: No such file or directory
+{
+  "auto_apply": {
+    "active_expert": "",
+    "baseline": "",
+    "budget_max_switches": 2,
+    "budget_window_ms": 600000,
+    "candidate_hold_ms": 15000,
+    "dwell_ms": 60000,
+    "enabled": false,
+    "last_action_at_ms": 0,
+    "last_expert": "",
+    "last_hold": "",
+    "last_reason": "",
+    "measured_downtime_ms": 665,
+    "min_interval_ms": 15000,
+    "owner": "",
+    "projected_unprotected_ms": 0,
+    "switches_recorded": 0
+  },
+  "degraded": false,
+  "generation": 0,
+  "incomplete_transactions": [],
+  "instance_id": "inst-f9a51080771bee7a",
+  "journal_records": 0,
+  "last_fallback": "",
+  "lease": {
+    "expires_ms": 0,
+    "fence_epoch": 0,
+    "owner": ""
+  },
+  "request_id": "req-714c58771b78ee0c",
+  "service": {
+    "adverse_experts": {},
+    "age_ms": 0,
+    "bg_max_wait_ms": null,
+    "bg_work_units_per_sec": null,
+    "declared_limits": {},
+    "foreground_p99_ms": null,
+    "last_outcome": "",
+    "last_rejection": "",
+    "measured_expert": "",
+    "noise_bg_progress_pct": 0.0,
+    "noise_p99_pct": 0.0,
+    "observation_max_age_ms": 0,
+    "observations_accepted": 0,
+    "observations_rejected": 0,
+    "observed": false,
+    "observed_at_ms": 0,
+    "outcome_pending": false,
+    "outcome_windows": 0,
+    "outcome_windows_required": 2,
+    "stale_checks": 0,
+    "window_ms": 0,
+    "workload": ""
+  },
+  "skill": "sched",
+  "startup_degraded_reason": "",
+  "status": "OK",
+  "store_warning": ""
+}
+    moved the BG worker pid 450327 out of the declared cgroup
+    class entry revoked and read back as absent from the kernel map
+    re-entry re-classified to BG
+S13	PASS	成员迁出：class 撤销并读回为不存在	assertions held, sched_ext disabled, no pins added by this scenario
+
+=== S14: 日志盘满（tmpfs ENOSPC）下的回退可见性 ===
+    pin dirs at scenario start: 0
+ep: connect /tmp/ep-fault.5lJTU3/tiny/exec/executor.sock: No such file or directory
+{
+  "auto_apply": {
+    "active_expert": "",
+    "baseline": "",
+    "budget_max_switches": 2,
+    "budget_window_ms": 600000,
+    "candidate_hold_ms": 15000,
+    "dwell_ms": 60000,
+    "enabled": false,
+    "last_action_at_ms": 0,
+    "last_expert": "",
+    "last_hold": "",
+    "last_reason": "",
+    "measured_downtime_ms": 665,
+    "min_interval_ms": 15000,
+    "owner": "",
+    "projected_unprotected_ms": 0,
+    "switches_recorded": 0
+  },
+  "degraded": false,
+  "generation": 0,
+  "incomplete_transactions": [],
+  "instance_id": "inst-8fd02f0d51b702e9",
+  "journal_records": 0,
+  "last_fallback": "",
+  "lease": {
+    "expires_ms": 0,
+    "fence_epoch": 0,
+    "owner": ""
+  },
+  "request_id": "req-331bfcaba6b5a107",
+  "service": {
+    "adverse_experts": {},
+    "age_ms": 0,
+    "bg_max_wait_ms": null,
+    "bg_work_units_per_sec": null,
+    "declared_limits": {},
+    "foreground_p99_ms": null,
+    "last_outcome": "",
+    "last_rejection": "",
+    "measured_expert": "",
+    "noise_bg_progress_pct": 0.0,
+    "noise_p99_pct": 0.0,
+    "observation_max_age_ms": 0,
+    "observations_accepted": 0,
+    "observations_rejected": 0,
+    "observed": false,
+    "observed_at_ms": 0,
+    "outcome_pending": false,
+    "outcome_windows": 0,
+    "outcome_windows_required": 2,
+    "stale_checks": 0,
+    "window_ms": 0,
+    "workload": ""
+  },
+  "skill": "sched",
+  "startup_degraded_reason": "",
+  "status": "OK",
+  "store_warning": ""
+}
+    tmpfs state dir filled with 1016 filler files (ENOSPC from here on)
+    second apply under ENOSPC -> RECOVERY_REQUIRED
+    status: degraded=True store_warning='lease is in memory only: write failed: No space left on device'
+    rollback under ENOSPC -> status=DEGRADED
+    teardown completed and told the truth about the audit: DEGRADED
+    tmpfs left mounted on purpose: it is unmounted by the exit trap after the daemon dies
+S14	PASS	日志盘满（tmpfs ENOSPC）下的回退可见性	assertions held, sched_ext disabled, no pins added by this scenario
+
+=== S15: CPU 热插拔不误判为调度器丢失 ===
+    pin dirs at scenario start: 0
+ep: connect /tmp/ep-fault.5lJTU3/s15/executor.sock: No such file or directory
+{
+  "auto_apply": {
+    "active_expert": "",
+    "baseline": "",
+    "budget_max_switches": 2,
+    "budget_window_ms": 600000,
+    "candidate_hold_ms": 15000,
+    "dwell_ms": 60000,
+    "enabled": false,
+    "last_action_at_ms": 0,
+    "last_expert": "",
+    "last_hold": "",
+    "last_reason": "",
+    "measured_downtime_ms": 665,
+    "min_interval_ms": 15000,
+    "owner": "",
+    "projected_unprotected_ms": 0,
+    "switches_recorded": 0
+  },
+  "degraded": false,
+  "generation": 0,
+  "incomplete_transactions": [],
+  "instance_id": "inst-fa7fd8d1df743893",
+  "journal_records": 0,
+  "last_fallback": "",
+  "lease": {
+    "expires_ms": 0,
+    "fence_epoch": 0,
+    "owner": ""
+  },
+  "request_id": "req-505fcadac3230603",
+  "service": {
+    "adverse_experts": {},
+    "age_ms": 0,
+    "bg_max_wait_ms": null,
+    "bg_work_units_per_sec": null,
+    "declared_limits": {},
+    "foreground_p99_ms": null,
+    "last_outcome": "",
+    "last_rejection": "",
+    "measured_expert": "",
+    "noise_bg_progress_pct": 0.0,
+    "noise_p99_pct": 0.0,
+    "observation_max_age_ms": 0,
+    "observations_accepted": 0,
+    "observations_rejected": 0,
+    "observed": false,
+    "observed_at_ms": 0,
+    "outcome_pending": false,
+    "outcome_windows": 0,
+    "outcome_windows_required": 2,
+    "stale_checks": 0,
+    "window_ms": 0,
+    "workload": ""
+  },
+  "skill": "sched",
+  "startup_degraded_reason": "",
+  "status": "OK",
+  "store_warning": ""
+}
+    offlined cpu7 while the scheduler was attached
+    sched_ext state during the offline: disabled
+    this kernel unregisters the BPF scheduler on cpu hotplug (see the dmesg lines above);
+      enable_seq 1823, hotplug_seq 15 -> 17
+      hotplug is therefore a scheduler-lifecycle event on this kernel, not a benign no-op
+    executor detected the loss: [executor] auto fallback: scheduler lost: sched_ext state is 'disabled', expected enabled
+    shutdown after the loss left no pins of ours
+S15	PASS	CPU 热插拔不误判为调度器丢失	assertions held, sched_ext disabled, no pins added by this scenario
+
+=== S16: 无法在 v2 中构造的场景如实标注 ===
+    pin dirs at scenario start: 0
+    PMU refusal: v2 has no PMU consumer (scripts/doctor.py reports pmu_read_test NOT_RUN),
+      so there is no code path that could refuse it -- UNSUPPORTED, not a pass.
+    heartbeat stop: heartbeat_ns is only consulted in adaptive mode, which v2 refuses at
+      apply (S03), and nothing in v2 ever writes it -- UNSUPPORTED by design.
+    PID re-creation: a pidfd is held for the transaction, so a recycled pid cannot be
+      re-interpreted under it; task death is covered here and in tests/integration_fd.sh.
+    TID targets: v2 binds tgids only (class_map is keyed by tgid) -- out of scope for P1.
+S16	PASS	无法在 v2 中构造的场景如实标注	assertions held, sched_ext disabled, no pins added by this scenario
+
+=== results ===
+S01  PASS  class 模式挂载+回退：内核 class 读回与撤销证明           assertions held, sched_ext disabled, no pins added by this scenario
+S02  PASS  basic 模式挂载+回退干净                                  assertions held, sched_ext disabled, no pins added by this scenario
+S03  PASS  adaptive 模式在真实 RPC 上被拒（fail-closed）            assertions held, sched_ext disabled, no pins added by this scenario
+S04  PASS  挂载状态下 SIGKILL 执行服务：崩溃后 fair 接管与重启对账  assertions held, sched_ext disabled, no pins added by this scenario
+S05  PASS  sched-ref 下 SIGKILL loader：存活检测与补偿回退          assertions held, sched_ext disabled, no pins added by this scenario
+S06  PASS  租约到期（心跳停止的等价路径）自动回退                   assertions held, sched_ext disabled, no pins added by this scenario
+S07  PASS  策略 TTL 到期自动回退（basic）                           assertions held, sched_ext disabled, no pins added by this scenario
+S08  PASS  无效策略在真实 RPC 上被拒且无副作用                      assertions held, sched_ext disabled, no pins added by this scenario
+S09  PASS  越界与错误类型的阈值被拒                                 assertions held, sched_ext disabled, no pins added by this scenario
+S10  PASS  generation 冲突被拒且无副作用                            assertions held, sched_ext disabled, no pins added by this scenario
+S11  PASS  第二实例拒绝                                             assertions held, sched_ext disabled, no pins added by this scenario
+S12  PASS  外部改值：cfg 漂移检测与再断言                           assertions held, sched_ext disabled, no pins added by this scenario
+S13  PASS  成员迁出：class 撤销并读回为不存在                       assertions held, sched_ext disabled, no pins added by this scenario
+S14  PASS  日志盘满（tmpfs ENOSPC）下的回退可见性                   assertions held, sched_ext disabled, no pins added by this scenario
+S15  PASS  CPU 热插拔不误判为调度器丢失                             assertions held, sched_ext disabled, no pins added by this scenario
+S16  PASS  无法在 v2 中构造的场景如实标注                           assertions held, sched_ext disabled, no pins added by this scenario
+
+[ok] sched_ext is disabled at the end of the matrix
+[ok] no pin dirs left: state=disabled pins=0
+=== fail-safe matrix done 2026-10-24T10:10:59+00:00 ===
+driver_rc=0
+end 2026-10-24T10:10:59+00:00

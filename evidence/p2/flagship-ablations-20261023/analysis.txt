@@ -1,0 +1,19 @@
+blocks: {'A0': 10, 'D': 10, 'Dng': 10, 'Dnv': 10} | dropped/not-evidence: none
+wrote /root/epv2-evidence/flagship-ablations/per_run.csv
+CHECK_RAW_REBUILDS_SUMMARY=yes (every recompute at the probe's own threshold agrees within 0.5%)
+
+=== paired comparisons against A0, within each block ===
+D vs A0 GET n=10 goodput +1.78% [1.06, 2.51] (paired block bootstrap, seed=20261024, 10000 resamples) wins/losses 10/0 | p99 -34.90% | bg x1.002
+      goodput gain by threshold: 5ms=1.777%  1ms=1.999%  2ms=-0.731%  10ms=0.647%
+D vs A0 SET n=10 goodput +1.26% [0.91, 1.75] (paired block bootstrap, seed=20261024, 10000 resamples) wins/losses 10/0 | p99 -32.12% | bg x1.002
+      goodput gain by threshold: 5ms=1.258%  1ms=2.529%  2ms=-1.224%  10ms=0.681%
+Dng vs A0 GET n=10 goodput +1.87% [1.63, 2.67] (paired block bootstrap, seed=20261024, 10000 resamples) wins/losses 10/0 | p99 -37.61% | bg x1.004
+      goodput gain by threshold: 5ms=1.867%  1ms=2.636%  2ms=-0.33%  10ms=0.754%
+Dng vs A0 SET n=10 goodput +1.07% [0.70, 2.05] (paired block bootstrap, seed=20261024, 10000 resamples) wins/losses 9/1 | p99 -31.95% | bg x1.004
+      goodput gain by threshold: 5ms=1.07%  1ms=1.767%  2ms=-1.545%  10ms=0.654%
+Dnv vs A0 GET n=10 goodput +1.84% [1.57, 2.83] (paired block bootstrap, seed=20261024, 10000 resamples) wins/losses 10/0 | p99 -38.25% | bg x1.002
+      goodput gain by threshold: 5ms=1.84%  1ms=2.455%  2ms=-0.456%  10ms=0.68%
+Dnv vs A0 SET n=10 goodput +1.11% [0.21, 1.74] (paired block bootstrap, seed=20261024, 10000 resamples) wins/losses 9/1 | p99 -30.26% | bg x1.002
+      goodput gain by threshold: 5ms=1.113%  1ms=1.994%  2ms=-1.342%  10ms=0.632%
+
+wrote /root/epv2-evidence/flagship-ablations/comparisons.csv

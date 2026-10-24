@@ -1,0 +1,185 @@
+P1 fail-safe 矩阵（协议 §8 故障验证）—— openEuler 24.03-LTS-SP3 真机
+=====================================================================
+
+层级：故障恢复（fault-recovery）。不测性能，不产出任何百分比结论。
+机器：schedpilot-sp3 <SP3-IP>，内核 6.6.0-schedpilot-sp3，8 vCPU / 16 GiB，
+      单机独占（flock /run/lock/eulerpilot-v2-fault.lock 与矩阵/验收锁互斥）。
+驱动：experiments/fail_safe_matrix_sp3.sh（本次新建），一次性跑 16 个条目。
+数据：本目录 results.tsv（逐条判定）、S01..S16.log（逐条断言与被测回复原文）、
+      daemon-excerpts.txt（执行服务侧的落盘证据行）、SHA256SUMS（被测二进制）、
+      driver-SHA256SUMS、driver.stdout（首尾环境快照）、leftover-pin-dirs.txt。
+
+被测构建（跑完后与验收轮 r25 同一份源码）
+-----------------------------------------
+ep-executord 6e4b57da203f…  ep 80da78b86752…  ep-sched-loader 45bdc3c0d64c…
+ep-schedctl  af759004d558…
+unit：tests/unit/test_main.cpp 全部通过；本轮新增两组测试见 §4。
+
+1. 结论
+-------
+> 本节记录的是 **run4**（16 条目，S14 FAIL）。同日修掉 S14 并加了 S17，最终判定见末尾
+> §7（run8：17 条目全 PASS）。保留原样是为了让"缺陷是怎么被发现的"这条链不被事后修饰掉。
+
+16 条中 15 条 PASS、1 条 FAIL（S14 日志盘满）。三条与 P1 准出直接相关的性质成立：
+
+- **回退不留残余效应，且由内核自证**：class 模式回退时逐条 `class-del` 之后再用
+  `class-get` 读回，必须报"条目不存在"才算撤销（S01）；`verify_rolled_back` 的通过语
+  改为 "detached, pins cleaned, runtime marker removed; no class or cfg outlives the
+  unpin"，并且一旦有 pin 残留就把还读得到的 cfg（片长/vtime）与还活着的 class 条目
+  一起报出来。这是协议 §8 "检查旧 class、vtime、slice 和排队任务，不能只看 cfg.flags"
+  在产品里的落点。
+- **两种模式都 fail-safe**：basic（S02/S07）与 class（S01/S04/S05/S06/S12/S13/S15）
+  各自完成挂载→故障→回 default fair→目标继续推进；第三种模式 adaptive 在真实 RPC 上
+  被拒且无副作用（S03），因此"所有模式 fail-safe"的口径是 *v2 可达模式* + 不可达模式
+  一律拒绝，不是三种模式都能跑。
+- **执行服务退出必须自己收尾**：本轮修了一个真缺陷（见 §3），修完 run4 结束时
+  `/sys/fs/bpf/eulerpilot-v2` 为空、`state=disabled`。
+
+2. 逐条结果
+-----------
+| 条目 | 判定 | 关键证据（日志原文） |
+|---|---|---|
+| S01 class 挂载+回退，内核 class 读回 | PASS | `kernel class_map read-back while active: svc=LAT bg=BG`；`rollback reply status=ROLLED_BACK`；journal 内 verify detail 含 `no class or cfg outlives the unpin`；实例 pin 目录消失 |
+| S02 basic 挂载+回退 | PASS | `basic mode detached cleanly: status=ROLLED_BACK`；未声明 class 的 BACKGROUND 目标仍由角色生效为 BG |
+| S03 adaptive 在真实 RPC 被拒 | PASS | `status=REJECTED`，原因点名 adaptive；`state=disabled` 且未新增 pin |
+| S04 挂载中 SIGKILL 执行服务 | PASS | `sched_ext back to disabled`；崩溃当场 `pinned maps of inst-2fa0dbbd28fc066b are still in bpffs`；同实例重启后 `same-instance restart swept the pins left by the crash`、`recovered without degradation` |
+| S05 sched-ref 下 SIGKILL loader | PASS | 内核随之注销调度器；`[executor] auto fallback: scheduler lost: loader process is gone or was replaced`（先两次 liveness miss，3 次判定≈3s） |
+| S06 租约到期（心跳停止的等价路径） | PASS | `[executor] auto fallback: lease expired`；回退后目标计数继续增长 |
+| S07 策略 TTL 到期（basic） | PASS | `[executor] auto fallback: policy TTL expired`（TTL 取 schema 下限 10000ms） |
+| S08 无效策略 | PASS | 未知字段、`class=SUPER` 各被 `REJECTED`，generation 未移动 |
+| S09 越界与错误类型 | PASS | `max_bg_wait_ms=20000`（>10000）与 `max_foreground_p99_ms=5000.0`（整数位写成浮点）均 `REJECTED` |
+| S10 generation 冲突 | PASS | 以 `expected_generation+7` 的裸请求命中 `GENERATION_CONFLICT`，内核状态与 pin 计数不变 |
+| S11 第二实例 | PASS | `another executor instance holds .../executor.lock`，且未挂载 |
+| S12 外部改值 | PASS（含限制） | 见 §3 的漂移条目 |
+| S13 成员迁出 | PASS | `class entry revoked and read back as absent from the kernel map`、`re-entry re-classified to BG` |
+| S14 日志盘满 | **FAIL** | 见 §3 的 ENOSPC 缺陷 |
+| S15 CPU 热插拔 | PASS（内核限制） | 见 §3 的热插拔条目 |
+| S16 无法构造的条目 | PASS（如实标注） | 见 §5 |
+
+3. 本轮改掉的产品缺陷与发现
+----------------------------
+(a) **执行服务收到停止信号只是退出进程**（缺陷，已修）。原来 `main.cpp` 在 accept
+    循环结束后仅关 socket、删 pid 文件、`return 0`：调度器靠"进程退出顺带关闭 link fd"
+    被内核摘掉，而**没人 unlink pin、也没人走回退事务**。run2 里 S12/S15 各自留下一个
+    实例目录，每个含 5 个 map pin（cfg、class_map、cpu_llc、stats、tg_stats），直到手动清理。
+    现在 `Executor::shutdown()` 在停止监控线程后，若仍有
+    生效中的效应就走同一条补偿回退（含 `verify_rolled_back`），然后收尾；单测
+    `test_executor_shutdown_releases_active_effect` 断言 mock 域的值回退、generation 推进、
+    第二次 shutdown 不再写记录。协议 §8 那句"退出 loader/服务能否 detach 取决于 link
+    实际持有与 pin；集成验收读取内核状态/调度计数，不仅检查进程退出"由此才有真证据。
+
+(b) **崩溃后的 pin 残留是同实例重启收尾的**（性质，非缺陷，但必须写清）。S04 里
+    SIGKILL 之后 `state` 立刻回 disabled（link fd 随进程关闭，内核摘除），但 5 个 map pin
+    还挂在 bpffs；同一个 state 目录重启后 `recover_orphan`/`reconcile` 把它们扫掉。
+    若换一个新的 state 目录重启，旧实例的 pin 不会被任何人回收——所以"崩溃不会永久泄漏
+    pinned map"只在*同实例重启*的前提下成立，运维上必须复用 state 目录或手工清理。
+    本轮另有一次未解释的观测：`/sys/fs/bpf/eulerpilot-v2` 本身一度不存在，随后由 loader
+    的 `mkdir_p` 重建；`pin_dir()` 不可能返回裸根（未配置时是 `<root>/unconfigured`），
+    loader 只 mkdir 不 rmdir，原因未查，记在这里备查。
+
+(c) **外部改值：cfg 会被纠正，class 条目不会**（部分闭合 + 明确限制）。执行服务每 2s
+    刷新一次，本轮在 refresh 开头加了一次 cfg 读回：与生效策略记录的 `cfg_after` 不一致
+    就重新写回并打印 `[sched-skill] cfg drift corrected: cfg field 'lat_slice_ns' does
+    not match the requested value`。S12 用 `ep-schedctl set --pin-dir <inst> --json
+    '{"lat_slice_ns":4000000}'` 扮演越权写者，在 12s 等待窗口内被纠正（约 6 个刷新周期；驱动只记"被纠正"，未记第几周期）。读回成本实测
+    **5ms/次**（20 次 `ep-schedctl get` 平均）。
+    限制（已如实记录，未修）：同一次里把 BG 目标越权改成 COMP，刷新**不会**纠正
+    （`before=COMP after=COMP`）——逐条 class 读回要按分类任务数付费，落在毫秒级的刷新
+    预算里不成立。这条限制进入 P2 待办，不得被当作已解决。
+
+(d) **日志盘满时客户端发起的回退到不了执行层**（缺陷，未修 → S14 FAIL）。4MiB tmpfs 当
+    state 目录，灌满后 `ep rollback` 失败在**前置的 lease.acquire**：`{"code":
+    "SCHEMA_INVALID","message":"write failed: No space left on device"}`，因此回退请求
+    `attempted=false`，最后一条策略仍挂在内核里。同一时刻执行服务自己的 TTL 通道是好的：
+    日志有 `[executor] auto fallback journal failed: write failed: No space left on device`
+    并且效应照样被撤（审计写不进就标 degraded，补偿动作继续）。
+    两个可修的点：①`rollback` 不应该因为"租约登记写不下去"而拒绝拆除；②存储写失败被
+    归类成 SCHEMA_INVALID 会让排障指向错误的方向。
+
+(e) **CPU 热插拔在本内核上是调度器生命周期事件**（内核性质，非 v2 缺陷）。下线 cpu7 后
+    dmesg：`smpboot: CPU 7 is now offline` → 34ms 后
+    `sched_ext: BPF scheduler "eulerpilot" disabled (unregistered from the main kernel)`；
+    `hotplug_seq 11 → 13` 而 `enable_seq` 保持 1753。执行服务在 3 次存活判定内报
+    `auto fallback: scheduler lost: sched_ext state is 'disabled', expected enabled`，
+    撤除干净（收尾后无 pin）。也就是说热插拔会把策略打回 default fair 并留下一次降级，
+    而不是静默继续；`enable_seq` 不动这点也与之前"热插拔走独立计数器"的结论一致。
+
+4. 回归
+--------
+- 本轮构建 `cmake --build` 0 warning、`ep_unit_tests` 全绿；unit 断言由 388 处增至 426 处
+  （+38，两组新测试；改前份数取自本轮备份 `/root/epv2-backup-20261024/fault`）
+  （新增 `test_rollback_proves_class_removal`：删除后必须 `class-get` 读回不存在、且
+  `class-del` 之后才允许从受管表里移除、删除空转时必须报
+  `class revocation unconfirmed` 但仍然完成 detach；
+  新增 `test_executor_shutdown_releases_active_effect`）。
+- 验收轮 r25：见 `evidence/acceptance-sp3-20261024-r25/`（同一份构建，6 轮）。
+
+5. 未跑与跑不了（不许用 PASS 遮盖）
+-----------------------------------
+- **PMU 拒绝**：v2 没有 PMU 消费者（`scripts/doctor.py` 的 `pmu_read_test` 至今 NOT_RUN），
+  没有可拒绝的代码路径 → UNSUPPORTED。
+- **停止心跳**：`heartbeat_ns` 只有 adaptive 模式会读，而 v2 在 apply 阶段就拒绝 adaptive
+  （S03），且 v2 从不写该 map → UNSUPPORTED by design。S06 的租约到期是"控制面停止发信
+  ⇒ 自动回退"这一性质的等价实现，但不能冒名心跳本身。
+- **PID 复用**：绑定持 pidfd 到事务结束，回收的 pid 不可能在同一绑定下被重新解释；本轮只
+  测了"目标死亡"这一可观测面（`tests/integration_fd.sh` + unit）。真去调
+  `kernel.pid_max` 逼出复用，测的是内核而不是我们的代码 → SKIP。
+- **TID 目标**：class_map 以 tgid 为键，v2 不绑定线程 → 超出 P1 范围。
+- **跨域第二步失败**：`cfg 写成功后 class-set 失败` 的补偿路径（`ctrl_restore` +
+  `abort_attach`）在代码里存在，本轮没有构造出来 → 仍缺真机证据，属 P1 未完成项。
+- **目标 cgroup 被外部重建**：unit 层已覆盖同名路径重建导致绑定失效；真机 rm/mkdir cgroup
+  的构造本轮未跑 → 仍缺。
+
+6. 这个矩阵**不证明**什么
+------------------------
+- 不证明性能：S12 只证明漂移会被纠正，不度量纠正对业务的影响；新增的每次刷新 1 个 map 读
+  （实测 5ms）发生在旗舰矩阵构建之后，正式矩阵的 C/D 数字未在新构建上重跑。
+- 不证明 stall 类缺陷已穷尽：本轮 16 个条目里没有一条是"排队任务卡住"的构造。
+- 不证明恢复一定成功：S14 就是恢复失败的现场，现场已保留并按约定报 FAIL。
+- 不覆盖自动 apply 的抑制语义与 SLO 门控判定（那是 P2 的另一些条目，见 evidence/p2/*）。
+
+7. 追加与修正（同日，2026-10-24 run5..run8）
+------------------------------------------------
+**上面 §1/§2 的判定已被本节取代**：S14 那条不是"缺测"而是真缺陷，本轮已修并在真机重验。
+
+- **缺陷**：`ep rollback` 的前置 `lease.acquire` 要写 `state.json`，状态目录写不下去时
+  该调用直接回 `REJECTED` 且错误码被写成 `SCHEMA_INVALID`，于是回退请求
+  `attempted=false`、最后一条策略仍挂在内核里，运维只能靠杀进程退场。
+- **修法（方向不对称）**：`Ownership::acquire_lease` 增加 `persisted` 出参；
+  `Executor::handle_lease` 在存储写失败时**照样授予租约**，回
+  `status:"OK" + lease_persisted:false + warning`，同时把执行服务标为 degraded。
+  不可持久化的租约足以**撤掉**已有效的应（回到 default fair 永远是安全方向），
+  但 `policy.apply` 会被 `RECOVERY_REQUIRED` 拒绝，直到 reconcile 成功。
+  `policy.status` 新增 `store_warning`，使存储写失败在恢复之后仍然可报告。
+  回退自身遇到写失败时如实回 `DEGRADED` + `rollback.status ∈ {AUDIT_PENDING, EFFECT_RESTORED}`，
+  不伪装成干净的 `ROLLED_BACK`。契约扩展记在 `docs/p1/ABI_FREEZE.md` §6 第 8 条。
+- **run6（16 条目）**：S14 转 PASS，实测读数
+  `second apply under ENOSPC -> RECOVERY_REQUIRED`、
+  `status: degraded=True store_warning='lease is in memory only: write failed: No space left on device'`、
+  `rollback under ENOSPC -> status=DEGRADED` + "told the truth about the audit"，
+  回退后 `state=disabled`、本实例 pin 目录消失、目标继续推进。
+- **新增 S17（两步写入的第二步失败）**：`ep-schedctl` 换成一个只拒绝 `class-set` 的包装器
+  （记录每一次调用），apply 走 `get → set → class-set(被拒)`。真机读数：
+  `status=ROLLED_BACK`、`error.code=APPLY_FAILED` 且 message 点名被拒的那一步、
+  `generation 仍为 0`（未提交任何事务）、`state=disabled`、pin 根为空、目标继续推进；
+  随后换回真实 helper 重试可正常 `VERIFIED` 并干净回退。
+  这里更正一处我最初的预期：失败发生在**已经挂载之后**，所以契约是"补偿成功 =
+  `ROLLED_BACK` + `APPLY_FAILED`"，不是 `REJECTED`；`REJECTED` 只属于"还没碰内核就拒"。
+  S14/S17 一起把 P1 剩余的"跨域第二步失败缺真机证据"关掉（严格说它是同域两次写，
+  仍在一个 Skill 内）。
+- **run7/run8**：run7 唯一失败是我驱动的断言写错了标签（见上一条），非产品问题；
+  **run8 = 17 条目全 PASS、`driver_rc=0`、收尾 `state=disabled` 且 pin 根为空**，
+  数据在 `fail-safe-20261024/`（run8）。`fail-safe-20261024-run4/` 保留 S14 FAIL 的原始现场，
+  `fail-safe-20261024-run6/` 是修好后、加 S17 前的中间态。
+- **归档失误也记在此**：拉取 run6 时我先解包再改名，把本地 run4 的树原地覆盖了
+  （远端 `/root/epv2-evidence/fail-safe-20261024-run4` 完好，已重新取回）。
+  教训：解包前先确认目标目录名，别把"解包"和"归档"的顺序写反。
+- **本轮构建的回归**：unit 断言 388 → **443**（新增 `test_lease_survives_unwritable_state_store`
+  用"把 state.json 换成同名目录"制造 rename 失败，任何 uid 都失败，不需要产品侧注入口）；
+  `ctest` 6/6；验收 **r26 六轮 rc=0**（`evidence/acceptance-sp3-20261024-r26/`），
+  与 run8 同一份二进制：`ep-executord db04f38513f5…`、`ep 80da78b8…`、
+  `ep-sched-loader 45bdc3c0…`（未变）、`ep-schedctl af759004…`（未变）。
+- 一个未改的小瑕疵（故意不改，以保持交付的驱动哈希与被测的 run8 一致 `ca8a850860d9…`）：
+  EXIT trap 里 `rmdir` 子 cgroup 会因残留的 `sleep` 子进程而失败一次，本轮跑完后
+  `/sys/fs/cgroup/fault-matrix/bg` 空壳仍在（`cgroup.procs` 为 0），已手工 `rmdir` 清掉。
+  下一轮改动驱动时一并加"先把成员迁出再重试 rmdir"。

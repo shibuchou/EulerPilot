@@ -1,0 +1,10 @@
+1 Dnv A0 Dng D
+2 D A0 Dnv Dng
+3 Dnv A0 Dng D
+4 Dnv Dng D A0
+5 D A0 Dng Dnv
+6 A0 Dng Dnv D
+7 A0 D Dng Dnv
+8 A0 Dnv D Dng
+9 D Dnv A0 Dng
+10 D Dng A0 Dnv

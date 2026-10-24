@@ -1,0 +1,29 @@
+{
+  "auto_apply": {
+    "active_expert": "latency-balanced",
+    "baseline": "/tmp/ep-auto-pilot/baseline.json",
+    "enabled": true,
+    "last_action_at_ms": 1792668189996,
+    "last_expert": "latency-balanced",
+    "last_hold": "lease held by cli-operator-reclaim",
+    "last_reason": "safe-basic -> latency-balanced",
+    "min_interval_ms": 4000,
+    "owner": "autopilot-v2"
+  },
+  "degraded": false,
+  "generation": 3,
+  "incomplete_transactions": [],
+  "instance_id": "inst-eaa8d1dd26be23b6",
+  "journal_records": 15,
+  "last_fallback": "",
+  "lease": {
+    "expires_at": "2026-10-22T11:23:41.148Z",
+    "expires_ms": 1792668221148,
+    "fence_epoch": 3,
+    "owner": "cli-operator-reclaim"
+  },
+  "request_id": "req-3fa49b53e2abd9d1",
+  "skill": "sched-ref",
+  "startup_degraded_reason": "",
+  "status": "OK"
+}

@@ -1,0 +1,14 @@
+{
+  "status": "PASS",
+  "layer": "integration-tests-only",
+  "tests": [
+    "integration",
+    "integration_fd",
+    "integration_lease",
+    "integration_sched",
+    "integration_ttl",
+    "unit"
+  ],
+  "passed": 6,
+  "skipped": 0
+}

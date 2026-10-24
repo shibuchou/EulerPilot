@@ -1,0 +1,115 @@
+2026-10-24T10:10:05+00:00 pin dirs at scenario start: 0
+{
+  "action_id": "act-839c3febf6519d1dfa579ccb",
+  "checks": [
+    {
+      "detail": "sched_ext disabled, pins empty, enable_seq=1813",
+      "name": "probe",
+      "ok": true
+    },
+    {
+      "detail": "params prepared",
+      "name": "plan",
+      "ok": true
+    },
+    {
+      "detail": "fault-s02/basic/safe-basic",
+      "name": "policy",
+      "ok": true
+    },
+    {
+      "detail": "2 cgroup binding(s)",
+      "name": "targets",
+      "ok": true
+    },
+    {
+      "detail": "snap-832e1ddb877fd27b95df840ed34a5ebb",
+      "name": "snapshot",
+      "ok": true
+    },
+    {
+      "detail": "applied",
+      "name": "apply",
+      "ok": true
+    },
+    {
+      "detail": "loader pid=450453 mode=basic enable_seq=1814",
+      "name": "verify",
+      "ok": true
+    }
+  ],
+  "error": null,
+  "observed_generation": 1,
+  "policy_sha256": "47e76fece0839b4f8b251c6e4b4510d83bb147259e4939970a99b574302913e6",
+  "request_id": "req-628ff0620ad6cc98998b16a8",
+  "rollback": {
+    "attempted": false,
+    "detail": "",
+    "status": "NOT_NEEDED"
+  },
+  "snapshot_id": "snap-832e1ddb877fd27b95df840ed34a5ebb",
+  "status": "VERIFIED",
+  "target_bindings": [
+    {
+      "boot_id": "400be773-ed44-4c2d-b24e-0eae2e97acea",
+      "cgroup_id": 60546,
+      "class": "",
+      "device": 26,
+      "effective_class": "",
+      "identity": "cgroup2-kernfs",
+      "inode": 60546,
+      "kind": "cgroup",
+      "path": "/sys/fs/cgroup/fault-matrix/svc",
+      "pid": 0,
+      "role": "FOREGROUND",
+      "role_source": "explicit",
+      "starttime": 0
+    },
+    {
+      "boot_id": "400be773-ed44-4c2d-b24e-0eae2e97acea",
+      "cgroup_id": 60565,
+      "class": "",
+      "device": 26,
+      "effective_class": "BG",
+      "identity": "cgroup2-kernfs",
+      "inode": 60565,
+      "kind": "cgroup",
+      "path": "/sys/fs/cgroup/fault-matrix/bg",
+      "pid": 0,
+      "role": "BACKGROUND",
+      "role_source": "explicit",
+      "starttime": 0
+    }
+  ],
+  "transaction_id": "txn-cd9f8f3b2653d16ec6907c51"
+}
+2026-10-24T10:10:06+00:00 basic mode with an undeclared class: bg=BG (BG is implied by the role)
+{
+  "action_id": "rbk-d4f8351985ec9e9588f1d1f4",
+  "checks": [
+    {
+      "detail": "detached and removed 5 owned pin(s)",
+      "name": "rollback",
+      "ok": true
+    },
+    {
+      "detail": "detached, pins cleaned, runtime marker removed; no class or cfg outlives the unpin",
+      "name": "verify",
+      "ok": true
+    }
+  ],
+  "error": null,
+  "observed_generation": 2,
+  "policy_sha256": "47e76fece0839b4f8b251c6e4b4510d83bb147259e4939970a99b574302913e6",
+  "request_id": "req-0ac7ed6acfe7ee374751fc0f",
+  "rollback": {
+    "attempted": true,
+    "detail": "detached and removed 5 owned pin(s)",
+    "status": "ROLLED_BACK"
+  },
+  "snapshot_id": "snap-832e1ddb877fd27b95df840ed34a5ebb",
+  "status": "ROLLED_BACK",
+  "target_bindings": [],
+  "transaction_id": "txn-2e01b561ac247fcfb9bcaf39"
+}
+2026-10-24T10:10:06+00:00 basic mode detached cleanly: status=ROLLED_BACK

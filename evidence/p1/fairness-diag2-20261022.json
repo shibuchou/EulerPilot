@@ -1,0 +1,126 @@
+{
+  "cpu": 7,
+  "window": {
+    "LAT": {
+      "pid": 53931,
+      "iters": 30350356,
+      "max_gap_ns": 15030090,
+      "runtime_ns": 983024357,
+      "share_pct": 30.98
+    },
+    "COMP": {
+      "pid": 53932,
+      "iters": 25719528,
+      "max_gap_ns": 19012677,
+      "runtime_ns": 831365867,
+      "share_pct": 26.2
+    },
+    "NORMAL": {
+      "pid": 53933,
+      "iters": 25622943,
+      "max_gap_ns": 17010537,
+      "runtime_ns": 829459310,
+      "share_pct": 26.14
+    },
+    "BG": {
+      "pid": 53934,
+      "iters": 16313940,
+      "max_gap_ns": 30008614,
+      "runtime_ns": 529416601,
+      "share_pct": 16.68
+    }
+  },
+  "runtime_share_pct": {
+    "LAT": 30.98,
+    "COMP": 26.2,
+    "NORMAL": 26.14,
+    "BG": 16.68
+  },
+  "bpf_stats": {
+    "per_cpu_sum": {
+      "enq_lat": 456,
+      "dsp_lat": 456,
+      "dsp_comp": 605,
+      "run_lat": 456,
+      "run_bg": 150,
+      "direct_lat": 0,
+      "class_hit": 2270,
+      "class_miss": 2213,
+      "class_invalid": 0,
+      "cache_migrated": 0,
+      "bg_vtime_penalty": 150,
+      "dispatch_calls": 1559,
+      "class_expired": 0,
+      "lat_budget_throttle": 0,
+      "lat_idle_borrow": 0,
+      "aging_force": 56
+    },
+    "target_cpu": {
+      "enq_lat": 456,
+      "dsp_lat": 456,
+      "dsp_comp": 528,
+      "run_lat": 456,
+      "run_bg": 150,
+      "direct_lat": 0,
+      "class_hit": 2270,
+      "class_miss": 732,
+      "class_invalid": 0,
+      "cache_migrated": 0,
+      "bg_vtime_penalty": 150,
+      "dispatch_calls": 992,
+      "class_expired": 0,
+      "lat_budget_throttle": 0,
+      "lat_idle_borrow": 0,
+      "aging_force": 1
+    },
+    "note": "per-CPU counters summed; single-line reads of the raw dump understate them"
+  },
+  "fair_budget_window_samples": [
+    {
+      "sample": "1",
+      "raw_bytes": 32,
+      "window_start_ns": 106193943004539,
+      "lat_runtime_ns": 3000000,
+      "other_runtime_ns": 10000000,
+      "last_other_ns": 106193957004378,
+      "lat_share_pct": 23.08
+    },
+    {
+      "sample": "2",
+      "raw_bytes": 32,
+      "window_start_ns": 106194653005639,
+      "lat_runtime_ns": 6000000,
+      "other_runtime_ns": 20000000,
+      "last_other_ns": 106194686008888,
+      "lat_share_pct": 23.08
+    },
+    {
+      "sample": "3",
+      "raw_bytes": 32,
+      "window_start_ns": 106195366004260,
+      "lat_runtime_ns": 8000000,
+      "other_runtime_ns": 30000000,
+      "last_other_ns": 106195413003720,
+      "lat_share_pct": 21.05
+    },
+    {
+      "sample": "4",
+      "raw_bytes": 32,
+      "window_start_ns": 106195974004376,
+      "lat_runtime_ns": 5205297,
+      "other_runtime_ns": 17537982,
+      "last_other_ns": 106196006109690,
+      "lat_share_pct": 22.89
+    },
+    {
+      "sample": "final",
+      "raw_bytes": 32,
+      "window_start_ns": 106196216318499,
+      "lat_runtime_ns": 0,
+      "other_runtime_ns": 3230771,
+      "last_other_ns": 106196006109690,
+      "lat_share_pct": 0.0
+    }
+  ],
+  "fair_budget_note": "window covers budget_window_ms; share is accounted runtime, not wall clock"
+}

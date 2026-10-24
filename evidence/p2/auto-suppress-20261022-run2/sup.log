@@ -1,0 +1,3 @@
+load raised; waiting for the switch up
+RESULT: never switched up - suppression may be too strict
+cleanup rc=1 state=disabled pins=0

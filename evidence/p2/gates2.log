@@ -1,0 +1,41 @@
+########## regression finished, re-running isolated gates 12:47:45
+########## candidate2 12:47:45
+load raised; waiting for the switch up
+  switched up at t=43s
+load dropped; run1 switched back within seconds, this must now wait for dwell
+  t=+15s expert=latency-balanced
+  t=+30s expert=latency-balanced
+  t=+45s expert=latency-balanced
+  t=+60s expert=latency-balanced
+  returned to safe-basic 71s after the drop (dwell was 1000 ms)
+  t=+75s expert=safe-basic
+  t=+90s expert=safe-basic
+RESULT gate=candidate_hold switches=2 returned_at_s=71 dwell_ms=1000 candidate_hold_ms=40000 budget=10/600000ms
+CHECK_WITHIN_BUDGET=yes
+CHECK_GATE_candidate_hold=honored (last blocked 38161ms of 40000ms, 69 rows)
+GATE_CENSUS dwell=0 candidate=69 budget=0
+cleanup rc=0 state=disabled pins=0
+########## candidate2 rc=0 12:50:33
+########## budget2 12:50:38
+load raised; waiting for the switch up
+  switched up at t=11s
+load dropped; run1 switched back within seconds, this must now wait for dwell
+  t=+15s expert=latency-balanced
+  t=+30s expert=latency-balanced
+  t=+45s expert=latency-balanced
+  t=+60s expert=latency-balanced
+  t=+75s expert=latency-balanced
+  t=+90s expert=latency-balanced
+RESULT gate=budget switches=1 returned_at_s=none dwell_ms=1000 candidate_hold_ms=1000 budget=1/600000ms
+CHECK_WITHIN_BUDGET=yes
+CHECK_GATE_budget=bound 65 times, switches stayed 1 of 1
+GATE_CENSUS dwell=0 candidate=3 budget=65
+cleanup rc=0 state=disabled pins=0
+########## budget2 rc=0 12:52:48
+########## binaries after clean rebuild
+ce49fca9eb09e93baec6e07a5e5e1222b383d6141647a951ede187e1a1ff1c9d  /root/epv2-build/ep
+ebfa88a4210bbcf0352a002c7d05ba75519c25f2d663869b8f24debf353ef62c  /root/epv2-build/ep-executord
+d29aa3bb855c289ce33a504770ade31cf18ee6a66b8e5b8d03f54b0ae9b74a5d  /root/epv2-build/ep-sched-loader
+af759004d5581ce1e6956525c88bf2cc73e8f5646b4c54deeecf8ca080d3227b  /root/epv2-build/ep-schedctl
+ac6995d92aea7881fef82822fbdeebacdf15247f8e554511adca1aa7358c2840  /root/epv2-build/ep_unit_tests
+########## gates2 done 12:52:53

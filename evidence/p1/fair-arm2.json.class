@@ -1,0 +1,29 @@
+[{
+        "key": 54439,
+        "value": {
+            "klass": 1,
+            "confidence": 1000,
+            "updated_ns": 106526520848760,
+            "source": 2,
+            "reserved": 0
+        }
+    },{
+        "key": 54440,
+        "value": {
+            "klass": 2,
+            "confidence": 1000,
+            "updated_ns": 106526525936458,
+            "source": 2,
+            "reserved": 0
+        }
+    },{
+        "key": 54442,
+        "value": {
+            "klass": 4,
+            "confidence": 1000,
+            "updated_ns": 106526529244301,
+            "source": 2,
+            "reserved": 0
+        }
+    }
+]

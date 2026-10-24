@@ -1,0 +1,100 @@
+EulerPilot v2 — LAT 预算闭环诊断与修复 — SP3 证据
+记录时间 2026-10-22，机器 schedpilot-sp3（<SP3-IP>），内核 6.6.0-schedpilot-sp3。
+本轮为数据面逻辑正确性验证，不是性能、SLO 或抗饥饿结论。
+
+## 0. 对上一轮读数的更正
+
+`evidence/p1/fairness-pilot-20261022.txt` 记录的 `CLASSMAP_HIT 14 / CLASSMAP_MISS 1080`
+是错读：`stats` 是 `BPF_MAP_TYPE_PERCPU_ARRAY`（一个 key 对应每 CPU 一个值），
+`tests/fairness_sp3.sh` 用 `bpftool map dump` 落原始字节，人工读数没有跨 CPU 求和。
+按 r6 的原始 dump 重新聚合（40 key × 8 CPU）：
+
+    class_hit=2318(全部 CPU7) class_miss=1848(CPU7 750) class_invalid=0
+    class_expired=0 direct_lat=0 aging_force=46(CPU7 仅 1) throttle=0
+
+class_map 命中率正常，"命中率导致 LAT 拿不到预算"这一诊断前提不成立。
+同一份 r6 数据里 `LAT_BUDGET_THROTTLE=0` 也不是计数器失效：LAT 只占 31% 时
+`lat_runtime_ns` 永远够不到 60% 阈值，over 恒假是自洽结果。
+
+## 1. 本轮修改
+
+1. `tests/fairness_sp3.sh`
+   - 统计改为跨 CPU 求和并同时输出目标 CPU 值（`bpf_stats.per_cpu_sum` /
+     `bpf_stats.target_cpu`）；解析器支持 bpftool 对 >8 字节 value 的折行与双空格分组。
+   - `fair_budget` 未被 loader pin，改为在探针运行期间按 map 名采样
+     `bpftool map dump name fair_budget`（`fair_budget_window_samples`）。
+     窗口只持续 `budget_window_ms`，运行结束后再 dump 只反映最后一次 dispatch。
+   - 输出 `applied_cfg` 与 `observed_ms_per_slice`（真实每片时长）。
+   - 新增验收断言：`budget-10 <= LAT% <= budget+10` 且 `throttle > 0`。
+2. `sched/scx_schedpilot.bpf.c`（GPL-2.0 组件，需 SP3 重新生成 skeleton）
+   - `struct sp_task_ctx` 增加 `run_ns`；`running()` 记录上 CPU 时刻。
+   - `stopping()` 的 `consumed` 改用真实占用墙钟时长（上限 `SP_MAX_RUN_DELAY_NS`
+     保护，越界回退原 slice 差值）。原口径只用 `slice - p->scx.slice`，而内核在
+     tick 边界才检查 slice，实测 6ms 的片实际跑 7.24ms，导致预算记账系统性低估。
+
+文件哈希（改动前 → 改动后）：
+
+    scx_schedpilot.bpf.c   f568b0e8d3777f65 → 679f7836bf74c4a2
+    scx_schedpilot.bpf.skel.h 4617297c25a0bfc3 → e76d7af473f42f28（SP3 生成）
+    tests/fairness_sp3.sh  2988ec9951418422 → 076f35d961fc63c1
+
+skeleton 生成工具链：clang 17.0.6，`/root/ep-sched-build/build/sbin/bpftool` v7.3.0（libbpf 1.3），
+vmlinux.h 来自 `/root/ep-sched-build/build/include`。构建产物 `ep-sched-loader` 由
+`7e896f40…` 变为 `d29aa3bb855c289ce33a504770ade31cf18ee6a66b8e5b8d03f54b0ae9b74a5d`；
+`ep 6b33142a…`、`ep-executord 04163c90…`、`ep-schedctl af759004…` 不变。
+
+## 2. 三臂实验：份额由片长比决定（单 CPU，4 个 CPU-bound 探针，4s，旧记账口径）
+
+| 臂 | lat_slice | LAT% | COMP% | NORMAL% | BG% | throttle | 实测 LAT 片 | 实测 other 片 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| arm1 | 1ms（策略默认） | 30.83 | 26.32 | 26.14 | 16.71 | 0 | 2.14ms | 4.14ms |
+| arm2 | 4ms | 51.30 | 18.49 | 18.38 | 11.83 | 0 | 5.20ms | 4.15ms |
+| arm3 | 8ms | 62.69 | 14.23 | 14.27 | 8.81 | 22 | 9.28ms | 4.06ms |
+
+结论：`enqueue` 后 LAT 独占 `SP_DSQ_LAT`，一旦被搬走该 DSQ 即空，dispatch 必然转去
+服务 `SP_DSQ_COMP`（COMP/NORMAL/BG 共用），于是片数近似 1:1 交替，**时间份额 = 片长比**。
+`lat_budget_pct` 只在该比值算出的份额之上封顶，本身不产生保底。arm3 首次让 over 分支生效。
+
+据此在执行侧把预算表达为片长配额：`lat_slice = comp_slice × pct / (100 − pct)`，
+60% 预算、comp 4ms → lat 6ms。
+
+## 3. 记账修正前后（同为 6ms 配额）
+
+| 轮次 | LAT% | throttle(sum/目标CPU) | COMP% | NORMAL% | BG% | 最大间隔 |
+|---|---:|---:|---:|---:|---:|---|
+| arm4 旧记账 | 58.82 | 0/0 | 15.46 | 15.59 | 10.13 | BG 55ms |
+| arm5 新记账 | 57.86 | 4/4 | 15.87 | 15.86 | 10.41 | BG 55ms |
+| stab1 | 58.47 | 8/8 | 15.71 | 15.71 | 10.12 | BG 53ms |
+| stab2 | 58.43 | 13/13 | 15.64 | 15.76 | 10.17 | BG 43ms |
+| stab3 | 57.94 | 5/5 | 15.83 | 15.75 | 10.48 | BG 43ms |
+
+arm4 份额已在预算带内但 throttle 仍为 0（记账低估使 over 判定够不到阈值），
+脚本按新断言判 FAIL；记账改为真实墙钟后 arm5 起 throttle 每轮触发，
+`fair_budget` 窗口采样也从"记 8ms / 实跑 56ms"变为口径一致（如 lat 55.99ms、other 33.98ms）。
+注意 arm5 的 `observed_note` 是当时脚本里写死的旧结论（"throttle stays 0"），与同一份 JSON 里
+`throttle=4` 自相矛盾；该字段随后改为按实测动态生成，引用结论请以 `fair-stab1..3.json` 为准。
+
+三轮稳定性：LAT 57.94–58.47%（目标 60%，带宽 ±10pp），均值 58.28%。
+BG 保持 10.1–10.5%、所有类别最大间隔 ≤55ms，满足既有最低进度与间隔断言。
+
+## 4. 回归
+
+- `ctest` 6/6 通过，0 跳过（记账修改后共 3 次全量 + 4 次单测 `integration_sched`）。
+- `scripts/accept_sp3.sh`：r7c PASS（ctest 6/6、A/B/C liveness、收尾 disabled、0 pin），
+  证据 `evidence/acceptance-sp3-20261022-r7c/`、`evidence/acceptance-sp3-strict-20261022-r7c-pass.txt`。
+
+## 5. 未收口 / 已知缺陷
+
+1. ~~`integration_sched` 的 `enable_seq changed since attach`~~ 已定位：与本轮 BPF 改动无关，
+   根因是 `SchedSkill::verify` 把全局单调计数器 `enable_seq` 的等值当作 attach 证据；已改为
+   只在计数器回退时失败并补单测，修后 `accept_sp3.sh` 连跑 6 轮全通过。完整过程、修前 2/7
+   失败率与剩余局限见 `evidence/p1/enable-seq-verify-20261022.txt`；失败样本原始日志保留在
+   `evidence/acceptance-sp3-strict-20261022-r7a-fail.txt`、`-r7b-fail.txt`、
+   `-r7c-seqtrace.log`，通过样本保留在 `-r7c-pass.txt`、`-r7loop-1..4.txt`、`-r8-round1..6.txt`。
+2. 预算语义仍是软件配额，不是硬上界；内核不可中断等待不受此约束。
+3. 裸 TGID 键在 class_map 上仍有校验后到 BPF 使用之间的窗口，未解决前自动 BG 刷新保持实验范围限制。
+4. 未测性能、未接真实服务 SLO、自动 apply 仍关闭。公平性数字来自单 CPU 封闭竞争，
+   不得引用为性能结论。
+
+原始数据：`evidence/p1/fairness-diag2-20261022.json*`、`fair-arm1..5*`、`fair-stab1..3*`
+（每份含 `.stats` 原始 per-CPU dump、`.budget` 窗口采样、`.class`）。

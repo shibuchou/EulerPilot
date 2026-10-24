@@ -1,0 +1,172 @@
+EulerPilot v2 — 加载场景的服务级 SLO 反馈（观测摄取 → 门控 → 切换后判定）
+记录时间 2026-10-22，schedpilot-sp3（<SP3-IP>），8 vCPU，内核 6.6.0-schedpilot-sp3。
+实验 `experiments/auto_apply_slo_feedback_sp3.sh` + `experiments/service_load_probe.c`，
+数据 `evidence/p2/service-slo-20261022/`（五次运行，含失败与推翻设计的运行）。
+本轮不测性能，测的是"切换有没有被服务证据管住"。
+
+## 1. 为什么要做
+
+上一轮把抑制做成了按时间限速（dwell / 候选保持 / 预算），并在 §5 明写："抑制只是限速，
+不是收益判断——系统里没有服务级收益信号"。限速挡不住"切错了"，只能挡住"切太多"。
+策略 schema 里其实早就声明了服务约束（`min_bg_work_units_per_sec`、`max_bg_wait_ms`、
+`evaluation_min_bg_progress_ratio`、`quiet_max_regression_pct`），但没有任何东西去量它。
+本轮把这条声明接到真实测量上。
+
+## 2. 实现（观测是建议，不是命令）
+
+- **观测契约** `ServiceObservation`：`workload / observed_at_ms / window_ms(100..60000) / expert /
+  foreground.p99_latency_ms / background.work_units_per_sec / background.max_wait_ms`。
+  未知字段、非有限数、无任一信号、未知 expert 全部拒绝；`observed_at_ms` 超前 5s 以上拒绝。
+- **摄取 RPC** `service.observe`（CLI `ep observe --file`）。它不取租约、不写调度器、
+  不推进 generation（有断言）；契约上**只可能让门更严，不可能让门变松**。
+- **SloGate 服务半区**（`src/core/slo.cpp`），阈值只取当前生效策略 `spec.safety` 的声明值，
+  没有声明就不发明：
+  `SERVICE_EVIDENCE_DENIED`（该档此前被实测判过退化）→ `SERVICE_OBSERVATION_STALE`
+  （年龄 > 2×window）→ `BG_PROGRESS_FLOOR` → `BG_WAIT_EXCEEDED`。
+  这一整块排在宿主特征检查**之前**：实测已到的伤害比 CPU 采样过期更具体，运维先看它。
+  没有观测时只报 `service_evidence=absent` / "not evaluated"，不报通过。
+- **切换后判定** `evaluate_switch_outcome()`：把切换后的窗口与切换前的窗口按声明约束对比
+  （进度比 → 绝对下限 → 等待上限 → 前向 p99 退化）。
+  执行服务在真正换了 expert 时武装该检查（自动通道的 rollback→apply 会清空 `active_`，
+  所以"离开的档"必须在切换前记下；人工 rollback 后再 apply 不构成"切换"，不武装）。
+- **确认窗口** `--auto-outcome-windows K`（默认 2，1..10）：单个窗口违规只记为
+  `suspected … window 1 of 2`，连续 K 个窗口都违规才写进 `adverse_experts`；
+  中间出现一个达标窗口就解除武装。理由见第 5 节——这轮实测把必要性量化出来了。
+- `policy.status.service` 新增整段：`observed / workload / measured_expert / age_ms /
+  三项测量值 / declared_limits / adverse_experts / outcome_pending / outcome_windows(_required) /
+  last_outcome`。"为什么现在不动"与"上次切换 measured 结果如何"都可查。
+
+## 3. 边界（刻意的）
+
+- 重启后观测、adverse、预算一样都从零开始；观测只在内存，不写 WAL（它是建议数据，
+  不是事务状态）。
+- 观测一旦断供，年龄超限后所有档都被 `SERVICE_OBSERVATION_STALE` 拒绝 ⇒ 自动通道停住。
+  本轮第 4 次运行真机上撞到了这个行为，见 §5.3。这是 fail-safe，不是缺陷，但它意味着
+  **接了服务门控就必须接常驻测量**，否则会误判成"抑制生效"。
+- 证据按档归属，不连坐：某档被判退化不阻止别的档，也不阻止人工回滚
+  （`policy.rollback` 不查 SloGate）。
+- 判定用的是"切换前后各取窗口"，其间供给负载不变才成立；本轮为了守住这一点，
+  把负载在测量前拉起、把租约晚交，使基线窗口内不可能发生切换。
+
+## 4. 测试层级
+
+| 层级 | 内容 |
+|---|---|
+| unit | `test_service_slo` 29 条（门序、绝对下限、等待上限、过期、按档归属、"没声明就不发明"、观测契约 5 个拒绝分支、`evaluate_switch_outcome` 四种违规与全达标）；`test_service_observe_rpc` 14 条（非法字段/未来时间被拒、合法被收、status 可见、**摄取不推进 generation**）；`test_slo_gate` 改为 `SloInput` 后 12 条仍全过。unit 合计 323 条断言 |
+| integration | `tests/integration_fd.sh` 新增"service observation"段：接受观测、`BG_PROGRESS_FLOOR` **压过** `FEATURES_INSUFFICIENT`、未知字段被拒、status 报出 `declared_limits`、generation 不变 |
+| SP3 真机 | 5 次端到端运行（下表） |
+| 性能 | 未做，本轮数字不构成性能结论 |
+
+`ctest` 6/6 0 跳过；`make clean` 全量重建 0 警告。
+
+## 5. SP3 结果
+
+### 5.1 run5（完整闭环，`run5-full/`）
+| 阶段 | 观测（真实测量） | 系统反应 |
+|---|---|---|
+| 负载已起、租约仍在 CLI 手里 | safe-basic：p99 1.452ms，bg 180.9/s，wait 2.817ms | `lease held by cli-…` ⇒ 基线窗口内不可能切换 |
+| 交出租约 | — | 10s 后 `safe-basic -> latency-balanced`，`outcome_pending=True` |
+| 切换后第 1、2 个窗口 | p99 1.923 / 1.685ms（相对基线 +32% / +16%） | 连续两窗违反 `quiet_max_regression_pct=5` ⇒ `ADVERSE {latency-balanced: FOREGROUND_REGRESSED …(2 consecutive windows)}` |
+| 之后 7 个窗口 | p99 0.101–0.164ms | 门控 `slo denied: SERVICE_EVIDENCE_DENIED`，自动通道不再提这档 |
+| 撤载后路由回落 | — | 回到 safe-basic（被禁的是 latency-balanced，回落目标干净）⇒ **不连坐**成立 |
+| 注入两窗进度比 0.38（<0.5） | `WINDOW1 hurt=False windows=1/2`、`WINDOW2 code=BG_PROGRESS_REGRESSED windows=2/2` | 单窗只疑、双窗才判；`CHECK_SINGLE_WINDOW_DOES_NOT_CONDEMN=yes`、`CHECK_CONFIRMED_EVIDENCE=yes` |
+| 再注入 bg=0.001/s | `slo --expert throughput-balanced` → `BG_PROGRESS_FLOOR` | `switches` 保持 2，`CHECK_STARVE_STOPS_AUTOPILOT=yes` |
+
+注入的两处观测（进度比、饥饿）是**机制验证**，不是实测退化，标注清楚。
+
+### 5.2 关键量化：p99 的窗间噪声远大于声明的 5% 预算
+run5 撤载后同一状态下连测 8 窗：**p99 0.101–0.164ms，均值 0.136ms，极差/均值 = 46%**；
+同一批窗口的 **bg 进度极差仅 5.4%**，加载期间两窗 bg 差 0.1%。
+而策略声明的 `quiet_max_regression_pct = 5`。⇒ 用单窗 p99 比 5% 判"切换是否伤害前向服务"，
+在同质状态下就会大面积误判（run2 正是这样把 latency-balanced 误判了一次：1.942 vs 1.737ms）。
+确认窗口把误判概率压低，但没有把噪声压进 5% 预算。
+结论：**进度类约束（`evaluation_min_bg_progress_ratio` / `min_bg_work_units_per_sec` /
+`max_bg_wait_ms`）在这个测量精度下可用（≤5% 抖动）；p99 类约束目前不可用**，
+要么加大窗口/样本、要么把前向预算调到实测噪声量级（本探针约 ±25%），要么改用统计比较。
+这一条写进未收口项，没有用"门控生效"掩盖它。
+
+### 5.3 推翻设计的两次运行（保留）
+- `run4-stale-telemetry-hold/`：撤载后 90s 没回落。原因不是 bug——最后一次观测已过期，
+  门控对所有档给 `SERVICE_OBSERVATION_STALE`，自动通道据此停住。设计后果，已写进 §3。
+- `run2-single-window-noise/`：单窗判定把噪声当退化（见 §5.2），直接导致确认窗口机制。
+- `run1-measure-bug/`：脚本 `measure()` 把可读行和文件路径一起写 stdout，
+  `observe --file` 收到路径为 "MEASURE expert=..." 的字符串而失败；`run3` 修 stdout 归属，
+  `timeline.csv` 空表问题（python 收到路径却用 `json.loads`）在 `run4` 修。都是我的脚本缺陷，
+  产品行为未受影响。
+
+## 6. 仍未验证 / 下一步
+
+1. p99 约束的可用性（§5.2）；`quiet_max_regression_pct` 语义是"静默基线退化"，
+   本轮在有负载场景复用该声明位——已在代码注释与本文标注，不是它原本承诺的语义。
+2. 常驻测量：真实部署需要观测生产者长期运行；本轮只有实验脚本驱动的窗口。
+3. adverse 证据的解除路径只有"新窗口达标"，没有人工清除口（运维可直接取租约覆盖）。
+4. `fd_passing` 分支在位性单测、预算窗口滑出的真机行为、参数扫描与性能矩阵——仍未做。
+5. 自动 apply 仍**默认关闭**，服务门控只在其开启时参与决策；P1 未收口；v2 无任何性能结论。
+
+## 7. 收尾补记（同日）
+
+1. 读 run5 的 `daemon.log` 时发现一个与本实验无关但影响读法的老缺陷：`SchedSkill` 一个类
+   同时服务 `--skill sched`（link FD 传递，生产路径）与 `--skill sched-ref`（子进程对照），
+   但 `name()` 恒返回 `sched-ref`，于是本轮五次运行的 ready 行都写着 `skill=sched-ref`，
+   而实参是 `--skill sched`。已按 `paths_.fd_passing` 返回真实模式，并在
+   `tests/integration_fd.sh` 加了"生产实例必须报 `sched`"的断言。
+   **本文所有 SP3 运行确实是 FD 传递模式**（`--skill sched`），只是当时被标错了名字。
+2. 回归跑了两次，各自 6 轮全 rc=0：r15 = 加服务门控后的构建（`ep-executord def03c88…`）；
+   r16 = 再修模式标注后的构建（`ep-executord ddeb3803…`、`ep_unit_tests e9536dfb…`）。
+   数据面 `ep-sched-loader d29aa3bb…`、`ep-schedctl af759004…` 两轮不变。
+   `ctest` 两轮均 6/6 0 跳过，`make clean` 全量重建 `warning:` 0 行。
+3. 修脚本断言两处（不改产品）：`CHECK_SINGLE_WINDOW_DOES_NOT_CONDEMN` 原来要求 adverse 全空，
+   但同一运行里另一档可能已有自己的证据，改为只看被测档；`CHECK_EVIDENCE_IS_PER_EXPERT`
+   原来要求"另一档没被拒"，而 run5 里 latency-balanced 确实因自己的实测被禁，
+   改为按证据文本断言**逐档归属**（各档各自的 code + 窗口数）。
+
+## 8. 分辨率护栏（同日的下一步，实测确立口径）
+
+### 8.1 先量信号，再定预算
+`experiments/slo_noise_floor_sp3.sh` 不碰 sched_ext、不碰执行服务，只在同一状态下重复取窗
+（5/15/30s × 5 次，排除首窗作预热），相邻窗相对变化实测：
+
+| 状态 | 窗口 | p99 CV | 相邻窗最大相对变化 | 背景进度相邻窗最大变化 |
+|---|---|---|---|---|
+| idle | 5s | 6.9% | 15.2% | 0.7% |
+| idle | 15s | 7.2% | 17.1% | 0.8% |
+| idle | 30s | 15.4% | 35.9% | 0.8% |
+| loaded | 5s | 6.5% | 18.8% | 1.0% |
+| loaded | 15s | 3.8% | 7.5% | 0.7% |
+| loaded | 30s | 20.2% | 53.2% | 0.2% |
+
+原始数据 `evidence/p2/slo-noise-floor-20261022/noise.tsv`（30 行，本表已用同一算法从该文件复算核对）。
+两点反直觉但重要：**窗口越长不越安静**（30s 反而最差，长窗采到的是变化后的世界）；
+**进度信号比延迟信号稳定两个数量级**（≤1% vs 3.8–20%）。
+据此把在线口径写进 `docs/EXPERIMENT_PROTOCOL.md` §5.1：窗口 15s、观测常驻、
+比较类判定先声明分辨率、绝对类判定不受限、前向延迟在线保护暂只用绝对量。
+
+### 8.2 护栏实现（`evaluate_switch_outcome` 加 `ServiceNoise`）
+策略要求的敏感度（`1−evaluation_min_bg_progress_ratio`、`quiet_max_regression_pct`）
+若**不大于**该信号的实测窗间抖动，判定不执行并明报
+`comparative check not run: declared sensitivity is finer than p99 noise X%`，
+既不判违规也不判通过。抖动由执行服务自己维护的同档相邻窗序列算出（每档最多 8 个窗），
+且两条约束防止它变成"永远拒绝"：
+①待判定期间（pending）的窗口不计入基线抖动——它们是判定的对象，不是抖动样本；
+②相差超过 4 倍的相邻窗不算抖动而是状态变化。第②条是 run7 逼出来的：
+同一档在加载期 1.9ms、撤载后 0.13ms，被当成 90.3% 的"噪声"，护栏因此会永久拒绝一切比较。
+判定顺序也调整为**绝对量优先**（下限/等待上限先于比较类），因为单窗事实不受分辨率限制影响。
+
+### 8.3 真机验证（run6..run8）
+| 运行 | 结果 |
+|---|---|
+| `run6-lease-ttl-expiry/` | 基线第二轮 `active_expert` 为空 → 前台探针被拒。原因：CLI 的租约默认 TTL 30s，**在第二次基线窗口中途过期**，自动通道随即接管并在测量中间切换。运维结论：靠"人持有租约"冻结自动通道必须显式给 `--ttl-ms`，否则冻结有时限。脚本改为 apply 时 `--ttl-ms 900000`，并在探针前等待档位非空 |
+| run7（`run7-noise-guard-90pct/`、`slo7.log`） | 护栏首次生效：真实回落的比较判定报 `not run`、无人被冤枉；但同时暴露上面 90.3% 的抖动估计缺陷，且因真实窗口把 pending 消耗掉，注入式确认演示不再成立（该 CHECK 段已删，确认状态机由 run5 的 daemon 日志作证） |
+| run8（`run8-resolved/`、`slo8.log`） | 修正估计器后：`NOISE p99=30.0% progress=8.6%`、`last_outcome='latency-balanced: comparative check not run: declared sensitivity is finer than p99 noise 39.6%'`、`ADVERSE {}`、`CHECK_NO_SPURIOUS_CONDEMN=yes`、`CHECK_GUARD_EXPLAINS_ITSELF=yes`；升档/回落各 1 次共 2 次切换，饥饿注入后 `BG_PROGRESS_FLOOR` 仍然拒动、切换数不变 `CHECK_STARVE_STOPS_AUTOPILOT=yes` |
+
+注：run8 报出的 30–40% 抖动来自实验里回落阶段用的 2s 短窗（8.1 表显示 5s 窗已达 15–19%），
+这本身就是口径第 1 条的又一次佐证；用 15s 窗时 loaded 场景的抖动约 7.5%，
+仍大于策略声明的 5% 预算，所以**前向 p99 的比较判定在当前口径下依然不可用**。
+
+### 8.4 这一步之后仍然成立的限制
+1. 前向延迟的在线反馈事实上处于"已实现但被自己的分辨率否决"的状态；要用它必须先按 §5.1
+   把预算改成绝对量，或引入多窗统计。
+2. 背景侧（进度下限、等待上限、进度比）是可用且已在真机拒动/放行的那一半。
+3. 抖动估计只用同档历史，跨负载状态变化被规则②排除，但**慢漂移**（温度、共存 VM 渐变）
+   仍会被计入抖动，从而让护栏更保守——这是有意的方向性选择（只可能少判，不会多判）。
+4. 单元 52 条服务断言（`test_service_slo` 38 + `test_service_observe_rpc` 14）+ integration_fd + 真机 run8；性能矩阵仍未开始，以上都不是性能结论。

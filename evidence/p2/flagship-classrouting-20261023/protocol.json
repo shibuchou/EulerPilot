@@ -1,0 +1,181 @@
+{
+  "experiment": "flagship-noisy-cpu-redis",
+  "harness_sha256": {
+    "ep": "80da78b867526da1e971c589f6b264bbbc09d05c2bb1f5bda5ea82fdf3993871",
+    "ep-executord": "5be267254d3bb303e1d0ec9104e1c1c65ca5ea15d9347dabf57e1033aa7ce9d4",
+    "ep-sched-loader": "45bdc3c0d64c8ab773d7bca0a4de0cbf81b5a6b4aaa1485822cf83405e52f8f7",
+    "redis_matrix_sp3.sh": "4ab9acb80b068eca7a891e032851acfd855e69914208bc1680a47bf106d4c3e7",
+    "redis_openloop_probe": "86b62652aed2821ef3d9cf2cab0011923ca870348f80db94c253a890cbe6562b",
+    "service_load_probe": "95cb89e6c8e2074c4f6d45078622d68e2eccf0feec98eab2c55a2b8d9ff95a6f"
+  },
+  "host": {
+    "cpus": 8,
+    "kernel": "6.6.0-schedpilot-sp3",
+    "machine": "schedpilot-sp3"
+  },
+  "invalidity": {
+    "attach_required": [
+      "C",
+      "D"
+    ],
+    "block_invalid": "block.invalid present, or raw records disagree with summary",
+    "never_dropped_for": [
+      "low throughput",
+      "high variance"
+    ]
+  },
+  "parameters": {
+    "analysis": {
+      "bootstrap_resamples": 10000,
+      "ci": "paired block bootstrap, 10000 resamples, seed 20261024, 95% level",
+      "comparison": "paired within block against A0",
+      "invalid_block_rules": [
+        "block.invalid present",
+        "C/D without sched_ext enabled and ops=eulerpilot at attach",
+        "raw record count != summary completed"
+      ],
+      "never_dropped_for": [
+        "low throughput",
+        "high variance",
+        "an inconvenient result"
+      ],
+      "primary": "goodput@SLO gain percent per block, median across blocks",
+      "reported_also": null,
+      "sensitivity": [
+        "paired log-ratio",
+        "win/loss counts",
+        "good% at 1/2/10ms",
+        "per-block scatter"
+      ]
+    },
+    "arms": [
+      "A0",
+      "C",
+      "Cc",
+      "D",
+      "Dc"
+    ],
+    "baseline": "A0",
+    "blocks": 20,
+    "evidence": "evidence/p2/flagship-classrouting-20261023.txt",
+    "experiment": "flagship-noisy-cpu-redis-class-routing",
+    "frozen_at": "2026-10-23 (class-routing re-run)",
+    "frozen_by": "same frozen workload/SLO/gate parameters as flagship-noisy-cpu-redis; only the arm set changes, to isolate the effect of declaring runtime classes",
+    "online_gate": {
+      "bg_window_s": 5,
+      "bg_work_unit": "probe5s",
+      "evaluation_min_bg_progress_ratio": 0.5,
+      "max_bg_wait_ms": 50,
+      "max_foreground_p99_ms": 10,
+      "max_observation_age_ms": 1000,
+      "min_bg_work_units_per_sec": 140,
+      "quiet_max_regression_pct": 5
+    },
+    "pilot_basis": {
+      "bg_max_wait_ms_observed": {
+        "A0": [
+          5.229,
+          5.783
+        ],
+        "C": [
+          2.574,
+          3.01
+        ],
+        "D": [
+          1.416,
+          3.856
+        ]
+      },
+      "bg_measured_units_per_s": [
+        164.12,
+        165.3
+      ],
+      "fg_p99_ms_observed": {
+        "A0": [
+          7.2616,
+          9.6246
+        ],
+        "C": [
+          4.8773,
+          5.5993
+        ],
+        "D": [
+          4.5436,
+          6.6669
+        ]
+      },
+      "offered_scan": {
+        "20000": {
+          "a0_get_good_at_5ms_pct": 100.0,
+          "a0_get_p99_ms": 1.5567,
+          "a0_set_good_at_5ms_pct": 99.99
+        },
+        "40000": {
+          "a0_get_good_at_5ms_pct": 99.89,
+          "a0_get_p99_ms": 1.698,
+          "a0_set_good_at_5ms_pct": 99.94
+        },
+        "60000": {
+          "a0_get_good_at_5ms_pct": [
+            96.86,
+            98.12
+          ],
+          "a0_get_p99_ms": [
+            9.6246,
+            7.2616
+          ],
+          "a0_set_good_at_5ms_pct": [
+            97.0,
+            97.36
+          ]
+        }
+      },
+      "paired_gain_at_frozen_point_n2": {
+        "C_get_pct": 1.43,
+        "C_set_pct": 1.69,
+        "D_get_pct": 1.3,
+        "D_set_pct": 1.75,
+        "note": "n=2 pilot blocks; not a result, used only to check that the frozen point discriminates"
+      }
+    },
+    "primary_question": "within-block paired Cc vs C and Dc vs D: the two targets, expert, parameters, dataset, cgroup placement and window are identical, the only difference is the declared class (LAT for the service cgroup, BG for the background cgroup)",
+    "seed": 20261024,
+    "slo": {
+      "metric": "goodput_at_slo_rps counted per request from raw-*.bin, never inferred from quantiles",
+      "reported_also_at_ms": [
+        1,
+        2,
+        5,
+        10
+      ],
+      "threshold_ms": 5
+    },
+    "workload": {
+      "conns": 8,
+      "io_threads": 1,
+      "keypool": 100000,
+      "measure_s": 60,
+      "offered_rps": 60000,
+      "operations": [
+        "GET",
+        "SET"
+      ],
+      "persistence": "appendonly no; save ''",
+      "populate_requests": 100000,
+      "port": 7797,
+      "timeout_ms": 50,
+      "value_bytes": 64,
+      "warmup_s": 10
+    }
+  },
+  "parameters_sha256": "2b25b8d127c475548cc9db7f32ae05735c9704b885c790cc39a79925c8111918",
+  "preregistered_at": "2026-10-23T12:58:27+00:00",
+  "statistics": {
+    "baseline": "A0",
+    "ci": "paired block bootstrap over per-block paired differences",
+    "comparison": "paired within block",
+    "level": 0.95,
+    "resamples": 10000,
+    "seed": 20261024
+  }
+}

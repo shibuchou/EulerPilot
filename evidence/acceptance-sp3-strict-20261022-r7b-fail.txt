@@ -1,0 +1,68 @@
+{
+  "state": "disabled",
+  "pins": 0,
+  "loader_pids": [],
+  "executor_pids": [],
+  "phase": "initial",
+  "status": "PASS"
+}
+=== acceptance start 2026-10-22T08:35:56+00:00 ===
+kernel: 6.6.0-schedpilot-sp3
+build:  /root/epv2-build
+source: /root/epv2-src
+state:  disabled
+evidence: /root/epv2-build/acceptance.Er2o4K
+=== ctest ===
+Test project /root/epv2-build
+    Start 1: unit
+1/6 Test #1: unit .............................   Passed    3.76 sec
+    Start 2: integration
+2/6 Test #2: integration ......................   Passed    2.64 sec
+    Start 3: integration_sched
+3/6 Test #3: integration_sched ................***Failed    0.89 sec
+[integration-sched] loader=/root/epv2-build/ep-sched-loader
+[integration-sched] instance=inst-f5bdb100437e5c29 pin_dir=/sys/fs/bpf/eulerpilot-v2/inst-f5bdb100437e5c29
+[integration-sched] validate policy
+[integration-sched] apply
+[FAIL] apply not VERIFIED: {
+  "action_id": "act-1d6fb1d7335e9a6383053572",
+  "checks": [],
+  "error": {
+    "code": "VERIFY_FAILED",
+    "detail": "detached and removed 5 owned pin(s)",
+    "message": "enable_seq changed since attach"
+  },
+  "observed_generation": 0,
+  "policy_sha256": "3a04333a9fb8ea4a5f48a433cee04cacca104d6619c712ab4e4848ed132713cf",
+  "request_id": "req-935cd23e0f8b06e94c9bc016",
+  "rollback": {
+    "attempted": true,
+    "detail": "detached and removed 5 owned pin(s)",
+    "status": "ROLLED_BACK"
+  },
+  "snapshot_id": "snap-270cdb0635e2ac2249f5f05ba17734e8",
+  "status": "ROLLED_BACK",
+  "target_bindings": [],
+  "transaction_id": "txn-1b33dde5e7cab1693b2e6c1b"
+}
+[executord] ready state_dir=/tmp/ep-sched-int.JnCXD0/state socket=/tmp/ep-sched-int.JnCXD0/executor.sock skill=sched-ref instance=inst-f5bdb100437e5c29 generation=0 degraded=false
+schedpilot loaded: mode=class pin_dir=/sys/fs/bpf/eulerpilot-v2/inst-f5bdb100437e5c29 pid=58191
+EXIT: unregistered from user space
+schedpilot unloaded (ecode=0x0)
+[FAIL] evidence retained: /tmp/ep-sched-int.JnCXD0
+
+    Start 4: integration_fd
+4/6 Test #4: integration_fd ...................   Passed    6.31 sec
+    Start 5: integration_lease
+5/6 Test #5: integration_lease ................   Passed    1.89 sec
+    Start 6: integration_ttl
+6/6 Test #6: integration_ttl ..................   Passed   11.09 sec
+
+83% tests passed, 1 tests failed out of 6
+
+Total Test time (real) =  26.58 sec
+
+The following tests FAILED:
+	  3 - integration_sched (Failed)
+Errors while running CTest
+[FAIL] acceptance incomplete; evidence retained: /root/epv2-build/acceptance.Er2o4K

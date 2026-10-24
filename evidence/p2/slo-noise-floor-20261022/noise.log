@@ -1,0 +1,41 @@
+### idle: warming up 10s
+  idle rep=1 window=5s done 22:07:15
+  idle rep=1 window=15s done 22:07:30
+  idle rep=1 window=30s done 22:08:00
+  idle rep=2 window=5s done 22:08:06
+  idle rep=2 window=15s done 22:08:21
+  idle rep=2 window=30s done 22:08:51
+  idle rep=3 window=5s done 22:08:56
+  idle rep=3 window=15s done 22:09:11
+  idle rep=3 window=30s done 22:09:41
+  idle rep=4 window=5s done 22:09:46
+  idle rep=4 window=15s done 22:10:01
+  idle rep=4 window=30s done 22:10:31
+  idle rep=5 window=5s done 22:10:36
+  idle rep=5 window=15s done 22:10:51
+  idle rep=5 window=30s done 22:11:21
+### loaded: warming up 10s
+  loaded rep=1 window=5s done 22:11:41
+  loaded rep=1 window=15s done 22:11:56
+  loaded rep=1 window=30s done 22:12:27
+  loaded rep=2 window=5s done 22:12:32
+  loaded rep=2 window=15s done 22:12:47
+  loaded rep=2 window=30s done 22:13:17
+  loaded rep=3 window=5s done 22:13:22
+  loaded rep=3 window=15s done 22:13:37
+  loaded rep=3 window=30s done 22:14:07
+  loaded rep=4 window=5s done 22:14:12
+  loaded rep=4 window=15s done 22:14:27
+  loaded rep=4 window=30s done 22:14:57
+  loaded rep=5 window=5s done 22:15:02
+  loaded rep=5 window=15s done 22:15:17
+  loaded rep=5 window=30s done 22:15:48
+rep 1 excluded as warm-up per state
+state	window_s	n	p99 mean	p99 min..max	p99 CV	consecutive |delta|	verdict at the declared 5% budget	bg max |delta|
+idle	5	4	0.1385 ms	0.1281..0.1500	6.9%	median 12.2% / max 15.2%	NOT usable	0.7%
+idle	15	4	0.1261 ms	0.1144..0.1359	7.2%	median 11.4% / max 17.1%	NOT usable	0.8%
+idle	30	4	0.1297 ms	0.0983..0.1535	15.4%	median 32.2% / max 35.9%	NOT usable	0.8%
+loaded	5	4	2.3057 ms	2.0710..2.4602	6.5%	median 9.3% / max 18.8%	NOT usable	1.0%
+loaded	15	4	2.3251 ms	2.2503..2.4761	3.8%	median 2.4% / max 7.5%	NOT usable	0.7%
+loaded	30	4	2.7974 ms	2.2259..3.4373	20.2%	median 32.2% / max 53.2%	NOT usable	0.2%
+cleanup rc=0

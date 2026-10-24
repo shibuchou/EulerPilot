@@ -1,0 +1,87 @@
+2026-10-24T10:18:43+00:00 pin dirs at scenario start: 0
+{
+  "action_id": "act-803f14a72ae75c24b5fcf6fc",
+  "checks": [
+    {
+      "detail": "sched_ext disabled, pins empty, enable_seq=1887",
+      "name": "probe",
+      "ok": true
+    },
+    {
+      "detail": "params prepared",
+      "name": "plan",
+      "ok": true
+    },
+    {
+      "detail": "fault-s06/class/latency-balanced",
+      "name": "policy",
+      "ok": true
+    },
+    {
+      "detail": "2 cgroup binding(s)",
+      "name": "targets",
+      "ok": true
+    },
+    {
+      "detail": "snap-a3da14f74a2e841f3d6d69ffe0eacb67",
+      "name": "snapshot",
+      "ok": true
+    },
+    {
+      "detail": "applied",
+      "name": "apply",
+      "ok": true
+    },
+    {
+      "detail": "loader pid=467524 mode=class enable_seq=1888",
+      "name": "verify",
+      "ok": true
+    }
+  ],
+  "error": null,
+  "observed_generation": 1,
+  "policy_sha256": "d6667b84c3654d56a97eba5cbddec90759616c2faa60b4706ab9f0dcf22af78f",
+  "request_id": "req-9d10d406cab1eb6f9b855558",
+  "rollback": {
+    "attempted": false,
+    "detail": "",
+    "status": "NOT_NEEDED"
+  },
+  "snapshot_id": "snap-a3da14f74a2e841f3d6d69ffe0eacb67",
+  "status": "VERIFIED",
+  "target_bindings": [
+    {
+      "boot_id": "400be773-ed44-4c2d-b24e-0eae2e97acea",
+      "cgroup_id": 61038,
+      "class": "LAT",
+      "device": 26,
+      "effective_class": "LAT",
+      "identity": "cgroup2-kernfs",
+      "inode": 61038,
+      "kind": "cgroup",
+      "path": "/sys/fs/cgroup/fault-matrix/svc",
+      "pid": 0,
+      "role": "FOREGROUND",
+      "role_source": "explicit",
+      "starttime": 0
+    },
+    {
+      "boot_id": "400be773-ed44-4c2d-b24e-0eae2e97acea",
+      "cgroup_id": 61057,
+      "class": "",
+      "device": 26,
+      "effective_class": "BG",
+      "identity": "cgroup2-kernfs",
+      "inode": 61057,
+      "kind": "cgroup",
+      "path": "/sys/fs/cgroup/fault-matrix/bg",
+      "pid": 0,
+      "role": "BACKGROUND",
+      "role_source": "explicit",
+      "starttime": 0
+    }
+  ],
+  "transaction_id": "txn-efbf5428175977a7a2faf320"
+}
+2026-10-24T10:18:44+00:00 lease issued with ttl 4000ms and never renewed (the heartbeat-stop path)
+2026-10-24T10:18:48+00:00 fallback reason: [executor] auto fallback: lease expired

@@ -1,0 +1,121 @@
+2026-10-24T10:19:04+00:00 pin dirs at scenario start: 0
+{
+  "action_id": "act-ce66cdc80c82a0f694a120af",
+  "checks": [
+    {
+      "detail": "sched_ext disabled, pins empty, enable_seq=1890",
+      "name": "probe",
+      "ok": true
+    },
+    {
+      "detail": "params prepared",
+      "name": "plan",
+      "ok": true
+    },
+    {
+      "detail": "fault-s12/class/latency-balanced",
+      "name": "policy",
+      "ok": true
+    },
+    {
+      "detail": "2 cgroup binding(s)",
+      "name": "targets",
+      "ok": true
+    },
+    {
+      "detail": "snap-7c094ba5d767c7557b6cdeb229bbdf37",
+      "name": "snapshot",
+      "ok": true
+    },
+    {
+      "detail": "applied",
+      "name": "apply",
+      "ok": true
+    },
+    {
+      "detail": "loader pid=468403 mode=class enable_seq=1891",
+      "name": "verify",
+      "ok": true
+    }
+  ],
+  "error": null,
+  "observed_generation": 1,
+  "policy_sha256": "f201f4e6af136d799ce949a7191ec728d4dbb1d55d8ec31410b77f00af8c6ea2",
+  "request_id": "req-4f2ab35ae597c6ebf3f6fe41",
+  "rollback": {
+    "attempted": false,
+    "detail": "",
+    "status": "NOT_NEEDED"
+  },
+  "snapshot_id": "snap-7c094ba5d767c7557b6cdeb229bbdf37",
+  "status": "VERIFIED",
+  "target_bindings": [
+    {
+      "boot_id": "400be773-ed44-4c2d-b24e-0eae2e97acea",
+      "cgroup_id": 61038,
+      "class": "LAT",
+      "device": 26,
+      "effective_class": "LAT",
+      "identity": "cgroup2-kernfs",
+      "inode": 61038,
+      "kind": "cgroup",
+      "path": "/sys/fs/cgroup/fault-matrix/svc",
+      "pid": 0,
+      "role": "FOREGROUND",
+      "role_source": "explicit",
+      "starttime": 0
+    },
+    {
+      "boot_id": "400be773-ed44-4c2d-b24e-0eae2e97acea",
+      "cgroup_id": 61057,
+      "class": "",
+      "device": 26,
+      "effective_class": "BG",
+      "identity": "cgroup2-kernfs",
+      "inode": 61057,
+      "kind": "cgroup",
+      "path": "/sys/fs/cgroup/fault-matrix/bg",
+      "pid": 0,
+      "role": "BACKGROUND",
+      "role_source": "explicit",
+      "starttime": 0
+    }
+  ],
+  "transaction_id": "txn-c9feb99717650739f3443197"
+}
+2026-10-24T10:19:05+00:00 cfg before injection: lat_slice_ns=2000000
+{"cfg":{"aging_ms":20,"bg_slice_ns":2000000,"bg_vtime_pct":200,"budget_window_ms":100,"cache_slice_ns":4000000,"comp_slice_ns":4000000,"flags":11,"generation":3,"heartbeat_ns":0,"heartbeat_seq":0,"intf_version":3,"lat_budget_pct":60,"lat_slice_ns":4000000,"lat_vtime_pct":100,"llc_affinity":false,"migrate_penalty_ns":2000000,"mode":1,"pin_dir":"/sys/fs/bpf/eulerpilot-v2/inst-bc2af6023e3b4bc7","preempt_threshold_ns":500000},"ok":true}
+2026-10-24T10:19:05+00:00 cfg after injection: lat_slice_ns=4000000
+{"class":"COMP","confidence":1000,"ok":true,"pid":466857,"source":2,"updated_ns":286062280055104}
+2026-10-24T10:19:07+00:00 cfg re-asserted by the executor (drift check in refresh)
+2026-10-24T10:19:07+00:00 external class change: before=COMP after=COMP
+2026-10-24T10:19:07+00:00 LIMITATION: per-entry class drift is not re-asserted by refresh (recorded, not fixed)
+2026-10-24T10:19:07+00:00 cost of one map read-back used by the drift check: 4ms
+{
+  "action_id": "rbk-299fc4a5a758e6ec4f671db6",
+  "checks": [
+    {
+      "detail": "detached and removed 5 owned pin(s)",
+      "name": "rollback",
+      "ok": true
+    },
+    {
+      "detail": "detached, pins cleaned, runtime marker removed; no class or cfg outlives the unpin",
+      "name": "verify",
+      "ok": true
+    }
+  ],
+  "error": null,
+  "observed_generation": 2,
+  "policy_sha256": "f201f4e6af136d799ce949a7191ec728d4dbb1d55d8ec31410b77f00af8c6ea2",
+  "request_id": "req-c201b75f97c84d3dfd12e95f",
+  "rollback": {
+    "attempted": true,
+    "detail": "detached and removed 5 owned pin(s)",
+    "status": "ROLLED_BACK"
+  },
+  "snapshot_id": "snap-7c094ba5d767c7557b6cdeb229bbdf37",
+  "status": "ROLLED_BACK",
+  "target_bindings": [],
+  "transaction_id": "txn-5cca762ccdee21a59360dfda"
+}

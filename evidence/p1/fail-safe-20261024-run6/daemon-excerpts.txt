@@ -1,0 +1,9 @@
+[s05] [executor] liveness miss 1: loader process is gone or was replaced
+[s05] [executor] liveness miss 2: loader process is gone or was replaced
+[s05] [executor] auto fallback: scheduler lost: loader process is gone or was replaced
+[s06] [executor] auto fallback: lease expired
+[s07] [executor] auto fallback: policy TTL expired
+[s12] [sched-skill] cfg drift corrected: cfg field 'lat_slice_ns' does not match the requested value
+[s15] [executor] liveness miss 1: sched_ext state is 'disabled', expected enabled
+[s15] [executor] liveness miss 2: sched_ext state is 'disabled', expected enabled
+[s15] [executor] auto fallback: scheduler lost: sched_ext state is 'disabled', expected enabled

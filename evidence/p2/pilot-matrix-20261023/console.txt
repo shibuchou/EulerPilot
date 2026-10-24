@@ -1,0 +1,29 @@
+frozen seed=20261023 arm order per block:
+1 A0 D C
+2 D C A0
+3 D C A0
+### block=1 arm=A0 02:20:31
+### block=1 arm=D 02:21:00
+### block=1 arm=C 02:21:30
+### block=2 arm=D 02:22:00
+### block=2 arm=C 02:22:30
+### block=2 arm=A0 02:23:00
+### block=3 arm=D 02:23:29
+### block=3 arm=C 02:23:59
+### block=3 arm=A0 02:24:29
+collected blocks: 9
+
+== GET ==
+A0 n=3 rps median=479616 mean=472722 CV=2.4% p99 median=2.647 ms bg units median=7
+C n=3 rps median=399202 mean=402712 CV=3.8% p99 median=3.519 ms bg units median=10
+D n=3 rps median=416667 mean=413535 CV=2.7% p99 median=4.415 ms bg units median=10
+
+== SET ==
+A0 n=3 rps median=445434 mean=477130 CV=9.8% p99 median=2.063 ms bg units median=7
+C n=3 rps median=327869 mean=327311 CV=5.6% p99 median=4.767 ms bg units median=10
+D n=3 rps median=335008 mean=336425 CV=1.7% p99 median=4.087 ms bg units median=10
+
+NOTE pilot numbers are tooling/variance evidence only (protocol 6.1) and are
+not entered into the formal table; goodput@SLO still cannot be computed because
+redis-benchmark yields no per-request records (protocol 5 requires them).
+cleanup rc=0 state=disabled pins=0

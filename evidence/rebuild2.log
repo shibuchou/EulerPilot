@@ -1,0 +1,30 @@
+[  4%] Building C object CMakeFiles/ep-sched-loader.dir/sched/loader.c.o
+[  8%] Building CXX object CMakeFiles/ep_core.dir/src/core/util.cpp.o
+[ 16%] Building CXX object CMakeFiles/ep_core.dir/src/core/domain.cpp.o
+[ 16%] Building CXX object CMakeFiles/ep-schedctl.dir/sched/schedctl.cpp.o
+[ 20%] Building CXX object CMakeFiles/ep_core.dir/src/core/policy.cpp.o
+[ 25%] Building CXX object CMakeFiles/ep_core.dir/src/core/features.cpp.o
+[ 29%] Building CXX object CMakeFiles/ep_core.dir/src/core/router.cpp.o
+[ 33%] Building CXX object CMakeFiles/ep_core.dir/src/core/target.cpp.o
+[ 37%] Linking C executable ep-sched-loader
+[ 37%] Built target ep-sched-loader
+[ 41%] Building CXX object CMakeFiles/ep_core.dir/src/core/slo.cpp.o
+[ 45%] Building CXX object CMakeFiles/ep_core.dir/src/core/autopilot.cpp.o
+[ 50%] Building CXX object CMakeFiles/ep_core.dir/src/executor/journal.cpp.o
+[ 54%] Building CXX object CMakeFiles/ep_core.dir/src/executor/ownership.cpp.o
+[ 58%] Building CXX object CMakeFiles/ep_core.dir/src/executor/executor.cpp.o
+[ 62%] Building CXX object CMakeFiles/ep_core.dir/src/skills/mock_skill.cpp.o
+[ 66%] Building CXX object CMakeFiles/ep_core.dir/src/skills/sched_skill.cpp.o
+[ 70%] Linking CXX executable ep-schedctl
+[ 70%] Built target ep-schedctl
+[ 75%] Linking CXX static library libep_core.a
+[ 75%] Built target ep_core
+[ 79%] Building CXX object CMakeFiles/ep-executord.dir/src/executor/main.cpp.o
+[ 83%] Building CXX object CMakeFiles/ep_unit_tests.dir/tests/unit/test_main.cpp.o
+[ 87%] Building CXX object CMakeFiles/ep.dir/src/cli/main.cpp.o
+[ 91%] Linking CXX executable ep
+[ 95%] Linking CXX executable ep-executord
+[ 95%] Built target ep
+[ 95%] Built target ep-executord
+[100%] Linking CXX executable ep_unit_tests
+[100%] Built target ep_unit_tests

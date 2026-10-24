@@ -1,0 +1,7 @@
+load raised; measuring the baseline under the expert that is in place
+MEASURE expert=safe-basic p99_ms=1.149 bg_units=179.7 bg_wait_ms=8.549 samples_fg=14998 samples_bg=2696
+OBSERVE ack=OK expert=safe-basic outcome_evaluated=None hurt=None code=
+ADVERSE {}
+unknown expert: 
+FATAL observe rejected: ep: cannot open FATAL foreground probe failed
+cleanup rc=1 state=disabled pins=0

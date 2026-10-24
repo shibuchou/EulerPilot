@@ -1,0 +1,66 @@
+load raised; measuring the baseline under the expert that is in place
+MEASURE expert=safe-basic p99_ms=1.162 bg_units=181.0 bg_wait_ms=3.021 samples_fg=14999 samples_bg=2716
+OBSERVE ack=OK expert=safe-basic outcome_evaluated=None hurt=None code=
+ADVERSE {}
+MEASURE expert=safe-basic p99_ms=1.592 bg_units=181.0 bg_wait_ms=2.907 samples_fg=14999 samples_bg=2715
+OBSERVE ack=OK expert=safe-basic outcome_evaluated=None hurt=None code=
+ADVERSE {}
+lease handed to the autopilot; it should move within a couple of polls
+  switched up 10s after the round-1 measurement
+ARMED outcome_pending=True last_outcome=''
+MEASURE expert=latency-balanced p99_ms=1.519 bg_units=181.1 bg_wait_ms=3.030 samples_fg=14998 samples_bg=2717
+OBSERVE ack=OK expert=latency-balanced outcome_evaluated=True hurt=False code=
+OUTCOME safe-basic -> latency-balanced: comparative check not run: declared sensitivity is finer than p99 noise 37.0%
+ADVERSE {}
+MEASURE expert=latency-balanced p99_ms=1.239 bg_units=181.3 bg_wait_ms=3.030 samples_fg=14999 samples_bg=2719
+OBSERVE ack=OK expert=latency-balanced outcome_evaluated=None hurt=None code=
+ADVERSE {}
+drop the load; keep measuring so the service evidence stays fresh
+MEASURE expert=latency-balanced p99_ms=0.121 bg_units=163.3 bg_wait_ms=0.147 samples_fg=1999 samples_bg=327
+OBSERVE ack=OK expert=latency-balanced outcome_evaluated=None hurt=None code=
+ADVERSE {}
+  refresh 1 still latency-balanced (hold: already in place: latency-balanced)
+MEASURE expert=latency-balanced p99_ms=0.131 bg_units=170.2 bg_wait_ms=0.400 samples_fg=1999 samples_bg=341
+OBSERVE ack=OK expert=latency-balanced outcome_evaluated=None hurt=None code=
+ADVERSE {}
+  refresh 2 still latency-balanced (hold: already in place: latency-balanced)
+MEASURE expert=latency-balanced p99_ms=0.138 bg_units=165.3 bg_wait_ms=0.410 samples_fg=1999 samples_bg=331
+OBSERVE ack=OK expert=latency-balanced outcome_evaluated=None hurt=None code=
+ADVERSE {}
+  refresh 3 still latency-balanced (hold: already in place: latency-balanced)
+MEASURE expert=latency-balanced p99_ms=0.137 bg_units=168.7 bg_wait_ms=0.263 samples_fg=1999 samples_bg=338
+OBSERVE ack=OK expert=latency-balanced outcome_evaluated=None hurt=None code=
+ADVERSE {}
+  refresh 4 still latency-balanced (hold: already in place: latency-balanced)
+MEASURE expert=latency-balanced p99_ms=0.137 bg_units=166.6 bg_wait_ms=0.255 samples_fg=1999 samples_bg=334
+OBSERVE ack=OK expert=latency-balanced outcome_evaluated=None hurt=None code=
+ADVERSE {}
+  refresh 5 still latency-balanced (hold: already in place: latency-balanced)
+MEASURE expert=latency-balanced p99_ms=0.125 bg_units=162.8 bg_wait_ms=0.195 samples_fg=1999 samples_bg=326
+OBSERVE ack=OK expert=latency-balanced outcome_evaluated=None hurt=None code=
+ADVERSE {}
+  refresh 6 still latency-balanced (hold: already in place: latency-balanced)
+MEASURE expert=latency-balanced p99_ms=0.130 bg_units=163.3 bg_wait_ms=0.164 samples_fg=1999 samples_bg=327
+OBSERVE ack=OK expert=latency-balanced outcome_evaluated=None hurt=None code=
+ADVERSE {}
+  refresh 7 still latency-balanced (hold: routing target stable 0ms of 1000ms required)
+MEASURE expert=safe-basic p99_ms=0.132 bg_units=162.6 bg_wait_ms=0.157 samples_fg=1999 samples_bg=326
+OBSERVE ack=OK expert=safe-basic outcome_evaluated=True hurt=False code=
+OUTCOME latency-balanced -> safe-basic: comparative check not run: declared sensitivity is finer than p99 noise 90.3%
+ADVERSE {}
+  returned to safe-basic at refresh 8
+ARMED_AFTER_RETURN outcome_pending=False required_windows=2
+WINDOW1 evaluated=None hurt=None windows=None/None adverse={}
+CHECK_SINGLE_WINDOW_DOES_NOT_CONDEMN=no
+WINDOW2 hurt=None code=None windows=None/None adverse={}
+CHECK_CONFIRMED_EVIDENCE=no
+SLO_SAFE_BASIC allowed=True code=
+CHECK_EXPERT_CONDEMNED=no
+SLO_LATENCY code= allowed=True
+CHECK_EVIDENCE_IS_PER_EXPERT=no
+now starve the declared floor from outside and see whether the autopilot stops
+SLO_AFTER_STARVE allowed=False code=BG_PROGRESS_FLOOR service_evidence=present
+STARVE_HOLD=slo denied: BG_PROGRESS_FLOOR
+RESULT switch_up_at_s=10 returned_at_s=8 switches_up=2 switches_after_return=2 switches_at_starve=2 hold=slo denied: BG_PROGRESS_FLOOR
+CHECK_STARVE_STOPS_AUTOPILOT=yes
+cleanup rc=0 state=disabled pins=0

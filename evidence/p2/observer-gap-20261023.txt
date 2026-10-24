@@ -1,0 +1,86 @@
+EulerPilot v2 — 观测断供的消费者侧可见性（watchdog 与"补报"语义）
+记录时间 2026-10-23，schedpilot-sp3（<SP3-IP>），8 vCPU，内核 6.6.0-schedpilot-sp3。
+实验 `experiments/service_watchdog_sp3.sh`（看门狗）+ `experiments/service_observer_gap_sp3.sh`
+（场景驱动）+ `experiments/service_observer_sp3.sh`（生产端），数据
+`evidence/p2/observer-gap-20261023/`（`observer-gap-run.log` 为逐阶段输出，
+`watchdog-{clean,gap}/` 为两份告警与逐 poll CSV）。承接
+`evidence/p2/service-slo-ceiling-20261023.txt`。本轮不测性能。
+
+## 1. 为什么要做这一步
+
+§5.1 定了"接服务门控必须接常驻测量"，上限那一轮也证实了观测过期会让自动通道拒动。
+但当时只有两个不完备的部件：生产端自己知道自己死了没（`observer.errors`、心跳文件），
+控制面只在**被问到的那一刻**知道观测过期。这意味着一次真实的断供如果发生在没人轮询的时候，
+事后既没有人被通知，也没有任何地方留下"曾经黑过 26 秒"的痕迹——运维读到的现场是干净的。
+
+所以这一步要同时补三件事：控制面**事后也记得**；补报进来的旧窗口不能被当成"现在"；
+以及一个独立于两者的消费者看门狗，它在健康时必须能报"无异常"，否则它的告警没有价值。
+
+## 2. 实现
+
+- **控制面记忆**（`include/ep/executor.hpp:195`、`src/executor/executor.cpp:240-244`）：
+  `service_slo_input()` 每次被调用（自动通道 2s 轮询、`ep slo`）时记录
+  `observation_max_age_ms_` 高水位，并在 `age > 2 × window` 时累加 `stale_checks`。
+  两个量随 `policy.status.service` 导出（`executor.cpp:209-210`）。
+  该函数因此从 const 变为非 const：它在回答时记账，这是刻意的，注释写明了原因。
+- **补报拒收**（`executor.cpp:308-318`）：`observed_at_ms` 早于 `now-600s` 或早于
+  `now-10×window` 的观测**拒收**，`last_rejection = "observation is too old to describe the present"`。
+  阈值与门控的 2×window 不同是**有意的两套口径**：2×window 决定"还能不能据此行动"，
+  10×window 决定"这条记录还有没有资格占据'最新观测'这个位置"。
+  接受一条早已过期的观测会静默覆盖较新的一条，然后一直报 stale，读起来像门控坏了。
+- **看门狗** `service_watchdog_sp3.sh`：只读 `policy.status`，不做任何写入、不取租约，
+  因此不会成为第二个写者。9 类告警各带机器可读前缀：`STALE_EPISODE`（两次轮询之间
+  `stale_checks` 涨了——它看到自己没在场的断供）、`STALE_MEMORY`（高水位越过告警线）、
+  `STALE_NOW`（当前活观测已过期）、`REJECTIONS`（控制面又开始拒收）、`NO_EVIDENCE`
+  （有策略在位但从未摄取过观测）、`PRODUCER_SILENT`（生产端心跳文件超时）、
+  `ACCOUNTING`（生产端 CSV 行数与控制面 `observations_accepted` 不等）、
+  `NO_CONTROL_PLANE`、`BAD_REPLY`。逐 poll 落 `watchdog.csv`，退出码：任何违例即 1。
+
+## 3. 单元层（`tests/unit/test_main.cpp`，353 条 CHECK）
+
+`test_service_observe_rpc` 增加 10 条：过期 100s 的观测被拒且 `SCHEMA_INVALID`；
+一条 `window_ms=100`、戳记 500ms 前的观测被收下（尚在 10×窗内），随后一次
+`slo.evaluate` 使 `observation_max_age_ms >= 500` 且 `stale_checks >= 1`；
+拒收计数从 2 变 3；两次操作都不动 generation。
+SP3 上 `ctest` 6/6 通过（unit 11.6s、integration、integration_sched、integration_fd、
+integration_lease、integration_ttl），构建目录 `/root/epv2-build`。
+
+## 4. 真机结果（四阶段，`observer-gap-run.log`）
+
+前提：策略 `max_foreground_p99_ms=60000`、`min_bg_work_units_per_sec=1`、
+`max_bg_wait_ms=10000` 都设到够不着，`--auto-dwell-ms 3600000` 把抑制钉死；
+`max_observation_age_ms=1000` 保留。于是运行中**唯一可能bind的门是新鲜度**，
+而 pilot 报出的 hold 原因就是真正bind的那一层。
+
+| 阶段 | 读数 | 结论 |
+|---|---|---|
+| 1 健康 | 12 poll，0 违例，观测 age 峰值 6347ms，心跳 age 峰值 5690ms | `CHECK_WATCHDOG_CLEAN_ON_HEALTHY=yes`（不误报） |
+| 2 生产端被 kill（25s） | `age_ms=26032 window_ms=5005 max_age_ms=25861 stale_checks=8`；hold=`slo denied: SERVICE_OBSERVATION_STALE`；switches=0 | `CHECK_GATE_DENIES_ON_STALE=yes`、`CHECK_EVIDENCE_OUTRANKS_SUPPRESSION=yes` |
+| 3 补报 | 迟 20s 的观测 `rc=0` 被收；`ep slo` 仍 `SERVICE_OBSERVATION_STALE`；迟 120s 的 `rc=1` 被拒，`rejected 0→1`，`observed_at_ms` 未被替换 | `CHECK_LATE_INGEST_TOLERATED/STILL_DENIES_ACTION/ANCIENT_INGEST_REFUSED/DID_NOT_DISPLACE=yes` |
+| 4 生产端重启 | 3 个 poll 后 `age_ms=1044` 恢复新鲜；`max_age_ms=26037`、`stale_checks=12` **仍在那里**；hold 回到 `already in place: safe-basic` | `CHECK_GAP_REMEMBERED_AFTER_RECOVERY=yes`、`CHECK_STALE_HOLD_CLEARED=yes` |
+| 看门狗（断供段） | 15 poll / 35 告警，`max_heartbeat_age_ms=33154`，五类告警全命中，rc=1 | `CHECK_WATCHDOG_EXITS_ON_BREACH=yes` |
+
+第 2 阶段的 hold 值得单独说：dwell 是 3600000ms，抑制层本来就会拦住切换，
+但报出来的是证据层的拒绝——`AutoPilot` 的分层顺序（authority → evidence → suppression）
+在真机上表现为"运维看到的理由是绑住它的那个理由"，而不是第一个能背锅的理由。
+第 4 阶段是这一步的全部意义：现场看起来完全健康，控制面仍然说"这条通道黑过 26 秒"。
+
+## 5. 顺带量到的一条运维约束
+
+门控的过期判据是 `age <= 2×window`，而生产端一个周期的耗时是 `window + interval`
+（探针跑满 window，再睡 interval）。若 interval 取 window，周期就正好是 2×window，
+任何抖动都会让 age 越线——健康机器上门控照样会闪断。本轮把 interval 定为 1s、window 5s
+（周期 ≈ 6.3s，余量 1.6×），健康阶段 0 违例就是这个配置的直接验证。
+生产端节奏必须**严格快于**门控的新鲜度判据，这一句要进 §5.1。
+
+## 6. 本轮没有做 / 不能声称的
+
+- 不测性能。负载一个字节都没加，BG 进度是探针自身的循环，不代表业务吞吐。
+- 看门狗只把告警写文件与 stderr，没有外发通道（告警接进真实监控系统是后续工作）。
+- `stale_checks` 是"门控评估时看到过期的次数"，与断供时长不是同一个量，
+  文档与字段名都不要混用；断供时长读 `observation_max_age_ms`。
+- 两个新计数是**进程内状态**，executor 重启即清零（未进 journal，也不该进：
+  它是遥测不是事实效果）。跨重启的观测历史属于外部监控，不属于控制面。
+- 单生产者假设。多个生产者同时摄取时 `ACCOUNTING` 规则如何定义尚未验证。
+- 第一次运行是我自己的驱动脚本判错了 apply 状态（写成 `OK`，实际是 `VERIFIED`），
+  未产生有效数据，修好后重跑；这条只说明脚本缺陷，不影响上面的读数。

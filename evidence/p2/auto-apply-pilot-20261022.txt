@@ -1,0 +1,88 @@
+EulerPilot v2 — 自动 apply 最小切片（autopilot）与 SP3 真实切换实验
+记录时间 2026-10-22，机器 schedpilot-sp3（<SP3-IP>），内核 6.6.0-schedpilot-sp3，8 vCPU。
+实验脚本 `experiments/auto_apply_pilot_sp3.sh`，原始输出 `evidence/p2/auto-apply-pilot-20261022/`。
+本实验不测性能，只验证授权与控制权移交行为。
+
+## 1. 实现
+
+新增纯函数决策模块 `include/ep/autopilot.hpp` + `src/core/autopilot.cpp`，接入执行服务
+（`include/ep/executor.hpp`、`src/executor/executor.cpp` 的 `monitor_loop` → `run_auto_apply_locked`），
+并在 `ep-executord` 上加显式开关（`src/executor/main.cpp`）：
+
+    ep-executord --skill sched --auto-apply --auto-policy BASELINE.json \
+                 [--auto-owner ID] [--auto-min-interval-ms N] [--auto-lease-ttl-ms N]
+
+授权边界（设计目的，不是副作用）：
+
+- **默认关闭**，且必须给一份能通过完整 `validate_scheduling_policy` 的 baseline 模板，
+  校验失败执行服务直接拒绝启动，不降级运行。
+- 自动通道**只能改 `spec.expert`**，且限定在 `safe-basic / latency-balanced / throughput-balanced`
+  三个已验证档位内（`cache-local` 排除，SP3 从未跑过）；`targets`、`role_source`、`safety`
+  一律取自人工 baseline，自动通道无权改变谁被授权、也无权放宽护栏。
+- 每次动作都把 `spec.source` 写成 `rule-template`，因此必然经过既有 SLO 门控
+  （`SloGate`），不给自动生成策略开旁路。
+- **必须先有人把租约交给它**：它只在 `lease.owner == auto-owner` 且租约未过期时动作，
+  租约属于别人时直接让位；只有租约空闲或已过期才自行获取，剩余时间不足一半时续租。
+  为此给 `ep lease` 补了 `--owner NAME`（原先 CLI 硬编码 `cli-<random>`，没人能把控制权交出去）。
+- 它不引入新效果：没有正在生效的策略时保持不动（`no active policy to switch`）。
+- 切换走**先 rollback 再 apply**：skill 的 preflight 会拒绝在效果在位时二次 attach，
+  而直接覆盖 `active_` 会丢掉旧效果的所有权信息。代价见第 4 节。
+- 每次决策都可解释：`policy.status` 新增 `auto_apply` 段
+  （enabled / owner / baseline / active_expert / last_expert / last_reason / last_hold /
+  last_action_at_ms / min_interval_ms），拒绝原因与切换原因都留痕。
+
+单测 `test_autopilot_rules`（11 条断言）覆盖全部拒绝分支与优先级：未开启、无 owner、
+租约在人手里、租约过期、无在位效果、路由退化、SLO 拒绝、目标与现状相同、超出白名单、
+冷却中，以及"人的租约优先于冷却判断"。
+
+## 2. SP3 实测
+
+`--auto-min-interval-ms 4000 --auto-lease-ttl-ms 30000`，负载为 16 个 CPU 忙等线程（8 vCPU），
+PSI 与路由随之爬升：
+
+| 轮询 | PSI some avg10 | active_expert | last_hold |
+|---:|---:|---|---|
+| 交接前（人类持约） | – | safe-basic | `lease held by cli-99ff2a6cc9c567c8` |
+| 1 | 1.21 | safe-basic | `already in place: safe-basic` |
+| 2 | 8.49 | safe-basic | `already in place: safe-basic` |
+| 3 | 15.73 | safe-basic | `already in place: safe-basic` |
+| 4 | 22.37 | safe-basic | `already in place: safe-basic` |
+| 5 | 28.36 | **latency-balanced** | （空，已动作） |
+
+三个属性都成立：
+
+1. **交接前不动**：人类 apply 之后自动通道一直 hold，原因是租约在人手里。
+2. **随路由切换**：PSI 越过 router 的 20.0 阈值后一次轮询内完成切换，
+   `generation 1 → 3`（rollback 与 apply 各提交一代，与"两步切换"一致），日志
+   `[executor] autopilot switched safe-basic -> latency-balanced`。
+3. **收回即停**：`ep lease --owner cli-operator-reclaim` 之后我把 16 个负载线程全杀掉
+   （PSI 会掉回去，天真实现应当切回 safe-basic），等 14s，
+   `last_hold=lease held by cli-operator-reclaim`、`active_expert` 仍是 latency-balanced、
+   `generation 3 → 3` 未变。
+
+门控确实在起作用而不是摆设：同一压力下 `throughput-balanced` 会被 SLO 以
+`PSI_PRESSURE_TOO_HIGH` 拒绝（PSI ≥ 20），所以路由与门控共同把结果限定为 latency-balanced。
+
+收尾 `state=disabled`、`pins=0`、`cleanup rc=0`，无残留执行服务或 loader。
+
+## 3. 回归
+
+- `ctest` 6/6、0 跳过；`-Wmissing-field-initializers` 已通过给 `ExecutorOptions`
+  加构造函数消除，当前构建 0 warning。
+- 严格验收 `accept_sp3.sh` 连跑 2 轮 rc=0，ctest `passed=6, skipped=0`，收尾 `disabled`/0 pin
+  （`evidence/acceptance-sp3-strict-20261022-r13-round1..2.txt`、
+  `evidence/acceptance-sp3-20261022-r13/`）。
+- 产物随之换新：`ep ce49fca9…`、`ep-executord 5fcdfb1e…`、`ep_unit_tests cd390000…`；
+  `ep-sched-loader d29aa3bb…`、`ep-schedctl af759004…` 未变（本轮没有改数据面）。
+
+## 4. 边界（不得当作已完成）
+
+1. **切换不是无损的**：rollback 与 apply 之间有一段 fair 调度器接管的时间。实验只记录了
+   `generation` 递增两次，**没有量化这段停顿**，也没有测量切换瞬间的延迟毛刺。
+2. 特征窗口只有主机级 CPU/load/PSI，**没有服务级反馈**，所以"路由到什么"表达的是主机压力形状，
+   不等于业务 SLO 达标；赛题要求的加载场景 SLO 仍未实现。
+3. baseline 的 `targets` 在本次实验里固定是 PID 1，真实服务目标解析与授权流程未接入自动通道。
+4. 冷却、检查周期、租约 TTL 都是命令行常量，未按策略或场景自适应。
+5. 未验证自动通道自身崩溃路径下的行为（预期是租约过期→效果自动回退，但本轮没有实测这一条）。
+6. 自动 apply 仍**不在交付默认路径里**：需要显式命令行开启，验收脚本不启用；P1 退出条件仍未满足。
+7. 性能与正式实验矩阵未开始，本文件不含任何性能结论。

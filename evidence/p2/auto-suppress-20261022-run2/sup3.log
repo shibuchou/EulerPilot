@@ -1,0 +1,16 @@
+load raised; waiting for the switch up
+  switched up at t=51s
+load dropped; run1 switched back within seconds, this must now wait for dwell
+  t=+15s expert=latency-balanced
+  t=+30s expert=latency-balanced
+  t=+45s expert=latency-balanced
+  returned to safe-basic 54s after the drop (dwell was 60000 ms)
+  t=+60s expert=safe-basic
+  t=+75s expert=safe-basic
+  t=+90s expert=safe-basic
+  t=+105s expert=safe-basic
+RESULT switches=2 returned_at_s=54 dwell_ms=60000 budget=2/600000ms
+CHECK_HELD_AT_30S=yes
+CHECK_WITHIN_BUDGET=yes
+CHECK_DWELL_FROM_PRODUCT_ACCOUNTING=violated (last blocked age only 8027ms)
+cleanup rc=0 state=disabled pins=0

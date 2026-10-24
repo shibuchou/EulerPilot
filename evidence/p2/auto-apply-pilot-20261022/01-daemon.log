@@ -1,0 +1,2 @@
+[executord] autopilot enabled owner=autopilot-v2 baseline=autopilot-pilot expert=safe-basic min_interval_ms=4000
+[executord] ready state_dir=/tmp/ep-auto-pilot/state socket=/tmp/ep-auto-pilot/executor.sock skill=sched-ref instance=inst-eaa8d1dd26be23b6 generation=0 degraded=false

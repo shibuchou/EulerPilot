@@ -1,0 +1,25 @@
+########## clean rebuild 16:33:07
+rebuild rc=0 warning_lines=0
+ctest rc=0
+100% tests passed, 0 tests failed out of 6
+
+Total Test time (real) =  36.02 sec
+########## acceptance round 1 16:34:10
+round 1 rc=0
+########## acceptance round 2 16:34:55
+round 2 rc=0
+########## acceptance round 3 16:35:40
+round 3 rc=0
+########## acceptance round 4 16:36:25
+round 4 rc=0
+########## acceptance round 5 16:37:11
+round 5 rc=0
+########## acceptance round 6 16:37:55
+round 6 rc=0
+########## hashes
+80da78b867526da1e971c589f6b264bbbc09d05c2bb1f5bda5ea82fdf3993871  /root/epv2-build/ep
+def03c88c7e0f4cdcb33e08bedef3b78362f98d9bd08fa2821cf70816e26fa1d  /root/epv2-build/ep-executord
+d29aa3bb855c289ce33a504770ade31cf18ee6a66b8e5b8d03f54b0ae9b74a5d  /root/epv2-build/ep-sched-loader
+af759004d5581ce1e6956525c88bf2cc73e8f5646b4c54deeecf8ca080d3227b  /root/epv2-build/ep-schedctl
+e95697f890b2b1d7d163380a3409d8bf7fd766622c5d48cf7f469f4666391d02  /root/epv2-build/ep_unit_tests
+########## regression2 done 16:38:41

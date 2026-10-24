@@ -1,0 +1,7 @@
+[abc] fair arm (sched_ext disabled)
+{"arm": "fair", "state": "disabled", "utime_before": 30, "utime_after": 230, "progress_ticks": 200}
+[abc] basic arm
+{"arm": "basic", "state": "enabled", "utime_before": 30, "utime_after": 231, "progress_ticks": 201}
+[abc] class arm
+{"arm": "class", "state": "enabled", "utime_before": 30, "utime_after": 230, "progress_ticks": 200}
+[abc] all arms made progress; sched_ext is disabled
