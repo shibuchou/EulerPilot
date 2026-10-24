@@ -20,7 +20,7 @@ attach。策略里的 targets、参数范围、心跳/TTL 关系都没有检查�
 | 根对象 | 只允许 `apiVersion/kind/metadata/spec`；`apiVersion` 必须匹配；`kind=SchedulingPolicy` |
 | metadata | 只允许 `name`；`^[a-z][a-z0-9-]{0,62}$` |
 | spec | 只允许 7 个字段；`scope=scheduler-instance`；mode/expert/source 枚举 |
-| targets | 1–64 个；kind=cgroup；路径必须是规范化的 `/sys/fs/cgroup/...`，拒绝 `.`/`..` 段；role 枚举；`role_source=explicit`；路径不得重复 |
+| targets | 1–64 个；kind=cgroup/pid；路径必须是规范化的 `/sys/fs/cgroup/...`，拒绝 `.`/`..` 段；role 枚举；`role_source=explicit`；可选 `class`（`NORMAL\|LAT\|COMPUTE\|CACHE\|BG`，未知值拒绝；策略词汇 `COMPUTE` 在写入 helper 时映射为 `COMP`；`class=BG` 必须 `role=BACKGROUND`，反之 BACKGROUND 只能声明 BG）；路径不得重复 |
 | parameters | 7 个字段全部必填；slice 250µs–10ms；preempt 100µs–2ms；bg_vtime 50–400%；llc_affinity 布尔 |
 | safety | 12 个字段全部必填；各范围按 schema；`allow_affinity_change` 必须为 false；fallback 枚举 |
 

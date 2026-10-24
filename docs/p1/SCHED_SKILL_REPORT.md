@@ -23,8 +23,9 @@ loader 由 v2 `sched/` 源构建，pin 命名空间为每实例
 | probe | 检查 loader 可执行、sched_ext 存在、state=disabled、ops 无 eulerpilot、pin 目录为空、无 runtime 标记、无 `schedpilotd` |
 | plan | 只接受 `basic` / `class`；`adaptive` 明确拒绝（需要 schedpilotd，P1 不接） |
 | snapshot | 记录 state/ops/enable_seq/pins/runtime 是否存在 |
-| apply | `sched`：fork 一次性 loader，接收 link FD（SCM_RIGHTS），loader 退出；`sched-ref`：loader 保持子进程。两者都等待 state=enabled 且 ops=eulerpilot、pin 集合稳定；若有 `spec.parameters`，先 `ep-schedctl get` 快照，再 `set` 写入并回读，最后写 runtime 标记 |
-| verify | `sched`：link FD 有效；`sched-ref`：loader pid+starttime 匹配。两者都检查 state=enabled、ops=eulerpilot、enable_seq；有 cfg 快照则重读比对 |
+| apply | `sched`：fork 一次性 loader，接收 link FD（SCM_RIGHTS），loader 退出；`sched-ref`：loader 保持子进程。两者都等待 state=enabled 且 ops=eulerpilot、pin 集合稳定；`enable_seq` 以 snapshot 的 pre-enable 值为基准，等内核发布（`scx_enable()` 先置 state、最后才递增计数器）并连续两次读数一致后记录，避免把自家那次 enable 误读成顶替；若有 `spec.parameters`，先 `ep-schedctl get` 快照，再 `set` 写入并回读，最后写 runtime 标记 |
+| verify | `sched`：link FD 有效；`sched-ref`：loader pid+starttime 匹配。两者都检查 state=enabled、ops=eulerpilot；`enable_seq` 只用于发现计数器**回退**——它是全局单调计数，等值比对会把第三方 attach/detach 或 CPU 热插拔 re-enable 误判成本实例失效（2026-10-22 修正，见 `evidence/p1/enable-seq-verify-20261022.txt`）；有 cfg 快照则重读比对 |
+| liveness | 监控 tick 每 1000ms 的廉价在位探测，复用 verify 的同一份 `presence_ok`（link FD 或 loader pid+starttime、state=enabled、ops 含 eulerpilot、`enable_seq` 与记录值一致），不起 helper、不做 cfg 回读；`enable_seq` 是同名实例顶替的唯一可用信号，因为 link FD 在 6.6 查不出 attached 状态；连续 3 次失败由执行服务走既有自动回退，`last_fallback="scheduler lost: …"` |
 | rollback | 若有 cfg_before，先 restore；`sched` 关闭 link FD，`sched-ref` SIGTERM→SIGKILL；确认 detached；只删除 owned pin；删除 runtime 标记 |
 | verify_rolled_back | state=disabled、ops 无 eulerpilot、pin 为空、runtime 标记已删；`sched` 还要求 link FD 已关闭 |
 | reconcile / recover_orphan | `sched`：崩溃时 link FD 已关闭，清理残留 pin；`sched-ref`：处理孤儿 loader；有 cfg 快照先 restore |
@@ -114,6 +115,20 @@ detach 不改变它——这正是不能用“整快照比对”校验回滚的�
 
 - **link FD 由执行服务持有**：`sched` 模式下 loader 一次性 attach 后通过 SCM_RIGHTS 交付
   link FD 并退出；执行服务崩溃时 FD 关闭即 detach。`sched-ref` 仍保留子进程模式用于对照。
+- **崩溃后 pin 由同实例重启回收**（2026-10-24 实测）：SIGKILL 执行服务时 `state` 立刻回
+  `disabled`（link 随进程死），但 5 个 map pin 仍在 bpffs；同一 state 目录重启后
+  `recover_orphan` 扫掉它们。换一个 state 目录重启则无人回收——运维必须复用目录或手工清理。
+- **执行服务退出会自己收尾**（2026-10-24 修复）：`Executor::shutdown()` 在停止监控线程后，
+  若仍有生效中的效应就走同一条补偿回退（含 `verify_rolled_back`），不再依赖"进程退出顺带
+  关 fd"。见 `evidence/p1/fail-safe-20261024.txt`。
+- **撤销与回退由 map 自证**（2026-10-24）：`class-del` 之后必须 `class-get` 报"不存在"才算
+  撤销；pin 残留时 `residual_effects` 把还读得到的片长/vtime 与还活着的 class 条目一起报出。
+  刷新路径不做逐条确认，因此**越权改 class 条目不会被纠正**（已登记为限制）；cfg 则每刷新
+  周期读回一次并在不一致时写回（实测单次读回 5ms）。
+- **本内核 CPU 热插拔会注销调度器**：下线一个 CPU 后 `eulerpilot` 被内核以
+  `unregistered from the main kernel` 摘除（`hotplug_seq` 变、`enable_seq` 不变）；执行服务
+  在 3 次存活判定内报 `auto fallback: scheduler lost` 并撤除干净。热插拔因此是策略生命周期
+  事件，不是可忽略的运维动作。
 - **pin 已按实例隔离**：`/sys/fs/bpf/eulerpilot-v2/<instance_id>`。
 - **BPF 对象只改了 ops 名**：struct_ops 现注册为 `eulerpilot`，DSQ/分类逻辑仍继承 SchedPilot；
   cfg 参数由短命 `ep-schedctl` helper 写入，执行服务不直接持有 cfg map FD。

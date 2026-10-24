@@ -13,6 +13,7 @@ attach/detach 与崩溃回收测试，`sched-ref` 保留子进程对照。BPF op
 | `policy.apply` / `policy.rollback` | 已实现（mock、sched、sched-ref） | 真实调度走 sched/sched-ref，见下 |
 | `sched`（FD 传递） | 已实现（SP3 实测） | loader 一次性 attach，SCM_RIGHTS 交 link FD；执行服务持有，崩溃时 FD 关闭即 detach |
 | `sched-ref`（子进程对照） | 已实现 | 子进程 loader + PDEATHSIG；用于对照与测试 |
+| 模式自报 | 已修正 | 同一个 `SchedSkill` 服务两种模式，原先 `name()` 恒为 `sched-ref`，`--skill sched`（link FD 生产路径）在 ready 日志与 `policy.status.skill` 里被标成对照模式；现按 `paths_.fd_passing` 返回 `sched`/`sched-ref`，`tests/integration_fd.sh` 断言生产实例报 `sched` |
 | 每实例 pin / ops | 已实现 | `/sys/fs/bpf/eulerpilot-v2/<instance>`；ops `eulerpilot` |
 | BACKGROUND → class_map | 已实现 | 显式 `role=BACKGROUND` 的 pid 目标直接写入；cgroup 目标扫描 `cgroup.procs` 展开（上限 256）；均为 BG/EXTERN，执行服务每 2s 刷新（条目 TTL 5s）；FOREGROUND/NEUTRAL 不映射 |
 | `spec.parameters` 写入 cfg map | 已实现 | 短命 `ep-schedctl` helper；写前快照、写后回读 |
@@ -90,8 +91,14 @@ attach/detach 与崩溃回收测试，`sched-ref` 保留子进程对照。BPF op
 状态集合沿用契约：`PLANNED/APPLIED/VERIFIED/REJECTED/ROLLED_BACK/DEGRADED/RECOVERY_REQUIRED`。
 只读成功用 `status: "OK"`（不属于 ActionResult）。
 
-`target_bindings` 在真实 apply 时填充，每项包含 `kind/path/role/role_source/identity/
-inode/device/cgroup_id/pid/starttime/boot_id`。cgroup 的 `identity` 为 `cgroup2-kernfs`，
+`target_bindings` 在真实 apply 时填充，每项包含 `kind/path/role/role_source/class/
+effective_class/identity/inode/device/cgroup_id/pid/starttime/boot_id`。
+`class` 是策略**声明**的运行特征档（可选，枚举 `NORMAL|LAT|COMPUTE|CACHE|BG`），
+`effective_class` 是执行服务据此实际写入 `class_map` 的档（未声明时 `BACKGROUND→BG`、
+其它角色为空即不写）。两者分开的理由是审计：一条策略写了 `"class":"NORMAL"` 与实际
+"没有任何条目"是两件事，而 `NORMAL` 永远不会被写进 map（否则会留给 PID 复用者一个
+这条策略从未声明的分类）。`class=BG` 必须配 `role=BACKGROUND`，反向亦然——BG 档会
+缩短时间片并施加 vtime 惩罚，没有业务角色就不能拿到它。cgroup 的 `identity` 为 `cgroup2-kernfs`，
 `cgroup_id` 是内核 cgroup id（0 表示该挂载点不可用）；pid 的 `identity` 为
 `pidfd+starttime`，带 `pid` 与 `starttime`；pidfd 只在进程内 bindings 生命周期持有，不序列化。
 空数组表示没有目标（测试模式或尚未解析），不是"已验证无目标"。
@@ -150,6 +157,18 @@ ROLLED_BACK, RECOVERY_REQUIRED, ROLLBACK_PREPARED, RESULT`。
    因为 sched_ext 的 `enable_seq` 是单调计数。
 6. `Skill::recover_orphan(error)`：执行服务启动时回收不属于未完成事务的孤儿资源
    （例如已 COMMITTED 的 apply 留下的 loader/pin）。
+7. `Skill::liveness(applied, detail)`：效果已生效期间的廉价在位性探测，由监控 tick 周期调用。
+8. **仅内存租约（2026-10-24）**：`lease.acquire` 在 `state.json` 写不下去时不再报
+   `SCHEMA_INVALID`，而是回 `status:"OK"` 并附 `lease_persisted:false` 与 `warning`，
+   同时把执行服务标为 degraded。规则是**方向不对称**：不可持久化的租约足以撤掉已有效应
+   （回到 default fair 永远是安全方向），但 `policy.apply` 会被 `RECOVERY_REQUIRED`
+   拒绝，直到 reconcile 成功。`policy.status` 新增 `store_warning` 字段，使存储写失败在
+   恢复之后仍然可报告。回滚自身遇到写失败时如实回 `DEGRADED` +
+   `rollback.status ∈ {AUDIT_PENDING, EFFECT_RESTORED}`，不伪装成干净的 `ROLLED_BACK`。
+   与 `verify` 分工：`verify` 是 apply 后的权威校验（可做 cfg 回读），`liveness` 只读常驻状态
+   （link FD 或 loader pid+starttime、`state`、`ops`），**不得起 helper、不得读代价高的状态**；判定与 `verify` 共用同一个 `presence_ok`，包含 `enable_seq` 等值（它是同名实例顶替的唯一可用信号：6.6 的 `bpf_struct_ops_link` 没有可查询的 attached 状态，link FD 与在位性解耦）。
+   默认实现返回 true，无持续在位概念的 Skill 不需要改动。连续 3 次失败才触发既有自动回退，
+   避免单次读取落在内核瞬态里误撤健康效果。覆盖边界：`fd_passing` 的在位性覆盖边界（2026-10-23 明确）：正分支（执行服务持有 link FD 时逐项校验）由 `tests/integration_fd.sh` 在**真内核集成层**覆盖——它用 `--skill sched` apply 并断言两次 `VERIFIED`，而 `verify` 走的正是同一个 `presence_ok`；负分支（`link_fd_ < 0` 报 `executor does not hold the struct_ops link fd`）在 unit 层**不可达**，因为 `link_fd_` 只在 apply 里由 SCM_RIGHTS 收到，没有合法的测试注入口，所以该分支记为 UNSUPPORTED-at-unit，不为它加产品侧后门。
 
 ## 7. 权限与所有权
 
