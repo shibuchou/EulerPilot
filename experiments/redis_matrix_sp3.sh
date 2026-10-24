@@ -33,8 +33,10 @@ ARMS="${ARMS:-A0 A1 A2 B C D}"
 # classifier, pointed at the same workload cgroups. It is the only arm that
 # never runs ep-executord; the flagship-quality comparison is E vs A0.
 E_DAEMON="${E_DAEMON:-/root/p0/schedpilot-0aeca0c/build/schedpilotd}"
-export E_DAEMON
+E_LOADER="${E_LOADER:-/root/p0/schedpilot-0aeca0c/build/scx_schedpilot}"
+export E_DAEMON E_LOADER
 DAEMON_GRACE=0
+E_LOADER_PID=""
 # Cc / Dc are C and D with exactly one thing added: the policy also declares a runtime
 # class for the cgroups the workload actually lives in. Targets, expert, parameters,
 # dataset and placement are shared with the plain arms on purpose, so a within-block
@@ -106,6 +108,11 @@ stop_all() {
   if [ -n "${DAEMON:-}" ] && [ "$DAEMON_GRACE" = "1" ]; then
     kill -TERM "$DAEMON" 2>/dev/null
     for _ in $(seq 1 40); do kill -0 "$DAEMON" 2>/dev/null || break; sleep 0.25; done
+  fi
+  if [ -n "${E_LOADER_PID:-}" ]; then
+    kill -TERM "$E_LOADER_PID" 2>/dev/null
+    for _ in $(seq 1 40); do kill -0 "$E_LOADER_PID" 2>/dev/null || break; sleep 0.25; done
+    E_LOADER_PID=""
   fi
   for pid in "${OBS_PID}" "${BG_PID}" "${DAEMON}"; do
     [ -n "$pid" ] && kill -KILL "$pid" 2>/dev/null; wait "$pid" 2>/dev/null
@@ -522,10 +529,17 @@ preempt = true
 [log]
 dir = ${d}/sp-logs
 SPCONF
-      "$E_DAEMON" --config "$d/schedpilot.conf" \
-        --duration $((2 * (MEASURE_S + WARMUP_S) + 90)) >"$d/daemon.log" 2>&1 &
-      DAEMON=$!
-      DAEMON_GRACE=1
+      if [ ! -x "$E_LOADER" ]; then
+        echo "arm E needs the reference loader at E_LOADER (have '$E_LOADER')" >> "$d/block.invalid"
+        stop_all
+        return 1
+      fi
+      # The reference daemon never attaches anything itself: it writes the cfg
+      # and class maps of an already-pinned scheduler. Attach with the reference
+      # loader first (it holds the link for as long as it runs), then start the
+      # daemon against the same cgroups.
+      "$E_LOADER" --mode class >"$d/sp-loader.log" 2>&1 &
+      E_LOADER_PID=$!
       local attached=""
       for _ in $(seq 1 150); do
         if [ "$(cat /sys/kernel/sched_ext/state 2>/dev/null)" = "enabled" ] &&
@@ -533,11 +547,21 @@ SPCONF
           attached=1
           break
         fi
-        kill -0 "$DAEMON" 2>/dev/null || break
+        kill -0 "$E_LOADER_PID" 2>/dev/null || break
         sleep 0.1
       done
       if [ -z "$attached" ]; then
-        echo "arm E did not attach (state=$(cat /sys/kernel/sched_ext/state 2>/dev/null) ops=$(cat /sys/kernel/sched_ext/root/ops 2>/dev/null))"           >> "$d/block.invalid"
+        echo "arm E did not attach (state=$(cat /sys/kernel/sched_ext/state 2>/dev/null) ops=$(cat /sys/kernel/sched_ext/root/ops 2>/dev/null))" >> "$d/block.invalid"
+        stop_all
+        return 1
+      fi
+      "$E_DAEMON" --config "$d/schedpilot.conf" \
+        --duration $((2 * (MEASURE_S + WARMUP_S) + 90)) >"$d/daemon.log" 2>&1 &
+      DAEMON=$!
+      DAEMON_GRACE=1
+      sleep 2
+      if ! kill -0 "$DAEMON" 2>/dev/null; then
+        echo "arm E reference daemon exited early" >> "$d/block.invalid"
         stop_all
         return 1
       fi
