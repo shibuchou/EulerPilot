@@ -895,3 +895,12 @@ watch 身份加固后 `ep-executord 35e80b99…`(gen-2,其余产物同 gen-1):�
 三连彩排 PASS;`scripts/verify_package_sp3.sh` 全过。X 臂评估材料:codeload 拉取的
 上游 scx main 树(判定 UNSUPPORTED:主线全 Rust 化、无 Rust 工具链、目标内核>6.6)。
 汇总见 [docs/ACCEPTANCE_20261025.md](docs/ACCEPTANCE_20261025.md)。
+
+## gen-3 与交付镜像(2026-10-25 追加)
+
+cgroup 双写保护后 `ep-executord 6f667b2e…`(gen-3,其余产物不变):ctest 8/8、
+验收 r30 六轮、fail-safe run11 17/17。**交付镜像**:跳板机
+`/home/ubuntu/sp3-vm/deliverable-20261025/`——`schedpilot-sp3-20261025.qcow2`
+(虚拟 80GiB,压缩 14.6GiB,SHA256 `d9dd5030f4e2f6105…b649f6806`),同目录含
+domain.xml、ks.cfg、README 与 SHA256SUMS;由运行域干净关机后 `qemu-img convert -c`
+制作,内含 gen-3 源树与冻结二进制集。

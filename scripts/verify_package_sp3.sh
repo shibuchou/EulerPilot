@@ -25,9 +25,10 @@ check() { # <expected16> <file> <label>
 }
 
 echo "== frozen binaries (evidence/p1/frozen-build-20261025.txt) =="
-# gen-2 (final functional form, full regression r29 + fail-safe run10).
-# Performance-matrix evidence cites gen-1 3693c9ac... (see the frozen-build note).
-check 35e80b9954da4a9b "$BUILD/ep-executord"   "ep-executord (gen-2 final)"
+# gen-3 (final delivery form: event-arm identity + cgroup double-apply guard,
+# full regression r30 + fail-safe run11). Performance-matrix evidence cites
+# gen-1 3693c9ac... (see the frozen-build note, sections 4 and 5).
+check 6f667b2edf5adfe4 "$BUILD/ep-executord"   "ep-executord (gen-3 final)"
 check 3cb202fd138ed167 "$BUILD/ep"             "ep"
 check 2752282392b50f9b "$BUILD/ep-evtmon"      "ep-evtmon"
 check e33496d46b2ca287 "$BUILD/ep-sched-loader" "ep-sched-loader"

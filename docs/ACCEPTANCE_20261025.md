@@ -69,16 +69,21 @@ scx 主线已 Rust 化且目标内核高于 6.6,验收机上无法公平构建)�
 
 - **gen-1** `ep-executord 3693c9ac…`:性能矩阵(旗舰重跑/B/E)的二进制,性能
   结论全部指向它;
-- **gen-2** `ep-executord 35e80b99…`:在 gen-1 后加入 watch 身份加固(仅
-  `--event-arm` 路径),为最终功能形态;矩阵 harness 从不武装事件守卫,改动对
-  矩阵臂不活跃(已核对);其全套回归=验收 r29 + fail-safe 复跑。
-- 交付时以 gen-2 为最终二进制、gen-1 哈希保留用于性能主张溯源;两者差异仅
-  事件守卫身份匹配(见 `4d4f18e` 的 diff)。
+- **gen-2** `ep-executord 35e80b99…`:watch 身份加固(仅 `--event-arm` 路径),
+  回归 = r29 六轮 + fail-safe run10 17/17;
+- **gen-3** `ep-executord 6f667b2e…`(最终交付):再加 cgroup 域双写保护(skill
+  层,与 sched 域预检对称),回归 = ctest 8/8 + r30 六轮 + fail-safe run11 17/17。
+- gen-2/gen-3 的改动均不在矩阵臂执行路径上;性能主张以 gen-1 溯源。
+- **交付镜像**已制作:`schedpilot-sp3-20261025.qcow2`(虚拟 80GiB/压缩 14.6GiB,
+  SHA256 `d9dd5030…`,干净关机后转换;含 gen-3 源树与冻结二进制),与
+  domain.xml/ks.cfg/README/SHA256SUMS 同在跳板机 `/home/ubuntu/sp3-vm/deliverable-20261025/`。
 
 ## 未完成与已知边界(不可省略)
 
 - cross-machine UNSUPPORTED;X 臂 UNSUPPORTED(理由如上);adaptive/心跳/PMU
   UNSUPPORTED by design。
+- 泵/BPF 开销已量化(`pump-overhead-20261025.txt`);cgroup 双写保护已闭合
+  (gen-3,skill 层拒绝 + 587 断言)。
 - 泵/BPF 开销已量化(0.5% 单核,goodput 配对差 −0.010%,`pump-overhead-20261025.txt`);map 饱和(>4096 cgroup)未构造。
 - cgroup 域无"已有效应再 apply"的通用保护(守卫自查 active_,人工并发靠操作纪律)。
-- SP3 镜像打包(ova/qcow2)未做——按比赛对交付物形态的最终要求补。
+- SP3 镜像已完成(qcow2,见"两代冻结构建的声明"末条);镜像的**搬运/提交方式**待比赛对交付物形态的要求确认(14.6GiB)。

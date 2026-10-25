@@ -53,3 +53,12 @@ watch 身份加固(`4d4f18e`)晚于 gen-1 的矩阵,改变了 `ep-executord`:
 **fail-safe run10 17/17**(`/root/epv2-evidence/fail-safe-20261025-gen2/`)、
 ctest 8/8(含事件链六相)。性能结论仍指向 gen-1(其 manifest 哈希在案);
 交付以 gen-2 为最终二进制。包校验据此以 gen-2 为期望值。
+
+## 5. 第三代构建(gen-3,最终交付形态)
+
+cgroup 双写保护(`8e7a5d7`)再次改变 executord:**gen-3 = `6f667b2edf5adfe4…`**
+(其余五个产物不变)。全套回归:**ctest 8/8(含双写保护的 integration_cgroup)、
+验收 r30 六轮 rc=0**(`/root/epv2-evidence/acc-20261025-r30-driver.log`)、
+**fail-safe run11 17/17**(`/root/epv2-evidence/fail-safe-20261025-gen3/`)。
+性能结论仍指向 gen-1;gen-2/gen-3 的改动(事件守卫身份匹配、cgroup skill 层
+拒绝双写)均不在矩阵臂的执行路径上。交付以 gen-3 为最终二进制。

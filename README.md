@@ -24,7 +24,7 @@
 | P4 扩展 | **R5 两半均已真机闭环**：动作端 cgroup 效果域（cpu.weight,崩溃 marker 恢复）+ 感知端 eBPF 事件链（raw_tp 采集 runnable 等待 → 只读泵 ep-evtmon → event.observe → 武装守卫经事务路径升权/补偿;杀泵门冻结+TTL 兜底）,`integration_events` 为第 8 个 CTest 必测项。见 `evidence/p4/events-link-20261025.txt` |
 | P5 交付 | **主体完成**（手册/演示三连彩排/包校验全过/验收报告;镜像打包待比赛形态要求） |
 
-回归基线（最终功能构建 gen-2 `ep-executord 35e80b99…`）：unit **572** 条断言、`ctest` **8/8**、验收 **r28+r29 各六轮 rc=0**、fail-safe **run9+run10 均 17/17**、演示彩排三连 PASS、`verify_package_sp3.sh` 全过。性能结论指向 gen-1（`3693c9ac…`,矩阵 manifest 在案）：C vs A0 GET **+1.83% [1.38,2.26]（20/0）**、p99 −39.6%;补充对照 B +1.75%、E +1.92%（各 10/0）。总验收判定见 [docs/ACCEPTANCE_20261025.md](docs/ACCEPTANCE_20261025.md)（R1–R10 逐条 + 边界 + 两代构建声明）。
+回归基线（最终交付构建 gen-3 `ep-executord 6f667b2e…`）：unit **587** 条断言、`ctest` **8/8**、验收 **r28–r30 各六轮 rc=0**、fail-safe **run9–run11 均 17/17**、演示彩排三连 PASS、`verify_package_sp3.sh` 全过、交付镜像已制作（14.6GiB qcow2,SHA256 见 PROVENANCE）。性能结论指向 gen-1（`3693c9ac…`,矩阵 manifest 在案）：C vs A0 GET **+1.83% [1.38,2.26]（20/0）**、p99 −39.6%;补充对照 B +1.75%、E +1.92%（各 10/0）。总验收判定见 [docs/ACCEPTANCE_20261025.md](docs/ACCEPTANCE_20261025.md)（R1–R10 逐条 + 边界 + 两代构建声明）。
 
 阶段判定依据、逐项证据路径、硬天花板（内核行为与测量能力的边界）与工程约定见 [交接件](docs/HANDOVER_20261024.md)——接手本项目的第一份读物；进度明细见 [实施计划](docs/IMPLEMENTATION_PLAN.md)。
 
