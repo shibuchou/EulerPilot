@@ -1,7 +1,8 @@
 # Tool / Skill / 策略接口契约
 
-版本 `eulerpilot.io/v1alpha1`。本目录是设计契约。P1 已实现其中控制面骨架的一个子集，
-实现边界、线路包装和新增字段见 `docs/p1/ABI_FREEZE.md`；真实 sched_ext Skill 仍未接入。
+版本 `eulerpilot.io/v1alpha1`。本目录是设计契约。控制面骨架、真实 sched_ext Skill
+(FD 传递生产路径)、cgroup 动作域与事件链均已实现并在 SP3 上验证;实现边界、线路包装
+和新增字段以 `docs/p1/ABI_FREEZE.md` 为准,逐条判定见 `docs/ACCEPTANCE_20261025.md`。
 JSON Schema采用Draft-07，JSON文件也可被YAML解析器读取；初版以JSON为规范交换格式，CLI将来可接受YAML并先转为规范JSON。
 
 ## 1. 领域对象
@@ -24,9 +25,18 @@ BG来自TargetRef显式角色；行为推断不修改角色授权。TargetRef路
 
 ## 2. Tool协议
 
-计划支持 `skill.list/describe/probe`、`schedule.plan`、`policy.apply`、`policy.status`、`policy.rollback`、`transaction.reconcile`。只读操作与写操作在权限模型上区分，所有写操作复用相同执行通道。MCP是可选适配器，并非本契约必需。
+已实现 11 个 op：`policy.status`、`feature.snapshot`、`route.decide`、`slo.evaluate`、
+`service.observe`、`event.observe`、`lease.acquire`、`policy.validate`、`policy.apply`、
+`policy.rollback`、`transaction.reconcile`。只读操作与写操作在权限模型上区分，所有写操作
+复用相同执行通道。`skill.list/describe/probe` 与 `schedule.plan` 仍属计划项，执行服务未
+注册这两个 op；Skill 能力由 `SkillManifest` 静态声明。MCP是可选适配器，并非本契约必需。
 
-请求：API版本、request_id、transaction_id、idempotency_key、operation、policy_sha256、lease_owner、fence_epoch、expected_generation、issued_at/deadline。策略摘要由规范序列化生成，同时保存原始文件SHA256；二者明确区分，不能拿文本哈希冒充语义等价。
+写操作请求把信封字段嵌套在 `envelope` 下，与 `policy`（或测试模式的 `intent`）并列：
+`apiVersion`、`request_id`、`transaction_id`、`idempotency_key`、`operation`、
+`policy_sha256`、`lease_owner`、`fence_epoch`、`expected_generation`、`issued_at`、
+`deadline`（线路格式见 `docs/p1/ABI_FREEZE.md`）。策略摘要由规范序列化生成，同时保存原始
+文件SHA256；二者明确区分，不能拿文本哈希冒充语义等价。`deadline` 必须晚于 `issued_at`
+（语义校验，schema 不表达）。
 
 结果固定包含：
 
@@ -43,7 +53,7 @@ BG来自TargetRef显式角色；行为推断不修改角色授权。TargetRef路
 }
 ```
 
-状态集合：`PLANNED / APPLIED / VERIFIED / REJECTED / ROLLED_BACK / DEGRADED / RECOVERY_REQUIRED`。错误码包括 `SCHEMA_INVALID / UNSUPPORTED / PERMISSION_DENIED / TARGET_STALE / OWNERSHIP_CONFLICT / GENERATION_CONFLICT / DEADLINE_EXCEEDED / VERIFY_FAILED / ROLLBACK_FAILED`。只有真实验证通过才返回VERIFIED；恢复失败不能返回ROLLED_BACK。
+状态集合：`PLANNED / APPLIED / VERIFIED / REJECTED / ROLLED_BACK / DEGRADED / RECOVERY_REQUIRED`，只读成功另返回 `OK`；`PLANNED`/`APPLIED` 属领域定义，当前实现不产出（生效即 `VERIFIED`）。错误码全集：`NONE / SCHEMA_INVALID / UNSUPPORTED / PERMISSION_DENIED / TARGET_STALE / OWNERSHIP_CONFLICT / GENERATION_CONFLICT / DEADLINE_EXCEEDED / SLO_DENIED / APPLY_FAILED / VERIFY_FAILED / ROLLBACK_FAILED / RECOVERY_REQUIRED / IDEMPOTENCY_CONFLICT / INTERNAL`。只有真实验证通过才返回VERIFIED；恢复失败不能返回ROLLED_BACK。
 
 相同幂等键、相同规范请求返回原结果；相同键不同内容拒绝。generation不匹配不自动重试覆盖；Agent重新获取状态并生成计划。
 
