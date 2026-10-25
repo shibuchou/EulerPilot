@@ -36,6 +36,10 @@ command -v redis-server >/dev/null || skip "redis-server required"
 command -v systemd-run >/dev/null || skip "systemd-run required"
 
 mkdir -p "$OUT"
+# The demo owns this directory; a previous rehearsal's executor state would
+# make the fresh start a recovery (generation != 0) and the apply below
+# inherits an old world. Start clean, always.
+rm -rf "$OUT/state" "$OUT/state-cgroup"
 STATE="$OUT/state"
 SOCK="$STATE/executor.sock"
 CSTATE="$OUT/state-cgroup"
@@ -109,7 +113,7 @@ json.dump({
                "policy_ttl_ms": 900000, "quiet_max_regression_pct": 5,
                "evaluation_min_bg_progress_ratio": 0.5, "bg_work_unit": "probe5s",
                "bg_progress_window_ms": 5000, "min_bg_work_units_per_sec": 1,
-               "max_bg_wait_ms": 1000, "max_foreground_p99_ms": 50,
+               "max_bg_wait_ms": 1000, "max_foreground_p99_ms": 5,
                "fallback": "verified-safe-profile", "allow_affinity_change": False}
   }}, open(sys.argv[1], "w"))
 PY
@@ -122,20 +126,21 @@ step "2. the workload: redis in the scope, 8s baseline on the default scheduler"
 redis-server --port 7798 --daemonize no --save '' --appendonly no --io-threads 1 \
   --logfile "$OUT/redis.log" >"$OUT/redis.stdout" 2>&1 9>&- &
 REDIS_PID=$!
+echo "$REDIS_PID" > "$CG_A/cgroup.procs"
 "$PROBE" 4 20000 8 GET --port 7798 --keypool 50000 --slo-ms 5 --timeout-ms 50 \
   --raw "$OUT/raw-baseline.bin" >"$OUT/baseline.json" 2>"$OUT/probe.err"
 python3 - "$OUT/baseline.json" <<'PY'
 import json, sys
 d = json.load(open(sys.argv[1]))
-print("-- baseline on the default scheduler: goodput@5ms %s rps, p99 %.3f ms"
-      % (d.get("goodput_at_slo"), d.get("p99_ms", 0)))
+print("-- baseline on the default scheduler: goodput@5ms %.0f rps of %.0f offered, timeouts %d"
+      % (d.get("goodput_at_slo_rps", 0), d.get("offered_rate_rps", 0), d.get("timeouts", 0)))
 PY
 
 ##################################################################################
 step "3. apply through the transaction path -- attach proven by the kernel"
-applied="$("$EP" apply --file "$OUT/policy.json" --idempotency-key demo-0001 --ttl-ms 600000 --socket "$SOCK")"
+applied="$("$EP" apply --file "$OUT/policy.json" --idempotency-key demo-0001 --ttl-ms 600000 --socket "$SOCK" 2>&1 || true)"
 [ "$(field "$applied" status)" = "VERIFIED" ] || fail "apply not VERIFIED: $applied"
-INSTANCE="$(python3 -c 'import json;print(json.load(open(sys.argv[1]))["instance_id"])' "$STATE/state.json")"
+INSTANCE="$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["instance_id"])' "$STATE/state.json")"
 say "VERIFIED, generation $(field "$applied" observed_generation)"
 say "kernel: sched_ext=$(cat /sys/kernel/sched_ext/state) ops=$(cat /sys/kernel/sched_ext/root/ops)"
 cls="$("$CTL" class-get --pin-dir "/sys/fs/bpf/eulerpilot-v2/$INSTANCE" --pid "$REDIS_PID")"
@@ -157,7 +162,7 @@ m = d["metrics"]
 def show(key):
     v = m.get(key, {})
     return "%s=%s(valid=%s)" % (key, v.get("avg", "-"), v.get("valid", "-"))
-print("-- live FeatureWindow:", show("load1"), show("psi_cpu"))
+print("-- live FeatureWindow:", show("load1"), show("psi_cpu_some_avg10"))
 PY
 route="$("$EP" route --socket "$SOCK")"
 say "route: expert=$(field "$route" expert) reason=$(field "$route" reason)"
@@ -205,7 +210,7 @@ json.dump({
            "safety": {"policy_ttl_ms": 30000}}}, open(sys.argv[1], "w"))
 PY
 "$EP" lease --ttl-ms 60000 --socket "$CSOCK" >/dev/null
-cgap="$("$EP" apply --file "$OUT/cg-policy.json" --idempotency-key demo-cg-0001 --socket "$CSOCK")"
+cgap="$("$EP" apply --file "$OUT/cg-policy.json" --idempotency-key demo-cg-0001 --socket "$CSOCK" 2>&1 || true)"
 [ "$(field "$cgap" status)" = "VERIFIED" ] || fail "cgroup apply failed: $cgap"
 say "cpu.weight now $(cat "$CG_W/cpu.weight") (was 100, read back from the kernel file)"
 
@@ -234,11 +239,11 @@ for _ in 1 2 3 4 5 6 7 8; do
   nice -n -10 bash -c 'while :; do :; done' </dev/null >/dev/null 2>&1 9>&- &
   SPUN+=($!); echo $! > "$CG_N/cgroup.procs"
 done
-for _ in 1 2 3 4; do
+for _ in $(seq 1 16); do
   setsid bash -c 'while :; do sleep 0.02; done' >/dev/null 2>&1 &
   SPUN+=($!); echo $! > "$CG_W/cgroup.procs"
 done
-say "8 sponges on the noise cgroup, 4 sleepers watched; waiting for the pump's windows..."
+say "8 sponges on the noise cgroup, 16 sleepers watched; waiting for the pump's windows..."
 for _ in $(seq 1 40); do [ "$(weight)" = "5000" ] && break; sleep 1; done
 [ "$(weight)" = "5000" ] || fail "event guard did not raise cpu.weight (last $(weight), hold: $(field "$("$EP" status --socket "$CSOCK")" event.last_hold))"
 say "cpu.weight $(weight): eBPF-measured starvation -> decision -> action through the transaction path"

@@ -1,0 +1,25 @@
+# 演示彩排记录(scripts/demo_sp3.sh,2026-10-25)
+
+八步时间线:①执行服务+契约校验 ②默认调度器基线(20k rps,8s)③策略生效(内核
+自证 attach + class 读回)④扰动下的感知链(features/route/slo/observe,含
+FOREGROUND_P99_EXCEEDED 拒绝)⑤SIGKILL 崩溃恢复 ⑥cgroup 域 cpu.weight 写读
+⑦R5 事件链(eBPF 测饥饿 → 升权 5000 → 撤载补偿回 100)⑧干净收尾断言。
+
+## 彩排结果(冻结构建 `370180b` 的二进制)
+
+| 场次 | 结果 | 说明 |
+|---|---|---|
+| rehearsal-1 | FAIL | 脚本缺陷:一处内联 python 漏 `import sys`;基线打印键名错 |
+| rehearsal-2 | FAIL | 脚本缺陷:redis 未放入 scope(class 读回空)、门控上限 50ms 太松(6.4ms 拒不了)、事件相 sleeper 密度不足 |
+| rehearsal-3(修复后) | **PASS** | 收尾 `state=disabled pins=0` |
+| rehearsal-4 | **PASS** | 同上 |
+| rehearsal-5 | **PASS** | 同上 |
+
+**最终形态连续三次 PASS**(前两次失败是脚本开发迭代,修复均在演示脚本内,
+不涉及产品二进制)。证据目录 `/root/epv2-evidence/demo-rehearsal-{3,4,5}/`。
+
+调试中记档的两个事实:
+1. 演示目录若残留上次执行的 executor state,重启会变成"恢复"(generation≠0),
+   首个 apply 就被旧世界拒——演示脚本现在开场清自己的 state;
+2. `ep apply` 被拒时 CLI 以非零退出,`set -e` 脚本要先 `|| true` 捕获再断言,
+   否则失败原因不会出现在输出里。

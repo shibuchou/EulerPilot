@@ -1,0 +1,31 @@
+# mixed-foreground 的 D-no-class 对照(2026-10-25)
+
+原轮(`mixed-foreground-20261023.txt`)的遗留:D 臂联合 SLO 2/3 的改善不能归因给
+class 分离——D 与 A0 的差别同时含调度器、expert 参数与观测栈。本轮补上缺口:
+`MFG_ARMS="A0 Dnc"`,`experiments/mixed_foreground_sp3.sh` 以 `MFG_NO_CLASS=1`
+生成同一策略但**去掉 LAT/COMPUTE 声明**(svc-A/svc-B/svc-BG 目标、参数、窗口、
+seed 全部不变;classes.proof 断言改为期望无类 FOREGROUND + 角色默认 BG)。
+3 轮 × A0/Dnc,冻结构建 `370180b`。原始件 `/root/epv2-evidence/mixed-fg-noclass-20261025b/`。
+
+## 1. 结果(与原轮并列)
+
+| 臂 | svc-A(30k/5ms) | svc-B(15k/2ms) | joint |
+|---|---|---|---|
+| A0(裸内核) | 29998 / p99 4.4 量级,3/3 | ~11234(77%),p99 4.03,**0/3** | **0/3** |
+| D(class LAT/COMPUTE,原轮) | 30000,3/3 | 14860,p99 1.98,**2/3** | **2/3** |
+| **Dnc(无 class,本轮)** | 29998,p99 1.40,3/3 | 14870,p99 1.87,**2/3** | **2/3** |
+
+## 2. 结论
+
+**联合 SLO 的改善不需要 class 分离**:去掉全部 class 声明后 Dnc 与 D 逐轮同级
+(2/3,svc-B 唯一 miss 都是 2ms 擦线)。预算更紧的服务被救回来靠的是 expert 的
+切片/预算参数作用在无分类路径上。至此三条独立证据线互证同一件事:
+- B 臂:BASIC+观测 vs A0 = +1.75%(旗舰量级收益在 BASIC 形态就出现);
+- class-routing 消融:Cc−C = 彻底的零;
+- 本轮:Dnc ≈ D(mixed-foreground 的联合 SLO 改善与 class 无关)。
+
+`spec.targets[].class` 的定位最终确定:**可声明/可审计/可撤销的契约,不是性能开关**。
+
+边界:单机单负载;n=3;Dnc 与 D 的对比跨运行(不同日),逐轮数字相近但未做块内
+配对;原轮 D 的数字引用自 2026-10-23 轮(旧构建),本轮 Dnc 用冻结构建——两边都是
+"各自臂的原样形态",结论只用于归因方向,不用于量级精比。
