@@ -79,6 +79,6 @@ scx 主线已 Rust 化且目标内核高于 6.6,验收机上无法公平构建)�
 
 - cross-machine UNSUPPORTED;X 臂 UNSUPPORTED(理由如上);adaptive/心跳/PMU
   UNSUPPORTED by design。
-- 泵/BPF 的 CPU 开销未量化(计数器在位,本轮 agg_updates_lost=0)。
+- 泵/BPF 开销已量化(0.5% 单核,goodput 配对差 −0.010%,`pump-overhead-20261025.txt`);map 饱和(>4096 cgroup)未构造。
 - cgroup 域无"已有效应再 apply"的通用保护(守卫自查 active_,人工并发靠操作纪律)。
 - SP3 镜像打包(ova/qcow2)未做——按比赛对交付物形态的最终要求补。

@@ -84,8 +84,9 @@ policy_ttl 12s、action cpu.weight=5000。泵窗口 3s/间隔 0.5s。
 
 ## 5. 边界(本证据不证明什么)
 
-- **不含任何性能结论**:泵/BPF 的 CPU 开销、事件量上限(map 4096 个 cgroup、
-  热点 cgroup 聚合串行化)未量化;`agg_updates_lost` 计数器在位但本轮为 0。
+- ~~泵/BPF 的 CPU 开销未量化~~ **已量化(2026-10-25)**:0.5% 单核、goodput 配对
+  差 −0.010%,见 `pump-overhead-20261025.txt`。map 上限(4096 cgroup)与热点聚合
+  串行化仍未构造饱和场景。
 - **测量的语义近似**:wait = "最后一次 wakeup 到首次运行"(延迟记账同款近似),
   不是完整排队驻留时间;已在 BPF 源码头注释声明。
 - **watch 按 path 匹配**:同名 cgroup 删除重建后路径继续匹配但身份(kernfs id)
