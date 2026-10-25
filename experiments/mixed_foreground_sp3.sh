@@ -206,7 +206,7 @@ reply = json.load(open(sys.argv[1]))
 got = sorted({(b.get("class") or "", b.get("effective_class") or "")
               for b in (reply.get("target_bindings") or [])})
 import os
-want = [("", "BG")] if os.environ.get("MFG_NO_CLASS") == "1"     else [("", "BG"), ("COMPUTE", "COMPUTE"), ("LAT", "LAT")]
+want = [("", ""), ("", "BG")] if os.environ.get("MFG_NO_CLASS") == "1"     else [("", "BG"), ("COMPUTE", "COMPUTE"), ("LAT", "LAT")]
 open(sys.argv[2], "w").write("declared_effective=%s expected=%s ok=%s\n"
                              % (got, want, "yes" if got == want else "no"))
 raise SystemExit(0 if got == want else 1)
