@@ -886,3 +886,12 @@ ctest 8/8;验收 r28 六轮 rc=0;fail-safe run9 17/17。旗舰矩阵按同一冻
 `earms-20261025/`(10 block × A0/E,seed 20261027,含参考 loader/daemon 哈希入
 每块 manifest)。结论文件:`evidence/p2/flagship-rerun-20261025.txt`、
 `barms-20261025.txt`、`earms-20261025.txt`。
+
+## gen-2、r29/run10、Dnc、彩排与包校验(2026-10-25 追加)
+
+watch 身份加固后 `ep-executord 35e80b99…`(gen-2,其余产物同 gen-1):验收 r29
+六轮、fail-safe run10 17/17、ctest 8/8。`experiments/mixed_foreground_sp3.sh`
+以 `MFG_ARMS="A0 Dnc"` 补 no-class 对照(Dnc joint 2/3 = D);`scripts/demo_sp3.sh`
+三连彩排 PASS;`scripts/verify_package_sp3.sh` 全过。X 臂评估材料:codeload 拉取的
+上游 scx main 树(判定 UNSUPPORTED:主线全 Rust 化、无 Rust 工具链、目标内核>6.6)。
+汇总见 [docs/ACCEPTANCE_20261025.md](docs/ACCEPTANCE_20261025.md)。
