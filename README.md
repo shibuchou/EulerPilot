@@ -14,7 +14,7 @@
   CPU 调度，并可扩展 eBPF hook 连接 cgroup 等资源域；交付须在 openEuler
   24.03-LTS-SP3 上正常编译、运行和测试。
 
-**评委入口**：[技术报告](docs/REPORT.md)（推荐首读）·
+**评委入口**：[参赛文档](docs/REPORT.md)（按大赛文档大纲,推荐首读）·
 [验收判定 R1–R10](docs/ACCEPTANCE_20261025.md) ·
 [运行与演示手册](docs/MANUAL_SP3.md) ·
 [演示视频讲稿](docs/VIDEO_SCRIPT.md)（视频：<百度网盘链接,录制后填写>）
