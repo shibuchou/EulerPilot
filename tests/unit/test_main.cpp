@@ -2468,6 +2468,35 @@ void test_cgroup_skill_lifecycle() {
   CHECK(again.ok);  // a second pass has nothing left to restore
   CHECK(!again.conflict);
 
+  // A second apply while the first effect is still in place must be refused:
+  // overwriting the marker would make the old effect uncompensable. Establish
+  // the in-place state first (all earlier cases cleaned up after themselves).
+  CHECK(skill.plan(policy, &plan, &error));
+  ep::Snapshot inplace_snapshot;
+  CHECK(skill.snapshot(plan, &inplace_snapshot, &error));
+  ep::Applied inplace;
+  CHECK(skill.apply(plan, inplace_snapshot, ep::LeaseState{}, &inplace, &error));
+  CHECK(read_text_file(root / "scope-a" / "cpu.weight") == "300");
+  ep::Snapshot over_snapshot;
+  CHECK(skill.snapshot(plan, &over_snapshot, &error));
+  ep::Applied blocked;
+  std::string blocked_error;
+  CHECK(!skill.apply(plan, over_snapshot, ep::LeaseState{}, &blocked, &blocked_error));
+  CHECK(blocked_error.find("still in place") != std::string::npos);
+  CHECK(read_text_file(root / "scope-a" / "cpu.weight") == "300");
+  // Rolling the in-place effect back clears the marker; a fresh apply is fine.
+  CHECK(skill.rollback(inplace, inplace_snapshot, &error).ok);
+  CHECK(read_text_file(root / "scope-a" / "cpu.weight") == "100");
+  // A fresh snapshot taken after the rollback records the true originals; the
+  // one taken mid-effect would "restore" to the in-place values.
+  ep::Snapshot fresh_snapshot;
+  CHECK(skill.snapshot(plan, &fresh_snapshot, &error));
+  ep::Applied reapplied;
+  CHECK(skill.apply(plan, fresh_snapshot, ep::LeaseState{}, &reapplied, &error));
+  CHECK(read_text_file(root / "scope-a" / "cpu.weight") == "300");
+  CHECK(skill.rollback(reapplied, fresh_snapshot, &error).ok);
+  CHECK(read_text_file(root / "scope-a" / "cpu.weight") == "100");
+
   // A knob that disappears between snapshot and write must not leave the first write in.
   CHECK(skill.plan(policy, &plan, &error));
   ep::Snapshot third;

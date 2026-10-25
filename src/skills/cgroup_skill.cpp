@@ -265,6 +265,18 @@ bool CgroupSkill::snapshot(const Plan& plan, Snapshot* out, std::string* error) 
 
 bool CgroupSkill::apply(const Plan&, const Snapshot& snapshot, const LeaseState&,
                         Applied* out, std::string* error) {
+  // The sched domain refuses a second attach at preflight; this is the cgroup
+  // domain's equivalent. A live marker means an effect from a previous apply is
+  // still in place (this process's, or an unrecovered leftover): writing over it
+  // would overwrite the marker's previous values and make the old effect
+  // uncompensable. Roll back or reconcile first.
+  if (std::filesystem::exists(marker_path())) {
+    if (error != nullptr) {
+      *error = "a cgroup effect is still in place (" + marker_path().string() +
+               "); roll it back or reconcile before applying another";
+    }
+    return false;
+  }
   std::vector<CgroupSkillEffect> effects;
   if (!effect_states_from(snapshot.data, &effects)) {
     if (error != nullptr) *error = "snapshot does not describe cgroup effects";
