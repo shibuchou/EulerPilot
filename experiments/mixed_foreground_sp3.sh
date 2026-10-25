@@ -92,9 +92,12 @@ cleanup() {
 trap cleanup EXIT
 
 policy_json() {  # file
+  # MFG_NO_CLASS=1 strips the class declarations: the D-no-class control that
+  # separates "two budgets protected by the scheduler parameters" from "the
+  # same thing via class separation".
   python3 - "$1" <<'POLICYGEN'
-import json, sys
-json.dump({
+import json, os, sys
+policy = {
   "apiVersion": "eulerpilot.io/v1alpha1", "kind": "SchedulingPolicy",
   "metadata": {"name": "mixed-fg"},
   "spec": {
@@ -119,7 +122,11 @@ json.dump({
                "max_bg_wait_ms": 50, "max_foreground_p99_ms": 10,
                "fallback": "verified-safe-profile", "allow_affinity_change": False}
   }
-}, open(sys.argv[1], "w"))
+}
+if os.environ.get("MFG_NO_CLASS") == "1":
+    for target in policy["spec"]["targets"]:
+        target.pop("class", None)
+json.dump(policy, open(sys.argv[1], "w"))
 POLICYGEN
 }
 
@@ -168,6 +175,11 @@ run_arm() {  # repeat arm
   REDIS_A=$(start_redis "$PORT_A" "$CG_A" "$d/redis-a.log")
   REDIS_B=$(start_redis "$PORT_B" "$CG_B" "$d/redis-b.log")
 
+  if [ "$arm" = "Dnc" ]; then
+    export MFG_NO_CLASS=1
+  else
+    unset MFG_NO_CLASS
+  fi
   if [ "$arm" = "A0" ]; then
     echo "  [$rep/A0] bare services on the kernel scheduler (no executor)"
   else
@@ -193,7 +205,8 @@ import json, sys
 reply = json.load(open(sys.argv[1]))
 got = sorted({(b.get("class") or "", b.get("effective_class") or "")
               for b in (reply.get("target_bindings") or [])})
-want = [("", "BG"), ("COMPUTE", "COMPUTE"), ("LAT", "LAT")]
+import os
+want = [("", "BG")] if os.environ.get("MFG_NO_CLASS") == "1"     else [("", "BG"), ("COMPUTE", "COMPUTE"), ("LAT", "LAT")]
 open(sys.argv[2], "w").write("declared_effective=%s expected=%s ok=%s\n"
                              % (got, want, "yes" if got == want else "no"))
 raise SystemExit(0 if got == want else 1)
@@ -241,8 +254,9 @@ CLASSPROOF
   echo "  [$rep/$arm] done"
 }
 
+MFG_ARMS="${MFG_ARMS:-A0 D}"
 for rep in $(seq 1 "$REPEATS"); do
-  for arm in A0 D; do run_arm "$rep" "$arm" || echo "repeat $rep arm $arm failed"; done
+  for arm in $MFG_ARMS; do run_arm "$rep" "$arm" || echo "repeat $rep arm $arm failed"; done
 done
 
 python3 - "$OUT" <<'REPORT'
