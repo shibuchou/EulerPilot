@@ -7,7 +7,17 @@
 - 高校：西安邮电大学
 - 队伍：三驱兄弟
 - 队伍 ID：T2026116649912743
-- 赛题：proj2（功能挑战赛道）
+- **选题 ID：proj2**
+- **题目内容：面向 openEuler 的自适应资源管控 Agent（Adaptive Resource
+  Management Agent for openEuler，功能挑战赛道）**——构建可扩展的用户态 Agent，
+  感知 workload 特征并按负载动态选择/生成资源策略，重点经由 sched_ext 改善
+  CPU 调度，并可扩展 eBPF hook 连接 cgroup 等资源域；交付须在 openEuler
+  24.03-LTS-SP3 上正常编译、运行和测试。
+
+**评委入口**：[技术报告](docs/REPORT.md)（推荐首读）·
+[验收判定 R1–R10](docs/ACCEPTANCE_20261025.md) ·
+[运行与演示手册](docs/MANUAL_SP3.md) ·
+[演示视频讲稿](docs/VIDEO_SCRIPT.md)（视频：<百度网盘链接,录制后填写>）
 
 **主验收系统为 openEuler 24.03-LTS-SP3**（SP4 因 cgroup v1/无 PSI 只作可选兼容验证，不替代 SP3 证据）；Ubuntu 用于开发。旧 EulerPilot、SchedPilot 作为参考资产按模块迁移；旧前端验收界面不迁入，以 CLI、结构化状态和可复现实验完成闭环。
 
