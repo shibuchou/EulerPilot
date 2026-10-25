@@ -14,10 +14,13 @@
   CPU 调度，并可扩展 eBPF hook 连接 cgroup 等资源域；交付须在 openEuler
   24.03-LTS-SP3 上正常编译、运行和测试。
 
-**评委入口**：[参赛文档](docs/REPORT.md)（按大赛文档大纲,推荐首读）·
+**正式文档集**：[项目说明书](docs/项目说明书.md) ·
+[设计文档](docs/设计文档.md) · [用户手册](docs/用户手册.md) ·
+[部署文档](docs/部署文档.md) · [测试文档](docs/测试文档.md) ·
+[参赛文档(大赛大纲)](docs/REPORT.md) ·
 [验收判定 R1–R10](docs/ACCEPTANCE_20261025.md) ·
-[运行与演示手册](docs/MANUAL_SP3.md) ·
-[演示视频讲稿](docs/VIDEO_SCRIPT.md)（视频：<百度网盘链接,录制后填写>）
+[运行手册(工程版)](docs/MANUAL_SP3.md) ·
+[演示视频讲稿](docs/VIDEO_SCRIPT.md)（视频:<百度网盘链接,录制后填写>）
 
 **主验收系统为 openEuler 24.03-LTS-SP3**（SP4 因 cgroup v1/无 PSI 只作可选兼容验证，不替代 SP3 证据）；Ubuntu 用于开发。旧 EulerPilot、SchedPilot 作为参考资产按模块迁移；旧前端验收界面不迁入，以 CLI、结构化状态和可复现实验完成闭环。
 
