@@ -108,6 +108,20 @@ class 读回)→ ④扰动下感知链实时应答(features/route/slo/observe)�
 | 事件守卫不动 | 看 `policy.status` 的 `event.last_hold`:NONE=泵没起,STALE=泵死了,`below threshold`=条件未满足,WATCH_REBUILT=被看对象重建过 |
 | `ep apply` 回 RECOVERY_REQUIRED | 执行服务 degraded;先 `transaction.reconcile` |
 
+## 7.5 交付镜像打包(需要停机窗口)
+
+镜像必须从干净关机状态制作(一致性),流程(跳板机上):
+
+```bash
+ssh schedpilot-sp3 'sync && nohup shutdown -h now >/dev/null 2>&1 &'
+# 等 virsh domstate schedpilot-sp3 = shut off
+qemu-img convert -c -O qcow2 /home/ubuntu/sp3-vm/schedpilot-sp3.qcow2   <deliverable>/schedpilot-sp3-<date>.qcow2   # 转换持有源锁,期间 VM 起不来,属预期
+sha256sum <deliverable>/schedpilot-sp3-<date>.qcow2 > <deliverable>/SHA256SUMS
+virsh start schedpilot-sp3                    # 转换完成后重启
+```
+
+打包目录同时收 `domain.xml` 与 `ks.cfg`(复现定义)。60GB 源的压缩转换约 2–4 小时。
+
 ## 8. 证据与溯源
 
 - 每次实验的权威记录在 `evidence/` 对应文件(含完整性与边界章节);
