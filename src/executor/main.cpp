@@ -326,12 +326,22 @@ int main(int argc, char** argv) {
     // The watched cgroup must exist at arm time: matching happens by path, but a
     // watch on a path that is not there yet would look exactly like a pump that
     // never reports it, and the operator should learn that at startup.
+    // The inode is captured as the arm's identity: a later cgroup rebuilt under
+    // the same path invalidates the arm instead of silently receiving its authority.
     std::error_code ec;
-    if (!std::filesystem::exists(std::filesystem::path(arm.watch) / "cgroup.controllers", ec)) {
+    const std::filesystem::path watch_path(arm.watch);
+    if (!std::filesystem::exists(watch_path / "cgroup.controllers", ec)) {
       std::cerr << "[executord] event arm watch path is not a live cgroup v2 directory: "
                 << arm.watch << "\n";
       return 1;
     }
+    struct stat watch_stat {};
+    if (::stat(arm.watch.c_str(), &watch_stat) != 0) {
+      std::cerr << "[executord] cannot stat the event arm watch path: " << arm.watch
+                << "\n";
+      return 1;
+    }
+    arm.watch_cgroup_id = static_cast<std::uint64_t>(watch_stat.st_ino);
     executor_options.event_armed = true;
     executor_options.event_arm = std::move(arm);
     std::cout << "[executord] event guard armed name=" << executor_options.event_arm.name

@@ -2722,6 +2722,36 @@ void test_event_guard_decide() {
   CHECK(d.action == ep::EventGuardDecision::Action::kNone);
   CHECK(d.hold.find("condition holds") != std::string::npos);
 
+  // A rebuilt cgroup keeps the path but not the identity: the effect comes
+  // down, and the guard will not act on the replacement without a fresh arm.
+  ep::EventGuardInput rebuilt = in;
+  rebuilt.active = true;
+  rebuilt.has_observation = true;
+  rebuilt.watch_present = false;
+  rebuilt.watch_rebuilt = true;
+  d = ep::event_guard_decide(rebuilt);
+  CHECK(d.action == ep::EventGuardDecision::Action::kRollback);
+  CHECK(d.reason.find("rebuilt") != std::string::npos);
+  rebuilt.active = false;
+  d = ep::event_guard_decide(rebuilt);
+  CHECK(d.action == ep::EventGuardDecision::Action::kNone);
+  CHECK(d.hold.find("WATCH_REBUILT") != std::string::npos);
+
+  // Identity matching: path alone is not enough once the arm carries an id.
+  ep::EventArm id_arm;
+  id_arm.watch = "/sys/fs/cgroup/a.scope";
+  ep::EventCgroupSample sample;
+  sample.path = "/sys/fs/cgroup/a.scope";
+  sample.cgroup_id = 0x100000042ULL;  // generation bits above, ino below
+  id_arm.watch_cgroup_id = 0;
+  CHECK(ep::event_watch_matches(sample, id_arm));  // unresolved id: path only
+  id_arm.watch_cgroup_id = 0x42;
+  CHECK(ep::event_watch_matches(sample, id_arm));
+  id_arm.watch_cgroup_id = 0x43;  // rebuilt under the same path
+  CHECK(!ep::event_watch_matches(sample, id_arm));
+  sample.path = "/sys/fs/cgroup/other.scope";
+  CHECK(!ep::event_watch_matches(sample, id_arm));
+
   // Streak bookkeeping: one window moves exactly one streak; an absent watch
   // moves neither ("condition absent" is not "condition cleared").
   std::int64_t over = 1, under = 0;

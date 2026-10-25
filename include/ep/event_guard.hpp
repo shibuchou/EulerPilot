@@ -40,6 +40,11 @@ bool parse_event_observation(const Json& value, EventObservation* out, std::stri
 struct EventArm {
   std::string name;                 // metadata.name
   std::string watch;                // normalized /sys/fs/cgroup/... path
+  // Runtime-resolved identity of the watch path (kernfs inode), set by the
+  // executor at arm time. Not part of the JSON contract: an observation that
+  // names the same path under a different identity means the cgroup was
+  // deleted and rebuilt, which invalidates the arm instead of transferring it.
+  std::uint64_t watch_cgroup_id = 0;
   std::int64_t threshold_wait_ms = 0;
   int sustain_windows = 0;          // consecutive windows over threshold to act
   int release_windows = 0;          // consecutive windows under threshold to undo
@@ -57,6 +62,7 @@ struct EventGuardInput {
   bool active = false;               // an effect from this guard is in place
   bool has_observation = false;
   bool observation_stale = false;    // older than 2x its own window
+  bool watch_rebuilt = false;      // the path appeared under a different identity
   bool watch_present = false;        // the watched cgroup appears in the window
   bool wait_over_threshold = false;
   std::int64_t over_windows = 0;     // consecutive windows over threshold
@@ -79,6 +85,11 @@ struct EventGuardDecision {
 // hold, never a pass -- and the safe direction (undoing our own effect) needs
 // less evidence than the risky one (writing a new one).
 EventGuardDecision event_guard_decide(const EventGuardInput& in);
+
+// An observation entry matches the arm when the path is the watched one AND,
+// when the arm carries a resolved identity, that identity still agrees. The
+// path alone is not enough: a rebuilt cgroup keeps the name.
+bool event_watch_matches(const EventCgroupSample& sample, const EventArm& arm);
 
 // One consumed window moves exactly one streak: consecutive windows over the
 // threshold, or consecutive windows under it. A window where the watch is

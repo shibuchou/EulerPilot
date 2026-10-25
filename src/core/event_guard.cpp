@@ -193,6 +193,12 @@ bool validate_event_arm(const Json& value, EventArm* out, std::string* error) {
   return true;
 }
 
+bool event_watch_matches(const EventCgroupSample& sample, const EventArm& arm) {
+  if (sample.path != arm.watch) return false;
+  if (arm.watch_cgroup_id == 0) return true;
+  return (sample.cgroup_id & 0xffffffffu) == (arm.watch_cgroup_id & 0xffffffffu);
+}
+
 EventGuardDecision event_guard_decide(const EventGuardInput& in) {
   EventGuardDecision decision;
   if (!in.armed) {
@@ -206,9 +212,10 @@ EventGuardDecision event_guard_decide(const EventGuardInput& in) {
     // holds, the policy TTL bounds the total effect duration from above.
     if (!in.has_observation || !in.watch_present) {
       decision.action = EventGuardDecision::Action::kRollback;
-      decision.reason = in.has_observation
-                            ? "watched cgroup vanished from the observation"
-                            : "no event observation while an effect is active";
+      decision.reason =
+          in.watch_rebuilt ? "watched cgroup was rebuilt (identity changed)"
+          : in.has_observation ? "watched cgroup vanished from the observation"
+                               : "no event observation while an effect is active";
       return decision;
     }
     if (in.observation_stale) {
@@ -230,6 +237,14 @@ EventGuardDecision event_guard_decide(const EventGuardInput& in) {
   }
   if (in.observation_stale) {
     decision.hold = "EVENT_OBSERVATION_STALE";
+    return decision;
+  }
+  if (in.watch_rebuilt) {
+    // Same path, different kernfs identity: the arm named an object that was
+    // destroyed and replaced. Acting on the replacement would transfer the
+    // human authority to something nobody armed; a restart with a fresh arm
+    // is the only way forward.
+    decision.hold = "WATCH_REBUILT: watched cgroup identity changed; re-arm required";
     return decision;
   }
   if (!in.watch_present) {

@@ -1588,13 +1588,18 @@ void Executor::run_event_guard_locked(std::int64_t now_ms) {
   const bool new_window = event_has_observation_ &&
                           event_observation_.observed_at_ms != event_consumed_at_ms_;
   const EventCgroupSample* watch = nullptr;
+  bool watch_rebuilt = false;
   if (new_window) {
     event_consumed_at_ms_ = event_observation_.observed_at_ms;
     for (const auto& sample : event_observation_.cgroups) {
-      if (sample.path == arm.watch) {
+      if (sample.path != arm.watch) continue;
+      if (event_watch_matches(sample, arm)) {
         watch = &sample;
-        break;
+      } else {
+        // Same path, different kernfs identity: the armed object was rebuilt.
+        watch_rebuilt = true;
       }
+      break;
     }
     if (watch != nullptr && watch->has_wait_max) {
       advance_event_streaks(&event_over_windows_, &event_under_windows_, true,
@@ -1604,10 +1609,13 @@ void Executor::run_event_guard_locked(std::int64_t now_ms) {
     // "condition absent" is not evidence for either direction.
   } else if (event_has_observation_) {
     for (const auto& sample : event_observation_.cgroups) {
-      if (sample.path == arm.watch) {
+      if (sample.path != arm.watch) continue;
+      if (event_watch_matches(sample, arm)) {
         watch = &sample;
-        break;
+      } else {
+        watch_rebuilt = true;
       }
+      break;
     }
   }
 
@@ -1657,6 +1665,7 @@ void Executor::run_event_guard_locked(std::int64_t now_ms) {
   input.has_observation = event_has_observation_;
   input.observation_stale = stale;
   input.watch_present = watch != nullptr;
+  input.watch_rebuilt = watch_rebuilt;
   input.wait_over_threshold =
       watch != nullptr && watch->has_wait_max &&
       watch->wait_max_ms >= static_cast<double>(arm.threshold_wait_ms);
@@ -1748,6 +1757,7 @@ Json Executor::event_status_locked(std::int64_t now_ms) const {
               {"name", arm.name},
               {"owner", arm.owner()},
               {"watch", arm.watch},
+              {"watch_cgroup_id", arm.watch_cgroup_id},
               {"threshold_wait_ms", arm.threshold_wait_ms},
               {"sustain_windows", arm.sustain_windows},
               {"release_windows", arm.release_windows},

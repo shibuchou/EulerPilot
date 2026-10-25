@@ -195,13 +195,50 @@ esac
 [ "$(weight)" = 100 ] || fail "weight drifted after the TTL rollback ($(weight))"
 kill_noise
 
+echo "[integration-events] phase F: a rebuilt watch identity freezes the arm"
+# Kill the scope (its cgroup disappears) and recreate the same path as a plain
+# directory: same name, different kernfs identity. The arm named the old
+# object, so the guard must refuse to act on the replacement even under
+# starvation, and say so in the hold.
+systemctl kill -s SIGKILL "$UNIT" 2>/dev/null || true
+for _ in $(seq 1 40); do [ ! -d "$CG" ] && break; sleep 0.25; done
+[ ! -d "$CG" ] || fail "the scope cgroup did not disappear"
+mkdir "$CG" 2>/dev/null || fail "cannot recreate $CG as a plain directory"
+"$EVTMON" --socket "$SOCK" --window-ms 3000 --interval-ms 500 >"$TMP/pump-f.log" 2>&1 9>&- &
+PUMP=$!
+for _ in $(seq 1 50); do
+  grep -q "\"source\":\"evtmon\"" "$TMP/pump-f.log" 2>/dev/null && break
+  sleep 0.2
+done
+sponges "$CG_NOISE" 8
+sleepers "$CG" 8
+applied_lines_before=$(grep -c "event guard applied" "$STATE/daemon.log")
+sleep 14
+status="$("$EP" status --socket "$SOCK")"
+case "$(field "$status" event.last_hold)" in
+  *WATCH_REBUILT*) ;;
+  *) fail "a rebuilt watch is not visible as WATCH_REBUILT: $(field "$status" event.last_hold)";;
+esac
+[ "$(grep -c "event guard applied" "$STATE/daemon.log")" = "$applied_lines_before" ] ||
+  fail "the guard acted on a rebuilt cgroup"
+kill -TERM "$PUMP"; PUMP=""
+kill_noise
+kill -KILL "${ALL_PIDS[@]}" 2>/dev/null || true
+rmdir "$CG" 2>/dev/null || true
+
 echo "[integration-events] phase E: the pump alone writes nothing"
 kill -TERM "$DAEMON"; DAEMON=""
 sleep 2
+# Phase F left the watched path as a plain directory (no cpu.* files), so the
+# assertion is the stronger one: the pump does not create, remove or change
+# anything under the watched path while running alone.
+watch_listing_before="$(ls -A "$CG" 2>/dev/null | sort)"
 "$EVTMON" --print-only --window-ms 2000 --interval-ms 500 >"$TMP/pump-solo.log" 2>&1 9>&- &
 PUMP=$!
 sleep 7
 kill -TERM "$PUMP"; PUMP=""
-[ "$(weight)" = 100 ] || fail "the pump alone changed cpu.weight ($(weight))"
+watch_listing_after="$(ls -A "$CG" 2>/dev/null | sort)"
+[ "$watch_listing_before" = "$watch_listing_after" ]   || fail "the pump alone changed the watched cgroup (before: '$watch_listing_before' after: '$watch_listing_after')"
+[ ! -f "$CG/cpu.weight" ] || fail "the pump alone created cpu.weight"
 
 echo "[integration-events] passing"
