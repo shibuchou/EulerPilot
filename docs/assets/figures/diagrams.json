@@ -1,0 +1,3488 @@
+[
+  {
+    "slug": "system-architecture",
+    "title": "EulerPilot v2 总体架构",
+    "subtitle": "逻辑分层与进程边界 · 当前实现视图",
+    "width": 1120,
+    "height": 1120,
+    "note": "每个实例选择一个效果域；自动通道默认关闭，启用仍须显式策略与租约。",
+    "nodes": [
+      {
+        "id": "cli",
+        "title": "ep CLI 与声明式策略",
+        "body": [
+          "Schema / 声明式策略信封",
+          "Unix socket · 同 UID 校验"
+        ],
+        "x": 410,
+        "y": 120,
+        "w": 300,
+        "h": 117,
+        "role": "neutral",
+        "group": null
+      },
+      {
+        "id": "host",
+        "title": "主机与服务观测",
+        "body": [
+          "CPU / load / PSI",
+          "service.observe"
+        ],
+        "x": 50,
+        "y": 120,
+        "w": 300,
+        "h": 117,
+        "role": "neutral",
+        "group": null
+      },
+      {
+        "id": "pump",
+        "title": "ep-evtmon 事件泵",
+        "body": [
+          "独立进程 · 只读采集链",
+          "event.observe 上报"
+        ],
+        "x": 770,
+        "y": 120,
+        "w": 300,
+        "h": 117,
+        "role": "neutral",
+        "group": null
+      },
+      {
+        "id": "route",
+        "title": "特征窗与规则路由",
+        "body": [
+          "有效性 / 新鲜度 / 滞回",
+          "默认仅输出建议"
+        ],
+        "x": 70,
+        "y": 340,
+        "w": 300,
+        "h": 117,
+        "role": "control",
+        "group": "process"
+      },
+      {
+        "id": "gate",
+        "title": "SLO 门控与授权",
+        "body": [
+          "服务证据只能收紧",
+          "AutoPilot / EventArm"
+        ],
+        "x": 410,
+        "y": 340,
+        "w": 300,
+        "h": 117,
+        "role": "gate",
+        "group": "process"
+      },
+      {
+        "id": "owner",
+        "title": "所有权与事务引擎",
+        "body": [
+          "lease / fence / generation",
+          "快照 · WAL · 幂等 · 恢复"
+        ],
+        "x": 750,
+        "y": 340,
+        "w": 300,
+        "h": 117,
+        "role": "control",
+        "group": "process"
+      },
+      {
+        "id": "sched",
+        "title": "sched 效果域",
+        "body": [
+          "SchedulingPolicy",
+          "loader / cfg / class_map"
+        ],
+        "x": 190,
+        "y": 560,
+        "w": 330,
+        "h": 117,
+        "role": "effect",
+        "group": "process"
+      },
+      {
+        "id": "cgroup",
+        "title": "cgroup 效果域",
+        "body": [
+          "CgroupPolicy / cpu.weight",
+          "marker / 事件守卫"
+        ],
+        "x": 600,
+        "y": 560,
+        "w": 330,
+        "h": 117,
+        "role": "effect",
+        "group": "process"
+      },
+      {
+        "id": "journal",
+        "title": "写前日志与恢复记录",
+        "body": [
+          "journal.jsonl / state.json",
+          "runtime / effects marker"
+        ],
+        "x": 350,
+        "y": 720,
+        "w": 420,
+        "h": 117,
+        "role": "neutral",
+        "group": "process"
+      },
+      {
+        "id": "kernel",
+        "title": "openEuler SP3 内核",
+        "body": [
+          "sched_ext / cgroup v2 / raw tracepoints · 读回自证与观测反馈"
+        ],
+        "x": 90,
+        "y": 870,
+        "w": 940,
+        "h": 90,
+        "role": "effect",
+        "group": null
+      }
+    ],
+    "edges": [
+      {
+        "source": "host",
+        "target": "route",
+        "label": "",
+        "start": "S",
+        "end": "N",
+        "via": [
+          [
+            200,
+            260
+          ],
+          [
+            220,
+            260
+          ]
+        ],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "cli",
+        "target": "gate",
+        "label": "",
+        "start": "S",
+        "end": "N",
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "pump",
+        "target": "gate",
+        "label": "",
+        "start": "S",
+        "end": "N",
+        "via": [
+          [
+            920,
+            260
+          ],
+          [
+            560,
+            260
+          ]
+        ],
+        "dashed": true,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "route",
+        "target": "gate",
+        "label": "",
+        "start": null,
+        "end": null,
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "gate",
+        "target": "owner",
+        "label": "",
+        "start": null,
+        "end": null,
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "owner",
+        "target": "sched",
+        "label": "二选一",
+        "start": "S",
+        "end": "N",
+        "via": [
+          [
+            900,
+            500
+          ],
+          [
+            355,
+            500
+          ]
+        ],
+        "dashed": false,
+        "role": "control",
+        "label_at": [
+          555,
+          500
+        ],
+        "end_ratio": 0.5
+      },
+      {
+        "source": "owner",
+        "target": "cgroup",
+        "label": "",
+        "start": "S",
+        "end": "N",
+        "via": [
+          [
+            900,
+            520
+          ],
+          [
+            765,
+            520
+          ]
+        ],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "sched",
+        "target": "kernel",
+        "label": "",
+        "start": "S",
+        "end": "N",
+        "via": [
+          [
+            355,
+            690
+          ],
+          [
+            100,
+            690
+          ],
+          [
+            100,
+            845
+          ],
+          [
+            300,
+            845
+          ]
+        ],
+        "dashed": false,
+        "role": "effect",
+        "label_at": null,
+        "end_ratio": 0.22340425531914893
+      },
+      {
+        "source": "cgroup",
+        "target": "kernel",
+        "label": "",
+        "start": "S",
+        "end": "N",
+        "via": [
+          [
+            765,
+            690
+          ],
+          [
+            1020,
+            690
+          ],
+          [
+            1020,
+            845
+          ],
+          [
+            820,
+            845
+          ]
+        ],
+        "dashed": false,
+        "role": "effect",
+        "label_at": null,
+        "end_ratio": 0.776595744680851
+      },
+      {
+        "source": "owner",
+        "target": "journal",
+        "label": "",
+        "start": "E",
+        "end": "E",
+        "via": [
+          [
+            1070,
+            398
+          ],
+          [
+            1070,
+            765
+          ]
+        ],
+        "dashed": true,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      }
+    ],
+    "groups": [
+      {
+        "id": "process",
+        "title": "ep-executord 同一进程内",
+        "x": 30,
+        "y": 275,
+        "w": 1060,
+        "h": 585,
+        "label_x": 750
+      }
+    ]
+  },
+  {
+    "slug": "policy-apply-flow",
+    "title": "策略生效与补偿流程",
+    "subtitle": "所有变更复用唯一执行服务的校验与事务路径",
+    "width": 1120,
+    "height": 1007,
+    "note": "校验失败零副作用拒绝；生效或读回验证失败进入补偿，恢复失败保留现场。",
+    "nodes": [
+      {
+        "id": "submit",
+        "title": "01  CLI 提交",
+        "body": [
+          "envelope + policy",
+          "幂等键与请求标识"
+        ],
+        "x": 40,
+        "y": 130,
+        "w": 300,
+        "h": 117,
+        "role": "neutral",
+        "group": null
+      },
+      {
+        "id": "auth",
+        "title": "02  校验与授权",
+        "body": [
+          "schema / 语义 / lease",
+          "fence / generation / 门控"
+        ],
+        "x": 410,
+        "y": 130,
+        "w": 300,
+        "h": 117,
+        "role": "gate",
+        "group": null
+      },
+      {
+        "id": "bind",
+        "title": "03  解析目标身份",
+        "body": [
+          "pidfd + starttime",
+          "cgroup FD / kernfs id"
+        ],
+        "x": 780,
+        "y": 130,
+        "w": 300,
+        "h": 117,
+        "role": "control",
+        "group": null
+      },
+      {
+        "id": "wal",
+        "title": "04  快照先行",
+        "body": [
+          "PREPARED + fsync",
+          "保存补偿所需原值"
+        ],
+        "x": 40,
+        "y": 345,
+        "w": 300,
+        "h": 117,
+        "role": "control",
+        "group": null
+      },
+      {
+        "id": "apply",
+        "title": "05  Skill 生效",
+        "body": [
+          "sched 或 cgroup",
+          "应用获准参数"
+        ],
+        "x": 410,
+        "y": 345,
+        "w": 300,
+        "h": 117,
+        "role": "effect",
+        "group": null
+      },
+      {
+        "id": "verify",
+        "title": "06  内核读回",
+        "body": [
+          "state / ops / enable_seq",
+          "map 或 cpu.weight"
+        ],
+        "x": 780,
+        "y": 345,
+        "w": 300,
+        "h": 117,
+        "role": "gate",
+        "group": null
+      },
+      {
+        "id": "rollback",
+        "title": "失败补偿",
+        "body": [
+          "撤销本实例效应",
+          "再读回确认恢复"
+        ],
+        "x": 40,
+        "y": 570,
+        "w": 300,
+        "h": 117,
+        "role": "error",
+        "group": null
+      },
+      {
+        "id": "result",
+        "title": "08  返回 ActionResult",
+        "body": [
+          "实际状态 / generation",
+          "action_id / snapshot_id"
+        ],
+        "x": 410,
+        "y": 570,
+        "w": 300,
+        "h": 117,
+        "role": "effect",
+        "group": null
+      },
+      {
+        "id": "commit",
+        "title": "07  提交与记账",
+        "body": [
+          "VERIFIED → COMMITTED",
+          "持久化世代与回执"
+        ],
+        "x": 780,
+        "y": 570,
+        "w": 300,
+        "h": 117,
+        "role": "control",
+        "group": null
+      },
+      {
+        "id": "blocked",
+        "title": "恢复未确认",
+        "body": [
+          "RECOVERY_REQUIRED",
+          "禁止创建新效应"
+        ],
+        "x": 40,
+        "y": 730,
+        "w": 300,
+        "h": 117,
+        "role": "error",
+        "group": null
+      }
+    ],
+    "edges": [
+      {
+        "source": "submit",
+        "target": "auth",
+        "label": "",
+        "start": null,
+        "end": null,
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "auth",
+        "target": "bind",
+        "label": "",
+        "start": null,
+        "end": null,
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "bind",
+        "target": "wal",
+        "label": "",
+        "start": "S",
+        "end": "N",
+        "via": [
+          [
+            930,
+            295
+          ],
+          [
+            190,
+            295
+          ]
+        ],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "wal",
+        "target": "apply",
+        "label": "",
+        "start": null,
+        "end": null,
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "apply",
+        "target": "verify",
+        "label": "",
+        "start": null,
+        "end": null,
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "verify",
+        "target": "commit",
+        "label": "通过",
+        "start": "S",
+        "end": "N",
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "commit",
+        "target": "result",
+        "label": "",
+        "start": "W",
+        "end": "E",
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "apply",
+        "target": "rollback",
+        "label": "失败",
+        "start": "S",
+        "end": "N",
+        "via": [
+          [
+            560,
+            515
+          ],
+          [
+            190,
+            515
+          ]
+        ],
+        "dashed": false,
+        "role": "error",
+        "label_at": [
+          400,
+          515
+        ],
+        "end_ratio": 0.5
+      },
+      {
+        "source": "rollback",
+        "target": "blocked",
+        "label": "失败",
+        "start": "S",
+        "end": "N",
+        "via": [],
+        "dashed": false,
+        "role": "error",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "rollback",
+        "target": "result",
+        "label": "成功",
+        "start": null,
+        "end": null,
+        "via": [],
+        "dashed": false,
+        "role": "effect",
+        "label_at": null,
+        "end_ratio": 0.5
+      }
+    ],
+    "groups": []
+  },
+  {
+    "slug": "transaction-state-machine",
+    "title": "事务日志状态与恢复",
+    "subtitle": "正常提交、显式回退与失败补偿分别留痕",
+    "width": 1120,
+    "height": 887,
+    "note": "RESULT 是动作回执；恢复效应与恢复记录分别确认，不把审计失败伪装成成功。",
+    "nodes": [
+      {
+        "id": "prepared",
+        "title": "PREPARED",
+        "body": [
+          "快照与意图先落盘"
+        ],
+        "x": 40,
+        "y": 130,
+        "w": 300,
+        "h": 116,
+        "role": "control",
+        "group": null
+      },
+      {
+        "id": "applying",
+        "title": "APPLYING",
+        "body": [
+          "执行已授权变更"
+        ],
+        "x": 410,
+        "y": 130,
+        "w": 300,
+        "h": 116,
+        "role": "control",
+        "group": null
+      },
+      {
+        "id": "verifying",
+        "title": "VERIFYING",
+        "body": [
+          "读回实际内核状态"
+        ],
+        "x": 780,
+        "y": 130,
+        "w": 300,
+        "h": 116,
+        "role": "gate",
+        "group": null
+      },
+      {
+        "id": "compensating",
+        "title": "COMPENSATING",
+        "body": [
+          "失败后撤销效应",
+          "验证是否已恢复"
+        ],
+        "x": 40,
+        "y": 370,
+        "w": 300,
+        "h": 117,
+        "role": "error",
+        "group": null
+      },
+      {
+        "id": "committed",
+        "title": "COMMITTED",
+        "body": [
+          "验证通过并提交",
+          "世代号随成功变更推进"
+        ],
+        "x": 410,
+        "y": 370,
+        "w": 300,
+        "h": 117,
+        "role": "effect",
+        "group": null
+      },
+      {
+        "id": "verified",
+        "title": "VERIFIED",
+        "body": [
+          "内核状态与计划相符"
+        ],
+        "x": 780,
+        "y": 370,
+        "w": 300,
+        "h": 116,
+        "role": "effect",
+        "group": null
+      },
+      {
+        "id": "recovery",
+        "title": "RECOVERY_REQUIRED",
+        "body": [
+          "恢复失败或存在冲突",
+          "保留上下文并拒绝新建"
+        ],
+        "x": 40,
+        "y": 610,
+        "w": 300,
+        "h": 117,
+        "role": "error",
+        "group": null
+      },
+      {
+        "id": "rolled",
+        "title": "ROLLED_BACK",
+        "body": [
+          "补偿完成且读回确认"
+        ],
+        "x": 410,
+        "y": 610,
+        "w": 300,
+        "h": 116,
+        "role": "effect",
+        "group": null
+      },
+      {
+        "id": "manual",
+        "title": "ROLLBACK_PREPARED",
+        "body": [
+          "显式回退先记录",
+          "引用原动作与快照"
+        ],
+        "x": 780,
+        "y": 610,
+        "w": 300,
+        "h": 117,
+        "role": "control",
+        "group": null
+      }
+    ],
+    "edges": [
+      {
+        "source": "prepared",
+        "target": "applying",
+        "label": "",
+        "start": null,
+        "end": null,
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "applying",
+        "target": "verifying",
+        "label": "",
+        "start": null,
+        "end": null,
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "verifying",
+        "target": "verified",
+        "label": "",
+        "start": "S",
+        "end": "N",
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "verified",
+        "target": "committed",
+        "label": "",
+        "start": "W",
+        "end": "E",
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "applying",
+        "target": "compensating",
+        "label": "失败",
+        "start": "S",
+        "end": "N",
+        "via": [
+          [
+            560,
+            305
+          ],
+          [
+            190,
+            305
+          ]
+        ],
+        "dashed": false,
+        "role": "error",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "compensating",
+        "target": "recovery",
+        "label": "未恢复",
+        "start": "S",
+        "end": "N",
+        "via": [],
+        "dashed": false,
+        "role": "error",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "compensating",
+        "target": "rolled",
+        "label": "恢复",
+        "start": "E",
+        "end": "N",
+        "via": [
+          [
+            380,
+            428
+          ],
+          [
+            380,
+            555
+          ],
+          [
+            560,
+            555
+          ]
+        ],
+        "dashed": false,
+        "role": "effect",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "committed",
+        "target": "manual",
+        "label": "回退",
+        "start": "S",
+        "end": "N",
+        "via": [
+          [
+            560,
+            535
+          ],
+          [
+            930,
+            535
+          ]
+        ],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "manual",
+        "target": "rolled",
+        "label": "",
+        "start": "W",
+        "end": "E",
+        "via": [],
+        "dashed": false,
+        "role": "effect",
+        "label_at": null,
+        "end_ratio": 0.5
+      }
+    ],
+    "groups": []
+  },
+  {
+    "slug": "scheduler-data-path",
+    "title": "sched_ext 数据面与公平调度",
+    "subtitle": "BASIC / CLASS 的实际路径 · 不将规划能力画成已启用功能",
+    "width": 1120,
+    "height": 1040,
+    "note": "LAT 份额意图由片长比表达；预算与 aging 是软件保护，不是硬实时保证。",
+    "nodes": [
+      {
+        "id": "policy",
+        "title": "有效策略与任务身份",
+        "body": [
+          "sp_cfg / class_map",
+          "task_ctx / 身份 cookie"
+        ],
+        "x": 410,
+        "y": 120,
+        "w": 300,
+        "h": 117,
+        "role": "gate",
+        "group": null
+      },
+      {
+        "id": "select",
+        "title": "select_cpu / enqueue",
+        "body": [
+          "统一参数快照",
+          "保留排队与运行上下文"
+        ],
+        "x": 410,
+        "y": 310,
+        "w": 300,
+        "h": 117,
+        "role": "control",
+        "group": null
+      },
+      {
+        "id": "local",
+        "title": "本机 local DSQ",
+        "body": [
+          "空闲直投 / 单 CPU 绑核",
+          "必要时 SCX_KICK_IDLE"
+        ],
+        "x": 40,
+        "y": 520,
+        "w": 300,
+        "h": 117,
+        "role": "effect",
+        "group": null
+      },
+      {
+        "id": "lat",
+        "title": "LAT 队列",
+        "body": [
+          "有界优先",
+          "份额意图与 aging"
+        ],
+        "x": 410,
+        "y": 520,
+        "w": 300,
+        "h": 117,
+        "role": "control",
+        "group": null
+      },
+      {
+        "id": "other",
+        "title": "非 LAT 队列",
+        "body": [
+          "CLASS：COMP / CACHE",
+          "BG 进入 COMP",
+          "BASIC 使用 SHARED"
+        ],
+        "x": 780,
+        "y": 520,
+        "w": 300,
+        "h": 144,
+        "role": "control",
+        "group": null
+      },
+      {
+        "id": "dispatch",
+        "title": "dispatch 与运行记账",
+        "body": [
+          "预算 / 等待老化 / 轮转",
+          "按实际 runtime 记账"
+        ],
+        "x": 590,
+        "y": 740,
+        "w": 380,
+        "h": 117,
+        "role": "gate",
+        "group": null
+      },
+      {
+        "id": "cpu",
+        "title": "CPU 运行",
+        "body": [
+          "running / stopping",
+          "任务级上下文与统计"
+        ],
+        "x": 100,
+        "y": 740,
+        "w": 340,
+        "h": 117,
+        "role": "effect",
+        "group": null
+      }
+    ],
+    "edges": [
+      {
+        "source": "policy",
+        "target": "select",
+        "label": "",
+        "start": "S",
+        "end": "N",
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "select",
+        "target": "local",
+        "label": "直投",
+        "start": "W",
+        "end": "N",
+        "via": [
+          [
+            190,
+            368
+          ]
+        ],
+        "dashed": false,
+        "role": "effect",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "select",
+        "target": "lat",
+        "label": "",
+        "start": "S",
+        "end": "N",
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "select",
+        "target": "other",
+        "label": "",
+        "start": "E",
+        "end": "N",
+        "via": [
+          [
+            930,
+            368
+          ]
+        ],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "lat",
+        "target": "dispatch",
+        "label": "",
+        "start": "S",
+        "end": "N",
+        "via": [
+          [
+            560,
+            685
+          ],
+          [
+            780,
+            685
+          ]
+        ],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "other",
+        "target": "dispatch",
+        "label": "",
+        "start": "S",
+        "end": "E",
+        "via": [
+          [
+            1030,
+            685
+          ],
+          [
+            1030,
+            798
+          ]
+        ],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "dispatch",
+        "target": "cpu",
+        "label": "",
+        "start": "W",
+        "end": "E",
+        "via": [],
+        "dashed": false,
+        "role": "effect",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "local",
+        "target": "cpu",
+        "label": "",
+        "start": "S",
+        "end": "N",
+        "via": [
+          [
+            190,
+            690
+          ],
+          [
+            270,
+            690
+          ]
+        ],
+        "dashed": false,
+        "role": "effect",
+        "label_at": null,
+        "end_ratio": 0.5
+      }
+    ],
+    "groups": []
+  },
+  {
+    "slug": "event-driven-control-loop",
+    "title": "eBPF 事件驱动资源闭环",
+    "subtitle": "感知端只上报事实 · 动作端复用同一事务通道",
+    "width": 1120,
+    "height": 907,
+    "note": "事件链证明功能闭环；不据此宣称已经测出调权后的业务 goodput 收益。",
+    "nodes": [
+      {
+        "id": "load",
+        "title": "目标 cgroup 与负载",
+        "body": [
+          "显式 watch 授权",
+          "path + kernfs id"
+        ],
+        "x": 40,
+        "y": 130,
+        "w": 300,
+        "h": 117,
+        "role": "neutral",
+        "group": null
+      },
+      {
+        "id": "bpf",
+        "title": "raw tracepoint BPF",
+        "body": [
+          "采集 runnable 等待",
+          "按 cgroup 聚合"
+        ],
+        "x": 410,
+        "y": 130,
+        "w": 300,
+        "h": 117,
+        "role": "control",
+        "group": null
+      },
+      {
+        "id": "pump",
+        "title": "ep-evtmon",
+        "body": [
+          "读聚合 map / 排空窗口",
+          "按周期上报观测"
+        ],
+        "x": 780,
+        "y": 130,
+        "w": 300,
+        "h": 117,
+        "role": "control",
+        "group": null
+      },
+      {
+        "id": "weight",
+        "title": "cpu.weight 生效",
+        "body": [
+          "读回验证 / 刷新纠漂",
+          "原值 marker 可恢复"
+        ],
+        "x": 40,
+        "y": 390,
+        "w": 300,
+        "h": 117,
+        "role": "effect",
+        "group": null
+      },
+      {
+        "id": "txn",
+        "title": "统一事务与唯一写者",
+        "body": [
+          "lease / WAL / verify",
+          "apply / rollback"
+        ],
+        "x": 410,
+        "y": 390,
+        "w": 300,
+        "h": 117,
+        "role": "effect",
+        "group": null
+      },
+      {
+        "id": "guard",
+        "title": "EventArm 武装守卫",
+        "body": [
+          "新鲜度 / 身份 / 连续窗",
+          "人工阈值与属主租约"
+        ],
+        "x": 780,
+        "y": 390,
+        "w": 300,
+        "h": 117,
+        "role": "gate",
+        "group": null
+      },
+      {
+        "id": "restore",
+        "title": "条件回落或 TTL 到期",
+        "body": [
+          "经补偿恢复原值",
+          "恢复结果再次读回"
+        ],
+        "x": 40,
+        "y": 630,
+        "w": 300,
+        "h": 117,
+        "role": "effect",
+        "group": null
+      },
+      {
+        "id": "stale",
+        "title": "泵停止或窗口失效",
+        "body": [
+          "门冻结 / STALE",
+          "已有效应由 TTL 兜底"
+        ],
+        "x": 780,
+        "y": 630,
+        "w": 300,
+        "h": 117,
+        "role": "error",
+        "group": null
+      }
+    ],
+    "edges": [
+      {
+        "source": "load",
+        "target": "bpf",
+        "label": "",
+        "start": null,
+        "end": null,
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "bpf",
+        "target": "pump",
+        "label": "",
+        "start": null,
+        "end": null,
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "pump",
+        "target": "guard",
+        "label": "上报",
+        "start": "S",
+        "end": "N",
+        "via": [],
+        "dashed": true,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "guard",
+        "target": "txn",
+        "label": "满足",
+        "start": "W",
+        "end": "E",
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "txn",
+        "target": "weight",
+        "label": "",
+        "start": "W",
+        "end": "E",
+        "via": [],
+        "dashed": false,
+        "role": "effect",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "weight",
+        "target": "load",
+        "label": "反馈",
+        "start": "W",
+        "end": "W",
+        "via": [
+          [
+            20,
+            448
+          ],
+          [
+            20,
+            188
+          ]
+        ],
+        "dashed": true,
+        "role": "effect",
+        "label_at": [
+          55,
+          310
+        ],
+        "end_ratio": 0.5
+      },
+      {
+        "source": "weight",
+        "target": "restore",
+        "label": "",
+        "start": "S",
+        "end": "N",
+        "via": [],
+        "dashed": false,
+        "role": "effect",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "guard",
+        "target": "stale",
+        "label": "断供",
+        "start": "S",
+        "end": "N",
+        "via": [],
+        "dashed": false,
+        "role": "error",
+        "label_at": null,
+        "end_ratio": 0.5
+      }
+    ],
+    "groups": []
+  },
+  {
+    "slug": "event-guard-decision",
+    "title": "事件守卫的判定与动作",
+    "subtitle": "监控线程周期检查 · 观测不转授权限",
+    "width": 1120,
+    "height": 1080,
+    "note": "泵断供时冻结新动作；同路径重建不继承旧授权，已有效应仍受 TTL 约束。",
+    "nodes": [
+      {
+        "id": "window",
+        "title": "新窗口与新鲜度",
+        "body": [
+          "是否有新的有效证据",
+          "过期不猜测负载状态"
+        ],
+        "x": 410,
+        "y": 120,
+        "w": 300,
+        "h": 117,
+        "role": "gate",
+        "group": null
+      },
+      {
+        "id": "hold",
+        "title": "NONE / STALE",
+        "body": [
+          "不创建新效应",
+          "记录 last_hold 原因"
+        ],
+        "x": 40,
+        "y": 330,
+        "w": 300,
+        "h": 117,
+        "role": "error",
+        "group": null
+      },
+      {
+        "id": "identity",
+        "title": "watch 身份与租约",
+        "body": [
+          "path + kernfs id 一致",
+          "arm 属主与效应归属一致"
+        ],
+        "x": 410,
+        "y": 330,
+        "w": 300,
+        "h": 117,
+        "role": "gate",
+        "group": null
+      },
+      {
+        "id": "rebuilt",
+        "title": "WATCH_REBUILT",
+        "body": [
+          "授权目标已改变",
+          "回退并要求重新武装"
+        ],
+        "x": 780,
+        "y": 330,
+        "w": 300,
+        "h": 117,
+        "role": "error",
+        "group": null
+      },
+      {
+        "id": "sustain",
+        "title": "尚无在位效应",
+        "body": [
+          "连续 sustain 窗超阈",
+          "才允许提交新动作"
+        ],
+        "x": 160,
+        "y": 550,
+        "w": 340,
+        "h": 117,
+        "role": "gate",
+        "group": null
+      },
+      {
+        "id": "release",
+        "title": "已有在位效应",
+        "body": [
+          "连续 release 窗回落",
+          "或策略 TTL 到期"
+        ],
+        "x": 620,
+        "y": 550,
+        "w": 340,
+        "h": 117,
+        "role": "gate",
+        "group": null
+      },
+      {
+        "id": "apply",
+        "title": "标准 policy.apply",
+        "body": [
+          "经快照 / WAL / verify",
+          "受控提升 cpu.weight"
+        ],
+        "x": 160,
+        "y": 780,
+        "w": 340,
+        "h": 117,
+        "role": "effect",
+        "group": null
+      },
+      {
+        "id": "rollback",
+        "title": "标准补偿回退",
+        "body": [
+          "恢复 previous",
+          "读回后确认结果"
+        ],
+        "x": 620,
+        "y": 780,
+        "w": 340,
+        "h": 117,
+        "role": "effect",
+        "group": null
+      }
+    ],
+    "edges": [
+      {
+        "source": "window",
+        "target": "hold",
+        "label": "无效",
+        "start": "W",
+        "end": "N",
+        "via": [
+          [
+            190,
+            178
+          ]
+        ],
+        "dashed": false,
+        "role": "error",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "window",
+        "target": "identity",
+        "label": "有效",
+        "start": "S",
+        "end": "N",
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "identity",
+        "target": "rebuilt",
+        "label": "不符",
+        "start": null,
+        "end": null,
+        "via": [],
+        "dashed": false,
+        "role": "error",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "identity",
+        "target": "sustain",
+        "label": "",
+        "start": "S",
+        "end": "N",
+        "via": [
+          [
+            560,
+            500
+          ],
+          [
+            330,
+            500
+          ]
+        ],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "identity",
+        "target": "release",
+        "label": "",
+        "start": "S",
+        "end": "N",
+        "via": [
+          [
+            560,
+            500
+          ],
+          [
+            790,
+            500
+          ]
+        ],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "sustain",
+        "target": "apply",
+        "label": "满足",
+        "start": "S",
+        "end": "N",
+        "via": [],
+        "dashed": false,
+        "role": "effect",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "release",
+        "target": "rollback",
+        "label": "满足",
+        "start": "S",
+        "end": "N",
+        "via": [],
+        "dashed": false,
+        "role": "effect",
+        "label_at": null,
+        "end_ratio": 0.5
+      }
+    ],
+    "groups": []
+  },
+  {
+    "slug": "startup-recovery",
+    "title": "启动恢复与降级判定",
+    "subtitle": "先对账与拆除无主效应，再接受新的策略动作",
+    "width": 1120,
+    "height": 1067,
+    "note": "正常 shutdown 先补偿并验证再退出；崩溃后由同实例重启执行恢复。",
+    "nodes": [
+      {
+        "id": "lock",
+        "title": "独占状态目录",
+        "body": [
+          "flock / instance id",
+          "拒绝并发写者"
+        ],
+        "x": 40,
+        "y": 130,
+        "w": 300,
+        "h": 117,
+        "role": "gate",
+        "group": null
+      },
+      {
+        "id": "wal",
+        "title": "修复日志并对齐世代",
+        "body": [
+          "截断撕裂尾行",
+          "对齐最大已提交世代"
+        ],
+        "x": 410,
+        "y": 130,
+        "w": 300,
+        "h": 117,
+        "role": "control",
+        "group": null
+      },
+      {
+        "id": "orphan",
+        "title": "recover_orphan",
+        "body": [
+          "核对 runtime / marker",
+          "只处理本实例资源"
+        ],
+        "x": 780,
+        "y": 130,
+        "w": 300,
+        "h": 117,
+        "role": "control",
+        "group": null
+      },
+      {
+        "id": "sched",
+        "title": "sched 无主效应",
+        "body": [
+          "撤销受管 class 条目",
+          "核对 pin 身份并回收"
+        ],
+        "x": 160,
+        "y": 360,
+        "w": 340,
+        "h": 117,
+        "role": "effect",
+        "group": null
+      },
+      {
+        "id": "cg",
+        "title": "cgroup 无主效应",
+        "body": [
+          "按 marker 恢复原值",
+          "确认目标身份与归属"
+        ],
+        "x": 620,
+        "y": 360,
+        "w": 340,
+        "h": 117,
+        "role": "effect",
+        "group": null
+      },
+      {
+        "id": "reconcile",
+        "title": "逐事务 reconcile",
+        "body": [
+          "恢复未完成动作",
+          "验证补偿与持久记录"
+        ],
+        "x": 410,
+        "y": 580,
+        "w": 300,
+        "h": 117,
+        "role": "control",
+        "group": null
+      },
+      {
+        "id": "ready",
+        "title": "可服务状态",
+        "body": [
+          "启动监控线程",
+          "允许获准的新建效应"
+        ],
+        "x": 160,
+        "y": 790,
+        "w": 340,
+        "h": 117,
+        "role": "effect",
+        "group": null
+      },
+      {
+        "id": "degraded",
+        "title": "DEGRADED",
+        "body": [
+          "冲突 / 恢复未确认",
+          "保留现场，仅放行拆除"
+        ],
+        "x": 620,
+        "y": 790,
+        "w": 340,
+        "h": 117,
+        "role": "error",
+        "group": null
+      }
+    ],
+    "edges": [
+      {
+        "source": "lock",
+        "target": "wal",
+        "label": "",
+        "start": null,
+        "end": null,
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "wal",
+        "target": "orphan",
+        "label": "",
+        "start": null,
+        "end": null,
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "orphan",
+        "target": "sched",
+        "label": "",
+        "start": "S",
+        "end": "N",
+        "via": [
+          [
+            930,
+            300
+          ],
+          [
+            330,
+            300
+          ]
+        ],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "orphan",
+        "target": "cg",
+        "label": "",
+        "start": "S",
+        "end": "N",
+        "via": [
+          [
+            930,
+            300
+          ],
+          [
+            790,
+            300
+          ]
+        ],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "sched",
+        "target": "reconcile",
+        "label": "",
+        "start": "S",
+        "end": "N",
+        "via": [
+          [
+            330,
+            530
+          ],
+          [
+            560,
+            530
+          ]
+        ],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "cg",
+        "target": "reconcile",
+        "label": "",
+        "start": "S",
+        "end": "N",
+        "via": [
+          [
+            790,
+            530
+          ],
+          [
+            560,
+            530
+          ]
+        ],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "reconcile",
+        "target": "ready",
+        "label": "已恢复",
+        "start": "S",
+        "end": "N",
+        "via": [
+          [
+            560,
+            745
+          ],
+          [
+            330,
+            745
+          ]
+        ],
+        "dashed": false,
+        "role": "effect",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "reconcile",
+        "target": "degraded",
+        "label": "未恢复",
+        "start": "S",
+        "end": "N",
+        "via": [
+          [
+            560,
+            745
+          ],
+          [
+            790,
+            745
+          ]
+        ],
+        "dashed": false,
+        "role": "error",
+        "label_at": null,
+        "end_ratio": 0.5
+      }
+    ],
+    "groups": []
+  },
+  {
+    "slug": "deployment-paths",
+    "title": "SP3 部署与构建路径",
+    "subtitle": "交付镜像与源码重建两条入口，汇合到同一验证流程",
+    "width": 1120,
+    "height": 1067,
+    "note": "BPF 对象与用户态构建须匹配目标内核；libbpf 使用已核验的静态构建配方。",
+    "nodes": [
+      {
+        "id": "image",
+        "title": "入口 A 交付镜像",
+        "body": [
+          "qcow2 / domain.xml",
+          "SHA256SUMS"
+        ],
+        "x": 150,
+        "y": 130,
+        "w": 340,
+        "h": 117,
+        "role": "neutral",
+        "group": null
+      },
+      {
+        "id": "source",
+        "title": "入口 B 源码重建",
+        "body": [
+          "内核源 / BTF / 工具链",
+          "可追溯源码与配置"
+        ],
+        "x": 630,
+        "y": 130,
+        "w": 340,
+        "h": 117,
+        "role": "neutral",
+        "group": null
+      },
+      {
+        "id": "boot",
+        "title": "导入并启动 SP3",
+        "body": [
+          "核验启动参数",
+          "cgroup v2 / PSI / sched_ext"
+        ],
+        "x": 150,
+        "y": 345,
+        "w": 340,
+        "h": 117,
+        "role": "control",
+        "group": null
+      },
+      {
+        "id": "bpf",
+        "title": "先构建 BPF",
+        "body": [
+          "object → skeleton",
+          "记录对象与工具链哈希"
+        ],
+        "x": 630,
+        "y": 345,
+        "w": 340,
+        "h": 117,
+        "role": "control",
+        "group": null
+      },
+      {
+        "id": "doctor",
+        "title": "doctor 与包校验",
+        "body": [
+          "核验环境与冻结产物",
+          "不以探测代替真实加载"
+        ],
+        "x": 150,
+        "y": 560,
+        "w": 340,
+        "h": 117,
+        "role": "gate",
+        "group": null
+      },
+      {
+        "id": "user",
+        "title": "再构建用户态",
+        "body": [
+          "CMake + 静态 libbpf",
+          "CLI / executor / loader / 泵"
+        ],
+        "x": 630,
+        "y": 560,
+        "w": 340,
+        "h": 117,
+        "role": "control",
+        "group": null
+      },
+      {
+        "id": "verify",
+        "title": "按层验证后进入演示",
+        "body": [
+          "契约 / 单元 / 内核 / 验收 / 故障恢复",
+          "确认 disabled、pin 与自有进程干净收尾"
+        ],
+        "x": 150,
+        "y": 790,
+        "w": 820,
+        "h": 117,
+        "role": "effect",
+        "group": null
+      }
+    ],
+    "edges": [
+      {
+        "source": "image",
+        "target": "boot",
+        "label": "",
+        "start": "S",
+        "end": "N",
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "boot",
+        "target": "doctor",
+        "label": "",
+        "start": "S",
+        "end": "N",
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "source",
+        "target": "bpf",
+        "label": "",
+        "start": "S",
+        "end": "N",
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "bpf",
+        "target": "user",
+        "label": "",
+        "start": "S",
+        "end": "N",
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "user",
+        "target": "doctor",
+        "label": "产物",
+        "start": "W",
+        "end": "E",
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "doctor",
+        "target": "verify",
+        "label": "",
+        "start": "S",
+        "end": "N",
+        "via": [
+          [
+            320,
+            730
+          ],
+          [
+            560,
+            730
+          ]
+        ],
+        "dashed": false,
+        "role": "effect",
+        "label_at": null,
+        "end_ratio": 0.5
+      }
+    ],
+    "groups": []
+  },
+  {
+    "slug": "verification-layers",
+    "title": "分层验证与严格验收",
+    "subtitle": "不同层级回答不同问题，功能通过不等于性能提升",
+    "width": 1120,
+    "height": 1090,
+    "note": "严格验收拒绝 SKIP、缺失项和脏收尾；性能结论独立依赖冻结构建与正式矩阵。",
+    "nodes": [
+      {
+        "id": "contract",
+        "title": "L1 契约与语义",
+        "body": [
+          "schema / 正反例",
+          "不加载内核"
+        ],
+        "x": 40,
+        "y": 130,
+        "w": 300,
+        "h": 117,
+        "role": "control",
+        "group": null
+      },
+      {
+        "id": "unit",
+        "title": "L2 单元与离线",
+        "body": [
+          "判定矩阵 / 身份 / 恢复",
+          "可注入故障边界"
+        ],
+        "x": 410,
+        "y": 130,
+        "w": 300,
+        "h": 117,
+        "role": "control",
+        "group": null
+      },
+      {
+        "id": "kernel",
+        "title": "L3 SP3 内核集成",
+        "body": [
+          "真实 attach / 读回",
+          "cgroup 域与事件链"
+        ],
+        "x": 780,
+        "y": 130,
+        "w": 300,
+        "h": 117,
+        "role": "effect",
+        "group": null
+      },
+      {
+        "id": "perf",
+        "title": "L6 正式性能",
+        "body": [
+          "同预算 / 配对 block",
+          "原始件与置信区间"
+        ],
+        "x": 40,
+        "y": 365,
+        "w": 300,
+        "h": 117,
+        "role": "effect",
+        "group": null
+      },
+      {
+        "id": "fault",
+        "title": "L5 故障恢复",
+        "body": [
+          "失联 / 崩溃 / 冲突",
+          "fail-safe 场景矩阵"
+        ],
+        "x": 410,
+        "y": 365,
+        "w": 300,
+        "h": 117,
+        "role": "error",
+        "group": null
+      },
+      {
+        "id": "accept",
+        "title": "L4 严格验收",
+        "body": [
+          "8 项 CTest 必须实跑",
+          "禁止跳过与缺项"
+        ],
+        "x": 780,
+        "y": 365,
+        "w": 300,
+        "h": 117,
+        "role": "gate",
+        "group": null
+      },
+      {
+        "id": "idle",
+        "title": "01 idle 前置",
+        "body": [
+          "disabled / 空 pin",
+          "无并发实例"
+        ],
+        "x": 60,
+        "y": 640,
+        "w": 300,
+        "h": 117,
+        "role": "gate",
+        "group": "one"
+      },
+      {
+        "id": "ctest",
+        "title": "02 必测项 + liveness",
+        "body": [
+          "8 项无 SKIP",
+          "A/B/C 均推进"
+        ],
+        "x": 410,
+        "y": 640,
+        "w": 300,
+        "h": 117,
+        "role": "gate",
+        "group": "one"
+      },
+      {
+        "id": "hash",
+        "title": "03 产物溯源",
+        "body": [
+          "源码 / 二进制 / BPF",
+          "哈希记录"
+        ],
+        "x": 760,
+        "y": 640,
+        "w": 300,
+        "h": 117,
+        "role": "gate",
+        "group": "one"
+      },
+      {
+        "id": "clean",
+        "title": "04 收尾断言",
+        "body": [
+          "state 归位 · 自有资源清理 · 失败保留现场"
+        ],
+        "x": 250,
+        "y": 810,
+        "w": 620,
+        "h": 90,
+        "role": "effect",
+        "group": "one"
+      }
+    ],
+    "edges": [
+      {
+        "source": "contract",
+        "target": "unit",
+        "label": "",
+        "start": null,
+        "end": null,
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "unit",
+        "target": "kernel",
+        "label": "",
+        "start": null,
+        "end": null,
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "kernel",
+        "target": "accept",
+        "label": "",
+        "start": "S",
+        "end": "N",
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "accept",
+        "target": "fault",
+        "label": "",
+        "start": "W",
+        "end": "E",
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "fault",
+        "target": "perf",
+        "label": "",
+        "start": "W",
+        "end": "E",
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "idle",
+        "target": "ctest",
+        "label": "",
+        "start": null,
+        "end": null,
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "ctest",
+        "target": "hash",
+        "label": "",
+        "start": null,
+        "end": null,
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "hash",
+        "target": "clean",
+        "label": "",
+        "start": "S",
+        "end": "E",
+        "via": [
+          [
+            910,
+            847
+          ]
+        ],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      }
+    ],
+    "groups": [
+      {
+        "id": "one",
+        "title": "一轮 accept_sp3.sh 的内部顺序",
+        "x": 30,
+        "y": 575,
+        "w": 1060,
+        "h": 335
+      }
+    ]
+  },
+  {
+    "slug": "cgroup-effect-lifecycle",
+    "title": "cgroup 效应的完整生命周期",
+    "subtitle": "快照、marker、读回与恢复形成闭环",
+    "width": 1120,
+    "height": 917,
+    "note": "域不匹配时零副作用拒绝；崩溃不会自动撤销权重，重启须按 marker 恢复。",
+    "nodes": [
+      {
+        "id": "target",
+        "title": "解析与校验目标",
+        "body": [
+          "CgroupPolicy / 授权路径",
+          "持有并核对目标身份"
+        ],
+        "x": 40,
+        "y": 130,
+        "w": 300,
+        "h": 117,
+        "role": "gate",
+        "group": null
+      },
+      {
+        "id": "snapshot",
+        "title": "保存 previous",
+        "body": [
+          "读取原值",
+          "独立 marker 落盘"
+        ],
+        "x": 410,
+        "y": 130,
+        "w": 300,
+        "h": 117,
+        "role": "control",
+        "group": null
+      },
+      {
+        "id": "write",
+        "title": "写入并读回 desired",
+        "body": [
+          "cpu.weight",
+          "验证实际值符合策略"
+        ],
+        "x": 780,
+        "y": 130,
+        "w": 300,
+        "h": 117,
+        "role": "effect",
+        "group": null
+      },
+      {
+        "id": "restore",
+        "title": "显式回退与 TTL",
+        "body": [
+          "恢复 previous",
+          "读回后清 marker"
+        ],
+        "x": 40,
+        "y": 390,
+        "w": 300,
+        "h": 117,
+        "role": "effect",
+        "group": null
+      },
+      {
+        "id": "refresh",
+        "title": "刷新与漂移纠正",
+        "body": [
+          "检查在位目标",
+          "外部改值后重新断言"
+        ],
+        "x": 410,
+        "y": 390,
+        "w": 300,
+        "h": 117,
+        "role": "gate",
+        "group": null
+      },
+      {
+        "id": "crash",
+        "title": "执行服务被杀",
+        "body": [
+          "内核权重仍保留",
+          "marker 不丢失"
+        ],
+        "x": 780,
+        "y": 390,
+        "w": 300,
+        "h": 117,
+        "role": "error",
+        "group": null
+      },
+      {
+        "id": "restart",
+        "title": "同实例重启恢复",
+        "body": [
+          "核对目标与归属",
+          "恢复原值或明确冲突"
+        ],
+        "x": 780,
+        "y": 640,
+        "w": 300,
+        "h": 117,
+        "role": "control",
+        "group": null
+      },
+      {
+        "id": "done",
+        "title": "确认效应已撤销",
+        "body": [
+          "读回原值",
+          "清理自有恢复记录"
+        ],
+        "x": 40,
+        "y": 640,
+        "w": 300,
+        "h": 117,
+        "role": "effect",
+        "group": null
+      }
+    ],
+    "edges": [
+      {
+        "source": "target",
+        "target": "snapshot",
+        "label": "",
+        "start": null,
+        "end": null,
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "snapshot",
+        "target": "write",
+        "label": "",
+        "start": null,
+        "end": null,
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "write",
+        "target": "refresh",
+        "label": "",
+        "start": "S",
+        "end": "N",
+        "via": [
+          [
+            930,
+            320
+          ],
+          [
+            560,
+            320
+          ]
+        ],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "refresh",
+        "target": "restore",
+        "label": "回退",
+        "start": "W",
+        "end": "E",
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "write",
+        "target": "crash",
+        "label": "崩溃",
+        "start": "S",
+        "end": "N",
+        "via": [],
+        "dashed": false,
+        "role": "error",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "crash",
+        "target": "restart",
+        "label": "",
+        "start": "S",
+        "end": "N",
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "restore",
+        "target": "done",
+        "label": "",
+        "start": "S",
+        "end": "N",
+        "via": [],
+        "dashed": false,
+        "role": "effect",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "restart",
+        "target": "done",
+        "label": "已恢复",
+        "start": "W",
+        "end": "E",
+        "via": [],
+        "dashed": false,
+        "role": "effect",
+        "label_at": null,
+        "end_ratio": 0.5
+      }
+    ],
+    "groups": []
+  },
+  {
+    "slug": "demo-timeline",
+    "title": "现场演示八步时间线",
+    "subtitle": "demo_sp3.sh · 每一步同时展示动作与可验证结果",
+    "width": 1120,
+    "height": 930,
+    "note": "演示证明可操作与可恢复；正式性能数字从独立冻结证据读取，不用现场波动代替统计。",
+    "nodes": [
+      {
+        "id": "a",
+        "title": "01 契约与服务",
+        "body": [
+          "检查 schema",
+          "执行服务就绪"
+        ],
+        "x": 40,
+        "y": 130,
+        "w": 300,
+        "h": 117,
+        "role": "control",
+        "group": null
+      },
+      {
+        "id": "b",
+        "title": "02 默认 fair 基线",
+        "body": [
+          "未挂载 scx",
+          "观察服务可运行"
+        ],
+        "x": 410,
+        "y": 130,
+        "w": 300,
+        "h": 117,
+        "role": "control",
+        "group": null
+      },
+      {
+        "id": "c",
+        "title": "03 策略生效",
+        "body": [
+          "ops / class 读回",
+          "内核自证"
+        ],
+        "x": 780,
+        "y": 130,
+        "w": 300,
+        "h": 117,
+        "role": "effect",
+        "group": null
+      },
+      {
+        "id": "f",
+        "title": "06 cgroup 调权",
+        "body": [
+          "写入与读回",
+          "恢复记录在案"
+        ],
+        "x": 40,
+        "y": 365,
+        "w": 300,
+        "h": 117,
+        "role": "effect",
+        "group": null
+      },
+      {
+        "id": "e",
+        "title": "05 崩溃与恢复",
+        "body": [
+          "SIGKILL / 重启",
+          "检查补偿与回收"
+        ],
+        "x": 410,
+        "y": 365,
+        "w": 300,
+        "h": 117,
+        "role": "control",
+        "group": null
+      },
+      {
+        "id": "d",
+        "title": "04 感知链应答",
+        "body": [
+          "features / route / slo",
+          "扰动下实时查询"
+        ],
+        "x": 780,
+        "y": 365,
+        "w": 300,
+        "h": 117,
+        "role": "control",
+        "group": null
+      },
+      {
+        "id": "g",
+        "title": "07 事件驱动防护",
+        "body": [
+          "观测 → 升权",
+          "清除条件 → 补偿"
+        ],
+        "x": 225,
+        "y": 605,
+        "w": 300,
+        "h": 117,
+        "role": "control",
+        "group": null
+      },
+      {
+        "id": "h",
+        "title": "08 干净收尾",
+        "body": [
+          "disabled / 无自有 pin",
+          "输出 PASS 或现场路径"
+        ],
+        "x": 595,
+        "y": 605,
+        "w": 300,
+        "h": 117,
+        "role": "effect",
+        "group": null
+      }
+    ],
+    "edges": [
+      {
+        "source": "a",
+        "target": "b",
+        "label": "",
+        "start": null,
+        "end": null,
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "b",
+        "target": "c",
+        "label": "",
+        "start": null,
+        "end": null,
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "c",
+        "target": "d",
+        "label": "",
+        "start": "S",
+        "end": "N",
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "d",
+        "target": "e",
+        "label": "",
+        "start": "W",
+        "end": "E",
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "e",
+        "target": "f",
+        "label": "",
+        "start": "W",
+        "end": "E",
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "f",
+        "target": "g",
+        "label": "",
+        "start": "S",
+        "end": "N",
+        "via": [
+          [
+            190,
+            550
+          ],
+          [
+            375,
+            550
+          ]
+        ],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "g",
+        "target": "h",
+        "label": "",
+        "start": null,
+        "end": null,
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      }
+    ],
+    "groups": []
+  },
+  {
+    "slug": "evidence-provenance",
+    "title": "构建与实验证据溯源",
+    "subtitle": "明确区分性能所用构建与最终交付构建",
+    "width": 1120,
+    "height": 1067,
+    "note": "文档插图更新不改变运行二进制；性能结论仍归属对应冻结构建，不向新构建静默转移。",
+    "nodes": [
+      {
+        "id": "source",
+        "title": "源码与环境输入",
+        "body": [
+          "commit / config / BTF",
+          "编译器与依赖版本"
+        ],
+        "x": 40,
+        "y": 130,
+        "w": 300,
+        "h": 117,
+        "role": "neutral",
+        "group": null
+      },
+      {
+        "id": "build",
+        "title": "可追溯构建",
+        "body": [
+          "BPF object / skeleton",
+          "用户态二进制"
+        ],
+        "x": 410,
+        "y": 130,
+        "w": 300,
+        "h": 117,
+        "role": "control",
+        "group": null
+      },
+      {
+        "id": "hash",
+        "title": "冻结与哈希清单",
+        "body": [
+          "完整 SHA256",
+          "PROVENANCE / manifest"
+        ],
+        "x": 780,
+        "y": 130,
+        "w": 300,
+        "h": 117,
+        "role": "gate",
+        "group": null
+      },
+      {
+        "id": "gen1",
+        "title": "gen-1 性能构建",
+        "body": [
+          "3693c9ac…",
+          "正式主矩阵与补充臂"
+        ],
+        "x": 160,
+        "y": 360,
+        "w": 340,
+        "h": 117,
+        "role": "control",
+        "group": null
+      },
+      {
+        "id": "gen3",
+        "title": "gen-3 最终交付",
+        "body": [
+          "6f667b2e…",
+          "功能 / 故障 / 演示回归"
+        ],
+        "x": 620,
+        "y": 360,
+        "w": 340,
+        "h": 117,
+        "role": "control",
+        "group": null
+      },
+      {
+        "id": "raw",
+        "title": "性能原始记录",
+        "body": [
+          "逐请求 / block / attempts",
+          "随机种子与无效原因"
+        ],
+        "x": 160,
+        "y": 580,
+        "w": 340,
+        "h": 117,
+        "role": "neutral",
+        "group": null
+      },
+      {
+        "id": "accept",
+        "title": "交付验收记录",
+        "body": [
+          "CTest / 严格验收",
+          "fail-safe / 演示 / 包校验"
+        ],
+        "x": 620,
+        "y": 580,
+        "w": 340,
+        "h": 117,
+        "role": "neutral",
+        "group": null
+      },
+      {
+        "id": "report",
+        "title": "可重算报告与交付包",
+        "body": [
+          "对照、置信区间、失败与边界同时披露",
+          "不将完整性检查等同于性能结论"
+        ],
+        "x": 160,
+        "y": 790,
+        "w": 800,
+        "h": 117,
+        "role": "effect",
+        "group": null
+      }
+    ],
+    "edges": [
+      {
+        "source": "source",
+        "target": "build",
+        "label": "",
+        "start": null,
+        "end": null,
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "build",
+        "target": "hash",
+        "label": "",
+        "start": null,
+        "end": null,
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "hash",
+        "target": "gen1",
+        "label": "",
+        "start": "S",
+        "end": "N",
+        "via": [
+          [
+            930,
+            300
+          ],
+          [
+            330,
+            300
+          ]
+        ],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "hash",
+        "target": "gen3",
+        "label": "",
+        "start": "S",
+        "end": "N",
+        "via": [
+          [
+            930,
+            300
+          ],
+          [
+            790,
+            300
+          ]
+        ],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "gen1",
+        "target": "raw",
+        "label": "",
+        "start": "S",
+        "end": "N",
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "gen3",
+        "target": "accept",
+        "label": "",
+        "start": "S",
+        "end": "N",
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "raw",
+        "target": "report",
+        "label": "",
+        "start": "S",
+        "end": "N",
+        "via": [
+          [
+            330,
+            745
+          ],
+          [
+            560,
+            745
+          ]
+        ],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "accept",
+        "target": "report",
+        "label": "",
+        "start": "S",
+        "end": "N",
+        "via": [
+          [
+            790,
+            745
+          ],
+          [
+            560,
+            745
+          ]
+        ],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      }
+    ],
+    "groups": []
+  },
+  {
+    "slug": "experiment-design",
+    "title": "同预算的配对实验设计",
+    "subtitle": "先 pilot 后冻结 · 实验臂共用环境、负载与授权角色",
+    "width": 1120,
+    "height": 1067,
+    "note": "Liveness 只证明任务推进；性能需同时报告 goodput、尾延迟、后台进度和不确定性。",
+    "nodes": [
+      {
+        "id": "client",
+        "title": "独立客户端 CPU 池",
+        "body": [
+          "请求发生器",
+          "检查客户端未饱和"
+        ],
+        "x": 70,
+        "y": 200,
+        "w": 300,
+        "h": 117,
+        "role": "neutral",
+        "group": "machine"
+      },
+      {
+        "id": "service",
+        "title": "服务 CPU 池",
+        "body": [
+          "目标服务",
+          "逐请求延迟与完成数"
+        ],
+        "x": 430,
+        "y": 200,
+        "w": 300,
+        "h": 117,
+        "role": "effect",
+        "group": "machine"
+      },
+      {
+        "id": "bg",
+        "title": "同池后台干扰",
+        "body": [
+          "显式 BACKGROUND",
+          "可计数的工作进度"
+        ],
+        "x": 790,
+        "y": 200,
+        "w": 260,
+        "h": 117,
+        "role": "neutral",
+        "group": "machine"
+      },
+      {
+        "id": "freeze",
+        "title": "冻结协议与构建",
+        "body": [
+          "机器 / 预算 / SLO / 种子",
+          "参数与无效轮次规则"
+        ],
+        "x": 40,
+        "y": 530,
+        "w": 300,
+        "h": 117,
+        "role": "gate",
+        "group": null
+      },
+      {
+        "id": "block",
+        "title": "平衡顺序的配对 block",
+        "body": [
+          "A0 / A1 / A2 / C / D",
+          "B、E 作为补充对照"
+        ],
+        "x": 410,
+        "y": 530,
+        "w": 300,
+        "h": 117,
+        "role": "control",
+        "group": null
+      },
+      {
+        "id": "analysis",
+        "title": "原始件重算",
+        "body": [
+          "逐 block 配对",
+          "bootstrap 置信区间"
+        ],
+        "x": 780,
+        "y": 530,
+        "w": 300,
+        "h": 117,
+        "role": "control",
+        "group": null
+      },
+      {
+        "id": "metrics",
+        "title": "并列评估收益与代价",
+        "body": [
+          "goodput@SLO / p99 / 错误率",
+          "BG 相对进度 / quiet 成本 / 失败率"
+        ],
+        "x": 200,
+        "y": 790,
+        "w": 720,
+        "h": 117,
+        "role": "effect",
+        "group": null
+      }
+    ],
+    "edges": [
+      {
+        "source": "client",
+        "target": "service",
+        "label": "请求",
+        "start": null,
+        "end": null,
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "bg",
+        "target": "service",
+        "label": "竞争",
+        "start": "W",
+        "end": "E",
+        "via": [],
+        "dashed": true,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "freeze",
+        "target": "block",
+        "label": "",
+        "start": null,
+        "end": null,
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "block",
+        "target": "analysis",
+        "label": "",
+        "start": null,
+        "end": null,
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "analysis",
+        "target": "metrics",
+        "label": "",
+        "start": "S",
+        "end": "E",
+        "via": [
+          [
+            930,
+            735
+          ],
+          [
+            1020,
+            735
+          ],
+          [
+            1020,
+            842
+          ]
+        ],
+        "dashed": false,
+        "role": "effect",
+        "label_at": null,
+        "end_ratio": 0.5
+      }
+    ],
+    "groups": [
+      {
+        "id": "machine",
+        "title": "SP3 实验机 · 同一内核、同一应用配置",
+        "x": 30,
+        "y": 115,
+        "w": 1060,
+        "h": 345
+      }
+    ]
+  },
+  {
+    "slug": "bounded-autopilot",
+    "title": "自动切换的受限决策通道",
+    "subtitle": "默认 advisory · 显式开启后仍不获得额外权限",
+    "width": 1120,
+    "height": 1050,
+    "note": "服务与事件观测只会让门更严；证据不足、分辨率不足或租约不符时保持不动作。",
+    "nodes": [
+      {
+        "id": "features",
+        "title": "FeatureWindow",
+        "body": [
+          "CPU / load / PSI",
+          "valid / age / source"
+        ],
+        "x": 40,
+        "y": 130,
+        "w": 300,
+        "h": 117,
+        "role": "neutral",
+        "group": null
+      },
+      {
+        "id": "router",
+        "title": "规则专家路由",
+        "body": [
+          "阈值与滞回",
+          "输出档位及理由"
+        ],
+        "x": 410,
+        "y": 130,
+        "w": 300,
+        "h": 117,
+        "role": "control",
+        "group": null
+      },
+      {
+        "id": "advisory",
+        "title": "默认建议模式",
+        "body": [
+          "route / slo 可查询",
+          "不自动写内核"
+        ],
+        "x": 780,
+        "y": 130,
+        "w": 300,
+        "h": 117,
+        "role": "effect",
+        "group": null
+      },
+      {
+        "id": "enable",
+        "title": "显式开启与租约",
+        "body": [
+          "auto-policy / auto-owner",
+          "权限来源保持不变"
+        ],
+        "x": 40,
+        "y": 390,
+        "w": 300,
+        "h": 117,
+        "role": "gate",
+        "group": null
+      },
+      {
+        "id": "evidence",
+        "title": "服务与事件证据门",
+        "body": [
+          "新鲜度 / 绝对预算",
+          "比较判定的分辨率护栏"
+        ],
+        "x": 410,
+        "y": 390,
+        "w": 300,
+        "h": 117,
+        "role": "gate",
+        "group": null
+      },
+      {
+        "id": "suppress",
+        "title": "三层切换抑制",
+        "body": [
+          "最小驻留 / 候选保持",
+          "窗口内切换预算"
+        ],
+        "x": 780,
+        "y": 390,
+        "w": 300,
+        "h": 117,
+        "role": "gate",
+        "group": null
+      },
+      {
+        "id": "hold",
+        "title": "保持原状态",
+        "body": [
+          "缺证据 / 不满足条件",
+          "记录 hold 原因"
+        ],
+        "x": 410,
+        "y": 650,
+        "w": 300,
+        "h": 117,
+        "role": "error",
+        "group": null
+      },
+      {
+        "id": "apply",
+        "title": "复用标准事务",
+        "body": [
+          "apply → verify",
+          "lease / WAL / 补偿"
+        ],
+        "x": 780,
+        "y": 650,
+        "w": 300,
+        "h": 117,
+        "role": "effect",
+        "group": null
+      }
+    ],
+    "edges": [
+      {
+        "source": "features",
+        "target": "router",
+        "label": "",
+        "start": null,
+        "end": null,
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "router",
+        "target": "advisory",
+        "label": "默认",
+        "start": null,
+        "end": null,
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "router",
+        "target": "enable",
+        "label": "开启",
+        "start": "S",
+        "end": "N",
+        "via": [
+          [
+            560,
+            315
+          ],
+          [
+            190,
+            315
+          ]
+        ],
+        "dashed": true,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "enable",
+        "target": "evidence",
+        "label": "",
+        "start": null,
+        "end": null,
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "evidence",
+        "target": "suppress",
+        "label": "",
+        "start": null,
+        "end": null,
+        "via": [],
+        "dashed": false,
+        "role": "control",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "evidence",
+        "target": "hold",
+        "label": "拒绝",
+        "start": "S",
+        "end": "N",
+        "via": [],
+        "dashed": false,
+        "role": "error",
+        "label_at": null,
+        "end_ratio": 0.5
+      },
+      {
+        "source": "suppress",
+        "target": "apply",
+        "label": "满足",
+        "start": "S",
+        "end": "N",
+        "via": [],
+        "dashed": false,
+        "role": "effect",
+        "label_at": null,
+        "end_ratio": 0.5
+      }
+    ],
+    "groups": []
+  }
+]
