@@ -11,7 +11,7 @@
 | 文档状态 | 正式发布 |
 | 适用对象 | 评审专家、验收人员 |
 | 维护团队 | 三驱兄弟(西安邮电大学) |
-| 更新日期 | 2026-10-25 |
+| 更新日期 | 2026-10-26 |
 | 配套文档 | 项目说明书 / 设计文档 / 用户手册 / 部署文档 / 测试文档 / `ACCEPTANCE_20261025.md` |
 
 > 纪律声明:本文每个数字都有仓库内证据文件支撑(随行标注文件名);未实测的不写
@@ -54,22 +54,9 @@ UNSUPPORTED);BG 是业务角色、LAT/COMPUTE/CACHE 是运行特征,两维度正
 
 ## 3. 系统框架设计
 
-```
-┌─ 决策层(默认 advisory)────────────────────────────────┐
-│ FeatureWindow(CPU/load/PSI)→ 规则路由 → SLO 门控 → AutoPilot │
-│ 服务观测(service.observe)/ 事件观测(event.observe)——只能更严 │
-└───────────────┬──────────────────────────────────┘
-                │ 声明式策略(JSON Schema + 语义校验)
-┌───────────────▼──────────────────────────────────┐
-│ ep-executord 唯一特权写者:flock 单实例、lease/fence、    │
-│ generation、append-only WAL、事务状态机、幂等、崩溃 reconcile│
-└───────┬──────────────────────────────────┬───────┘
-   sched 域                            cgroup 域
- v2 自建 loader(ops `eulerpilot`),       cpu.weight(写后读回 +
- link FD 经 SCM_RIGHTS 交执行服务持有      marker 崩溃恢复 + 事件守卫)
-└───────┴──────────────────────────────────┴───────┘
-      内核:sched_ext maps / cgroup v2 / raw tracepoints
-```
+![EulerPilot v2 总体架构](assets/figures/system-architecture.svg)
+
+*图 1　EulerPilot v2 总体架构*
 
 - **两个效果域共用一套事务骨架**;策略 kind 与实例域不匹配零副作用拒绝。
 - **契约**:`design/schemas/*.json` 五个版本化 schema + `EventArm`,设计自检 6 正例/
@@ -112,6 +99,10 @@ UNSUPPORTED);BG 是业务角色、LAT/COMPUTE/CACHE 是运行特征,两维度正
   D-no-class 对照(联合 SLO 2/3 = D);演示三连彩排;交付镜像与包校验。
 
 ## 6. 系统测试情况
+
+![同预算的配对实验设计](assets/figures/experiment-design.svg)
+
+*图 2　同预算的配对实验设计*
 
 | 层 | 内容 | 结果 |
 |---|---|---|
@@ -208,3 +199,4 @@ domain.xml/ks.cfg 同包;含本仓库源树与冻结二进制;`PROVENANCE.md` �
 |---|---|---|---|
 | v1.0 | 2026-10-25 | 按大赛文档大纲创建 | 三驱兄弟 |
 | v1.1 | 2026-10-25 | 增加文档信息表与修订记录;与五份交付文档统一为蓝底表头 Word/PDF 交付版 | 三驱兄弟 |
+| v1.1 图示修订 | 2026-10-26 | 补充 SVG 架构、流程与验证示意图及可编辑源文件；图示按当前实现标注边界，性能数据口径不变 | 三驱兄弟 |

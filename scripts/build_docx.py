@@ -9,6 +9,8 @@ because Word does not always honour table-style conditional shading.
 from __future__ import annotations
 
 import argparse
+import hashlib
+import os
 import re
 import subprocess
 import sys
@@ -255,13 +257,72 @@ def polish(path: Path, title: str) -> None:
     props.title = title
     props.author = "三驱兄弟（西安邮电大学）"
     props.category = "2026 年全国大学生计算机系统能力大赛操作系统设计赛"
+    for paragraph in doc.paragraphs:
+        if paragraph._p.xpath('.//w:drawing'):
+            paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            paragraph.paragraph_format.keep_with_next = True
+            paragraph.paragraph_format.space_before = Pt(8)
+            paragraph.paragraph_format.space_after = Pt(4)
+        elif re.match(r'^图 \d+\s', paragraph.text):
+            paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            paragraph.paragraph_format.keep_with_next = False
+            paragraph.paragraph_format.space_after = Pt(10)
+            for run in paragraph.runs:
+                run.font.size = Pt(9)
+                run.font.color.rgb = RGBColor.from_string(GREY)
+    # Pandoc represents a whole listing as one paragraph. Keeping it with the
+    # following heading/figure creates long empty page tails; allow natural
+    # listing continuation and preserve the image/caption pairing above.
+    for paragraph in doc.paragraphs:
+        if paragraph.style and paragraph.style.style_id == 'SourceCode':
+            paragraph.paragraph_format.keep_with_next = False
+    # Revision rows should remain readable and keep a short date/author column.
+    for table in doc.tables:
+        headers = [cell.text.strip() for cell in table.rows[0].cells]
+        if headers == ['版本', '日期', '内容', '作者']:
+            table.autofit = False
+            for index, row in enumerate(table.rows):
+                for cell, width in zip(row.cells, [2.4,2.5,8.8,2.5]):
+                    cell.width = Cm(width)
+                    for paragraph in cell.paragraphs:
+                        paragraph.paragraph_format.keep_with_next = index < len(table.rows) - 1
+                props = row._tr.get_or_add_trPr()
+                props.append(parse_xml('<w:cantSplit xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"/>'))
+    # Word requires a paragraph after the final table. A full-size empty one can
+    # generate a blank trailing page when the last row ends at the page bottom.
+    body_items = [element for element in doc._element.body
+                  if element.tag.endswith('}p') or element.tag.endswith('}tbl')]
+    if body_items and body_items[-1].tag.endswith('}tbl'):
+        doc.add_paragraph()
+    if doc.paragraphs and not doc.paragraphs[-1].text.strip():
+        last = doc.paragraphs[-1]
+        last.paragraph_format.space_before = Pt(0)
+        last.paragraph_format.space_after = Pt(0)
+        last.paragraph_format.line_spacing = Pt(1)
+        last.paragraph_format.keep_with_next = False
+        last._p.get_or_add_pPr().append(parse_xml(
+            '<w:rPr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+            '<w:sz w:val="2"/><w:szCs w:val="2"/></w:rPr>'))
     doc.save(str(path))
 
 
 def to_pdf(docx_path: Path) -> Path:
     """Export through Word itself; the docx must survive that open, which doubles as a validity check."""
-    import pythoncom
-    from win32com import client
+    try:
+        import pythoncom
+        from win32com import client
+    except ImportError:
+        if sys.platform != "win32":
+            raise RuntimeError("PDF export requires Microsoft Word on Windows")
+        subprocess.run([
+            "powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
+            "-File", str(REPO / "scripts/export_docx_pdf.ps1"),
+            "-DocxPath", str(docx_path.resolve()),
+        ], check=True, timeout=180)
+        pdf = docx_path.with_suffix('.pdf')
+        if not pdf.is_file() or pdf.stat().st_size == 0:
+            raise RuntimeError(f"Word did not produce {pdf}")
+        return pdf
 
     pdf = docx_path.with_suffix(".pdf")
     pythoncom.CoInitialize()
@@ -277,19 +338,99 @@ def to_pdf(docx_path: Path) -> Path:
     return pdf
 
 
-def convert(name: str, force_template: bool = False) -> Path:
+def prepare_figures(source: str, md: Path, png_dir: Path):
+    """Use high-resolution previews for Pandoc; embed native SVG after polishing."""
+    assets = {}
+    def replace(match):
+        alt, target = match.group(1), match.group(2)
+        svg = (md.parent / target).resolve()
+        if not svg.is_file():
+            raise FileNotFoundError(svg)
+        png = png_dir / (svg.stem + '.png')
+        if not png.is_file():
+            raise FileNotFoundError(f"Missing figure preview {png}; run node scripts/render_diagrams.cjs first")
+        assets[hashlib.sha256(png.read_bytes()).hexdigest()] = svg
+        return f'![{alt}](<{png.resolve().as_posix()}>){{width=6.35in}}'
+    source = re.sub(r'!\[([^\]]*)\]\(([^)]+\.svg)\)', replace, source)
+    return source, assets
+
+
+def embed_native_svg(path: Path, assets: dict) -> None:
+    """Add Office SVG blips while retaining PNG fallbacks for older readers."""
+    if not assets:
+        return
+    from lxml import etree as ET
+    with zipfile.ZipFile(path) as archive:
+        parts = {n: archive.read(n) for n in archive.namelist()}
+    ns = {
+        'a': 'http://schemas.openxmlformats.org/drawingml/2006/main',
+        'r': 'http://schemas.openxmlformats.org/officeDocument/2006/relationships',
+        'asvg': 'http://schemas.microsoft.com/office/drawing/2016/SVG/main',
+        'p': 'http://schemas.openxmlformats.org/package/2006/relationships',
+        'ct': 'http://schemas.openxmlformats.org/package/2006/content-types',
+    }
+    document = ET.fromstring(parts['word/document.xml'])
+    relationships = ET.fromstring(parts['word/_rels/document.xml.rels'])
+    types = ET.fromstring(parts['[Content_Types].xml'])
+    mapping = {}
+    for rel in list(relationships):
+        target = rel.get('Target', '')
+        part = 'word/' + target
+        if not target.endswith('.png') or part not in parts:
+            continue
+        svg = assets.get(hashlib.sha256(parts[part]).hexdigest())
+        if svg is None:
+            continue
+        svg_target = 'media/' + svg.name
+        parts['word/' + svg_target] = svg.read_bytes()
+        rid = 'rIdSvg' + str(len(mapping) + 1)
+        if relationships.xpath('*[@Id=$rid]', rid=rid):
+            raise ValueError(f'duplicate relationship id: {rid}')
+        ET.SubElement(relationships, '{'+ns['p']+'}Relationship',
+                      Id=rid, Type=ns['r']+'/image', Target=svg_target)
+        mapping[rel.get('Id')] = rid
+    if len(mapping) < len(assets):
+        raise ValueError(f'Expected {len(assets)} native SVG assets, found {len(mapping)}')
+    for blip in document.findall('.//a:blip', ns):
+        svg_id = mapping.get(blip.get('{'+ns['r']+'}embed'))
+        if svg_id is None:
+            continue
+        ext_list = blip.find('a:extLst', ns)
+        if ext_list is None:
+            ext_list = ET.SubElement(blip, '{'+ns['a']+'}extLst')
+        ext = ET.SubElement(ext_list, '{'+ns['a']+'}ext', uri='{96DAC541-7B7A-43D3-8B79-37D633B846F1}')
+        ET.SubElement(ext, '{'+ns['asvg']+'}svgBlip',
+                      {'{'+ns['r']+'}embed': svg_id}, nsmap={'asvg':ns['asvg']})
+    if not types.xpath('*[@Extension="svg"]'):
+        ET.SubElement(types, '{'+ns['ct']+'}Default', Extension='svg', ContentType='image/svg+xml')
+    for name, element in [('word/document.xml',document),('word/_rels/document.xml.rels',relationships),('[Content_Types].xml',types)]:
+        parts[name] = ET.tostring(element, encoding='UTF-8', xml_declaration=True, standalone=True)
+    with zipfile.ZipFile(path, 'w', zipfile.ZIP_DEFLATED) as archive:
+        for name, data in parts.items():
+            archive.writestr(name, data)
+
+
+def convert(name: str, force_template: bool = False, output_dir: Path = DOC_DIR,
+            png_dir: Path = REPO / 'build/diagram-qa/png') -> Path:
     stem, version = DOCS[name]
     md = DOC_DIR / f"{name}.md"
     if not md.exists():
         raise SystemExit(f"missing source: {md}")
     if force_template or not TEMPLATE.exists():
         build_template()
-    out = DOC_DIR / f"{stem}-{version}.docx"
-    subprocess.run([
-        "pandoc", str(md), "-f", "markdown+east_asian_line_breaks+raw_html",
-        "-t", "docx", "--reference-doc", str(TEMPLATE), "-o", str(out),
-    ], check=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    out = output_dir / f"{stem}-{version}.docx"
+    prepared, assets = prepare_figures(md.read_text(encoding='utf-8'), md, png_dir)
+    with tempfile.TemporaryDirectory(prefix='ep-docs-') as temp:
+        source = Path(temp) / md.name
+        source.write_text(prepared, encoding='utf-8')
+        subprocess.run([
+            "pandoc", str(source), "-f", "markdown+east_asian_line_breaks+raw_html-implicit_figures",
+            "--resource-path", os.pathsep.join([str(DOC_DIR), str(REPO)]),
+            "-t", "docx", "--reference-doc", str(TEMPLATE), "-o", str(out),
+        ], check=True)
     polish(out, f"{stem} {version}")
+    embed_native_svg(out, assets)
     return out
 
 
@@ -299,16 +440,19 @@ def main() -> int:
     ap.add_argument("--all", action="store_true")
     ap.add_argument("--rebuild-template", action="store_true")
     ap.add_argument("--pdf", action="store_true", help="also export PDF through Word")
+    ap.add_argument("--output-dir", type=Path, default=DOC_DIR, help="stage outputs in this directory")
+    ap.add_argument("--figure-png-dir", type=Path, default=REPO / 'build/diagram-qa/png')
     args = ap.parse_args()
     targets = list(DOCS) if args.all or not args.docs else args.docs
     for name in targets:
         if name not in DOCS:
             raise SystemExit(f"unknown document: {name} (known: {', '.join(DOCS)})")
-        out = convert(name, force_template=args.rebuild_template)
-        print(f"{out.relative_to(REPO).as_posix()}  ({out.stat().st_size // 1024} KiB)")
+        out = convert(name, force_template=args.rebuild_template,
+                      output_dir=args.output_dir.resolve(), png_dir=args.figure_png_dir.resolve())
+        print(f"{out}  ({out.stat().st_size // 1024} KiB)")
         if args.pdf:
             pdf = to_pdf(out)
-            print(f"{pdf.relative_to(REPO).as_posix()}  ({pdf.stat().st_size // 1024} KiB)")
+            print(f"{pdf}  ({pdf.stat().st_size // 1024} KiB)")
     return 0
 
 

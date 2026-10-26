@@ -7,6 +7,10 @@
 
 ## 1. 构建配方(必须逐字照做)
 
+![SP3 部署与构建路径](assets/figures/deployment-paths.svg)
+
+*图 1　SP3 部署与构建路径*
+
 ```bash
 cd /root/epv2-src
 # BPF 对象(调度器 + 事件 tracing;输出 object/skeleton 哈希,进 PROVENANCE)
@@ -49,6 +53,10 @@ ep observe --file <obs.json> ...     # 服务观测摄取(只读方向,只能让
 
 ## 3. 测试与验收(按层)
 
+![分层验证与严格验收](assets/figures/verification-layers.svg)
+
+*图 2　分层验证与严格验收*
+
 | 层 | 命令 | 说明 |
 |---|---|---|
 | 单元(572 断言) | `cd /root/epv2-build && ctest -R unit` | 无特权要求 |
@@ -69,12 +77,16 @@ ep observe --file <obs.json> ...     # 服务观测摄取(只读方向,只能让
 
 ## 5. R5 事件链运行手册
 
+![eBPF 事件驱动资源闭环](assets/figures/event-driven-control-loop.svg)
+
+*图 3　eBPF 事件驱动资源闭环*
+
 ```bash
 # 1) 武装 cgroup 域执行服务(arm 是人工授权;watch 必须是活的 cgroup 目录)
 ep-executord --state-dir <dir> --socket <sock> --skill cgroup --event-arm arm.json
 # arm.json: kind=EventArm, spec.watch=<cgroup>, threshold_wait_ms, sustain/release_windows,
 #           min_interval_ms, lease_ttl_ms, policy_ttl_ms, action.cpu_weight
-# 2) 起只读事件泵(它不写任何东西;杀掉它=观测断供=执行服务的门冻结)
+# 2) 起只读事件泵(它不写资源控制策略;杀掉它=观测断供=执行服务的门冻结)
 ep-evtmon --socket <sock> --window-ms 5000 --interval-ms 1000
 ```
 
@@ -84,6 +96,10 @@ ep-evtmon --socket <sock> --window-ms 5000 --interval-ms 1000
 (`WATCH_REBUILT`,需重启重新武装),不会把权限悄悄转给新对象。
 
 ## 6. 演示(demo_sp3.sh,约 5 分钟)
+
+![现场演示八步时间线](assets/figures/demo-timeline.svg)
+
+*图 4　现场演示八步时间线*
 
 ```bash
 bash scripts/demo_sp3.sh /root/epv2-build/ep-executord /root/epv2-build/ep \

@@ -98,6 +98,12 @@ bash experiments/fail_safe_matrix_sp3.sh /root/epv2-build/ep-executord /root/epv
 
 ## 设计重点
 
+![EulerPilot v2 总体架构](docs/assets/figures/system-architecture.svg)
+
+*图 1　EulerPilot v2 总体架构*
+
+完整 SVG、可编辑 Draw.io 源文件与重建命令见 [图示索引](docs/assets/figures/README.md)，本轮检查结果见 [图示修订记录](docs/FIGURES_20261026.md)。
+
 - SchedPilot 的多队列、唤醒抢占、分类器和实验方法作为起点，先移植静态 C 路径，再验证路由和自适应是否带来增益。
 - EulerPilot 的目标解析、Skill、审计与恢复思路保留；控制面重写为轻量 Agent 与唯一特权写入服务。
 - 按业务角色与运行特征分别建模；BACKGROUND 来自显式授权，不能凭 CPU 占用猜测。

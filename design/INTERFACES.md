@@ -25,6 +25,10 @@ BG来自TargetRef显式角色；行为推断不修改角色授权。TargetRef路
 
 ## 2. Tool协议
 
+![策略生效与补偿流程](../docs/assets/figures/policy-apply-flow.svg)
+
+*图 1　策略生效与补偿流程*
+
 已实现 11 个 op：`policy.status`、`feature.snapshot`、`route.decide`、`slo.evaluate`、
 `service.observe`、`event.observe`、`lease.acquire`、`policy.validate`、`policy.apply`、
 `policy.rollback`、`transaction.reconcile`。只读操作与写操作在权限模型上区分，所有写操作
@@ -102,6 +106,10 @@ class记录将业务角色、行为、置信度、身份cookie、expires_ns和ge
 配置发布需要验证map-in-map/版本bank在所选SP3内核上的支持与RCU语义。BPF在回调开头取得一致快照，旧bank/旧队列在安全退出前不得复用；若无法实现所需一致性，初版限制为单配置结构的小范围更新并明确其保证边界，不宣称跨map原子。
 
 ## 6. 控制事务状态
+
+![事务日志状态与恢复](../docs/assets/figures/transaction-state-machine.svg)
+
+*图 2　事务日志状态与恢复*
 
 `PREPARED(snapshot+intent fsync) → APPLYING → VERIFYING → COMMITTED`；失败进入`COMPENSATING → ROLLED_BACK`或`RECOVERY_REQUIRED`。每步带实例身份、原值/新值、控制generation、外部改动检测和可重复恢复规则。
 
