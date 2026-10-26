@@ -78,6 +78,51 @@ scx 主线已 Rust 化且目标内核高于 6.6,验收机上无法公平构建)�
   SHA256 `d9dd5030…`,干净关机后转换;含 gen-3 源树与冻结二进制),与
   domain.xml/ks.cfg/README/SHA256SUMS 同在跳板机 `/home/ubuntu/sp3-vm/deliverable-20261025/`。
 
+## 跨版本对照(EulerPilot v1 → v2)
+
+评审可能直接问"比你们上一版快多少"。这一节把能说的与不能说分开。
+
+**判定:跨版本性能差值 = UNSUPPORTED(未做同机配对测量)。** 三条理由:①赛题 R4/R8
+要求的基线是"默认 fair 对照 + 强基线 + quiet 回归",不是上一版本;②`docs/EXPERIMENT_PROTOCOL.md`
+要求所有臂在同一台机器同一内核启动下配对,跨内核差异不得混入配对表;③v1 的 scx 路径
+**未在 SP3 上重建验证过**,而其自带配方存在两处已知障碍:`scripts/build_scx_eulerpilot.sh`
+要求 `KERNEL_SRC/tools/sched_ext` 存在否则退出(v1 自己在 `sched/README.md:13` 记录 SP3
+官方内核不含可直接启用的 sched_ext),其 `Makefile` 又经 pkg-config 链系统 libbpf——SP3 的
+系统 libbpf 1.2.2 在 `SCX_OPS_LOAD` 处段错误是 v2 实测过的(v2 因此改用内核树静态 libbpf
+≥1.3),v1 的 loader 是否命中同一问题属**推断,未实测**。
+
+**可辩护的是设计替换论证。** v1 自报的正式实验(环境:openEuler 24.03-LTS **SP4** +
+自建 `eulerpilot-scx` 内核;负载:**闭环** `redis-benchmark`;统计:paired per-run t 区间;
+且其 P99 符号约定与 v2 相反——正=更好。见 `EulerPilot/reports/v6_formal_experiment_suite_20260726.md`,
+绑定 `7a99d870`)与 v2 在 SP3 上的开环结论并列如下:
+
+| 项目 | v1 自报(SP4,闭环 RPS) | v2 实测(SP3,开环 goodput@5ms) |
+|---|---|---|
+| scx 正常路径 vs 默认 | GET **+3.40% [−3.28, +10.08]**(区间跨 0,即其自身实验未获得统计支持的收益) | C vs A0 **+1.83% [1.38, 2.26],20/0** |
+| scx always-active 模式 | **−62.62% [−81.57, −43.67]**,P99 −220% | adaptive 模式在 apply 阶段直接拒绝(不留下未验证的自动化通道) |
+| 静态 cgroup 倾斜 | +68.30% [50.74, 85.86](闭环,延迟改善几乎 1:1 转成吞吐) | A2 为受控臂之一;C vs A2 **+1.90% [1.63, 2.32]** |
+| quiet 回归 | Redis 36005.720 → 26687.541 RPS(**−25.88%**) | quiet 场景纳入门控判据;A1 纯观测栈成本 −0.55%~−0.82% 如实披露 |
+| 收益归因 | 未做消融 | A1→B→C 增量链 + class 路由消融为零 + Dnc=D |
+
+**两张表不能横向比大小**:闭环 RPS 与开环 goodput@SLO 是不同估计量(开环下吞吐上限被
+offered 钉死,收益只能体现在"满足 SLO 的比例"与尾延迟上),机器、内核、符号约定亦不同。
+因此本项目的表述是"v1 的 scx 路径在它自己的实验里没有拿到统计支持的收益并在两个模式下
+显著为负;v2 替换数据面后在验收系统上拿到 20/0 的正收益",**不给 v1↔v2 的百分比差值**。
+
+**能力维度的差异是可举证的**(依据 `docs/audits/eulerpilot_audit.md`,该审计明确
+"未运行旧项目、未加载 BPF",且机制分析对象 HEAD `15e5a21d` 与其历史测量绑定的 `7a99d870`
+不是同一提交):
+
+| 能力 | v1 | v2 |
+|---|---|---|
+| 特权写者 | CLI 与 Agent 均可直接写 gate/class map,无基于 generation 的原子比较更新(审计第 55 行) | 唯一执行服务 + flock + 租约/栅栏 + 世代号;双实例与越权写被矩阵拒绝 |
+| 崩溃恢复 | 无写前日志与 reconcile 语义 | append-only WAL + 启动孤儿回收 + `shutdown()` 补偿退出;fail-safe 17/17 |
+| 效果时限 | 无 TTL 兜底 | `policy_ttl_ms` 硬上限,到期自动回退 |
+| 状态自证 | 部分读回 | sched 三项联合判定 + class 撤销读回 + cgroup 写后读回 + 漂移再断言 |
+| 契约 | 无版本化 schema | 5 个 schema + EventArm,6 正例 / 27 反例强制 |
+| 扩展域 | cgroup 写入 + 自建 scx | 两个效果域共用事务骨架 + eBPF 事件链(hook→决策→动作→恢复) |
+| 溯源 | 结果目录在仓库外 | 逐轮二进制哈希、失败轮现场、交付镜像 |
+
 ## 未完成与已知边界(不可省略)
 
 - cross-machine UNSUPPORTED;X 臂 UNSUPPORTED(理由如上);adaptive/心跳/PMU
