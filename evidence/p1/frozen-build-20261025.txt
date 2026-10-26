@@ -62,3 +62,23 @@ cgroup 双写保护(`8e7a5d7`)再次改变 executord:**gen-3 = `6f667b2edf5adfe4
 **fail-safe run11 17/17**(`/root/epv2-evidence/fail-safe-20261025-gen3/`)。
 性能结论仍指向 gen-1;gen-2/gen-3 的改动(事件守卫身份匹配、cgroup skill 层
 拒绝双写)均不在矩阵臂的执行路径上。交付以 gen-3 为最终二进制。
+
+## 6. 哈希复核(2026-10-26,SP3 实测补全)
+
+在第 1 节的同一冻结构建目录上重算 SHA256,补全上表被截断的一位:
+
+| 产物 | SHA256(实测全值) | 与 10-25 记录 |
+|---|---|---|
+| ep-evtmon | 2752282392b50f9bedb9f77d311763a69cc68a981a9c1ea891159af47c1bde76 | 上表记为 15 位,系记录截断;第 16 位为 b |
+| ep-executord | 6f667b2edf5adfe4dfdd167ac04ca140de85c629989769803887f4307b3c93bc | 一致(gen-3) |
+| ep | 3cb202fd138ed1675f4fbf9b6bd042223feefa8b1b6da483e446a15044788990 | 一致 |
+| ep-sched-loader | e33496d46b2ca2873786e4b62fb8f17939eb27c7e08a3f5a6c53cf2e124255de | 一致 |
+| ep-schedctl | 6fef4d43a5cf7f307498c5b273cfaa67deecb19862e151603566137ca517a915 | 一致 |
+| events_trace.bpf.o | 433653b1d03299fd3858b79b7f913e7205bd65f1efaa129aa2185f54e52beaec | 一致(该对象位于 /root/epv2-src/sched/,构建目录内没有它) |
+
+现场观察:`/root/epv2-build/ep-evtmon` 为 2946248 字节、mtime 2026-10-25 07:08。
+第 4/5 节已记录 gen-2 与 gen-3 只替换 executord,故其余五个产物三代同哈希。
+本节数值由 `sha256sum` 直读终端,原始终出未单独存档;第三方复现只需在 SP3 上执行
+`sha256sum /root/epv2-build/ep-evtmon /root/epv2-build/ep-executord /root/epv2-build/ep
+/root/epv2-build/ep-sched-loader /root/epv2-build/ep-schedctl
+/root/epv2-src/sched/events_trace.bpf.o`。
