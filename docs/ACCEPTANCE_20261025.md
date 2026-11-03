@@ -82,14 +82,24 @@ scx 主线已 Rust 化且目标内核高于 6.6,验收机上无法公平构建)�
 
 评审可能直接问"比你们上一版快多少"。这一节把能说的与不能说分开。
 
-**判定:跨版本性能差值 = UNSUPPORTED(未做同机配对测量)。** 三条理由:①赛题 R4/R8
-要求的基线是"默认 fair 对照 + 强基线 + quiet 回归",不是上一版本;②`docs/EXPERIMENT_PROTOCOL.md`
+**判定:跨版本吞吐差值 = UNSUPPORTED(处理不持续,配对不成立);跨版本在位性差异 =
+已实测(2026-11-03 同机对照)。** 理由:①赛题 R4/R8 要求的基线是"默认 fair 对照 +
+强基线 + quiet 回归",不是上一版本;②`docs/EXPERIMENT_PROTOCOL.md`
 要求所有臂在同一台机器同一内核启动下配对,跨内核差异不得混入配对表;③v1 的 scx 路径
-**未在 SP3 上重建验证过**,而其自带配方存在两处已知障碍:`scripts/build_scx_eulerpilot.sh`
-要求 `KERNEL_SRC/tools/sched_ext` 存在否则退出(v1 自己在 `sched/README.md:13` 记录 SP3
-官方内核不含可直接启用的 sched_ext),其 `Makefile` 又经 pkg-config 链系统 libbpf——SP3 的
-系统 libbpf 1.2.2 在 `SCX_OPS_LOAD` 处段错误是 v2 实测过的(v2 因此改用内核树静态 libbpf
-≥1.3),v1 的 loader 是否命中同一问题属**推断,未实测**。
+**从未按自带配方在 SP3 上构建过**(其脚本要求内核树含 `tools/sched_ext`,且经 pkg-config
+链系统 libbpf,而 SP3 系统 libbpf 1.2.2 在 `SCX_OPS_LOAD` 段错误是 v2 实测的)。2026-11-03
+的对照改用 v2 工具链编译**未修改**的 v1 源码绕开上述障碍,四条偏差逐条登记在
+`evidence/p2/v1v2-20261103.txt`。
+
+**2026-11-03 同机对照结果(10 block × 5 臂,seed 20261103,预注册
+`experiments/flagship_params_v1v2.json`)**:v1 数据面在赛题负载下**无法保持在位**——
+V1N 3/10、V1A 0/10 块活到测量结束,死因均为内核 runnable-task-stall 看门狗,受害者是每
+CPU 绑定的 `kworker/*`(harness 无 taskset,非人造);v2 的 B/C 臂 20/20 全程在位。该缺陷类
+即 v2 于 2026-10-23 修复的绑定任务改投问题。因处理不持续,17 个 v1 块按协议 §6 标记
+invalid,**吞吐配对不成立**;幸存者子集(V1N 3 块,GET +1.42% [1.04, 1.57])只作描述性记录,
+不得与 B/C 的全 10 块数字对比。同轮 v2 对 A0:C GET **+0.61% [0.44, 0.91]、10/0**、
+p99 −34.0%,与 10-25 冻结轮的 +1.83% 同向同显著、幅度不同;两轮 manifest 并列保留、
+互不覆盖,幅度差异的候选原因(宿主机当日占用、日间状态)未做归因实验,不下结论。
 
 **可辩护的是设计替换论证。** v1 自报的正式实验(环境:openEuler 24.03-LTS **SP4** +
 自建 `eulerpilot-scx` 内核;负载:**闭环** `redis-benchmark`;统计:paired per-run t 区间;

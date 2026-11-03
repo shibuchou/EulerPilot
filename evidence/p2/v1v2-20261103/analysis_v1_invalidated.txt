@@ -1,0 +1,22 @@
+blocks: {'A0': 10, 'B': 10, 'C': 10, 'V1N': 3} | dropped/not-evidence: ['1-V1A', '1-V1N', '10-V1A', '2-V1A', '2-V1N', '3-V1A', '3-V1N', '4-V1A', '4-V1N', '5-V1A', '5-V1N', '6-V1A', '7-V1A', '8-V1A', '8-V1N', '9-V1A', '9-V1N']
+wrote ./per_run.csv
+CHECK_RAW_REBUILDS_SUMMARY=yes (every recompute at the probe's own threshold agrees within 0.5%)
+
+=== paired comparisons against A0, within each block ===
+V1N vs A0 GET n=3 goodput +1.42% [1.04, 1.57] (paired block bootstrap, seed=20261103, 10000 resamples) wins/losses 3/0 | p99 -85.83% | bg x0.997
+      goodput gain by threshold: 5ms=1.42%  1ms=7.34%  2ms=3.604%  10ms=0.39%
+V1N vs A0 SET n=3 goodput +1.71% [0.56, 1.91] (paired block bootstrap, seed=20261103, 10000 resamples) wins/losses 3/0 | p99 -80.95% | bg x0.997
+      goodput gain by threshold: 5ms=1.713%  1ms=6.616%  2ms=4.008%  10ms=0.335%
+V1A GET (vs A0): no paired blocks with a non-zero baseline goodput
+V1A SET (vs A0): no paired blocks with a non-zero baseline goodput
+B vs A0 GET n=10 goodput +0.72% [0.61, 1.17] (paired block bootstrap, seed=20261103, 10000 resamples) wins/losses 9/1 | p99 -33.63% | bg x0.997
+      goodput gain by threshold: 5ms=0.723%  1ms=2.121%  2ms=0.59%  10ms=0.316%
+B vs A0 SET n=10 goodput +0.17% [-0.28, 0.45] (paired block bootstrap, seed=20261103, 10000 resamples) wins/losses 6/4 | p99 -8.04% | bg x0.997
+      goodput gain by threshold: 5ms=0.169%  1ms=0.957%  2ms=-0.126%  10ms=0.305%
+C vs A0 GET n=10 goodput +0.61% [0.44, 0.91] (paired block bootstrap, seed=20261103, 10000 resamples) wins/losses 10/0 | p99 -33.98% | bg x0.998
+      goodput gain by threshold: 5ms=0.609%  1ms=1.663%  2ms=-0.014%  10ms=0.286%
+C vs A0 SET n=10 goodput -0.01% [-0.49, 0.62] (paired block bootstrap, seed=20261103, 10000 resamples) wins/losses 5/5 | p99 +1.06% | bg x0.998
+      goodput gain by threshold: 5ms=-0.009%  1ms=0.917%  2ms=-0.919%  10ms=0.375%
+
+wrote ./comparisons.csv
+NOTE paired counts differ per arm; only blocks present in both arms enter a comparison, and the ledger above lists what was dropped.

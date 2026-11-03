@@ -1,0 +1,111 @@
+frozen: blocks=10 arms='A0 V1N V1A B C' baseline=A0 offered=60000 rps slo=5ms
+        measure=60s warmup=10s conns=8 keypool=100000 populate=100000
+gate:   bg_floor=140 units/s max_wait=50 ms fg_p99_ceiling=10 ms bg_window=5s
+wrote /root/epv2-evidence/v1v2-20261103/protocol.json
+seed=20261103 arms=A0 V1N V1A B C measure=60s offered=60000rps conns=8
+1 B V1A C V1N A0
+2 V1A B A0 C V1N
+3 V1A V1N B A0 C
+4 C A0 B V1A V1N
+5 A0 B V1N C V1A
+6 C V1A A0 V1N B
+7 V1A B V1N C A0
+8 V1N V1A A0 B C
+9 V1N C A0 V1A B
+10 V1A C A0 V1N B
+block 1 arm B done 11:48:10
+block 1 arm V1A done 11:50:22
+block 1 arm C done 11:52:35
+block 1 arm V1N done 11:54:47
+block 1 arm A0 done 11:56:59
+block 2 arm V1A done 11:59:11
+block 2 arm B done 12:01:23
+block 2 arm A0 done 12:03:35
+block 2 arm C done 12:05:47
+block 2 arm V1N done 12:07:59
+block 3 arm V1A done 12:10:11
+block 3 arm V1N done 12:12:23
+block 3 arm B done 12:14:35
+block 3 arm A0 done 12:16:47
+block 3 arm C done 12:19:00
+block 4 arm C done 12:21:12
+block 4 arm A0 done 12:23:24
+block 4 arm B done 12:25:36
+block 4 arm V1A done 12:27:48
+block 4 arm V1N done 12:30:00
+block 5 arm A0 done 12:32:12
+block 5 arm B done 12:34:25
+block 5 arm V1N done 12:36:37
+block 5 arm C done 12:38:50
+block 5 arm V1A done 12:41:02
+block 6 arm C done 12:43:15
+block 6 arm V1A done 12:45:27
+block 6 arm A0 done 12:47:39
+block 6 arm V1N done 12:49:52
+block 6 arm B done 12:52:05
+block 7 arm V1A done 12:54:17
+block 7 arm B done 12:56:30
+block 7 arm V1N done 12:58:43
+block 7 arm C done 13:00:56
+block 7 arm A0 done 13:03:07
+block 8 arm V1N done 13:05:20
+block 8 arm V1A done 13:07:32
+block 8 arm A0 done 13:09:44
+block 8 arm B done 13:11:57
+block 8 arm C done 13:14:09
+block 9 arm V1N done 13:16:21
+block 9 arm C done 13:18:34
+block 9 arm A0 done 13:20:46
+block 9 arm V1A done 13:22:58
+block 9 arm B done 13:25:10
+block 10 arm V1A done 13:27:22
+block 10 arm C done 13:29:35
+block 10 arm A0 done 13:31:47
+block 10 arm V1N done 13:33:59
+block 10 arm B done 13:36:12
+blocks collected: 50
+A0 get n=10 goodput@SLO median 59266 rps | achieved 60001 | timeouts 13 stalls 0 cpu/s 0.61 | samples 35997381 | attach disabled
+A0 set n=10 goodput@SLO median 59278 rps | achieved 60000 | timeouts 22 stalls 0 cpu/s 0.62 | samples 35974483 | attach disabled
+   A0 bg units/s (median of window medians) 170.3
+B get n=10 goodput@SLO median 59697 rps | achieved 60002 | timeouts 0 stalls 0 cpu/s 0.37 | samples 36001361 | attach enabled
+B set n=10 goodput@SLO median 59254 rps | achieved 60002 | timeouts 0 stalls 0 cpu/s 0.37 | samples 35974379 | attach enabled
+   B bg units/s (median of window medians) 170.2
+C get n=10 goodput@SLO median 59640 rps | achieved 60002 | timeouts 0 stalls 0 cpu/s 0.37 | samples 35987688 | attach enabled
+C set n=10 goodput@SLO median 59229 rps | achieved 60002 | timeouts 0 stalls 0 cpu/s 0.37 | samples 35980937 | attach enabled
+   C bg units/s (median of window medians) 169.9
+V1A get n=10 goodput@SLO median 59788 rps | achieved 60001 | timeouts 2 stalls 0 cpu/s 0.46 | samples 35982790 | attach disabled
+V1A set n=10 goodput@SLO median 59495 rps | achieved 60001 | timeouts 5 stalls 0 cpu/s 0.61 | samples 35977864 | attach disabled
+   V1A bg units/s (median of window medians) 170.2
+V1N get n=10 goodput@SLO median 59796 rps | achieved 60001 | timeouts 0 stalls 0 cpu/s 0.46 | samples 35997083 | attach disabled,enabled
+V1N set n=10 goodput@SLO median 59539 rps | achieved 60001 | timeouts 0 stalls 0 cpu/s 0.61 | samples 35984472 | attach disabled,enabled
+   V1N bg units/s (median of window medians) 170.0
+
+NOTE block counts here are a harness smoke, not the flagship sample; the table is
+recomputable from raw-*.bin (protocol: raw records must rebuild the numbers).
+cleanup rc=0 state=disabled pins=0
+matrix rc=0
+attempts recorded: 50 -> /root/epv2-evidence/v1v2-20261103/attempts.jsonl
+blocks: {'A0': 10, 'B': 10, 'C': 10, 'V1A': 10, 'V1N': 10} | dropped/not-evidence: none
+wrote /root/epv2-evidence/v1v2-20261103/per_run.csv
+CHECK_RAW_REBUILDS_SUMMARY=yes (every recompute at the probe's own threshold agrees within 0.5%)
+
+=== paired comparisons against A0, within each block ===
+V1N vs A0 GET n=10 goodput +0.86% [0.53, 1.23] (paired block bootstrap, seed=20261103, 10000 resamples) wins/losses 10/0 | p99 -59.31% | bg x0.998
+      goodput gain by threshold: 5ms=0.861%  1ms=5.31%  2ms=2.553%  10ms=0.291%
+V1N vs A0 SET n=10 goodput +0.45% [0.10, 1.14] (paired block bootstrap, seed=20261103, 10000 resamples) wins/losses 9/1 | p99 -31.87% | bg x0.998
+      goodput gain by threshold: 5ms=0.451%  1ms=2.156%  2ms=1.292%  10ms=0.115%
+V1A vs A0 GET n=10 goodput +0.99% [0.44, 1.14] (paired block bootstrap, seed=20261103, 10000 resamples) wins/losses 9/1 | p99 -57.25% | bg x0.999
+      goodput gain by threshold: 5ms=0.995%  1ms=3.803%  2ms=1.864%  10ms=0.238%
+V1A vs A0 SET n=10 goodput +0.36% [0.06, 0.63] (paired block bootstrap, seed=20261103, 10000 resamples) wins/losses 8/2 | p99 -19.80% | bg x0.999
+      goodput gain by threshold: 5ms=0.364%  1ms=1.106%  2ms=0.665%  10ms=0.09%
+B vs A0 GET n=10 goodput +0.72% [0.61, 1.17] (paired block bootstrap, seed=20261103, 10000 resamples) wins/losses 9/1 | p99 -33.63% | bg x0.997
+      goodput gain by threshold: 5ms=0.723%  1ms=2.121%  2ms=0.59%  10ms=0.316%
+B vs A0 SET n=10 goodput +0.17% [-0.28, 0.45] (paired block bootstrap, seed=20261103, 10000 resamples) wins/losses 6/4 | p99 -8.04% | bg x0.997
+      goodput gain by threshold: 5ms=0.169%  1ms=0.957%  2ms=-0.126%  10ms=0.305%
+C vs A0 GET n=10 goodput +0.61% [0.44, 0.91] (paired block bootstrap, seed=20261103, 10000 resamples) wins/losses 10/0 | p99 -33.98% | bg x0.998
+      goodput gain by threshold: 5ms=0.609%  1ms=1.663%  2ms=-0.014%  10ms=0.286%
+C vs A0 SET n=10 goodput -0.01% [-0.49, 0.62] (paired block bootstrap, seed=20261103, 10000 resamples) wins/losses 5/5 | p99 +1.06% | bg x0.998
+      goodput gain by threshold: 5ms=-0.009%  1ms=0.917%  2ms=-0.919%  10ms=0.375%
+
+wrote /root/epv2-evidence/v1v2-20261103/comparisons.csv
+flagship run complete: /root/epv2-evidence/v1v2-20261103 (matrix rc=0)
