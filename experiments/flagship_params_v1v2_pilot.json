@@ -1,0 +1,90 @@
+{
+  "experiment": "v1v2-crossversion-sched-ext-PILOT",
+  "frozen_at": "2026-11-03",
+  "frozen_by": "experiments/flagship_param_pilot_sp3.sh methodology; workload/slo/online_gate copied verbatim from flagship_params_earms.json so the new arms stay comparable with the frozen flagship arms",
+  "evidence": "pilot only: never quoted as a result; exists to catch harness faults before the 10-block run",
+  "blocks": 1,
+  "arms": [
+    "A0",
+    "V1N",
+    "V1A",
+    "B",
+    "C"
+  ],
+  "baseline": "A0",
+  "seed": 20261103,
+  "workload": {
+    "offered_rps": 60000,
+    "conns": 8,
+    "keypool": 100000,
+    "populate_requests": 100000,
+    "value_bytes": 64,
+    "warmup_s": 10,
+    "measure_s": 60,
+    "timeout_ms": 50,
+    "operations": [
+      "GET",
+      "SET"
+    ],
+    "persistence": "appendonly no; save ''",
+    "io_threads": 1,
+    "port": 7797
+  },
+  "slo": {
+    "threshold_ms": 5,
+    "reported_also_at_ms": [
+      1,
+      2,
+      5,
+      10
+    ],
+    "metric": "goodput_at_slo_rps counted per request from raw-*.bin, never inferred from quantiles"
+  },
+  "online_gate": {
+    "bg_window_s": 5,
+    "bg_work_unit": "probe5s",
+    "min_bg_work_units_per_sec": 140,
+    "max_bg_wait_ms": 50,
+    "max_foreground_p99_ms": 10,
+    "evaluation_min_bg_progress_ratio": 0.5,
+    "quiet_max_regression_pct": 5,
+    "max_observation_age_ms": 1000
+  },
+  "analysis": {
+    "comparison": "paired within block against A0",
+    "primary": "goodput@SLO gain percent per block, median across blocks",
+    "ci": "paired block bootstrap, 10000 resamples, seed 20261103, 95% level",
+    "bootstrap_resamples": 10000,
+    "sensitivity": [
+      "paired log-ratio",
+      "win/loss counts",
+      "good% at 1/2/10ms",
+      "per-block scatter"
+    ],
+    "invalid_block_rules": [
+      "block.invalid present",
+      "B/C/V1N/V1A without sched_ext enabled and ops=eulerpilot at attach",
+      "V1A without gate_state=2 recorded in v1-gate.txt",
+      "raw record count != summary completed"
+    ],
+    "never_dropped_for": [
+      "low throughput",
+      "high variance",
+      "an inconvenient result"
+    ]
+  },
+  "arms_definition": {
+    "A0": "no sched_ext scheduler attached (default kernel scheduler)",
+    "V1N": "v1 data plane (scx_eulerpilot, unmodified sources, commit of D:/code/Ubuntu/EulerPilot HEAD) attached directly, gate left at GATE_NORMAL; v1 Agent/CLI not running",
+    "V1A": "same v1 data plane with its gate forced to ACTIVE via its own --gate-set active, i.e. the always-active mode of v1's own report",
+    "B": "v2 control plane, mode basic (data-plane base cost)",
+    "C": "v2 control plane, mode class with expert latency-balanced (the flagship arm)"
+  },
+  "deviations": [
+    "v1 is built on SP3 with the v2 toolchain (vendored scx headers + kernel-tree static libbpf 1.3) because v1's own recipe injects sources into tools/sched_ext and links the system libbpf 1.2.2, which segfaults at SCX_OPS_LOAD on this kernel; v1 sources are byte-identical to the reference repo (hashes in the evidence file)",
+    "v1's Agent and CLI are not run in V1N/V1A: the arms measure the v1 data plane under the same open-loop harness, not v1's closed-loop control plane; v1's own SP4 closed-loop numbers remain non-comparable and are cited only as context",
+    "v1 pins its maps and never unlinks them on exit; the harness removes /sys/fs/bpf/eulerpilot only after state=disabled is observed, and records it in the block log",
+    "v1 and v2 register the same struct_ops name 'eulerpilot'; arms are distinguished by arm.impl and by the per-block v1-gate.txt / apply.json artifacts, never by ops alone"
+  ],
+  "purpose": "single-block pilot of the V1N/V1A arms: attach/teardown, gate flip, raw record integrity"
+}

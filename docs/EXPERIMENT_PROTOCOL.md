@@ -138,3 +138,41 @@ evidence/runtime/<experiment-id>/
 manifest包括tested_code_commit、dirty_diff_sha256（如有）、kernel source/config/BTF、loader/daemon/BPF对象、依赖锁、完整参数/环境变量白名单、启动与测量时间、CPU/角色预算。可复现意味着原始输出能重算表格、相同构建可重新跑，不要求不同机器逐字节得到相同QPS。
 
 证据校验区分：完整性验证、来源验证、运行能力、性能结论。缺任一关键输入返回INCOMPLETE；历史/回放必须标记，不能作为实时实验PASS。
+
+## 10. 跨版本对照(v1 ↔ v2,2026-11-03 增补)
+
+**定位**:R4/R8 的基线仍然是 A0(默认调度器)。V1N/V1A 是附加臂,只回答一个问题:
+同一颗内核、同一套开环 harness、同一套统计下,**v2 的 sched_ext 数据面相对 v1 的数据面
+是否有提升**。v1 自己在 SP4 上的闭环数字不进入配对表,只作背景引用(口径不同,见 §4)。
+
+表 5 对照臂
+
+| 臂 | 内容 |
+|---|---|
+| A0 | 不挂载任何 sched_ext 调度器(默认内核调度器) |
+| V1N | v1 数据面(`scx_eulerpilot`,源码未修改)直接挂载,门控保持 GATE_NORMAL;不运行 v1 的 Agent/CLI |
+| V1A | 同 v1 数据面,用其自带 `--gate-set active` 把门控置为常开(v1 报告里的 always-active 模式) |
+| B | v2 控制面,mode basic(数据面基础成本臂) |
+| C | v2 控制面,mode class + expert latency-balanced(旗舰臂) |
+
+**偏差必须随结果同报**:
+
+1. v1 在 SP3 上用 v2 工具链编译(仓库内 vendored scx 头 + 内核树静态 libbpf 1.3)。v1 自带
+   配方要把源码注入内核树 `tools/sched_ext` 并链系统 libbpf,而本机系统 libbpf 1.2.2 在
+   `SCX_OPS_LOAD` 段错误。源码字节不变,哈希入证据。
+2. V1N/V1A 只测 v1 数据面,不含 v1 控制面(其 Agent/CLI 不启动);因此结论是"数据面差异",
+   不是"产品差异"。
+3. v1 退出后不删除自己的 pin(`/sys/fs/bpf/eulerpilot/...`),harness 只在观察到
+   `state=disabled` 后清理,并把清理动作写进块日志。
+4. v1 与 v2 注册同一个 struct_ops 名 `eulerpilot`,臂的归属以 `arm.impl`、`v1-gate.txt`、
+   `apply.json` 为准,不以 `ops` 文件为准。
+
+**串行与互斥**:Linux 同时只允许一个 sched_ext 调度器;每臂结束必须 `state=disabled`
+且两个 pin 根均为空,否则该块记 `block.invalid`。统计沿用第 7 章:块内配对、bootstrap
+10000、seed 20261103、goodput@SLO 逐请求计数;p99 仍受 §5.1 分辨率护栏约束。
+
+**试点纪律**:先跑 1 块试点,只用于暴露 harness 故障(挂载/门控/原始件完整性);试点数字
+不得作为结论引用,也不得与正式轮合并。正式轮 10 块,另起目录与证据文件。
+
+**解读边界**:即使 V1 臂显著劣于 C,也只支持"数据面替换带来差异"这一句;v1 的控制面、
+恢复语义与契约不在本实验覆盖内,不得外推。

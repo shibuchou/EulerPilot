@@ -33,6 +33,11 @@ ARMS="${ARMS:-A0 A1 A2 B C D}"
 # classifier, pointed at the same workload cgroups. It is the only arm that
 # never runs ep-executord; the flagship-quality comparison is E vs A0.
 E_DAEMON="${E_DAEMON:-/root/p0/schedpilot-0aeca0c/build/schedpilotd}"
+# v1 (EulerPilot) data plane for the cross-version comparison; built on-box from
+# unmodified v1 sources with the v2 toolchain (see experiments/v1v2/README notes in
+# the evidence file). Its struct_ops name is also "eulerpilot", so arms are told
+# apart by arm.impl, not by /sys/kernel/sched_ext/root/ops.
+V1_BIN="${V1_BIN:-/root/epv2-staging-20261027/v1cmp/build/scx_eulerpilot}"
 E_LOADER="${E_LOADER:-/root/p0/schedpilot-0aeca0c/build/scx_schedpilot}"
 export E_DAEMON E_LOADER
 DAEMON_GRACE=0
@@ -113,6 +118,17 @@ stop_all() {
     kill -TERM "$E_LOADER_PID" 2>/dev/null
     for _ in $(seq 1 40); do kill -0 "$E_LOADER_PID" 2>/dev/null || break; sleep 0.25; done
     E_LOADER_PID=""
+  fi
+  if [ -n "${V1_PID:-}" ]; then
+    kill -TERM "$V1_PID" 2>/dev/null
+    for _ in $(seq 1 40); do kill -0 "$V1_PID" 2>/dev/null || break; sleep 0.25; done
+    V1_PID=""
+  fi
+  # v1 pins its maps and never unlinks them on exit (measured 2026-11-03); clean them
+  # only after the scheduler is provably detached, so a half-dead attach is not hidden.
+  if [ "$(cat /sys/kernel/sched_ext/state 2>/dev/null)" = "disabled" ] &&
+     [ -d /sys/fs/bpf/eulerpilot ]; then
+    rm -rf /sys/fs/bpf/eulerpilot
   fi
   for pid in "${OBS_PID}" "${BG_PID}" "${DAEMON}"; do
     [ -n "$pid" ] && kill -KILL "$pid" 2>/dev/null; wait "$pid" 2>/dev/null
@@ -566,6 +582,45 @@ SPCONF
         return 1
       fi
       ;;
+    V1N|V1A)
+      # The v1 data plane, driven the way its own tooling drives it: attach in the
+      # foreground process, gate flipped through its pinned map afterwards.
+      if [ ! -x "$V1_BIN" ]; then
+        echo "arm $arm needs the v1 scheduler at V1_BIN (have '$V1_BIN')" >> "$d/block.invalid"
+        stop_all
+        return 1
+      fi
+      setsid nohup "$V1_BIN" >"$d/v1.log" 2>&1 < /dev/null &
+      V1_PID=$!
+      echo "v1" > "$d/arm.impl"
+      local v1_attached=""
+      for _ in $(seq 1 150); do
+        if [ "$(cat /sys/kernel/sched_ext/state 2>/dev/null)" = "enabled" ] &&
+           grep -q eulerpilot /sys/kernel/sched_ext/root/ops 2>/dev/null; then
+          v1_attached=1
+          break
+        fi
+        kill -0 "$V1_PID" 2>/dev/null || break
+        sleep 0.1
+      done
+      if [ -z "$v1_attached" ]; then
+        echo "arm $arm v1 scheduler did not attach (state=$(cat /sys/kernel/sched_ext/state 2>/dev/null) ops=$(cat /sys/kernel/sched_ext/root/ops 2>/dev/null))" >> "$d/block.invalid"
+        stop_all
+        return 1
+      fi
+      if [ "$arm" = "V1A" ]; then
+        "$V1_BIN" --gate-set active >"$d/v1-gate.txt" 2>&1
+        if ! grep -q "gate_state=2" "$d/v1-gate.txt" 2>/dev/null; then
+          echo "arm V1A could not set the always-active gate: $(head -1 "$d/v1-gate.txt" 2>/dev/null)" >> "$d/block.invalid"
+          stop_all
+          return 1
+        fi
+      else
+        "$V1_BIN" --gate-status >"$d/v1-gate.txt" 2>&1
+        grep -q "gate_state=0" "$d/v1-gate.txt" 2>/dev/null ||
+          echo "arm V1N gate not in normal state: $(head -1 "$d/v1-gate.txt" 2>/dev/null)" >> "$d/block.invalid"
+      fi
+      ;;
     A1)
       # Equal observation, shadow data plane: the control plane and telemetry run, but
       # nothing attaches, so the arm's only delta versus A0 is the software stack cost.
@@ -627,7 +682,7 @@ SPCONF
   redis-cli -p "$PORT" info commandstats > "$d/redis.commandstats" 2>&1
   cat /sys/kernel/sched_ext/state > "$d/schedext.state" 2>/dev/null || echo missing > "$d/schedext.state"
   cat /sys/kernel/sched_ext/root/ops > "$d/schedext.ops" 2>/dev/null || true
-  if [ "$arm" != "A0" ] && [ "$arm" != "E" ]; then
+  if [ "$arm" != "A0" ] && [ "$arm" != "E" ] && [ "$arm" != "V1N" ] && [ "$arm" != "V1A" ]; then
     "$EP" status --socket "$RUN/executor.sock" > "$d/status.json" 2>&1
     [ -f "$RUN/state/journal.jsonl" ] && cp "$RUN/state/journal.jsonl" "$d/journal.jsonl"
   fi
