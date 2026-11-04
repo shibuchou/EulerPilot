@@ -913,3 +913,16 @@ domain.xml、ks.cfg、README 与 SHA256SUMS;由运行域干净关机后 `qemu-im
 改变**。本文与 evidence/ 中引用的旧短哈希(如 `370180b`、`fedb749`)指向重写前
 的内部 lineage,不再能在本仓库解析;原始 lineage 的完整对照由队伍内部留存。
 实验与产物的对应关系不受影响:所有证据文件同时记录 SHA256 全称,与提交哈希无关。
+
+## 原始逐请求数据归档(2026-11-04)
+
+- 归档位置:`<JUMP-HOST>:/home/ubuntu/epv2-raw-archive/epv2-raw-20261103.tar`,
+  28,589,291,520 字节;tar SHA256 `f7bfea213f73028c345e24dd1619b14bff14a3c1e454ea81d81c2fb18dc97728`。
+- 内容:SP3 `/root/epv2-evidence/**/raw-*.bin` 共 1092 个文件、28,588,351,504 字节,
+  覆盖 2026-10-22 至 2026-11-03 各轮(含 v1↔v2 对照轮)。
+- 校验方式:归档前在 SP3 上生成逐文件 sha256 清单(入库
+  `evidence/p2/raw-archive-20261103/raw-sha256.manifest`);在 `<JUMP-HOST>` 解包后
+  `sha256sum -c` 逐文件比对,1092/1092 通过、0 失败;校验用临时解包目录已删除。
+- SP3 侧源文件**尚未删除**;删除是单独的破坏性动作,需明确批准,且以本清单复核为前提。
+- 复算纪律不变:仓库内汇总数字必须可由 raw 重算(`CHECK_RAW_REBUILDS_SUMMARY`);
+  归档后复算需先在 `<JUMP-HOST>` 解包该 tar。
