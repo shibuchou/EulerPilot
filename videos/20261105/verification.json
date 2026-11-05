@@ -1,0 +1,15 @@
+{
+  "duration_seconds": 622.9,
+  "width": 1920,
+  "height": 1080,
+  "fps": "30/1",
+  "video_codec": "h264",
+  "audio_codec": "aac",
+  "bytes": 26362523,
+  "sha256": "0fe0e54d2ff05dc4a18db683136a17728a5adb14ca727d4714ddab0922158ea7",
+  "chapters": 11,
+  "voice": "zh-CN-YunxiNeural",
+  "known_issue": "Demo teardown waited for background Redis; operator stopped owned workload and independently verified disabled/pins=0; disclosed in video chapter 8.",
+  "integrated_loudness_lufs": -16.4,
+  "true_peak_dbtp": -1.5
+}
